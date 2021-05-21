@@ -31,12 +31,12 @@ namespace _internal {
   }
 }
 
-template<typename... FnArgs, typename... PassedArgs>
-inline TaskDescription describe(QueueIndex ix, void (*fn)(Context *, FnArgs...), PassedArgs... args) {
+template<QueueIndex ix, typename... FnArgs, typename... PassedArgs>
+inline TaskDescription describe(void (*fn)(Context *, QueueMarker<ix>, FnArgs...), PassedArgs... args) {
   std::vector<void *> tt = { args... };
   std::vector<ResourceAccessDescription> v = { ResourceAccessDescription(args)... };
   _internal::set_exclusive_flags_based_on_type(v, 0, (std::tuple<FnArgs...> *)nullptr);
-  std::function<TaskSig> bound_fn = std::bind(fn, std::placeholders::_1, args...);
+  std::function<TaskSig> bound_fn = std::bind(fn, std::placeholders::_1, QueueMarker<ix>(), args...);
   return TaskDescription {
     .queue_index = ix,
     .fn = bound_fn,

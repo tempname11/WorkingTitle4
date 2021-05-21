@@ -7,7 +7,6 @@ namespace lib::task {
 struct Signal {
   void *ptr;
 };
-
 struct Runner;
 struct TaskDescription;
 typedef std::vector<TaskDescription> Changeset;
@@ -20,6 +19,8 @@ typedef void (TaskSig)(Context *);
 typedef uint8_t QueueIndex;
 typedef uint64_t QueueAccessFlags;
 const QueueIndex QUEUE_INDEX_MAX = 64;
+template<QueueIndex ix>
+struct QueueMarker {};
 
 Runner *create_runner(size_t num_queues);
 
@@ -61,8 +62,8 @@ struct Exclusive {
   T &operator ->() { return *ptr; }
 };
 
-template<typename... FnArgs, typename... PassedArgs>
-inline TaskDescription describe(QueueIndex ix, void (*fn)(FnArgs...), PassedArgs... args);
+template<QueueIndex ix, typename... FnArgs, typename... PassedArgs>
+inline TaskDescription describe(void (*fn)(Context *, QueueMarker<ix>, FnArgs...), PassedArgs... args);
 
 Signal create_signal();
 void signal(Runner *r, Signal s);

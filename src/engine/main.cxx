@@ -1,28 +1,31 @@
 #include <src/lib/task.hxx>
 #include <src/global.hxx>
 
-void task_engine_cleanup(lib::task::Context *ctx) {
+void task_engine_cleanup(
+  lib::task::Context *ctx,
+  lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>
+) {
   ZoneScoped;
 }
 
-void task_engine_idle_loop(lib::task::Context *ctx) {
+void task_engine_idle_loop(
+  lib::task::Context *ctx,
+  lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>
+) {
   ZoneScoped;
   lib::task::inject(ctx->runner, {
-    lib::task::describe(
-      QUEUE_INDEX_MAIN_THREAD_ONLY,
-      task_engine_idle_loop
-    ),
+    lib::task::describe(task_engine_idle_loop),
   });
 }
 
-void task_engine(lib::task::Context *ctx) {
+void task_engine(
+  lib::task::Context *ctx,
+  lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>
+) {
   ZoneScoped;
   auto stop_signal = lib::task::create_signal();
   ctx->subtasks = {
-    lib::task::describe(
-      QUEUE_INDEX_MAIN_THREAD_ONLY,
-      task_engine_idle_loop
-    ),
+    lib::task::describe(task_engine_idle_loop),
   };
   ctx->signals = { stop_signal };
 }
@@ -40,10 +43,7 @@ const lib::task::QueueAccessFlags QUEUE_ACCESS_FLAGS_WORKER_THREAD = (0
 int main() {
   auto runner = lib::task::create_runner(QUEUE_COUNT);
   lib::task::inject(runner, {
-    lib::task::describe(
-      QUEUE_INDEX_MAIN_THREAD_ONLY,
-      task_engine
-    ),
+    lib::task::describe(task_engine),
   });
   #ifndef NDEBUG
     auto num_threads = 4u;
