@@ -19,8 +19,8 @@ typedef void (TaskSig)(Context *);
 typedef uint8_t QueueIndex;
 typedef uint64_t QueueAccessFlags;
 const QueueIndex QUEUE_INDEX_MAX = 64;
-template<QueueIndex ix>
-struct QueueMarker {};
+template<QueueIndex ix> struct QueueMarker {};
+struct AccessMarker {};
 
 Runner *create_runner(size_t num_queues);
 
@@ -59,7 +59,7 @@ struct Exclusive {
   T *ptr;
   Exclusive(T *_ptr) : ptr(_ptr) {}
   T &operator *() { return *ptr; }
-  T &operator ->() { return *ptr; }
+  T *operator ->() { return ptr; }
 };
 
 template<QueueIndex ix, typename... FnArgs, typename... PassedArgs>
