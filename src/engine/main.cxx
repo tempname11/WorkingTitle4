@@ -4,7 +4,20 @@
 #include <src/lib/task.hxx>
 #include <src/global.hxx>
 
-struct Session {
+const VkFormat SWAPCHAIN_FORMAT = VK_FORMAT_B8G8R8A8_SRGB;
+
+struct RenderingData {
+  lib::task::Signal stop_signal;
+  VkSwapchainKHR swapchain;
+  std::vector<VkImage> swapchain_images;
+  struct SwapchainDescription {
+    size_t swapchain_image_count;
+    VkExtent2D swapchain_image_extent;
+    VkFormat swapchain_image_format;
+  } swapchain_description;
+};
+
+struct SessionData {
   lib::task::AccessMarker m;
   struct MainLoop {
     GLFWwindow *window;
@@ -29,15 +42,120 @@ struct Session {
   } main_loop;
 };
 
+void task_rendering_frame(
+  lib::task::Context *ctx,
+  lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
+  lib::task::Shared<SessionData::MainLoop> session,
+  lib::task::Exclusive<RenderingData> data
+) {
+  ZoneScoped;
+  bool should_stop = glfwWindowShouldClose(session->window);
+  if (should_stop) {
+    lib::task::signal(ctx->runner, data->stop_signal);
+  } else {
+    glfwPollEvents(); // TODO move this
+    lib::task::inject(ctx->runner, {
+      lib::task::describe(task_rendering_frame, session.ptr, data.ptr),
+    });
+  }
+}
+
+void task_rendering(
+  lib::task::Context *ctx,
+  lib::task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
+  lib::task::Shared<SessionData::MainLoop> session,
+  lib::task::Exclusive<RenderingData> data
+) {
+  ZoneScoped;
+  lib::task::inject(ctx->runner, {
+    lib::task::describe(task_rendering_frame, session.ptr, data.ptr),
+  });
+  ctx->signals = { data->stop_signal };
+}
+
+void task_rendering_cleanup(
+  lib::task::Context *ctx,
+  lib::task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
+  lib::task::Shared<SessionData::MainLoop> session,
+  lib::task::Exclusive<RenderingData> data
+) {
+  ZoneScoped;
+  auto vulkan = &session->vulkan;
+  vkDestroySwapchainKHR(
+    vulkan->core.device,
+    data->swapchain,
+    vulkan->core.allocator
+  );
+  free(data.ptr);
+}
+
+void task_session_main_loop_try_rendering(
+  lib::task::Context *ctx,
+  lib::task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
+  lib::task::Exclusive<SessionData::MainLoop> data
+) {
+  ZoneScoped;
+  auto vulkan = &data->vulkan;
+  VkSurfaceCapabilitiesKHR surface_capabilities;
+  {
+    auto result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+      vulkan->physical_device,
+      vulkan->window_surface,
+      &surface_capabilities
+    );
+    assert(result == VK_SUCCESS);
+  }
+
+  if (
+    surface_capabilities.currentExtent.width == 0 ||
+    surface_capabilities.currentExtent.height == 0
+  ) {
+    return;
+  }
+
+  auto rendering = new RenderingData;
+  { // swapchain
+    VkSwapchainCreateInfoKHR swapchain_create_info = {
+      .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+      .surface = vulkan->window_surface,
+      .minImageCount = surface_capabilities.minImageCount,
+      .imageFormat = SWAPCHAIN_FORMAT,
+      .imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+      .imageExtent = surface_capabilities.currentExtent,
+      .imageArrayLayers = 1,
+      .imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+      .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+      .preTransform = surface_capabilities.currentTransform,
+      .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+      .presentMode = VK_PRESENT_MODE_MAILBOX_KHR,
+      .clipped = VK_TRUE,
+      .oldSwapchain = VK_NULL_HANDLE,
+    };
+    {
+      auto result = vkCreateSwapchainKHR(
+        vulkan->core.device,
+        &swapchain_create_info,
+        vulkan->core.allocator,
+        &rendering->swapchain
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+
+  ctx->subtasks = {
+    lib::task::describe(task_rendering, data.ptr, rendering),
+    lib::task::describe(task_rendering_cleanup, data.ptr, rendering),
+  };
+}
+
 void task_session_cleanup(
   lib::task::Context *ctx,
   lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
-  lib::task::Exclusive<Session> session
+  lib::task::Exclusive<SessionData> session
 ) {
   ZoneScoped;
   { // vulkan
     ZoneScopedN("vulkan");
-    // INCOMPLETE
     auto it = &session->main_loop.vulkan;
     auto allocator = it->core.allocator;
     auto _vkDestroyDebugUtilsMessengerEXT = 
@@ -58,19 +176,20 @@ void task_session_cleanup(
   }
 }
 
-void task_session_main_loop_iteration(
+void task_session_main_loop_cycle(
   lib::task::Context *ctx,
   lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
-  lib::task::Exclusive<Session::MainLoop> data
+  lib::task::Exclusive<SessionData::MainLoop> data
 ) {
   ZoneScoped;
-  glfwWaitEvents();
   bool should_stop = glfwWindowShouldClose(data->window);
   if (should_stop) {
     lib::task::signal(ctx->runner, data->stop_signal);
   } else {
+    glfwWaitEvents();
     lib::task::inject(ctx->runner, {
-      lib::task::describe(task_session_main_loop_iteration, data.ptr),
+      lib::task::describe(task_session_main_loop_try_rendering, data.ptr),
+      lib::task::describe(task_session_main_loop_cycle, data.ptr),
     });
   }
 }
@@ -78,11 +197,11 @@ void task_session_main_loop_iteration(
 void task_session_main_loop(
   lib::task::Context *ctx,
   lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
-  lib::task::Exclusive<Session> session
+  lib::task::Exclusive<SessionData> session
 ) {
   ZoneScoped;
   lib::task::inject(ctx->runner, {
-    lib::task::describe(task_session_main_loop_iteration, &session->main_loop),
+    lib::task::describe(task_session_main_loop_cycle, &session->main_loop),
   });
   ctx->signals = { session->main_loop.stop_signal };
 }
@@ -111,7 +230,7 @@ void task_session(
   lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>
 ) {
   ZoneScoped;
-  auto session = new Session;
+  auto session = new SessionData;
   session->main_loop.stop_signal = lib::task::create_signal();
   GLFWwindow *window;
   { // session->main_loop.window; glfw stuff

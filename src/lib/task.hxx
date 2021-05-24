@@ -51,7 +51,7 @@ struct Shared {
   T *ptr;
   Shared(T *_ptr) : ptr(_ptr) {}
   T &operator *() { return *ptr; }
-  T &operator ->() { return *ptr; }
+  T *operator ->() { return ptr; }
 };
 
 template<typename T>
