@@ -140,28 +140,36 @@ void _internal_add_new_task(Runner *r, Task *t) {
   }
 }
 
-void _internal_inject(Runner *r, Changeset &tasks, Task *self) {
+void _internal_inject(Runner *r, Changeset &tasks, Task *super) {
+  std::unordered_map<void *, ResourceOwners> subtask_resource_owners;
+  std::unordered_map<Task *, std::vector<void *>> subtask_owned_resources;
+  auto &x_owned_resources = super == nullptr ? r->owned_resources : subtask_owned_resources;
+  auto &x_resource_owners = super == nullptr ? r->resource_owners : subtask_resource_owners;
   if (tasks.size() == 0) {
     return;
   }
   // r_lock is assumed!
   for (auto &desc : tasks) {
-    auto t = new Task { desc.fn, desc.queue_index };
-    if (desc.resources.size() > 0) {
-      r->owned_resources[t] = {};
-    }
-    if (self != nullptr) {
-      r->dependants[t] = { self };
+    auto t = new Task {
+      .fn = desc.fn,
+      .queue_index = desc.queue_index,
+    };
+    if (super != nullptr) {
+      r->dependants[t] = { super };
     }
     for (auto &res : desc.resources) {
-      r->owned_resources[t].push_back(res.ptr);
-      if (!r->resource_owners.contains(res.ptr)) {
-        r->resource_owners[res.ptr] = ResourceOwners {
+      if (x_owned_resources.contains(t)) {
+        x_owned_resources[t].push_back(res.ptr);
+      } else {
+        x_owned_resources[t] = { res.ptr };
+      }
+      if (!x_resource_owners.contains(res.ptr)) {
+        x_resource_owners[res.ptr] = ResourceOwners {
           .exclusive = res.exclusive,
           .tasks = { t },
         };
       } else {
-        auto &prev_owners_ref = r->resource_owners[res.ptr];
+        auto &prev_owners_ref = x_resource_owners[res.ptr];
 
         // can't own the same pointer twice!
         assert(
@@ -172,22 +180,23 @@ void _internal_inject(Runner *r, Changeset &tasks, Task *self) {
         if (!res.exclusive && !prev_owners_ref.exclusive) {
           // sharing, just add new owner to list
           prev_owners_ref.tasks.push_back(t);
+          // BUG: the owner has to have a dependency!
         } else {
           // takeover! remove all previous owners, add new one
-          auto prev_owners = r->resource_owners[res.ptr];
+          auto prev_owners = x_resource_owners[res.ptr];
 
           // resource_owners
-          r->resource_owners[res.ptr] = ResourceOwners {
+          x_resource_owners[res.ptr] = ResourceOwners {
             .exclusive = res.exclusive,
             .tasks = { t },
           };
 
           // owned_resources
           for (auto owner : prev_owners.tasks) {
-            auto &owned = r->owned_resources[owner];
+            auto &owned = x_owned_resources[owner];
             if (owned.size() == 1) {
               assert(owned[0] == res.ptr);
-              r->owned_resources.erase(owner);
+              x_owned_resources.erase(owner);
             } else {
               auto iter = std::find(owned.begin(), owned.end(), res.ptr);
               owned.erase(iter);
@@ -206,17 +215,17 @@ void _internal_inject(Runner *r, Changeset &tasks, Task *self) {
         }
       }
     }
-    // note: when self != nullptr (subtask scenario),
+    // note: when super != nullptr (subtask scenario),
     // we should probably insert tasks in front of the queue.
     // but that might mess with resources (??)
     _internal_add_new_task(r, t);
   }
 
-  if (self != nullptr) {
-    if (r->dependencies_left.contains(self)) {
-      r->dependencies_left[self] += tasks.size();
+  if (super != nullptr) {
+    if (r->dependencies_left.contains(super)) {
+      r->dependencies_left[super] += tasks.size();
     } else {
-      r->dependencies_left[self] = tasks.size();
+      r->dependencies_left[super] = tasks.size();
     }
   }
 }
