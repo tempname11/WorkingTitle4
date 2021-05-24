@@ -7,7 +7,6 @@
 const VkFormat SWAPCHAIN_FORMAT = VK_FORMAT_B8G8R8A8_SRGB;
 
 struct RenderingData {
-  lib::task::Signal stop_signal;
   VkSwapchainKHR swapchain;
   std::vector<VkImage> swapchain_images;
   struct SwapchainDescription {
@@ -18,65 +17,36 @@ struct RenderingData {
 };
 
 struct SessionData {
-  lib::task::AccessMarker m;
-  struct MainLoop {
-    GLFWwindow *window;
-    lib::task::Signal stop_signal;
-    struct Vulkan {
-      VkInstance instance;
-      VkDebugUtilsMessengerEXT debug_messenger;
-      VkSurfaceKHR window_surface;
-      VkPhysicalDevice physical_device;
-      struct Core {
-        VkDevice device;
-        const VkAllocationCallbacks *allocator;
-      } core;
-      struct CoreProperties {
-        VkPhysicalDeviceProperties basic;
-        VkPhysicalDeviceMemoryProperties memory;
-        VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing;
-      } properties;
-      VkQueue queue_present;
-      VkQueue queue_gct; // graphics, compute, transfer
-    } vulkan;
-  } main_loop;
+  GLFWwindow *window;
+  struct Vulkan {
+    VkInstance instance;
+    VkDebugUtilsMessengerEXT debug_messenger;
+    VkSurfaceKHR window_surface;
+    VkPhysicalDevice physical_device;
+    struct Core {
+      VkDevice device;
+      const VkAllocationCallbacks *allocator;
+    } core;
+    struct CoreProperties {
+      VkPhysicalDeviceProperties basic;
+      VkPhysicalDeviceMemoryProperties memory;
+      VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing;
+    } properties;
+    VkQueue queue_present;
+    VkQueue queue_gct; // graphics, compute, transfer
+  } vulkan;
 };
 
-void task_rendering_frame(
+void task_session_main_loop(
   lib::task::Context *ctx,
   lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
-  lib::task::Shared<SessionData::MainLoop> session,
-  lib::task::Exclusive<RenderingData> data
-) {
-  ZoneScoped;
-  bool should_stop = glfwWindowShouldClose(session->window);
-  if (should_stop) {
-    lib::task::signal(ctx->runner, data->stop_signal);
-  } else {
-    glfwPollEvents(); // TODO move this
-    lib::task::inject(ctx->runner, {
-      lib::task::describe(task_rendering_frame, session.ptr, data.ptr),
-    });
-  }
-}
-
-void task_rendering(
-  lib::task::Context *ctx,
-  lib::task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
-  lib::task::Shared<SessionData::MainLoop> session,
-  lib::task::Exclusive<RenderingData> data
-) {
-  ZoneScoped;
-  lib::task::inject(ctx->runner, {
-    lib::task::describe(task_rendering_frame, session.ptr, data.ptr),
-  });
-  ctx->signals = { data->stop_signal };
-}
+  lib::task::Exclusive<SessionData> data
+); // NOTE temporary
 
 void task_rendering_cleanup(
   lib::task::Context *ctx,
   lib::task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
-  lib::task::Shared<SessionData::MainLoop> session,
+  lib::task::Shared<SessionData> session,
   lib::task::Exclusive<RenderingData> data
 ) {
   ZoneScoped;
@@ -89,10 +59,31 @@ void task_rendering_cleanup(
   free(data.ptr);
 }
 
+void task_rendering_frame(
+  lib::task::Context *ctx,
+  lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
+  lib::task::Shared<SessionData> session,
+  lib::task::Exclusive<RenderingData> data
+) {
+  ZoneScoped;
+  bool should_stop = glfwWindowShouldClose(session->window);
+  if (should_stop) {
+    lib::task::inject(ctx->runner, {
+      lib::task::describe(task_rendering_cleanup, session.ptr, data.ptr),
+      lib::task::describe(task_session_main_loop, session.ptr), // NOTE tight coupling
+    });
+  } else {
+    glfwPollEvents(); // TODO move this
+    lib::task::inject(ctx->runner, {
+      lib::task::describe(task_rendering_frame, session.ptr, data.ptr),
+    });
+  }
+}
+
 void task_session_main_loop_try_rendering(
   lib::task::Context *ctx,
   lib::task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
-  lib::task::Exclusive<SessionData::MainLoop> data
+  lib::task::Exclusive<SessionData> data
 ) {
   ZoneScoped;
   auto vulkan = &data->vulkan;
@@ -110,6 +101,9 @@ void task_session_main_loop_try_rendering(
     surface_capabilities.currentExtent.width == 0 ||
     surface_capabilities.currentExtent.height == 0
   ) {
+    lib::task::inject(ctx->runner, {
+      lib::task::describe(task_session_main_loop, data.ptr), // NOTE tight coupling
+    });
     return;
   }
 
@@ -142,10 +136,9 @@ void task_session_main_loop_try_rendering(
     }
   }
 
-  ctx->subtasks = {
-    lib::task::describe(task_rendering, data.ptr, rendering),
-    lib::task::describe(task_rendering_cleanup, data.ptr, rendering),
-  };
+  lib::task::inject(ctx->runner, {
+    lib::task::describe(task_rendering_frame, data.ptr, rendering),
+  });
 }
 
 void task_session_cleanup(
@@ -156,7 +149,7 @@ void task_session_cleanup(
   ZoneScoped;
   { // vulkan
     ZoneScopedN("vulkan");
-    auto it = &session->main_loop.vulkan;
+    auto it = &session->vulkan;
     auto allocator = it->core.allocator;
     auto _vkDestroyDebugUtilsMessengerEXT = 
       (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(
@@ -171,39 +164,29 @@ void task_session_cleanup(
   }
   { // glfw
     ZoneScopedN("glfw");
-    glfwDestroyWindow(session->main_loop.window);
+    glfwDestroyWindow(session->window);
     glfwTerminate();
   }
-}
-
-void task_session_main_loop_cycle(
-  lib::task::Context *ctx,
-  lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
-  lib::task::Exclusive<SessionData::MainLoop> data
-) {
-  ZoneScoped;
-  bool should_stop = glfwWindowShouldClose(data->window);
-  if (should_stop) {
-    lib::task::signal(ctx->runner, data->stop_signal);
-  } else {
-    glfwWaitEvents();
-    lib::task::inject(ctx->runner, {
-      lib::task::describe(task_session_main_loop_try_rendering, data.ptr),
-      lib::task::describe(task_session_main_loop_cycle, data.ptr),
-    });
-  }
+  free(session.ptr);
 }
 
 void task_session_main_loop(
   lib::task::Context *ctx,
   lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
-  lib::task::Exclusive<SessionData> session
+  lib::task::Exclusive<SessionData> data
 ) {
   ZoneScoped;
-  lib::task::inject(ctx->runner, {
-    lib::task::describe(task_session_main_loop_cycle, &session->main_loop),
-  });
-  ctx->signals = { session->main_loop.stop_signal };
+  bool should_stop = glfwWindowShouldClose(data->window);
+  if (should_stop) {
+    lib::task::inject(ctx->runner, {
+      lib::task::describe(task_session_cleanup, data.ptr),
+    });
+  } else {
+    glfwWaitEvents();
+    lib::task::inject(ctx->runner, {
+      lib::task::describe(task_session_main_loop_try_rendering, data.ptr),
+    });
+  }
 }
 
 const int DEFAULT_WINDOW_WIDTH = 1280;
@@ -231,11 +214,10 @@ void task_session(
 ) {
   ZoneScoped;
   auto session = new SessionData;
-  session->main_loop.stop_signal = lib::task::create_signal();
   GLFWwindow *window;
   { // session->main_loop.window; glfw stuff
     ZoneScopedN("glfw");
-    auto it = &session->main_loop.window;
+    auto it = &session->window;
     {
       bool success = glfwInit();
       assert(success == GLFW_TRUE);
@@ -268,7 +250,7 @@ void task_session(
   }
   { // session->main_loop.vulkan
     ZoneScopedN("vulkan");
-    auto it = &session->main_loop.vulkan;
+    auto it = &session->vulkan;
 
     // don't use the allocator callbacks
     const VkAllocationCallbacks *allocator = nullptr;
@@ -340,7 +322,7 @@ void task_session(
       ZoneScopedN("window_surface");
       auto result = glfwCreateWindowSurface(
         it->instance,
-        session->main_loop.window,
+        session->window,
         allocator,
         &it->window_surface
       );
@@ -532,10 +514,9 @@ void task_session(
   }
   // session is fully initialized at this point
 
-  ctx->subtasks = {
+  lib::task::inject(ctx->runner, {
     lib::task::describe(task_session_main_loop, session),
-    lib::task::describe(task_session_cleanup, session),
-  };
+  });
 }
 
 const lib::task::QueueAccessFlags QUEUE_ACCESS_FLAGS_MAIN_THREAD = (0
