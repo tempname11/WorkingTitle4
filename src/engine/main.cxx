@@ -4,9 +4,14 @@
 #include <src/lib/task.hxx>
 #include <src/global.hxx>
 
+namespace task {
+  using namespace lib::task;
+}
+
 const VkFormat SWAPCHAIN_FORMAT = VK_FORMAT_B8G8R8A8_SRGB;
 
 struct RenderingData {
+  task::Signal stop_signal;
   VkSwapchainKHR swapchain;
   std::vector<VkImage> swapchain_images;
   struct SwapchainDescription {
@@ -17,6 +22,7 @@ struct RenderingData {
 };
 
 struct SessionData {
+  task::Signal stop_signal;
   GLFWwindow *window;
   struct Vulkan {
     VkInstance instance;
@@ -37,17 +43,17 @@ struct SessionData {
   } vulkan;
 };
 
-void task_session_main_loop(
-  lib::task::Context *ctx,
-  lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
-  lib::task::Exclusive<SessionData> data
-); // NOTE temporary
+void session_loop(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
+  task::Exclusive<SessionData> data
+); // TODO temporary?
 
-void task_rendering_cleanup(
-  lib::task::Context *ctx,
-  lib::task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
-  lib::task::Shared<SessionData> session,
-  lib::task::Exclusive<RenderingData> data
+void rendering_cleanup(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
+  task::Shared<SessionData> session,
+  task::Exclusive<RenderingData> data
 ) {
   ZoneScoped;
   auto vulkan = &session->vulkan;
@@ -56,34 +62,51 @@ void task_rendering_cleanup(
     data->swapchain,
     vulkan->core.allocator
   );
-  free(data.ptr);
+  delete data.ptr;
 }
 
-void task_rendering_frame(
-  lib::task::Context *ctx,
-  lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
-  lib::task::Shared<SessionData> session,
-  lib::task::Exclusive<RenderingData> data
+void rendering_frame(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
+  task::Shared<SessionData> session,
+  task::Exclusive<RenderingData> data
 ) {
   ZoneScoped;
   bool should_stop = glfwWindowShouldClose(session->window);
   if (should_stop) {
-    lib::task::inject(ctx->runner, {
-      lib::task::describe(task_rendering_cleanup, session.ptr, data.ptr),
-      lib::task::describe(task_session_main_loop, session.ptr), // NOTE tight coupling
-    });
+    lib::task::signal(ctx->runner, data->stop_signal);
   } else {
     glfwPollEvents(); // TODO move this
-    lib::task::inject(ctx->runner, {
-      lib::task::describe(task_rendering_frame, session.ptr, data.ptr),
+    task::inject(ctx->runner, {
+      task::describe(rendering_frame, session.ptr, data.ptr),
     });
   }
 }
 
-void task_session_main_loop_try_rendering(
-  lib::task::Context *ctx,
-  lib::task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
-  lib::task::Exclusive<SessionData> data
+void rendering_before_signal(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
+  task::Exclusive<RenderingData *> smuggled_data
+) {
+  ctx->signals = { (*smuggled_data)->stop_signal };
+}
+
+void rendering_after_signal(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
+  task::Exclusive<RenderingData *> smuggled_data
+) {
+  lib::task::inject(ctx->runner, {
+    task::describe(rendering_cleanup, *smuggled_data),
+  });
+  delete(smuggled_data.ptr);
+  // TODO session_loop needed here?
+}
+
+void session_try_rendering(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
+  task::Exclusive<SessionData> data
 ) {
   ZoneScoped;
   auto vulkan = &data->vulkan;
@@ -101,14 +124,15 @@ void task_session_main_loop_try_rendering(
     surface_capabilities.currentExtent.width == 0 ||
     surface_capabilities.currentExtent.height == 0
   ) {
-    lib::task::inject(ctx->runner, {
-      lib::task::describe(task_session_main_loop, data.ptr), // NOTE tight coupling
+    task::inject(ctx->runner, {
+      task::describe(session_loop, data.ptr), // TODO tight coupling?
     });
     return;
   }
 
   auto rendering = new RenderingData;
-  { // swapchain
+  rendering->stop_signal = task::create_signal();
+  { ZoneScopedN("swapchain");
     VkSwapchainCreateInfoKHR swapchain_create_info = {
       .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
       .surface = vulkan->window_surface,
@@ -136,19 +160,21 @@ void task_session_main_loop_try_rendering(
     }
   }
 
-  lib::task::inject(ctx->runner, {
-    lib::task::describe(task_rendering_frame, data.ptr, rendering),
+  auto smuggled_rendering = new (RenderingData *)(rendering);
+  task::inject(ctx->runner, {
+    task::describe(rendering_frame, data.ptr, rendering),
+    task::describe(rendering_before_signal, smuggled_rendering),
+    task::describe(rendering_after_signal, smuggled_rendering),
   });
 }
 
-void task_session_cleanup(
-  lib::task::Context *ctx,
-  lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
-  lib::task::Exclusive<SessionData> session
+void session_cleanup(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
+  task::Exclusive<SessionData> session
 ) {
   ZoneScoped;
-  { // vulkan
-    ZoneScopedN("vulkan");
+  { ZoneScopedN("vulkan");
     auto it = &session->vulkan;
     auto allocator = it->core.allocator;
     auto _vkDestroyDebugUtilsMessengerEXT = 
@@ -162,29 +188,27 @@ void task_session_cleanup(
     vkDestroySurfaceKHR(it->instance, it->window_surface, allocator);
     vkDestroyInstance(it->instance, allocator);
   }
-  { // glfw
-    ZoneScopedN("glfw");
+  { ZoneScopedN("glfw");
     glfwDestroyWindow(session->window);
     glfwTerminate();
   }
-  free(session.ptr);
+  delete session.ptr;
 }
 
-void task_session_main_loop(
-  lib::task::Context *ctx,
-  lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
-  lib::task::Exclusive<SessionData> data
+void session_loop(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
+  task::Exclusive<SessionData> data
 ) {
   ZoneScoped;
   bool should_stop = glfwWindowShouldClose(data->window);
   if (should_stop) {
-    lib::task::inject(ctx->runner, {
-      lib::task::describe(task_session_cleanup, data.ptr),
-    });
+    task::signal(ctx->runner, data->stop_signal);
+    return;
   } else {
     glfwWaitEvents();
-    lib::task::inject(ctx->runner, {
-      lib::task::describe(task_session_main_loop_try_rendering, data.ptr),
+    task::inject(ctx->runner, {
+      task::describe(session_try_rendering, data.ptr),
     });
   }
 }
@@ -208,15 +232,33 @@ VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_callback(
   return VK_FALSE;
 }
 
-void task_session(
-  lib::task::Context *ctx,
-  lib::task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>
+void session_before_signal(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
+  task::Exclusive<SessionData *> smuggled_session
+) {
+  ctx->signals = { (*smuggled_session)->stop_signal };
+}
+
+void session_after_signal(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
+  task::Exclusive<SessionData *> smuggled_session
+) {
+  lib::task::inject(ctx->runner, {
+    task::describe(session_cleanup, *smuggled_session),
+  });
+  delete(smuggled_session.ptr);
+}
+
+void session(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>
 ) {
   ZoneScoped;
   auto session = new SessionData;
-  GLFWwindow *window;
-  { // session->main_loop.window; glfw stuff
-    ZoneScopedN("glfw");
+  session->stop_signal = task::create_signal();
+  { ZoneScopedN("glfw");
     auto it = &session->window;
     {
       bool success = glfwInit();
@@ -241,22 +283,19 @@ void task_session(
       width = mode->width;
       height = mode->height;
     #endif
-    window = glfwCreateWindow(width, height, "WorkingTitle", monitor, nullptr);
-    assert(window != nullptr);
+    *it = glfwCreateWindow(width, height, "WorkingTitle", monitor, nullptr);
+    assert(*it != nullptr);
     if (glfwRawMouseMotionSupported()) {
-      glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+      glfwSetInputMode(*it, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     }
-    *it = window;
   }
-  { // session->main_loop.vulkan
-    ZoneScopedN("vulkan");
+  { ZoneScopedN("vulkan");
     auto it = &session->vulkan;
 
     // don't use the allocator callbacks
     const VkAllocationCallbacks *allocator = nullptr;
 
-    { // instance
-      ZoneScopedN("instance");
+    { ZoneScopedN("instance");
       uint32_t glfw_extension_count = 0;
       auto glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
       std::vector<const char *> extensions(
@@ -288,9 +327,7 @@ void task_session(
         assert(result == VK_SUCCESS);
       }
     }
-
-    { // debug_messenger
-      ZoneScopedN("debug_messenger");
+    { ZoneScopedN("debug_messenger");
       auto _vkCreateDebugUtilsMessengerEXT = 
         (PFN_vkCreateDebugUtilsMessengerEXT)
           vkGetInstanceProcAddr(it->instance, "vkCreateDebugUtilsMessengerEXT");
@@ -317,9 +354,7 @@ void task_session(
       );
       assert(result == VK_SUCCESS);
     }
-
-    { // window_surface
-      ZoneScopedN("window_surface");
+    { ZoneScopedN("window_surface");
       auto result = glfwCreateWindowSurface(
         it->instance,
         session->window,
@@ -328,9 +363,7 @@ void task_session(
       );
       assert(result == VK_SUCCESS);
     }
-
-    { // physical_device
-      ZoneScopedN("physical_device");
+    { ZoneScopedN("physical_device");
       // find the first discrete GPU physical device
       // in future, this should be more nuanced.
       {
@@ -355,8 +388,7 @@ void task_session(
     // Graphics, Compute, Transfer
     // this probably works on most (all?) modern desktop GPUs.
     uint32_t queue_gct_family_index = (uint32_t) -1;
-    {
-      ZoneScopedN("family-indices");
+    { ZoneScopedN("family-indices");
       uint32_t queue_family_count = 0;
       vkGetPhysicalDeviceQueueFamilyProperties(
         it->physical_device,
@@ -400,10 +432,7 @@ void task_session(
       assert(queue_present_family_index != (uint32_t) -1);
       assert(queue_gct_family_index != (uint32_t) -1);
     }
-
-    { // device & queues
-      ZoneScopedN("device");
-
+    { ZoneScopedN("core");
       std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
       if (queue_gct_family_index == queue_present_family_index) {
         float queue_priorities[2] = { 1.0f, 1.0f };
@@ -475,12 +504,9 @@ void task_session(
         );
         assert(result == VK_SUCCESS);
       }
+      it->core.allocator = allocator;
     }
-
-    it->core.allocator = allocator;
-
-    { // queues
-      ZoneScopedN("queues");
+    { ZoneScopedN("queues");
       if (queue_gct_family_index == queue_present_family_index) {
         vkGetDeviceQueue(it->core.device, queue_present_family_index, 0, &it->queue_present);
         vkGetDeviceQueue(it->core.device, queue_gct_family_index, 1, &it->queue_gct);
@@ -491,9 +517,7 @@ void task_session(
       assert(it->queue_present != VK_NULL_HANDLE);
       assert(it->queue_gct != VK_NULL_HANDLE);
     }
-
-    { // properties
-      ZoneScopedN("properties");
+    { ZoneScopedN("properties");
       VkPhysicalDeviceProperties properties;
       vkGetPhysicalDeviceProperties(it->physical_device, &it->properties.basic);
 
@@ -514,25 +538,28 @@ void task_session(
   }
   // session is fully initialized at this point
 
-  lib::task::inject(ctx->runner, {
-    lib::task::describe(task_session_main_loop, session),
+  auto smuggled_session = new (SessionData *)(session);
+  task::inject(ctx->runner, {
+    task::describe(session_loop, session),
+    task::describe(session_before_signal, smuggled_session),
+    task::describe(session_after_signal, smuggled_session),
   });
 }
 
-const lib::task::QueueAccessFlags QUEUE_ACCESS_FLAGS_MAIN_THREAD = (0
+const task::QueueAccessFlags QUEUE_ACCESS_FLAGS_MAIN_THREAD = (0
   | (1 << QUEUE_INDEX_MAIN_THREAD_ONLY)
 );
 
-const lib::task::QueueAccessFlags QUEUE_ACCESS_FLAGS_WORKER_THREAD = (0
+const task::QueueAccessFlags QUEUE_ACCESS_FLAGS_WORKER_THREAD = (0
   | (1 << QUEUE_INDEX_HIGH_PRIORITY)
   | (1 << QUEUE_INDEX_NORMAL_PRIORITY)
   | (1 << QUEUE_INDEX_LOW_PRIORITY)
 );
 
 int main() {
-  auto runner = lib::task::create_runner(QUEUE_COUNT);
-  lib::task::inject(runner, {
-    lib::task::describe(task_session),
+  auto runner = task::create_runner(QUEUE_COUNT);
+  task::inject(runner, {
+    task::describe(session),
   });
   #ifndef NDEBUG
     auto num_threads = 4u;
@@ -540,8 +567,8 @@ int main() {
     auto num_threads = std::max(1u, std::thread::hardware_concurrency());
   #endif
   std::vector worker_access_flags(num_threads - 1, QUEUE_ACCESS_FLAGS_WORKER_THREAD);
-  lib::task::run(runner, std::move(worker_access_flags), QUEUE_ACCESS_FLAGS_MAIN_THREAD);
-  lib::task::discard_runner(runner);
+  task::run(runner, std::move(worker_access_flags), QUEUE_ACCESS_FLAGS_MAIN_THREAD);
+  task::discard_runner(runner);
   #ifdef TRACY_NO_EXIT
     printf("Waiting for profiler...\n");
     fflush(stdout);
