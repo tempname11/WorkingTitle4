@@ -66,6 +66,14 @@ struct SessionData {
   } vulkan;
 };
 
+void defer(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
+  task::Exclusive<task::Task> task
+) {
+  task::inject(ctx->runner, { task.ptr });
+}
+
 void session_iteration_cleanup(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
@@ -166,12 +174,12 @@ void session_iteration_try_rendering(
     data.ptr,
     rendering
   );
-  auto task_cleanup = task::create(
+  auto task_cleanup = task::create(defer, task::create(
     session_iteration_cleanup,
     session_iteration_stop_signal.ptr,
     data.ptr,
     rendering
-  );
+  ));
   task::inject(ctx->runner, {
     task_frame,
     task_cleanup,
@@ -199,11 +207,11 @@ void session_iteration(
       session_iteration_stop_signal,
       data.ptr
     );
-    auto task_repeat = task::create(
+    auto task_repeat = task::create(defer, task::create(
       session_iteration,
       session_stop_signal.ptr,
       data.ptr
-    );
+    ));
     task::inject(ctx->runner, {
       task_try_rendering,
       task_repeat
@@ -528,7 +536,7 @@ void session(
   // session is fully initialized at this point
 
   auto task_iteration = task::create(session_iteration, stop_signal, session);
-  auto task_cleanup = task::create(session_cleanup, session);
+  auto task_cleanup = task::create(defer, task::create(session_cleanup, session));
   task::inject(ctx->runner, {
     task_iteration,
     task_cleanup,

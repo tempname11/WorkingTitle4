@@ -241,10 +241,6 @@ void _internal_inject(Runner *r, std::vector<Task *> &tasks, Task *super) {
         }
       }
     }
-    // note: when super != nullptr (subtask scenario),
-    // we should probably insert tasks in front of the queue.
-    // but that might mess with resources (??)
-    _internal_add_new_task(r, t);
   }
 
   if (super != nullptr) {
@@ -318,6 +314,12 @@ void run_task_worker(Runner *r, int worker_index, uint64_t queue_access_bits) {
       t->fn(&ctx);
       r_lock.lock();
       _internal_inject(r, ctx.subtasks, t);
+      for (auto t : ctx.subtasks) {
+        // note: we should insert tasks in front of the queue,
+        // but we don't, right now. should not matter for correctness,
+        // because subtasks only have intra-dependencies
+        _internal_add_new_task(r, t);
+      }
 
       if (r->dependencies_left.contains(t)) {
         // dependencies were added during execution!
@@ -409,7 +411,7 @@ void run(
   assert(r->unresolved_dependency_signals.size() == 0);
 }
 
-void inject(Runner *r, std::vector<Task *> &&tasks, std::vector<std::pair<Task *, Task *>> &&manual_dependencies) {
+void inject(Runner *r, std::vector<Task *> && tasks, std::vector<std::pair<Task *, Task *>> && manual_dependencies) {
   ZoneScoped;
   std::unique_lock r_lock(r->mutex);
   _internal_inject(r, tasks, nullptr);
@@ -437,15 +439,22 @@ void inject(Runner *r, std::vector<Task *> &&tasks, std::vector<std::pair<Task *
       }
     }
   }
+  for (auto t : tasks) {
+    _internal_add_new_task(r, t);
+  }
 }
 
 void no_op(Context *ctx) {}
 
 Task *create_signal() {
-  return new Task { .fn = no_op, .queue_index = QUEUE_INDEX_SIGNAL_ONLY };
+  // return new Task { .fn = no_op, .queue_index = QUEUE_INDEX_SIGNAL_ONLY };
+  auto s = new Task { .fn = no_op, .queue_index = QUEUE_INDEX_SIGNAL_ONLY };
+  LOG("create_signal {}", (void*)s);
+  return s;
 }
 
 void signal(Runner *r, Task *s) {
+  LOG("signal {}", (void*)s);
   std::unique_lock r_lock(r->mutex);
   assert(r->is_running);
   assert(s->queue_index == QUEUE_INDEX_SIGNAL_ONLY);
