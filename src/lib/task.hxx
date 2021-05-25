@@ -4,17 +4,9 @@
 
 namespace lib::task {
 
-struct Signal {
-  void *ptr;
-};
+struct Task;
 struct Runner;
-struct TaskDescription;
-typedef std::vector<TaskDescription> Changeset;
-struct Context {
-  Runner *runner;
-  Changeset subtasks;
-  std::vector<Signal> signals;
-};
+struct Context;
 typedef void (TaskSig)(Context *);
 typedef uint8_t QueueIndex;
 typedef uint64_t QueueAccessFlags;
@@ -33,18 +25,16 @@ void run(Runner *, std::vector<QueueAccessFlags> &&, QueueAccessFlags);
 // can't call this while running!
 void discard_runner(Runner *);
 
-struct ResourceAccessDescription {
-  void *ptr;
-  bool exclusive;
-};
+// can only discard unused tasks or signals.
+void discard_task_or_signal(Task *);
 
-struct TaskDescription {
-  QueueIndex queue_index;
-  std::function<TaskSig> fn;
-  std::vector<ResourceAccessDescription> resources;
-};
+void inject(Runner *, std::vector<Task *> &&, std::vector<std::pair<Task *, Task *>> && = {});
 
-void inject(Runner *, Changeset &&);
+Task *create_signal();
+void signal(Runner *r, Task *s);
+
+template<QueueIndex ix, typename... FnArgs, typename... PassedArgs>
+inline Task *create(void (*fn)(Context *, QueueMarker<ix>, FnArgs...), PassedArgs... args);
 
 template<typename T>
 struct Shared {
@@ -62,11 +52,22 @@ struct Exclusive {
   T *operator ->() { return ptr; }
 };
 
-template<QueueIndex ix, typename... FnArgs, typename... PassedArgs>
-inline TaskDescription describe(void (*fn)(Context *, QueueMarker<ix>, FnArgs...), PassedArgs... args);
+struct Context {
+  Runner *runner;
+  std::vector<Task *> subtasks;
+};
 
-Signal create_signal();
-void signal(Runner *r, Signal s);
+struct ResourceAccessDescription {
+  void *ptr;
+  bool exclusive;
+};
+
+struct Task {
+  /* internals! */
+  std::function<TaskSig> fn;
+  QueueIndex queue_index;
+  std::vector<ResourceAccessDescription> resources;
+};
 
 } // namespace
 

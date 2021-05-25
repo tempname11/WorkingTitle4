@@ -13,11 +13,6 @@ namespace lib::task {
 const QueueIndex QUEUE_INDEX_SIGNAL_ONLY = 65;
 const QueueIndex QUEUE_INDEX_INVALID = 66;
 
-struct Task {
-  std::function<TaskSig> fn;
-  QueueIndex queue_index;
-};
-
 struct Sleeper {
   int worker_index;
   std::mutex mutex;
@@ -148,7 +143,7 @@ void _internal_add_new_task(Runner *r, Task *t) {
   }
 }
 
-void _internal_inject(Runner *r, Changeset &tasks, Task *super) {
+void _internal_inject(Runner *r, std::vector<Task *> &tasks, Task *super) {
   std::unordered_map<void *, ResourceOwners> subtask_resource_owners;
   std::unordered_map<Task *, std::vector<void *>> subtask_owned_resources;
   std::unordered_map<Task *, std::vector<void *>> subtask_previously_owned;
@@ -159,15 +154,11 @@ void _internal_inject(Runner *r, Changeset &tasks, Task *super) {
     return;
   }
   // r_lock is assumed!
-  for (auto &desc : tasks) {
-    auto t = new Task {
-      .fn = desc.fn,
-      .queue_index = desc.queue_index,
-    };
+  for (auto t : tasks) {
     if (super != nullptr) {
       r->dependants[t] = { super };
     }
-    for (auto &res : desc.resources) {
+    for (auto &res : t->resources) {
       if (x_owned_resources.contains(t)) {
         x_owned_resources[t].push_back(res.ptr);
       } else {
@@ -328,20 +319,6 @@ void run_task_worker(Runner *r, int worker_index, uint64_t queue_access_bits) {
       r_lock.lock();
       _internal_inject(r, ctx.subtasks, t);
 
-      { // add signal-related dependencies
-        for (auto s : ctx.signals) {
-          r->dependants[(Task *)s.ptr] = { t };
-          r->unresolved_dependency_signals.insert((Task *)s.ptr);
-        }
-        if (ctx.signals.size() > 0) {
-          if (r->dependencies_left.contains(t)) {
-            r->dependencies_left[t] += ctx.signals.size();
-          } else {
-            r->dependencies_left[t] = ctx.signals.size();
-          }
-        }
-      }
-
       if (r->dependencies_left.contains(t)) {
         // dependencies were added during execution!
         // so we are not quite done yet, reschedule a noop.
@@ -432,25 +409,53 @@ void run(
   assert(r->unresolved_dependency_signals.size() == 0);
 }
 
-void inject(Runner *r, Changeset &&tasks) {
+void inject(Runner *r, std::vector<Task *> &&tasks, std::vector<std::pair<Task *, Task *>> &&manual_dependencies) {
   ZoneScoped;
   std::unique_lock r_lock(r->mutex);
   _internal_inject(r, tasks, nullptr);
+  for (auto &d : manual_dependencies) {
+    if (d.first->queue_index == QUEUE_INDEX_SIGNAL_ONLY) {
+      r->unresolved_dependency_signals.insert(d.first);
+    }
+    bool skipped = false;
+    if (r->dependants.contains(d.first)) {
+      auto &list = r->dependants[d.first];
+      // check in case it's already in the list
+      if (std::find(list.begin(), list.end(), d.second) == list.end()) {
+        r->dependants[d.first].push_back(d.second);
+      } else {
+        skipped = true;
+      }
+    } else {
+      r->dependants[d.first] = { d.second };
+    }
+    if (!skipped) {
+      if (r->dependencies_left.contains(d.second)) {
+        r->dependencies_left[d.second] += 1;
+      } else {
+        r->dependencies_left[d.second] = 1;
+      }
+    }
+  }
 }
 
 void no_op(Context *ctx) {}
 
-Signal create_signal() {
-  return Signal { .ptr = new Task { .fn = no_op, .queue_index = QUEUE_INDEX_SIGNAL_ONLY } };
+Task *create_signal() {
+  return new Task { .fn = no_op, .queue_index = QUEUE_INDEX_SIGNAL_ONLY };
 }
 
-void signal(Runner *r, Signal s) {
+void signal(Runner *r, Task *s) {
   std::unique_lock r_lock(r->mutex);
   assert(r->is_running);
-  auto t = (Task *)s.ptr;
-  assert(t->queue_index == QUEUE_INDEX_SIGNAL_ONLY);
-  r->unresolved_dependency_signals.erase(t);
-  _internal_task_finished(r, t);
+  assert(s->queue_index == QUEUE_INDEX_SIGNAL_ONLY);
+  assert(s->resources.size() == 0);
+  r->unresolved_dependency_signals.erase(s);
+  _internal_task_finished(r, s);
+}
+
+void discard_task_or_signal(Task *t) {
+  delete t;
 }
 
 } // namespace
