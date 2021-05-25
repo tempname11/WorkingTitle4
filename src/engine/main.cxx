@@ -100,6 +100,7 @@ void rendering_frame(
   task::Exclusive<RenderingData> data
 ) {
   ZoneScoped;
+  FrameMark;
   bool should_stop = glfwWindowShouldClose(session->window);
   if (should_stop) {
     lib::task::signal(ctx->runner, rendering_stop_signal.ptr);

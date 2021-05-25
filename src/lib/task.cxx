@@ -447,14 +447,10 @@ void inject(Runner *r, std::vector<Task *> && tasks, std::vector<std::pair<Task 
 void no_op(Context *ctx) {}
 
 Task *create_signal() {
-  // return new Task { .fn = no_op, .queue_index = QUEUE_INDEX_SIGNAL_ONLY };
-  auto s = new Task { .fn = no_op, .queue_index = QUEUE_INDEX_SIGNAL_ONLY };
-  LOG("create_signal {}", (void*)s);
-  return s;
+  return new Task { .fn = no_op, .queue_index = QUEUE_INDEX_SIGNAL_ONLY };
 }
 
 void signal(Runner *r, Task *s) {
-  LOG("signal {}", (void*)s);
   std::unique_lock r_lock(r->mutex);
   assert(r->is_running);
   assert(s->queue_index == QUEUE_INDEX_SIGNAL_ONLY);
