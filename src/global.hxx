@@ -20,3 +20,13 @@ enum QueueIndex {
 }
 
 #define DBG LOG
+
+template<typename R, typename T> R checked_integer_cast(T value) {
+  R result = (R) value;
+  assert((T) result == value);
+  assert(
+    (result >= 0 && value >= 0) ||
+    (result < 0 && value < 0)
+  );
+  return result;
+}

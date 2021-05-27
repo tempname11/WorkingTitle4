@@ -416,6 +416,11 @@ void inject(Runner *r, std::vector<Task *> && tasks, std::vector<std::pair<Task 
   std::unique_lock r_lock(r->mutex);
   _internal_inject(r, tasks, nullptr);
   for (auto &d : manual_dependencies) {
+    if (d.first == nullptr) {
+      continue;
+    }
+    assert (d.second != nullptr);
+    assert (d.second->queue_index != QUEUE_INDEX_SIGNAL_ONLY);
     if (d.first->queue_index == QUEUE_INDEX_SIGNAL_ONLY) {
       r->unresolved_dependency_signals.insert(d.first);
     }

@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.18)
 set (CMAKE_CXX_STANDARD 20)
-project ("WorkingTitle3")
+project ("WorkingTitle4")
 
 file (GLOB SRC_SHADER_COMMON CONFIGURE_DEPENDS "src/shader/*common.glsl") # hacky glob, instead of include analysis
 file (GLOB SRC_SHADER_PROG CONFIGURE_DEPENDS "src/shader/*.*.glsl")
