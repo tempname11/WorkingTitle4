@@ -30,11 +30,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_callback(
 }
 
 struct RenderingData {
-  task::AccessMarker _;
   VkSwapchainKHR swapchain;
   std::vector<VkImage> swapchain_images;
   struct SwapchainDescription {
-    task::AccessMarker _;
     size_t swapchain_image_count;
     VkExtent2D swapchain_image_extent;
     VkFormat swapchain_image_format;
@@ -42,21 +40,17 @@ struct RenderingData {
 };
 
 struct SessionData {
-  task::AccessMarker _;
   GLFWwindow *window;
   struct Vulkan {
-    task::AccessMarker _;
     VkInstance instance;
     VkDebugUtilsMessengerEXT debug_messenger;
     VkSurfaceKHR window_surface;
     VkPhysicalDevice physical_device;
     struct Core {
-      task::AccessMarker _;
       VkDevice device;
       const VkAllocationCallbacks *allocator;
     } core;
     struct CoreProperties {
-      task::AccessMarker _;
       VkPhysicalDeviceProperties basic;
       VkPhysicalDeviceMemoryProperties memory;
       VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing;
@@ -74,7 +68,7 @@ void defer(
   task::inject(ctx->runner, { task.ptr });
 }
 
-void session_iteration_cleanup(
+void rendering_cleanup(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
   task::Exclusive<task::Task> session_iteration_stop_signal,
@@ -167,7 +161,6 @@ void session_iteration_try_rendering(
     }
   }
 
-
   auto rendering_stop_signal = lib::task::create_signal();
   auto task_frame = task::create(
     rendering_frame,
@@ -176,7 +169,7 @@ void session_iteration_try_rendering(
     rendering
   );
   auto task_cleanup = task::create(defer, task::create(
-    session_iteration_cleanup,
+    rendering_cleanup,
     session_iteration_stop_signal.ptr,
     data.ptr,
     rendering
@@ -193,7 +186,7 @@ void session_iteration(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
   task::Exclusive<task::Task> session_stop_signal,
-  task::Exclusive<SessionData> data
+  task::Shared<SessionData> data
 ) {
   ZoneScoped;
   bool should_stop = glfwWindowShouldClose(data->window);
