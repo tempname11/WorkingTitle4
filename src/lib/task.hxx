@@ -6,13 +6,21 @@ namespace lib::task {
 
 struct Task;
 struct Runner;
+struct ParentResource { uint8_t _padding; }; // inherit me!
+struct Auxiliary {
+  struct ParentInfo {
+    ParentResource *ptr;
+    std::vector<void *> children;
+  };
+  std::vector<std::pair<Task *, Task *>> new_dependencies;
+  std::vector<ParentInfo> changed_parents;
+};
 struct Context;
 typedef void (TaskSig)(Context *);
 typedef uint8_t QueueIndex;
 typedef uint64_t QueueAccessFlags;
 const QueueIndex QUEUE_INDEX_MAX = 64;
 template<QueueIndex ix> struct QueueMarker {};
-struct AccessMarker {};
 
 Runner *create_runner(size_t num_queues);
 
@@ -28,7 +36,7 @@ void discard_runner(Runner *);
 // can only discard unused tasks or signals.
 void discard_task_or_signal(Task *);
 
-void inject(Runner *, std::vector<Task *> &&, std::vector<std::pair<Task *, Task *>> && = {});
+void inject(Runner *, std::vector<Task *> &&, Auxiliary && = {});
 
 Task *create_signal();
 void signal(Runner *r, Task *s);

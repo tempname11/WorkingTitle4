@@ -29,32 +29,52 @@ VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_callback(
   return VK_FALSE;
 }
 
-struct RenderingData {
-  VkSwapchainKHR swapchain;
-  std::vector<VkImage> swapchain_images;
+struct RenderingData : task::ParentResource {
+  struct Presentation {
+    VkSwapchainKHR swapchain;
+    std::vector<VkImage> swapchain_images;
+    std::vector<VkSemaphore> image_acquired;
+    std::vector<VkSemaphore> image_rendered;
+    uint8_t latest_image_index;
+  } presentation;
+
   struct SwapchainDescription {
-    size_t swapchain_image_count;
-    VkExtent2D swapchain_image_extent;
-    VkFormat swapchain_image_format;
+    uint8_t image_count;
+    VkExtent2D image_extent;
+    VkFormat image_format;
   } swapchain_description;
+
+  struct InflightGPU {
+    std::mutex mutex;
+    std::vector<task::Task *> signals;
+  } inflight_gpu;
+
+  struct FrameInfo {
+    uint64_t number;
+    uint8_t inflight_index;
+  } latest_frame;
 };
 
 struct SessionData {
   GLFWwindow *window;
+
   struct Vulkan {
     VkInstance instance;
     VkDebugUtilsMessengerEXT debug_messenger;
     VkSurfaceKHR window_surface;
     VkPhysicalDevice physical_device;
+
     struct Core {
       VkDevice device;
       const VkAllocationCallbacks *allocator;
     } core;
+
     struct CoreProperties {
       VkPhysicalDeviceProperties basic;
       VkPhysicalDeviceMemoryProperties memory;
       VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing;
     } properties;
+
     VkQueue queue_present;
     VkQueue queue_gct; // graphics, compute, transfer
   } vulkan;
@@ -65,7 +85,18 @@ void defer(
   task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
   task::Exclusive<task::Task> task
 ) {
+  ZoneScoped;
   task::inject(ctx->runner, { task.ptr });
+}
+
+void defer_many(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
+  task::Exclusive<std::vector<task::Task *>> tasks
+) {
+  ZoneScoped;
+  task::inject(ctx->runner, std::move(*tasks));
+  delete tasks.ptr;
 }
 
 void rendering_cleanup(
@@ -79,16 +110,90 @@ void rendering_cleanup(
   auto vulkan = &session->vulkan;
   vkDestroySwapchainKHR(
     vulkan->core.device,
-    data->swapchain,
+    data->presentation.swapchain,
     vulkan->core.allocator
   );
+  for (uint8_t i = 0; i < data->swapchain_description.image_count; i++) {
+    vkDestroySemaphore(
+      vulkan->core.device,
+      data->presentation.image_acquired[i],
+      vulkan->core.allocator
+    );
+    vkDestroySemaphore(
+      vulkan->core.device,
+      data->presentation.image_rendered[i],
+      vulkan->core.allocator
+    );
+  }
   delete data.ptr;
   task::signal(ctx->runner, session_iteration_stop_signal.ptr);
 }
 
+void rendering_frame_poll_events(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>
+) {
+  ZoneScoped;
+  glfwPollEvents();
+}
+
+void rendering_frame_acquire(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
+  task::Shared<SessionData> session,
+  task::Exclusive<RenderingData::Presentation> presentation,
+  task::Exclusive<RenderingData::FrameInfo> frame_info
+) {
+  ZoneScoped;
+  uint32_t image_index;
+  auto result = vkAcquireNextImageKHR(
+    session->vulkan.core.device,
+    presentation->swapchain,
+    0,
+    presentation->image_acquired[frame_info->inflight_index],
+    VK_NULL_HANDLE,
+    &image_index
+  );
+  presentation->latest_image_index = checked_integer_cast<uint8_t>(image_index);
+  assert(result == VK_SUCCESS);
+}
+
+void rendering_frame_submit_composed(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
+  task::Exclusive<RenderingData::Presentation> presentation
+) {
+  ZoneScoped;
+}
+
+void rendering_frame_present(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
+  task::Exclusive<RenderingData::Presentation> presentation
+) {
+  ZoneScoped;
+}
+
+void rendering_frame_cleanup(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
+  task::Exclusive<RenderingData::FrameInfo> frame_info
+) {
+  ZoneScoped;
+  delete frame_info.ptr;
+}
+
+void rendering_has_finished(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
+  task::Exclusive<task::Task> rendering_stop_signal
+) {
+  lib::task::signal(ctx->runner, rendering_stop_signal.ptr);
+}
+
 void rendering_frame(
   task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
+  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
   task::Exclusive<task::Task> rendering_stop_signal,
   task::Shared<SessionData> session,
   task::Exclusive<RenderingData> data
@@ -97,11 +202,36 @@ void rendering_frame(
   FrameMark;
   bool should_stop = glfwWindowShouldClose(session->window);
   if (should_stop) {
-    lib::task::signal(ctx->runner, rendering_stop_signal.ptr);
-  } else {
-    glfwPollEvents(); // TODO move this
-    task::inject(ctx->runner, {
+    std::scoped_lock lock(data->inflight_gpu.mutex);
+    auto task_has_finished = task::create(rendering_has_finished, rendering_stop_signal.ptr);
+    task::Auxiliary aux;
+    for (auto signal : data->inflight_gpu.signals) {
+      aux.new_dependencies.push_back({ signal, task_has_finished });
+    }
+    task::inject(ctx->runner, { task_has_finished }, std::move(aux));
+    return;
+  }
+  data->latest_frame.number++;
+  data->latest_frame.inflight_index = (
+    data->latest_frame.number % data->swapchain_description.image_count
+  );
+  auto frame_info = new RenderingData::FrameInfo(data->latest_frame);
+  {
+    std::scoped_lock lock(data->inflight_gpu.mutex);
+    auto signal = data->inflight_gpu.signals[data->latest_frame.inflight_index];
+    auto frame_tasks = new std::vector<task::Task *>({
+      task::create(rendering_frame_poll_events),
+      task::create(rendering_frame_acquire, session.ptr, &data->presentation, frame_info),
+      task::create(rendering_frame_submit_composed, &data->presentation),
+      task::create(rendering_frame_present, &data->presentation),
+      task::create(rendering_frame_cleanup, frame_info),
       task::create(rendering_frame, rendering_stop_signal.ptr, session.ptr, data.ptr),
+    });
+    auto task_defer = task::create(defer_many, frame_tasks);
+    task::inject(ctx->runner, {
+      task_defer,
+    }, {
+      .new_dependencies = { { signal, task_defer } },
     });
   }
 }
@@ -133,7 +263,9 @@ void session_iteration_try_rendering(
   }
 
   auto rendering = new RenderingData;
-  { ZoneScopedN("swapchain");
+  // how many images are in swapchain?
+  uint32_t swapchain_image_count;
+  { ZoneScopedN("presentation");
     VkSwapchainCreateInfoKHR swapchain_create_info = {
       .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
       .surface = vulkan->window_surface,
@@ -155,11 +287,60 @@ void session_iteration_try_rendering(
         vulkan->core.device,
         &swapchain_create_info,
         vulkan->core.allocator,
-        &rendering->swapchain
+        &rendering->presentation.swapchain
       );
       assert(result == VK_SUCCESS);
     }
+    {
+      auto result = vkGetSwapchainImagesKHR(
+        data->vulkan.core.device,
+        rendering->presentation.swapchain,
+        &swapchain_image_count,
+        nullptr
+      );
+      assert(result == VK_SUCCESS);
+    }
+    rendering->presentation.swapchain_images.resize(swapchain_image_count);
+    {
+      auto result = vkGetSwapchainImagesKHR(
+        data->vulkan.core.device,
+        rendering->presentation.swapchain,
+        &swapchain_image_count,
+        rendering->presentation.swapchain_images.data()
+      );
+      assert(result == VK_SUCCESS);
+    }
+    rendering->presentation.image_acquired.resize(swapchain_image_count);
+    rendering->presentation.image_rendered.resize(swapchain_image_count);
+    for (uint32_t i = 0; i < swapchain_image_count; i++) {
+      VkSemaphoreCreateInfo info = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+      {
+        auto result = vkCreateSemaphore(
+          data->vulkan.core.device,
+          &info,
+          data->vulkan.core.allocator,
+          &rendering->presentation.image_acquired[i]
+        );
+        assert(result == VK_SUCCESS);
+      }
+      {
+        auto result = vkCreateSemaphore(
+          data->vulkan.core.device,
+          &info,
+          data->vulkan.core.allocator,
+          &rendering->presentation.image_rendered[i]
+        );
+        assert(result == VK_SUCCESS);
+      }
+    }
+    rendering->presentation.latest_image_index = uint8_t(-1);
   }
+  rendering->swapchain_description.image_count = checked_integer_cast<uint8_t>(swapchain_image_count);
+  rendering->swapchain_description.image_extent = surface_capabilities.currentExtent;
+  rendering->swapchain_description.image_format = SWAPCHAIN_FORMAT;
+  rendering->inflight_gpu.signals.resize(swapchain_image_count, nullptr);
+  rendering->latest_frame.number = uint64_t(-1);
+  rendering->latest_frame.inflight_index = uint8_t(-1);
 
   auto rendering_stop_signal = lib::task::create_signal();
   auto task_frame = task::create(
@@ -178,7 +359,13 @@ void session_iteration_try_rendering(
     task_frame,
     task_cleanup,
   }, {
-    { rendering_stop_signal, task_cleanup },
+    .new_dependencies = { { rendering_stop_signal, task_cleanup } },
+    .changed_parents = { { .ptr = rendering, .children = {
+      &rendering->inflight_gpu,
+      &rendering->latest_frame,
+      &rendering->presentation,
+      &rendering->swapchain_description
+    } } },
   });
 }
 
@@ -210,7 +397,7 @@ void session_iteration(
       task_try_rendering,
       task_repeat
     }, {
-      { session_iteration_stop_signal, task_repeat }
+      .new_dependencies = { { session_iteration_stop_signal, task_repeat } },
     });
   }
 }
@@ -535,7 +722,7 @@ void session(
     task_iteration,
     task_cleanup,
   }, {
-    { stop_signal, task_cleanup }
+    .new_dependencies = { { stop_signal, task_cleanup } },
   });
 }
 
