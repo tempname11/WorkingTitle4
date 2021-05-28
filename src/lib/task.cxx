@@ -27,9 +27,9 @@ struct Queue {
 };
 
 enum ResourceMode {
+  RESOURCE_MODE_MIXED,
   RESOURCE_MODE_SHARED,
   RESOURCE_MODE_EXCLUSIVE,
-  RESOURCE_MODE_MIXED,
 };
 
 struct ResourceOwners {
@@ -93,7 +93,7 @@ void _internal_task_finished(Runner *r, Task *t) {
   }
   if (r->owned_resources.contains(t)) {
     for (auto ptr : r->owned_resources[t]) {
-      auto &owners = r->resource_owners[ptr];
+      auto &owners = r->resource_owners.at(ptr);
       if (owners.tasks.size() == 1) {
         r->resource_owners.erase(ptr);
       } else {
@@ -105,7 +105,7 @@ void _internal_task_finished(Runner *r, Task *t) {
   }
   if (r->previously_owned.contains(t)) {
     for (auto res : r->previously_owned[t]) {
-      r->resource_owners[res].previous = nullptr;
+      r->resource_owners.at(res).previous = nullptr;
     }
     r->previously_owned.erase(t);
   }
@@ -128,6 +128,39 @@ void discard_runner(Runner *r) {
   assert(!r->is_running);
   r_lock.unlock();
   delete r;
+}
+
+void _internal_changed_parents(Runner *r, std::vector<Auxiliary::ParentInfo>&& changed_parents, Task *super) {
+  // r_lock is assumed!
+  for (auto &it : changed_parents) {
+    // checks for sanity
+    if (super == nullptr) {
+      assert(!r->resource_owners.contains(it.ptr));
+    } else {
+      if (r->resource_owners.contains(it.ptr)) {
+        auto size = r->resource_owners.at(it.ptr).tasks.size();
+        assert(size == 1 && r->resource_owners.at(it.ptr).tasks[0] == super);
+      }
+    }
+    for (auto child_ptr : it.children) {
+      assert(!r->resource_owners.contains(child_ptr));
+    }
+    if (r->aliasing_children.contains(it.ptr)) {
+      // clear existing ones
+      for (auto old_child_ptr : r->aliasing_children[it.ptr]) {
+        r->aliasing_parents.erase(old_child_ptr);
+      }
+      // aliasing_children are erased or replaced below:
+    }
+    if (it.children.size() == 0) {
+      r->aliasing_children.erase(it.ptr);
+    } else {
+      for (auto child_ptr : it.children) {
+        r->aliasing_parents[child_ptr] = it.ptr;
+      }
+      r->aliasing_children[it.ptr] = std::move(it.children);
+    }
+  }
 }
 
 void _internal_add_new_task(Runner *r, Task *t) {
@@ -178,14 +211,7 @@ void _internal_infer_resource_dependencies(
       .tasks = { t },
     };
   } else {
-    auto &current_owners_ref = (*x.resource_owners)[ptr];
-
-    // can't own the same pointer twice!
-    assert(
-      std::find(current_owners_ref.tasks.begin(), current_owners_ref.tasks.end(), t)
-        == current_owners_ref.tasks.end()
-    );
-
+    auto &current_owners_ref = x.resource_owners->at(ptr);
     if (true
       && (current_owners_ref.mode == mode)
       && (false
@@ -212,13 +238,13 @@ void _internal_infer_resource_dependencies(
       }
     } else {
       // takeover! remove all previous owners, add new one
-      auto prev_owners = (*x.resource_owners)[ptr];
+      auto prev_owners = x.resource_owners->at(ptr);
 
       // resource_owners
       (*x.resource_owners)[ptr] = ResourceOwners {
         .mode = mode,
         .tasks = { t },
-        .previous = prev_owners.tasks[0],
+        .previous = prev_owners.tasks[0], // @Bug! may be more than one
       };
 
       // owned_resources & previously_owned
@@ -245,6 +271,7 @@ void _internal_infer_resource_dependencies(
       } else {
         r->dependencies_left[t] = prev_owners.tasks.size();
       }
+
       for (auto owner : prev_owners.tasks) {
         if (!r->dependants.contains(owner)) {
           r->dependants[owner] = { t };
@@ -279,15 +306,36 @@ void _internal_inject(Runner *r, std::vector<Task *> &tasks, Task *super) {
     if (super != nullptr) {
       r->dependants[t] = { super };
     }
+    std::unordered_map<void *, ResourceMode> map;
     for (auto &res : t->resources) {
       auto mode = res.exclusive ? RESOURCE_MODE_EXCLUSIVE : RESOURCE_MODE_SHARED;
       auto ptr = res.ptr;
-      _internal_infer_resource_dependencies(r, t, ptr, mode, x);
-      while (r->aliasing_parents.contains(ptr)) {
-        mode = mode == RESOURCE_MODE_SHARED ? RESOURCE_MODE_SHARED : RESOURCE_MODE_MIXED;
-        ptr = r-> aliasing_parents[res.ptr];
-        _internal_infer_resource_dependencies(r, t, ptr, mode, x);
+      while (ptr != nullptr) {
+        if (map.contains(ptr)) {
+          if (map[ptr] == RESOURCE_MODE_EXCLUSIVE) {
+            /* nothing */
+          } else if (mode == RESOURCE_MODE_EXCLUSIVE) {
+            map[ptr] = mode;
+          } else {
+            // both are mixed or shared, they must match!
+            // in theory this restriction is not necessary,
+            // but current implementation would make it
+            // unnecessarily complicated without a good benefit.
+            assert(map[ptr] == mode);
+          }
+        } else {
+          map[ptr] = mode;
+        }
+        if (r->aliasing_parents.contains(ptr)) {
+          ptr = r->aliasing_parents[ptr];
+          mode = RESOURCE_MODE_MIXED;
+        } else {
+          ptr = nullptr;
+        }
       }
+    }
+    for (auto pair : map) {
+      _internal_infer_resource_dependencies(r, t, pair.first, pair.second, x);
     }
   }
 
@@ -361,6 +409,7 @@ void run_task_worker(Runner *r, int worker_index, uint64_t queue_access_bits) {
       auto ctx = Context(r);
       t->fn(&ctx);
       r_lock.lock();
+      _internal_changed_parents(r, std::move(ctx.changed_parents), t);
       _internal_inject(r, ctx.subtasks, t);
       for (auto t : ctx.subtasks) {
         // note: we should insert tasks in front of the queue,
@@ -464,28 +513,7 @@ void run(
 void inject(Runner *r, std::vector<Task *> && tasks, Auxiliary && aux) {
   ZoneScoped;
   std::unique_lock r_lock(r->mutex);
-  for (auto &it : aux.changed_parents) {
-    // checks for sanity
-    assert(!r->resource_owners.contains(it.ptr));
-    for (auto child_ptr : it.children) {
-      assert(!r->resource_owners.contains(child_ptr));
-    }
-    if (r->aliasing_children.contains(it.ptr)) {
-      // clear existing ones
-      for (auto old_child_ptr : r->aliasing_children[it.ptr]) {
-        r->aliasing_parents.erase(old_child_ptr);
-      }
-      // aliasing_children are erased or replaced below:
-    }
-    if (it.children.size() == 0) {
-      r->aliasing_children.erase(it.ptr);
-    } else {
-      for (auto child_ptr : it.children) {
-        r->aliasing_parents[child_ptr] = it.ptr;
-      }
-      r->aliasing_children[it.ptr] = std::move(it.children);
-    }
-  }
+  _internal_changed_parents(r, std::move(aux.changed_parents), nullptr);
   _internal_inject(r, tasks, nullptr);
   for (auto &d : aux.new_dependencies) {
     if (d.first == nullptr) {

@@ -45,6 +45,14 @@ template<QueueIndex ix, typename... FnArgs, typename... PassedArgs>
 inline Task *create(void (*fn)(Context *, QueueMarker<ix>, FnArgs...), PassedArgs... args);
 
 template<typename T>
+struct Track {
+  T *ptr;
+  Track(T *_ptr) : ptr(_ptr) {}
+  T &operator *() { return *ptr; }
+  T *operator ->() { return ptr; }
+};
+
+template<typename T>
 struct Shared {
   T *ptr;
   Shared(T *_ptr) : ptr(_ptr) {}
@@ -63,6 +71,7 @@ struct Exclusive {
 struct Context {
   Runner *runner;
   std::vector<Task *> subtasks;
+  std::vector<Auxiliary::ParentInfo> changed_parents;
 };
 
 struct ResourceAccessDescription {

@@ -35,7 +35,7 @@ struct RenderingData : task::ParentResource {
     std::vector<VkImage> swapchain_images;
     std::vector<VkSemaphore> image_acquired;
     std::vector<VkSemaphore> image_rendered;
-    uint8_t latest_image_index;
+    uint32_t latest_image_index;
   } presentation;
 
   struct SwapchainDescription {
@@ -55,10 +55,12 @@ struct RenderingData : task::ParentResource {
   } latest_frame;
 };
 
-struct SessionData {
-  GLFWwindow *window;
+struct SessionData : task::ParentResource {
+  struct GLFW {
+    GLFWwindow *window;
+  } glfw;
 
-  struct Vulkan {
+  struct Vulkan : task::ParentResource {
     VkInstance instance;
     VkDebugUtilsMessengerEXT debug_messenger;
     VkSurfaceKHR window_surface;
@@ -126,6 +128,9 @@ void rendering_cleanup(
     );
   }
   delete data.ptr;
+  ctx->changed_parents = {
+    { .ptr = data.ptr, .children = {} }
+  };
   task::signal(ctx->runner, session_iteration_stop_signal.ptr);
 }
 
@@ -134,6 +139,7 @@ void rendering_frame_poll_events(
   task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>
 ) {
   ZoneScoped;
+  // TODO
   glfwPollEvents();
 }
 
@@ -142,7 +148,7 @@ void rendering_frame_acquire(
   task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
   task::Shared<SessionData> session,
   task::Exclusive<RenderingData::Presentation> presentation,
-  task::Exclusive<RenderingData::FrameInfo> frame_info
+  task::Shared<RenderingData::FrameInfo> frame_info
 ) {
   ZoneScoped;
   uint32_t image_index;
@@ -152,26 +158,64 @@ void rendering_frame_acquire(
     0,
     presentation->image_acquired[frame_info->inflight_index],
     VK_NULL_HANDLE,
-    &image_index
+    &presentation->latest_image_index
   );
-  presentation->latest_image_index = checked_integer_cast<uint8_t>(image_index);
   assert(result == VK_SUCCESS);
+}
+
+void rendering_frame_render_composed(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>
+) {
+  ZoneScoped;
+  using namespace std::chrono_literals;
+  std::this_thread::sleep_for(100ms);
+  // @Incomplete
+  // select a command pool
+  // get a command buffer, transition image layout
 }
 
 void rendering_frame_submit_composed(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
-  task::Exclusive<RenderingData::Presentation> presentation
+  task::Exclusive<RenderingData::Presentation> presentation,
+  task::Shared<RenderingData::FrameInfo> frame_info,
+  task::Exclusive<VkQueue> queue_gct
 ) {
   ZoneScoped;
+  VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+  VkSubmitInfo submit_info = {
+    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+    .waitSemaphoreCount = 1,
+    .pWaitSemaphores = &presentation->image_acquired[frame_info->inflight_index],
+    .pWaitDstStageMask = &wait_stage,
+    .commandBufferCount = 0,
+    .pCommandBuffers = nullptr,
+    .signalSemaphoreCount = 1,
+    .pSignalSemaphores = &presentation->image_rendered[frame_info->inflight_index],
+  };
+  auto result = vkQueueSubmit(*queue_gct, 1, &submit_info, VK_NULL_HANDLE);
+  assert(result == VK_SUCCESS);
 }
 
 void rendering_frame_present(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
-  task::Exclusive<RenderingData::Presentation> presentation
+  task::Exclusive<RenderingData::Presentation> presentation,
+  task::Shared<RenderingData::FrameInfo> frame_info,
+  task::Exclusive<VkQueue> queue_present
 ) {
   ZoneScoped;
+  VkPresentInfoKHR info = {
+    .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+    .waitSemaphoreCount = 1,
+    .pWaitSemaphores = &presentation->image_rendered[frame_info->inflight_index],
+    .swapchainCount = 1,
+    .pSwapchains = &presentation->swapchain,
+    .pImageIndices = &presentation->latest_image_index,
+  };
+  auto result = vkQueuePresentKHR(*queue_present, &info);
+  assert(result == VK_SUCCESS);
 }
 
 void rendering_frame_cleanup(
@@ -188,6 +232,7 @@ void rendering_has_finished(
   task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
   task::Exclusive<task::Task> rendering_stop_signal
 ) {
+  ZoneScoped;
   lib::task::signal(ctx->runner, rendering_stop_signal.ptr);
 }
 
@@ -195,37 +240,51 @@ void rendering_frame(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
   task::Exclusive<task::Task> rendering_stop_signal,
-  task::Shared<SessionData> session,
-  task::Exclusive<RenderingData> data
+  task::Track<SessionData> session,
+  task::Track<RenderingData> data,
+  task::Shared<SessionData::GLFW> glfw,
+  task::Exclusive<RenderingData::FrameInfo> latest_frame,
+  task::Shared<RenderingData::SwapchainDescription> swapchain_description,
+  task::Shared<RenderingData::InflightGPU> inflight_gpu
 ) {
   ZoneScoped;
   FrameMark;
-  bool should_stop = glfwWindowShouldClose(session->window);
+  bool should_stop = glfwWindowShouldClose(glfw->window);
   if (should_stop) {
-    std::scoped_lock lock(data->inflight_gpu.mutex);
+    std::scoped_lock lock(inflight_gpu->mutex);
     auto task_has_finished = task::create(rendering_has_finished, rendering_stop_signal.ptr);
     task::Auxiliary aux;
-    for (auto signal : data->inflight_gpu.signals) {
+    for (auto signal : inflight_gpu->signals) {
       aux.new_dependencies.push_back({ signal, task_has_finished });
     }
     task::inject(ctx->runner, { task_has_finished }, std::move(aux));
     return;
   }
-  data->latest_frame.number++;
-  data->latest_frame.inflight_index = (
-    data->latest_frame.number % data->swapchain_description.image_count
+  latest_frame->number++;
+  latest_frame->inflight_index = (
+    latest_frame->number % swapchain_description->image_count
   );
-  auto frame_info = new RenderingData::FrameInfo(data->latest_frame);
+  auto frame_info = new RenderingData::FrameInfo(*latest_frame);
   {
-    std::scoped_lock lock(data->inflight_gpu.mutex);
-    auto signal = data->inflight_gpu.signals[data->latest_frame.inflight_index];
+    std::scoped_lock lock(inflight_gpu->mutex);
+    auto signal = inflight_gpu->signals[latest_frame->inflight_index];
     auto frame_tasks = new std::vector<task::Task *>({
       task::create(rendering_frame_poll_events),
       task::create(rendering_frame_acquire, session.ptr, &data->presentation, frame_info),
-      task::create(rendering_frame_submit_composed, &data->presentation),
-      task::create(rendering_frame_present, &data->presentation),
+      task::create(rendering_frame_render_composed),
+      task::create(rendering_frame_submit_composed, &data->presentation, frame_info, &session->vulkan.queue_gct),
+      task::create(rendering_frame_present, &data->presentation, frame_info, &session->vulkan.queue_present),
       task::create(rendering_frame_cleanup, frame_info),
-      task::create(rendering_frame, rendering_stop_signal.ptr, session.ptr, data.ptr),
+      task::create(
+        rendering_frame,
+        rendering_stop_signal.ptr,
+        session.ptr,
+        data.ptr,
+        glfw.ptr,
+        latest_frame.ptr,
+        swapchain_description.ptr,
+        inflight_gpu.ptr
+      ),
     });
     auto task_defer = task::create(defer_many, frame_tasks);
     task::inject(ctx->runner, {
@@ -333,7 +392,7 @@ void session_iteration_try_rendering(
         assert(result == VK_SUCCESS);
       }
     }
-    rendering->presentation.latest_image_index = uint8_t(-1);
+    rendering->presentation.latest_image_index = uint32_t(-1);
   }
   rendering->swapchain_description.image_count = checked_integer_cast<uint8_t>(swapchain_image_count);
   rendering->swapchain_description.image_extent = surface_capabilities.currentExtent;
@@ -347,7 +406,11 @@ void session_iteration_try_rendering(
     rendering_frame,
     rendering_stop_signal,
     data.ptr,
-    rendering
+    rendering,
+    &data->glfw,
+    &rendering->latest_frame,
+    &rendering->swapchain_description,
+    &rendering->inflight_gpu
   );
   auto task_cleanup = task::create(defer, task::create(
     rendering_cleanup,
@@ -376,7 +439,7 @@ void session_iteration(
   task::Shared<SessionData> data
 ) {
   ZoneScoped;
-  bool should_stop = glfwWindowShouldClose(data->window);
+  bool should_stop = glfwWindowShouldClose(data->glfw.window);
   if (should_stop) {
     task::signal(ctx->runner, session_stop_signal.ptr);
     return;
@@ -423,10 +486,14 @@ void session_cleanup(
     vkDestroyInstance(it->instance, allocator);
   }
   { ZoneScopedN("glfw");
-    glfwDestroyWindow(session->window);
+    glfwDestroyWindow(session->glfw.window);
     glfwTerminate();
   }
   delete session.ptr;
+  ctx->changed_parents = {
+    { .ptr = session.ptr, .children = {} },
+    { .ptr = &session->vulkan, .children = {} },
+  };
 }
 
 void session(
@@ -437,7 +504,7 @@ void session(
   auto session = new SessionData;
   auto stop_signal = task::create_signal();
   { ZoneScopedN("glfw");
-    auto it = &session->window;
+    auto it = &session->glfw;
     {
       bool success = glfwInit();
       assert(success == GLFW_TRUE);
@@ -461,10 +528,10 @@ void session(
       width = mode->width;
       height = mode->height;
     #endif
-    *it = glfwCreateWindow(width, height, "WorkingTitle", monitor, nullptr);
-    assert(*it != nullptr);
+    it->window = glfwCreateWindow(width, height, "WorkingTitle", monitor, nullptr);
+    assert(it->window != nullptr);
     if (glfwRawMouseMotionSupported()) {
-      glfwSetInputMode(*it, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+      glfwSetInputMode(it->window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     }
   }
   { ZoneScopedN("vulkan");
@@ -535,7 +602,7 @@ void session(
     { ZoneScopedN("window_surface");
       auto result = glfwCreateWindowSurface(
         it->instance,
-        session->window,
+        session->glfw.window,
         allocator,
         &it->window_surface
       );
@@ -722,7 +789,31 @@ void session(
     task_iteration,
     task_cleanup,
   }, {
-    .new_dependencies = { { stop_signal, task_cleanup } },
+    .new_dependencies = {
+      { stop_signal, task_cleanup }
+    },
+    .changed_parents = {
+      {
+        .ptr = session,
+        .children = {
+          &session->glfw,
+          &session->vulkan,
+        }
+      },
+      {
+        .ptr = &session->vulkan,
+        .children = {
+          &session->vulkan.instance,
+          &session->vulkan.debug_messenger,
+          &session->vulkan.window_surface,
+          &session->vulkan.physical_device,
+          &session->vulkan.core,
+          &session->vulkan.properties,
+          &session->vulkan.queue_present,
+          &session->vulkan.queue_gct,
+        }
+      },
+    },
   });
 }
 

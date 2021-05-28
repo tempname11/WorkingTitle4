@@ -9,6 +9,9 @@ namespace _internal {
   inline void set_exclusive_flags_based_on_type(RADs &v, int i, T*);
 
   template <typename T, typename... FnArgs>
+  inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<Track<T>, FnArgs...>*);
+
+  template <typename T, typename... FnArgs>
   inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<Shared<T>, FnArgs...>*);
 
   template <typename T, typename... FnArgs>
@@ -16,6 +19,13 @@ namespace _internal {
 
   template<>
   inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<>*) { }
+
+  template <typename T, typename... FnArgs>
+  inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<Track<T>, FnArgs...>*) {
+    std::tuple<FnArgs...> *p = nullptr;
+    v.erase(v.begin() + i);
+    set_exclusive_flags_based_on_type(v, i, p);
+  }
 
   template <typename T, typename... FnArgs>
   inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<Shared<T>, FnArgs...>*) {
@@ -33,10 +43,9 @@ namespace _internal {
 
 template<QueueIndex ix, typename... FnArgs, typename... PassedArgs>
 inline Task * create(void (*fn)(Context *, QueueMarker<ix>, FnArgs...), PassedArgs... args) {
-  std::vector<void *> tt = { args... };
+  std::function<TaskSig> bound_fn = std::bind(fn, std::placeholders::_1, QueueMarker<ix>(), args...);
   std::vector<ResourceAccessDescription> v = { ResourceAccessDescription(args)... };
   _internal::set_exclusive_flags_based_on_type(v, 0, (std::tuple<FnArgs...> *)nullptr);
-  std::function<TaskSig> bound_fn = std::bind(fn, std::placeholders::_1, QueueMarker<ix>(), args...);
   return new Task {
     .fn = bound_fn,
     .queue_index = ix,
