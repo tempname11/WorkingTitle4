@@ -78,7 +78,7 @@ struct SessionData : task::ParentResource {
     } properties;
 
     VkQueue queue_present;
-    VkQueue queue_gct; // graphics, compute, transfer
+    VkQueue queue_work; // graphics, compute, transfer
   } vulkan;
 };
 
@@ -180,7 +180,7 @@ void rendering_frame_submit_composed(
   task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
   task::Exclusive<RenderingData::Presentation> presentation,
   task::Shared<RenderingData::FrameInfo> frame_info,
-  task::Exclusive<VkQueue> queue_gct
+  task::Exclusive<VkQueue> queue_work
 ) {
   ZoneScoped;
   VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
@@ -194,7 +194,7 @@ void rendering_frame_submit_composed(
     .signalSemaphoreCount = 1,
     .pSignalSemaphores = &presentation->image_rendered[frame_info->inflight_index],
   };
-  auto result = vkQueueSubmit(*queue_gct, 1, &submit_info, VK_NULL_HANDLE);
+  auto result = vkQueueSubmit(*queue_work, 1, &submit_info, VK_NULL_HANDLE);
   assert(result == VK_SUCCESS);
 }
 
@@ -272,7 +272,7 @@ void rendering_frame(
       task::create(rendering_frame_poll_events),
       task::create(rendering_frame_acquire, session.ptr, &data->presentation, frame_info),
       task::create(rendering_frame_render_composed),
-      task::create(rendering_frame_submit_composed, &data->presentation, frame_info, &session->vulkan.queue_gct),
+      task::create(rendering_frame_submit_composed, &data->presentation, frame_info, &session->vulkan.queue_work),
       task::create(rendering_frame_present, &data->presentation, frame_info, &session->vulkan.queue_present),
       task::create(rendering_frame_cleanup, frame_info),
       task::create(
@@ -628,11 +628,11 @@ void session(
       }
     }
 
-    uint32_t queue_present_family_index = (uint32_t) -1;
-    // find a queue family that supports everything else we need:
-    // Graphics, Compute, Transfer
+    uint32_t queue_family_index = (uint32_t) -1;
+    // find a queue family that supports everything we need:
+    // graphics, compute, transfer, present.
     // this probably works on most (all?) modern desktop GPUs.
-    uint32_t queue_gct_family_index = (uint32_t) -1;
+    uint32_t queue_work_family_index = (uint32_t) -1;
     { ZoneScopedN("family-indices");
       uint32_t queue_family_count = 0;
       vkGetPhysicalDeviceQueueFamilyProperties(
@@ -656,52 +656,26 @@ void session(
             it->window_surface,
             &has_present_support
           );
-          if (has_present_support) {
-            queue_present_family_index = i;
-          }
-          if (true
+          if (has_present_support
             && (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
             && (queue_family.queueFlags & VK_QUEUE_COMPUTE_BIT)
             && (queue_family.queueFlags & VK_QUEUE_TRANSFER_BIT)
           ) {
-            queue_gct_family_index = i;
-          }
-          if (true
-            && queue_present_family_index != (uint32_t) -1
-            && queue_gct_family_index != (uint32_t) -1
-          ) {
+            queue_family_index = i;
             break;
           }
         }
       }
-      assert(queue_present_family_index != (uint32_t) -1);
-      assert(queue_gct_family_index != (uint32_t) -1);
+      assert(queue_family_index != (uint32_t) -1);
     }
     { ZoneScopedN("core");
-      std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
-      if (queue_gct_family_index == queue_present_family_index) {
-        float queue_priorities[2] = { 1.0f, 1.0f };
-        queue_create_infos.push_back(VkDeviceQueueCreateInfo {
-          .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-          .queueFamilyIndex = queue_gct_family_index,
-          .queueCount = 2,
-          .pQueuePriorities = queue_priorities,
-        });
-      } else {
-        float queue_priority = 1.0f;
-        queue_create_infos.push_back(VkDeviceQueueCreateInfo {
-          .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-          .queueFamilyIndex = queue_gct_family_index,
-          .queueCount = 1,
-          .pQueuePriorities = &queue_priority,
-        });
-        queue_create_infos.push_back(VkDeviceQueueCreateInfo {
-          .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-          .queueFamilyIndex = queue_present_family_index,
-          .queueCount = 1,
-          .pQueuePriorities = &queue_priority,
-        });
-      }
+      float queue_priority = 1.0f;
+      VkDeviceQueueCreateInfo queue_create_info = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .queueFamilyIndex = queue_work_family_index,
+        .queueCount = 2,
+        .pQueuePriorities = &queue_priority,
+      };
       const std::vector<const char*> device_extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
@@ -734,8 +708,8 @@ void session(
       const VkDeviceCreateInfo device_create_info = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = &ray_tracing_features,
-        .queueCreateInfoCount = (uint32_t) queue_create_infos.size(),
-        .pQueueCreateInfos = queue_create_infos.data(),
+        .queueCreateInfoCount = 1,
+        .pQueueCreateInfos = &queue_create_info,
         .enabledExtensionCount = (uint32_t) device_extensions.size(),
         .ppEnabledExtensionNames = device_extensions.data(),
         .pEnabledFeatures = &device_features,
@@ -752,15 +726,10 @@ void session(
       it->core.allocator = allocator;
     }
     { ZoneScopedN("queues");
-      if (queue_gct_family_index == queue_present_family_index) {
-        vkGetDeviceQueue(it->core.device, queue_present_family_index, 0, &it->queue_present);
-        vkGetDeviceQueue(it->core.device, queue_gct_family_index, 1, &it->queue_gct);
-      } else {
-        vkGetDeviceQueue(it->core.device, queue_present_family_index, 0, &it->queue_present);
-        vkGetDeviceQueue(it->core.device, queue_gct_family_index, 0, &it->queue_gct);
-      }
+      vkGetDeviceQueue(it->core.device, queue_family_index, 0, &it->queue_present);
+      vkGetDeviceQueue(it->core.device, queue_family_index, 1, &it->queue_work);
       assert(it->queue_present != VK_NULL_HANDLE);
-      assert(it->queue_gct != VK_NULL_HANDLE);
+      assert(it->queue_work != VK_NULL_HANDLE);
     }
     { ZoneScopedN("properties");
       VkPhysicalDeviceProperties properties;
@@ -810,7 +779,7 @@ void session(
           &session->vulkan.core,
           &session->vulkan.properties,
           &session->vulkan.queue_present,
-          &session->vulkan.queue_gct,
+          &session->vulkan.queue_work,
         }
       },
     },
