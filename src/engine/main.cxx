@@ -2,6 +2,7 @@
 #include <vector>
 #include <unordered_set>
 #include <src/lib/task.hxx>
+#include <src/lib/gpu_signal.hxx>
 #include <src/global.hxx>
 
 namespace task {
@@ -29,6 +30,24 @@ VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_callback(
   return VK_FALSE;
 }
 
+struct CommandPool2 {
+  std::mutex mutex;
+  std::vector<VkCommandPool> pools;
+};
+
+VkCommandPool command_pool_2_borrow(CommandPool2 *pool2) {
+  std::scoped_lock lock(pool2->mutex);
+  assert(pool2->pools.size() > 0);
+  auto pool = pool2->pools.back();
+  pool2->pools.pop_back();
+  return pool;
+}
+
+void command_pool_2_return(CommandPool2 *pool2, VkCommandPool pool) {
+  std::scoped_lock lock(pool2->mutex);
+  pool2->pools.push_back(pool);
+}
+
 struct RenderingData : task::ParentResource {
   struct Presentation {
     VkSwapchainKHR swapchain;
@@ -53,6 +72,9 @@ struct RenderingData : task::ParentResource {
     uint64_t number;
     uint8_t inflight_index;
   } latest_frame;
+
+  typedef std::vector<CommandPool2> CommandPools;
+  CommandPools command_pools;
 };
 
 struct SessionData : task::ParentResource {
@@ -79,7 +101,14 @@ struct SessionData : task::ParentResource {
 
     VkQueue queue_present;
     VkQueue queue_work; // graphics, compute, transfer
+    uint32_t queue_family_index;
   } vulkan;
+
+  lib::gpu_signal::Support gpu_signal_support;
+
+  struct Info {
+    size_t worker_count;
+  } info;
 };
 
 void defer(
@@ -115,7 +144,16 @@ void rendering_cleanup(
     data->presentation.swapchain,
     vulkan->core.allocator
   );
-  for (uint8_t i = 0; i < data->swapchain_description.image_count; i++) {
+  for (auto &pool2 : data->command_pools) {
+    for (auto pool : pool2.pools) {
+      vkDestroyCommandPool(
+        vulkan->core.device,
+        pool,
+        vulkan->core.allocator
+      );
+    }
+  }
+  for (size_t i = 0; i < data->swapchain_description.image_count; i++) {
     vkDestroySemaphore(
       vulkan->core.device,
       data->presentation.image_acquired[i],
@@ -143,17 +181,38 @@ void rendering_frame_poll_events(
   glfwPollEvents();
 }
 
+void rendering_frame_reset_pools(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
+  task::Shared<SessionData::Vulkan::Core> core,
+  task::Shared<RenderingData::CommandPools> command_pools,
+  task::Shared<RenderingData::FrameInfo> frame_info
+) {
+  ZoneScoped;
+  auto &pool2 = (*command_pools)[frame_info->inflight_index];
+  {
+    std::scoped_lock lock(pool2.mutex);
+    for (auto pool : pool2.pools) {
+      vkResetCommandPool(
+        core->device,
+        pool,
+        0
+      );
+    }
+  }
+}
+
 void rendering_frame_acquire(
   task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
-  task::Shared<SessionData> session,
+  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
+  task::Shared<SessionData::Vulkan::Core> core,
   task::Exclusive<RenderingData::Presentation> presentation,
   task::Shared<RenderingData::FrameInfo> frame_info
 ) {
   ZoneScoped;
   uint32_t image_index;
   auto result = vkAcquireNextImageKHR(
-    session->vulkan.core.device,
+    core->device,
     presentation->swapchain,
     0,
     presentation->image_acquired[frame_info->inflight_index],
@@ -165,19 +224,68 @@ void rendering_frame_acquire(
 
 void rendering_frame_render_composed(
   task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>
+  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
+  task::Shared<SessionData::Vulkan::Core> core,
+  task::Exclusive<RenderingData::Presentation> presentation,
+  task::Shared<RenderingData::CommandPools> command_pools,
+  task::Shared<RenderingData::FrameInfo> frame_info
 ) {
   ZoneScoped;
-  using namespace std::chrono_literals;
-  std::this_thread::sleep_for(100ms);
-  // @Incomplete
-  // select a command pool
-  // get a command buffer, transition image layout
+  auto pool2 = &(*command_pools)[frame_info->inflight_index];
+  VkCommandPool pool = command_pool_2_borrow(pool2);
+  VkCommandBuffer cmd;
+  { // cmd
+    VkCommandBufferAllocateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+      .commandPool = pool,
+      .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+      .commandBufferCount = 1,
+    };
+    auto result = vkAllocateCommandBuffers(
+      core->device,
+      &info,
+      &cmd
+    );
+    assert(result == VK_SUCCESS);
+  }
+  { // barrier for presentation
+    // @Note:
+    // https://themaister.net/blog/2019/08/14/yet-another-blog-explaining-vulkan-synchronization/
+    // "A PRACTICAL BOTTOM_OF_PIPE EXAMPLE" suggests we can
+    // use dstStageMask = BOTTOM_OF_PIPE, dstAccessMask = 0
+    VkImageMemoryBarrier barrier = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = 0, // wait for nothing
+      .dstAccessMask = 0, // see above
+      .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = presentation->swapchain_images[presentation->latest_image_index],
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      }
+    };
+    vkCmdPipelineBarrier(
+      cmd,
+      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, // wait for nothing
+      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, // see above
+      0,
+      0, nullptr,
+      0, nullptr,
+      1, &barrier
+    );
+  }
+  command_pool_2_return(pool2, pool);
 }
 
 void rendering_frame_submit_composed(
   task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
+  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
   task::Exclusive<RenderingData::Presentation> presentation,
   task::Shared<RenderingData::FrameInfo> frame_info,
   task::Exclusive<VkQueue> queue_work
@@ -200,7 +308,7 @@ void rendering_frame_submit_composed(
 
 void rendering_frame_present(
   task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
+  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
   task::Exclusive<RenderingData::Presentation> presentation,
   task::Shared<RenderingData::FrameInfo> frame_info,
   task::Exclusive<VkQueue> queue_present
@@ -238,7 +346,7 @@ void rendering_has_finished(
 
 void rendering_frame(
   task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
+  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
   task::Exclusive<task::Task> rendering_stop_signal,
   task::Track<SessionData> session,
   task::Track<RenderingData> data,
@@ -270,8 +378,9 @@ void rendering_frame(
     auto signal = inflight_gpu->signals[latest_frame->inflight_index];
     auto frame_tasks = new std::vector<task::Task *>({
       task::create(rendering_frame_poll_events),
+      task::create(rendering_frame_reset_pools, &session->vulkan.core, &data->command_pools, frame_info),
       task::create(rendering_frame_acquire, session.ptr, &data->presentation, frame_info),
-      task::create(rendering_frame_render_composed),
+      task::create(rendering_frame_render_composed, &data->command_pools, frame_info),
       task::create(rendering_frame_submit_composed, &data->presentation, frame_info, &session->vulkan.queue_work),
       task::create(rendering_frame_present, &data->presentation, frame_info, &session->vulkan.queue_present),
       task::create(rendering_frame_cleanup, frame_info),
@@ -297,12 +406,12 @@ void rendering_frame(
 
 void session_iteration_try_rendering(
   task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
+  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
   task::Exclusive<task::Task> session_iteration_stop_signal,
-  task::Exclusive<SessionData> data
+  task::Exclusive<SessionData> session
 ) {
   ZoneScoped;
-  auto vulkan = &data->vulkan;
+  auto vulkan = &session->vulkan;
   VkSurfaceCapabilitiesKHR surface_capabilities;
   { // get capabilities
     auto result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
@@ -352,7 +461,7 @@ void session_iteration_try_rendering(
     }
     {
       auto result = vkGetSwapchainImagesKHR(
-        data->vulkan.core.device,
+        session->vulkan.core.device,
         rendering->presentation.swapchain,
         &swapchain_image_count,
         nullptr
@@ -362,7 +471,7 @@ void session_iteration_try_rendering(
     rendering->presentation.swapchain_images.resize(swapchain_image_count);
     {
       auto result = vkGetSwapchainImagesKHR(
-        data->vulkan.core.device,
+        session->vulkan.core.device,
         rendering->presentation.swapchain,
         &swapchain_image_count,
         rendering->presentation.swapchain_images.data()
@@ -375,18 +484,18 @@ void session_iteration_try_rendering(
       VkSemaphoreCreateInfo info = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
       {
         auto result = vkCreateSemaphore(
-          data->vulkan.core.device,
+          session->vulkan.core.device,
           &info,
-          data->vulkan.core.allocator,
+          session->vulkan.core.allocator,
           &rendering->presentation.image_acquired[i]
         );
         assert(result == VK_SUCCESS);
       }
       {
         auto result = vkCreateSemaphore(
-          data->vulkan.core.device,
+          session->vulkan.core.device,
           &info,
-          data->vulkan.core.allocator,
+          session->vulkan.core.allocator,
           &rendering->presentation.image_rendered[i]
         );
         assert(result == VK_SUCCESS);
@@ -400,14 +509,37 @@ void session_iteration_try_rendering(
   rendering->inflight_gpu.signals.resize(swapchain_image_count, nullptr);
   rendering->latest_frame.number = uint64_t(-1);
   rendering->latest_frame.inflight_index = uint8_t(-1);
+  { ZoneScopedN("command_pools");
+    rendering->command_pools.resize(swapchain_image_count);
+    for (size_t i = 0; i < swapchain_image_count; i++) {
+      rendering->command_pools[i].pools.resize(session->info.worker_count);
+      for (size_t j = 0; j < session->info.worker_count; j++) {
+        VkCommandPool pool;
+        {
+          VkCommandPoolCreateInfo create_info = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .queueFamilyIndex = session->vulkan.queue_family_index,
+          };
+          auto result = vkCreateCommandPool(
+            session->vulkan.core.device,
+            &create_info,
+            session->vulkan.core.allocator,
+            &pool
+          );
+          assert(result == VK_SUCCESS);
+        }
+        rendering->command_pools[i].pools[j] = pool;
+      }
+    }
+  }
 
   auto rendering_stop_signal = lib::task::create_signal();
   auto task_frame = task::create(
     rendering_frame,
     rendering_stop_signal,
-    data.ptr,
+    session.ptr,
     rendering,
-    &data->glfw,
+    &session->glfw,
     &rendering->latest_frame,
     &rendering->swapchain_description,
     &rendering->inflight_gpu
@@ -415,7 +547,7 @@ void session_iteration_try_rendering(
   auto task_cleanup = task::create(defer, task::create(
     rendering_cleanup,
     session_iteration_stop_signal.ptr,
-    data.ptr,
+    session.ptr,
     rendering
   ));
   task::inject(ctx->runner, {
@@ -471,6 +603,13 @@ void session_cleanup(
   task::Exclusive<SessionData> session
 ) {
   ZoneScoped;
+  { ZoneScopedN("gpu_signal_support");
+    lib::gpu_signal::deinit_support(
+      &session->gpu_signal_support,
+      session->vulkan.core.device,
+      session->vulkan.core.allocator
+    );
+  }
   { ZoneScopedN("vulkan");
     auto it = &session->vulkan;
     auto allocator = it->core.allocator;
@@ -498,7 +637,8 @@ void session_cleanup(
 
 void session(
   task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>
+  task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
+  task::Track<size_t> worker_count
 ) {
   ZoneScoped;
   auto session = new SessionData;
@@ -728,6 +868,7 @@ void session(
     { ZoneScopedN("queues");
       vkGetDeviceQueue(it->core.device, queue_family_index, 0, &it->queue_present);
       vkGetDeviceQueue(it->core.device, queue_family_index, 1, &it->queue_work);
+      it->queue_family_index = queue_family_index;
       assert(it->queue_present != VK_NULL_HANDLE);
       assert(it->queue_work != VK_NULL_HANDLE);
     }
@@ -750,6 +891,14 @@ void session(
       }
     }
   }
+  { ZoneScopedN("gpu_signal_support");
+    session->gpu_signal_support = lib::gpu_signal::init_support(
+      ctx->runner,
+      session->vulkan.core.device,
+      session->vulkan.core.allocator
+    );
+  }
+  session->info.worker_count = *worker_count;
   // session is fully initialized at this point
 
   auto task_iteration = task::create(session_iteration, stop_signal, session);
@@ -767,6 +916,8 @@ void session(
         .children = {
           &session->glfw,
           &session->vulkan,
+          &session->gpu_signal_support,
+          &session->info,
         }
       },
       {
@@ -797,16 +948,17 @@ const task::QueueAccessFlags QUEUE_ACCESS_FLAGS_WORKER_THREAD = (0
 );
 
 int main() {
-  auto runner = task::create_runner(QUEUE_COUNT);
-  task::inject(runner, {
-    task::create(session),
-  });
   #ifndef NDEBUG
     auto num_threads = 4u;
   #else
     auto num_threads = std::max(1u, std::thread::hardware_concurrency());
   #endif
-  std::vector worker_access_flags(num_threads - 1, QUEUE_ACCESS_FLAGS_WORKER_THREAD);
+  auto worker_count = num_threads - 1;
+  auto runner = task::create_runner(QUEUE_COUNT);
+  task::inject(runner, {
+    task::create(session, &worker_count),
+  });
+  std::vector worker_access_flags(worker_count, QUEUE_ACCESS_FLAGS_WORKER_THREAD);
   task::run(runner, std::move(worker_access_flags), QUEUE_ACCESS_FLAGS_MAIN_THREAD);
   task::discard_runner(runner);
   #ifdef TRACY_NO_EXIT
