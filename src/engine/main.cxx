@@ -379,8 +379,8 @@ void rendering_frame(
     auto frame_tasks = new std::vector<task::Task *>({
       task::create(rendering_frame_poll_events),
       task::create(rendering_frame_reset_pools, &session->vulkan.core, &data->command_pools, frame_info),
-      task::create(rendering_frame_acquire, session.ptr, &data->presentation, frame_info),
-      task::create(rendering_frame_render_composed, &data->command_pools, frame_info),
+      task::create(rendering_frame_acquire, &session->vulkan.core, &data->presentation, frame_info),
+      task::create(rendering_frame_render_composed, &session->vulkan.core, &data->presentation, &data->command_pools, frame_info),
       task::create(rendering_frame_submit_composed, &data->presentation, frame_info, &session->vulkan.queue_work),
       task::create(rendering_frame_present, &data->presentation, frame_info, &session->vulkan.queue_present),
       task::create(rendering_frame_cleanup, frame_info),
@@ -510,7 +510,7 @@ void session_iteration_try_rendering(
   rendering->latest_frame.number = uint64_t(-1);
   rendering->latest_frame.inflight_index = uint8_t(-1);
   { ZoneScopedN("command_pools");
-    rendering->command_pools.resize(swapchain_image_count);
+    rendering->command_pools = std::vector<CommandPool2>(swapchain_image_count);
     for (size_t i = 0; i < swapchain_image_count; i++) {
       rendering->command_pools[i].pools.resize(session->info.worker_count);
       for (size_t j = 0; j < session->info.worker_count; j++) {
@@ -953,7 +953,7 @@ int main() {
   #else
     auto num_threads = std::max(1u, std::thread::hardware_concurrency());
   #endif
-  auto worker_count = num_threads - 1;
+  size_t worker_count = num_threads - 1;
   auto runner = task::create_runner(QUEUE_COUNT);
   task::inject(runner, {
     task::create(session, &worker_count),

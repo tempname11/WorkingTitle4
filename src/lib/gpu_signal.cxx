@@ -9,7 +9,7 @@ namespace lib::gpu_signal {
 struct Entry {
   VkSemaphore semaphore;
   uint64_t value;
-  lib::Task *signal;
+  lib::task::Task *signal;
 };
 
 struct Storage {
@@ -18,7 +18,7 @@ struct Storage {
   uint64_t new_entries_value;
 };
 
-lib::Task *create(
+lib::task::Task *create(
   Support *it,
   VkDevice device,
   VkSemaphore semaphore,
