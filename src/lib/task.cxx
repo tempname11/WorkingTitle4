@@ -35,7 +35,7 @@ enum ResourceMode {
 struct ResourceOwners {
   ResourceMode mode;
   std::vector<Task *> tasks;
-  Task *previous;
+  std::vector<Task *> previous_tasks;
 };
 
 struct Runner {
@@ -98,6 +98,7 @@ void _internal_task_finished(Runner *r, Task *t) {
         r->resource_owners.erase(ptr);
       } else {
         auto iter = std::find(owners.tasks.begin(), owners.tasks.end(), t);
+        assert(iter != owners.tasks.end());
         owners.tasks.erase(iter);
       }
     }
@@ -105,7 +106,10 @@ void _internal_task_finished(Runner *r, Task *t) {
   }
   if (r->previously_owned.contains(t)) {
     for (auto res : r->previously_owned[t]) {
-      r->resource_owners.at(res).previous = nullptr;
+      auto &vec = r->resource_owners.at(res).previous_tasks;
+      auto iter = std::find(vec.begin(), vec.end(), t);
+      assert(iter != vec.end());
+      vec.erase(iter);
     }
     r->previously_owned.erase(t);
   }
@@ -222,14 +226,15 @@ void _internal_infer_resource_dependencies(
       // sharing! add new owner to list
       current_owners_ref.tasks.push_back(t);
 
-      // also add dependency on previous owner, if any
-      if (current_owners_ref.previous != nullptr) {
-        auto pt = current_owners_ref.previous;
+      // also add dependency on previous owners, if any
+      if (current_owners_ref.previous_tasks.size() > 0) {
         if (r->dependencies_left.contains(t)) {
-          r->dependencies_left[t]++;
+          r->dependencies_left[t] += current_owners_ref.previous_tasks.size();
         } else {
-          r->dependencies_left[t] = 1;
+          r->dependencies_left[t] = current_owners_ref.previous_tasks.size();
         }
+      }
+      for (auto pt : current_owners_ref.previous_tasks) {
         if (!r->dependants.contains(pt)) {
           r->dependants[pt] = { t };
         } else {
@@ -238,17 +243,21 @@ void _internal_infer_resource_dependencies(
       }
     } else {
       // takeover! remove all previous owners, add new one
-      auto prev_owners = x.resource_owners->at(ptr);
+      auto transient_owners = x.resource_owners->at(ptr);
 
       // resource_owners
       (*x.resource_owners)[ptr] = ResourceOwners {
         .mode = mode,
         .tasks = { t },
-        .previous = prev_owners.tasks[0], // @Bug! may be more than one
+        .previous_tasks = transient_owners.tasks, // copy the array
       };
 
+      for (auto owner : transient_owners.previous_tasks) {
+        x.previously_owned->erase(owner);
+      }
+
       // owned_resources & previously_owned
-      for (auto owner : prev_owners.tasks) {
+      for (auto owner : transient_owners.tasks) {
         auto &owned = (*x.owned_resources)[owner];
         if (owned.size() == 1) {
           assert(owned[0] == ptr);
@@ -267,12 +276,12 @@ void _internal_infer_resource_dependencies(
 
       // add dependencies from old owners to new one
       if (r->dependencies_left.contains(t)) {
-        r->dependencies_left[t] += prev_owners.tasks.size();
+        r->dependencies_left[t] += transient_owners.tasks.size();
       } else {
-        r->dependencies_left[t] = prev_owners.tasks.size();
+        r->dependencies_left[t] = transient_owners.tasks.size();
       }
 
-      for (auto owner : prev_owners.tasks) {
+      for (auto owner : transient_owners.tasks) {
         if (!r->dependants.contains(owner)) {
           r->dependants[owner] = { t };
         } else {
