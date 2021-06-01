@@ -217,8 +217,7 @@ struct ComposedData {
 };
 
 void defer(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
+  task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
   usage::Full<task::Task> task
 ) {
   ZoneScoped;
@@ -226,8 +225,7 @@ void defer(
 }
 
 void defer_many(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
+  task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
   usage::Full<std::vector<task::Task *>> tasks
 ) {
   ZoneScoped;
@@ -236,8 +234,7 @@ void defer_many(
 }
 
 void rendering_cleanup(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
+  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   usage::Full<task::Task> session_iteration_stop_signal,
   usage::Some<SessionData> session,
   usage::Full<RenderingData> data
@@ -314,8 +311,7 @@ void rendering_cleanup(
 }
 
 void rendering_frame_poll_events(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>
+  task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx
 ) {
   ZoneScoped;
   // TODO
@@ -323,8 +319,7 @@ void rendering_frame_poll_events(
 }
 
 void signal_cleanup(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
+  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   usage::Some<RenderingData::InflightGPU> inflight_gpu,
   usage::Full<uint8_t> inflight_index_saved
 ) {
@@ -335,8 +330,7 @@ void signal_cleanup(
 }
 
 void rendering_frame_setup_gpu_signal(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Some<lib::gpu_signal::Support> gpu_signal_support,
   usage::Some<VkSemaphore> frame_rendered_semaphore,
@@ -369,8 +363,7 @@ void rendering_frame_setup_gpu_signal(
 }
 
 void rendering_frame_reset_pools(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Some<RenderingData::CommandPools> command_pools,
   usage::Some<RenderingData::FrameInfo> frame_info
@@ -390,8 +383,7 @@ void rendering_frame_reset_pools(
 }
 
 void rendering_frame_acquire(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Full<RenderingData::Presentation> presentation,
   usage::Some<RenderingData::FrameInfo> frame_info
@@ -410,8 +402,7 @@ void rendering_frame_acquire(
 }
 
 void rendering_frame_render_composed(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Full<RenderingData::Presentation> presentation,
   usage::Some<RenderingData::CommandPools> command_pools,
@@ -488,8 +479,7 @@ void rendering_frame_render_composed(
 }
 
 void rendering_frame_submit_composed(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<VkQueue> queue_work,
   usage::Full<RenderingData::Presentation> presentation,
   usage::Some<VkSemaphore> frame_rendered_semaphore,
@@ -531,8 +521,7 @@ void rendering_frame_submit_composed(
 }
 
 void rendering_frame_present(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<RenderingData::Presentation> presentation,
   usage::Some<RenderingData::FrameInfo> frame_info,
   usage::Full<VkQueue> queue_present
@@ -551,8 +540,7 @@ void rendering_frame_present(
 }
 
 void rendering_frame_cleanup(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
+  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   usage::Full<RenderingData::FrameInfo> frame_info
 ) {
   ZoneScoped;
@@ -560,8 +548,7 @@ void rendering_frame_cleanup(
 }
 
 void rendering_has_finished(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
+  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   usage::Full<task::Task> rendering_stop_signal
 ) {
   ZoneScoped;
@@ -569,8 +556,7 @@ void rendering_has_finished(
 }
 
 void rendering_frame(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<task::Task> rendering_stop_signal,
   usage::None<SessionData> session,
   usage::None<RenderingData> data,
@@ -677,8 +663,7 @@ void rendering_frame(
 }
 
 void session_iteration_try_rendering(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<task::Task> session_iteration_stop_signal,
   usage::Full<SessionData> session
 ) {
@@ -1202,8 +1187,7 @@ void session_iteration_try_rendering(
 }
 
 void session_iteration(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
+  task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   usage::Full<task::Task> session_stop_signal,
   usage::Some<SessionData> data
 ) {
@@ -1235,8 +1219,7 @@ void session_iteration(
 }
 
 void session_cleanup(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
+  task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   usage::Full<SessionData> session
 ) {
   ZoneScoped;
@@ -1304,8 +1287,7 @@ void session_cleanup(
 }
 
 void session(
-  task::Context *ctx,
-  task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
+  task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   usage::None<size_t> worker_count
 ) {
   ZoneScoped;

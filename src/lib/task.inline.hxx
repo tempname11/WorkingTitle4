@@ -42,8 +42,9 @@ namespace _internal {
 }
 
 template<QueueIndex ix, typename... FnArgs, typename... PassedArgs>
-inline Task * create(void (*fn)(Context *, QueueMarker<ix>, FnArgs...), PassedArgs... args) {
-  std::function<TaskSig> bound_fn = std::bind(fn, std::placeholders::_1, QueueMarker<ix>(), args...);
+inline Task * create(void (*fn)(Context<ix> *, FnArgs...), PassedArgs... args) {
+  auto cast_fn = (void (*)(ContextBase *, FnArgs...))(fn);
+  std::function<TaskSig> bound_fn = std::bind(cast_fn, std::placeholders::_1, args...);
   std::vector<ResourceAccessDescription> v = { ResourceAccessDescription(args)... };
   _internal::set_exclusive_flags_based_on_type(v, 0, (std::tuple<FnArgs...> *)nullptr);
   return new Task {

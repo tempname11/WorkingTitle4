@@ -8,6 +8,11 @@ namespace lib::task {
 struct Task;
 struct Runner;
 struct ParentResource { uint8_t _padding; }; // inherit me!
+
+typedef uint8_t QueueIndex;
+typedef uint64_t QueueAccessFlags;
+const QueueIndex QUEUE_INDEX_MAX = 64;
+
 struct Auxiliary {
   struct ParentInfo {
     ParentResource *ptr;
@@ -16,12 +21,17 @@ struct Auxiliary {
   std::vector<std::pair<Task *, Task *>> new_dependencies;
   std::vector<ParentInfo> changed_parents;
 };
-struct Context;
-typedef void (TaskSig)(Context *);
-typedef uint8_t QueueIndex;
-typedef uint64_t QueueAccessFlags;
-const QueueIndex QUEUE_INDEX_MAX = 64;
-template<QueueIndex ix> struct QueueMarker {};
+
+struct ContextBase {
+  Runner *runner;
+  std::vector<Task *> subtasks;
+  std::vector<Auxiliary::ParentInfo> changed_parents;
+};
+
+template<QueueIndex ix>
+struct Context : ContextBase {};
+
+typedef void (TaskSig)(ContextBase *);
 
 Runner *create_runner(size_t num_queues);
 
@@ -43,13 +53,7 @@ Task *create_signal();
 void signal(Runner *r, Task *s);
 
 template<QueueIndex ix, typename... FnArgs, typename... PassedArgs>
-inline Task *create(void (*fn)(Context *, QueueMarker<ix>, FnArgs...), PassedArgs... args);
-
-struct Context {
-  Runner *runner;
-  std::vector<Task *> subtasks;
-  std::vector<Auxiliary::ParentInfo> changed_parents;
-};
+inline Task *create(void (*fn)(Context<ix> *, FnArgs...), PassedArgs... args);
 
 struct ResourceAccessDescription {
   void *ptr;

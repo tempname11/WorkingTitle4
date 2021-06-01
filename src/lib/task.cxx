@@ -415,7 +415,7 @@ void run_task_worker(Runner *r, int worker_index, uint64_t queue_access_bits) {
       // _not_ locked here
       auto t = next_task;
       next_task = nullptr;
-      auto ctx = Context(r);
+      auto ctx = ContextBase(r);
       t->fn(&ctx);
       r_lock.lock();
       _internal_changed_parents(r, std::move(ctx.changed_parents), t);
@@ -432,7 +432,7 @@ void run_task_worker(Runner *r, int worker_index, uint64_t queue_access_bits) {
         // so we are not quite done yet, reschedule a noop.
         // when dependencies are run, it will get executed and
         // finished up like a normal task.
-        t->fn = [] (Context *) { };
+        t->fn = [] (ContextBase *) { };
       } else {
         // task was just finished, notify everyone who cares and clean up.
         _internal_task_finished(r, t);
@@ -558,7 +558,7 @@ void inject(Runner *r, std::vector<Task *> && tasks, Auxiliary && aux) {
   }
 }
 
-void no_op(Context *ctx) {}
+void no_op(ContextBase *ctx) {}
 
 Task *create_signal() {
   return new Task { .fn = no_op, .queue_index = QUEUE_INDEX_SIGNAL_ONLY };
