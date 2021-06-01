@@ -49,7 +49,8 @@ void discard_task_or_signal(Task *);
 
 void inject(Runner *, std::vector<Task *> &&, Auxiliary && = {});
 
-Task *create_signal();
+Task *create_external_signal();
+Task *create_yarn_signal();
 void signal(Runner *r, Task *s);
 
 template<QueueIndex ix, typename... FnArgs, typename... PassedArgs>

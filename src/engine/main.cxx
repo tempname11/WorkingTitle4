@@ -235,7 +235,7 @@ void defer_many(
 
 void rendering_cleanup(
   task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Full<task::Task> session_iteration_stop_signal,
+  usage::Full<task::Task> session_iteration_yarn_end,
   usage::Some<SessionData> session,
   usage::Full<RenderingData> data
 ) {
@@ -307,7 +307,7 @@ void rendering_cleanup(
   ctx->changed_parents = {
     { .ptr = data.ptr, .children = {} }
   };
-  task::signal(ctx->runner, session_iteration_stop_signal.ptr);
+  task::signal(ctx->runner, session_iteration_yarn_end.ptr);
 }
 
 void rendering_frame_poll_events(
@@ -549,15 +549,15 @@ void rendering_frame_cleanup(
 
 void rendering_has_finished(
   task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Full<task::Task> rendering_stop_signal
+  usage::Full<task::Task> rendering_yarn_end
 ) {
   ZoneScoped;
-  lib::task::signal(ctx->runner, rendering_stop_signal.ptr);
+  lib::task::signal(ctx->runner, rendering_yarn_end.ptr);
 }
 
 void rendering_frame(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  usage::Full<task::Task> rendering_stop_signal,
+  usage::Full<task::Task> rendering_yarn_end,
   usage::None<SessionData> session,
   usage::None<RenderingData> data,
   usage::Some<SessionData::GLFW> glfw,
@@ -576,7 +576,7 @@ void rendering_frame(
   if (should_stop) {
   #endif
     std::scoped_lock lock(inflight_gpu->mutex);
-    auto task_has_finished = task::create(rendering_has_finished, rendering_stop_signal.ptr);
+    auto task_has_finished = task::create(rendering_has_finished, rendering_yarn_end.ptr);
     task::Auxiliary aux;
     for (auto signal : inflight_gpu->signals) {
       aux.new_dependencies.push_back({ signal, task_has_finished });
@@ -641,7 +641,7 @@ void rendering_frame(
     ),
     task::create(
       rendering_frame,
-      rendering_stop_signal.ptr,
+      rendering_yarn_end.ptr,
       session.ptr,
       data.ptr,
       glfw.ptr,
@@ -664,7 +664,7 @@ void rendering_frame(
 
 void session_iteration_try_rendering(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  usage::Full<task::Task> session_iteration_stop_signal,
+  usage::Full<task::Task> session_iteration_yarn_end,
   usage::Full<SessionData> session
 ) {
   ZoneScoped;
@@ -683,7 +683,7 @@ void session_iteration_try_rendering(
     surface_capabilities.currentExtent.width == 0 ||
     surface_capabilities.currentExtent.height == 0
   ) {
-    lib::task::signal(ctx->runner, session_iteration_stop_signal.ptr);
+    lib::task::signal(ctx->runner, session_iteration_yarn_end.ptr);
     return;
   }
 
@@ -1151,10 +1151,10 @@ void session_iteration_try_rendering(
       }
     }
   }
-  auto rendering_stop_signal = lib::task::create_signal();
+  auto rendering_yarn_end = lib::task::create_yarn_signal();
   auto task_frame = task::create(
     rendering_frame,
-    rendering_stop_signal,
+    rendering_yarn_end,
     session.ptr,
     rendering,
     &session->glfw,
@@ -1164,7 +1164,7 @@ void session_iteration_try_rendering(
   );
   auto task_cleanup = task::create(defer, task::create(
     rendering_cleanup,
-    session_iteration_stop_signal.ptr,
+    session_iteration_yarn_end.ptr,
     session.ptr,
     rendering
   ));
@@ -1172,7 +1172,7 @@ void session_iteration_try_rendering(
     task_frame,
     task_cleanup,
   }, {
-    .new_dependencies = { { rendering_stop_signal, task_cleanup } },
+    .new_dependencies = { { rendering_yarn_end, task_cleanup } },
     .changed_parents = { { .ptr = rendering, .children = {
       &rendering->presentation,
       &rendering->swapchain_description,
@@ -1188,32 +1188,32 @@ void session_iteration_try_rendering(
 
 void session_iteration(
   task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
-  usage::Full<task::Task> session_stop_signal,
+  usage::Full<task::Task> session_yarn_end,
   usage::Some<SessionData> data
 ) {
   ZoneScoped;
   bool should_stop = glfwWindowShouldClose(data->glfw.window);
   if (should_stop) {
-    task::signal(ctx->runner, session_stop_signal.ptr);
+    task::signal(ctx->runner, session_yarn_end.ptr);
     return;
   } else {
     glfwWaitEvents();
-    auto session_iteration_stop_signal = task::create_signal();
+    auto session_iteration_yarn_end = task::create_yarn_signal();
     auto task_try_rendering = task::create(
       session_iteration_try_rendering,
-      session_iteration_stop_signal,
+      session_iteration_yarn_end,
       data.ptr
     );
     auto task_repeat = task::create(defer, task::create(
       session_iteration,
-      session_stop_signal.ptr,
+      session_yarn_end.ptr,
       data.ptr
     ));
     task::inject(ctx->runner, {
       task_try_rendering,
       task_repeat
     }, {
-      .new_dependencies = { { session_iteration_stop_signal, task_repeat } },
+      .new_dependencies = { { session_iteration_yarn_end, task_repeat } },
     });
   }
 }
@@ -1292,7 +1292,7 @@ void session(
 ) {
   ZoneScoped;
   auto session = new SessionData;
-  auto stop_signal = task::create_signal();
+  auto yarn_end = task::create_yarn_signal();
   { ZoneScopedN("glfw");
     auto it = &session->glfw;
     {
@@ -1720,14 +1720,14 @@ void session(
   session->info.worker_count = *worker_count;
   // session is fully initialized at this point
 
-  auto task_iteration = task::create(session_iteration, stop_signal, session);
+  auto task_iteration = task::create(session_iteration, yarn_end, session);
   auto task_cleanup = task::create(defer, task::create(session_cleanup, session));
   task::inject(ctx->runner, {
     task_iteration,
     task_cleanup,
   }, {
     .new_dependencies = {
-      { stop_signal, task_cleanup }
+      { yarn_end, task_cleanup }
     },
     .changed_parents = {
       {

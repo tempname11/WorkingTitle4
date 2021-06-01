@@ -25,7 +25,7 @@ lib::task::Task *create(
   uint64_t value
 ) {
   ZoneScoped;
-  auto signal = lib::task::create_signal();
+  auto signal = lib::task::create_external_signal();
   auto entry = Entry {
     .semaphore = semaphore,
     .value = value,

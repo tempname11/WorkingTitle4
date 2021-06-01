@@ -10,8 +10,9 @@
 namespace lib::task {
 
 // const QueueIndex QUEUE_INDEX_MAX = 64;
-const QueueIndex QUEUE_INDEX_SIGNAL_ONLY = 65;
-const QueueIndex QUEUE_INDEX_INVALID = 66;
+const QueueIndex QUEUE_INDEX_EXTERNAL_SIGNAL_ONLY = 65;
+const QueueIndex QUEUE_INDEX_YARN_SIGNAL_ONLY = 66;
+const QueueIndex QUEUE_INDEX_INVALID = 67;
 
 struct Sleeper {
   int worker_index;
@@ -56,7 +57,7 @@ struct Runner {
   std::unordered_map<Task *, std::vector<void *>> previously_owned;
 
   // signal
-  std::unordered_set<Task *> unresolved_dependency_signals;
+  std::unordered_set<Task *> unresolved_dependency_external_signals;
 
   // aliases
   std::unordered_map<void *, void *> aliasing_parents;
@@ -443,7 +444,7 @@ void run_task_worker(Runner *r, int worker_index, uint64_t queue_access_bits) {
       if (r->workers_should_stop_on_no_work) {
         stop = true;
       } else if (
-        r->unresolved_dependency_signals.size() == 0 &&
+        r->unresolved_dependency_external_signals.size() == 0 &&
         r->sleepers.size() == r->total_workers - 1
       ) {
         // every other thread is sleeping, which means no work is left!
@@ -514,7 +515,7 @@ void run(
   assert(r->dependants.size() == 0);
   assert(r->dependencies_left.size() == 0);
   assert(r->previously_owned.size() == 0);
-  assert(r->unresolved_dependency_signals.size() == 0);
+  assert(r->unresolved_dependency_external_signals.size() == 0);
   assert(r->aliasing_children.size() == 0);
   assert(r->aliasing_parents.size() == 0);
 }
@@ -529,9 +530,10 @@ void inject(Runner *r, std::vector<Task *> && tasks, Auxiliary && aux) {
       continue;
     }
     assert (d.second != nullptr);
-    assert (d.second->queue_index != QUEUE_INDEX_SIGNAL_ONLY);
-    if (d.first->queue_index == QUEUE_INDEX_SIGNAL_ONLY) {
-      r->unresolved_dependency_signals.insert(d.first);
+    assert (d.second->queue_index != QUEUE_INDEX_EXTERNAL_SIGNAL_ONLY);
+    assert (d.second->queue_index != QUEUE_INDEX_YARN_SIGNAL_ONLY);
+    if (d.first->queue_index == QUEUE_INDEX_EXTERNAL_SIGNAL_ONLY) {
+      r->unresolved_dependency_external_signals.insert(d.first);
     }
     bool skipped = false;
     if (r->dependants.contains(d.first)) {
@@ -560,16 +562,23 @@ void inject(Runner *r, std::vector<Task *> && tasks, Auxiliary && aux) {
 
 void no_op(ContextBase *ctx) {}
 
-Task *create_signal() {
-  return new Task { .fn = no_op, .queue_index = QUEUE_INDEX_SIGNAL_ONLY };
+Task *create_external_signal() {
+  return new Task { .fn = no_op, .queue_index = QUEUE_INDEX_EXTERNAL_SIGNAL_ONLY };
+}
+
+Task *create_yarn_signal() {
+  return new Task { .fn = no_op, .queue_index = QUEUE_INDEX_YARN_SIGNAL_ONLY };
 }
 
 void signal(Runner *r, Task *s) {
   std::unique_lock r_lock(r->mutex);
   assert(r->is_running);
-  assert(s->queue_index == QUEUE_INDEX_SIGNAL_ONLY);
+  assert(0
+    || (s->queue_index == QUEUE_INDEX_EXTERNAL_SIGNAL_ONLY)
+    || (s->queue_index == QUEUE_INDEX_YARN_SIGNAL_ONLY)
+  );
   assert(s->resources.size() == 0);
-  r->unresolved_dependency_signals.erase(s);
+  r->unresolved_dependency_external_signals.erase(s);
   _internal_task_finished(r, s);
 }
 
