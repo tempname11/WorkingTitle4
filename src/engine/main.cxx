@@ -5,6 +5,7 @@
 #include <TracyVulkan.hpp>
 #include <src/embedded.hxx>
 #include <src/lib/task.hxx>
+#include <src/lib/debug_camera.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include <src/lib/gpu_signal.hxx>
@@ -199,10 +200,14 @@ struct RenderingData : task::ParentResource {
   typedef std::vector<CommandPool2> CommandPools;
   CommandPools command_pools;
 
+  VkSemaphore example_finished_semaphore;
   VkSemaphore frame_rendered_semaphore;
   lib::gfx::multi_alloc::Instance multi_alloc;
 
   struct Example {
+    uint32_t vs_ubo_aligned_size;
+    uint32_t fs_ubo_aligned_size;
+    uint32_t total_ubo_aligned_size;
     lib::gfx::multi_alloc::StakeBuffer uniform_stake;
     VkRenderPass render_pass;
     VkPipeline pipeline;
@@ -212,7 +217,11 @@ struct RenderingData : task::ParentResource {
   } example;
 };
 
-struct ComposedData {
+struct ComposeData {
+  VkCommandBuffer cmd;
+};
+
+struct ExampleData {
   VkCommandBuffer cmd;
 };
 
@@ -293,6 +302,11 @@ void rendering_cleanup(
       vulkan->core.allocator
     );
   }
+  vkDestroySemaphore(
+    vulkan->core.device,
+    data->example_finished_semaphore,
+    vulkan->core.allocator
+  );
   vkDestroySemaphore(
     vulkan->core.device,
     data->frame_rendered_semaphore,
@@ -382,6 +396,153 @@ void rendering_frame_reset_pools(
   }
 }
 
+void rendering_frame_example_prepare_uniforms(
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
+  usage::Some<SessionData::Vulkan::Core> core,
+  usage::Some<RenderingData::SwapchainDescription> swapchain_description,
+  usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Full<RenderingData::Example> example_r
+) {
+  ZoneScoped;
+  auto projection = lib::gfx::utilities::get_projection(
+    float(swapchain_description->image_extent.width)
+      / swapchain_description->image_extent.height
+  );
+  auto light_position = glm::vec3(3.0f, 5.0f, 2.0f);
+  auto light_intensity = glm::vec3(1000.0f, 1000.0f, 1000.0f);
+  auto albedo = glm::vec3(1.0, 1.0, 1.0);
+  auto cam = lib::debug_camera::init();
+  cam.position = glm::vec3(0.0, -5.0, 0.0);
+  const example::VS_UBO vs = {
+    .projection = projection,
+    .view = lib::debug_camera::to_view_matrix(&cam),
+  };
+  const example::FS_UBO fs = {
+    .camera_position = cam.position,
+    .light_position = light_position,
+    .light_intensity = light_intensity,
+    .albedo = glm::vec3(1.0f, 1.0f, 1.0f),
+    .metallic = 1.0f,
+    .roughness = 0.5f,
+    .ao = 0.1f,
+  };
+
+  void * data;
+  vkMapMemory(
+    core->device,
+    example_r->uniform_stake.memory,
+    example_r->uniform_stake.offset
+      + frame_info->inflight_index * example_r->total_ubo_aligned_size,
+    example_r->total_ubo_aligned_size,
+    0, &data
+  );
+  memcpy(data, &vs, sizeof(example::VS_UBO));
+  memcpy((uint8_t*) data + example_r->vs_ubo_aligned_size, &fs, sizeof(example::FS_UBO));
+  vkUnmapMemory(core->device, example_r->uniform_stake.memory);
+}
+
+void rendering_frame_example_render(
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
+  usage::Some<SessionData::Vulkan::Core> core,
+  usage::Some<RenderingData::SwapchainDescription> swapchain_description,
+  usage::Some<RenderingData::CommandPools> command_pools,
+  usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Some<RenderingData::Example> example_r,
+  usage::Some<SessionData::Vulkan::Example> example_s,
+  usage::Full<ExampleData> data
+) {
+  ZoneScoped;
+  auto pool2 = &(*command_pools)[frame_info->inflight_index];
+  auto r = example_r.ptr;
+  auto s = example_s.ptr;
+  VkCommandPool pool = command_pool_2_borrow(pool2);
+  VkCommandBuffer cmd;
+  { // cmd
+    VkCommandBufferAllocateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+      .commandPool = pool,
+      .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+      .commandBufferCount = 1,
+    };
+    auto result = vkAllocateCommandBuffers(
+      core->device,
+      &info,
+      &cmd
+    );
+    assert(result == VK_SUCCESS);
+  }
+  { // begin
+    auto info = VkCommandBufferBeginInfo {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+    auto result = vkBeginCommandBuffer(cmd, &info);
+    assert(result == VK_SUCCESS);
+  }
+  { TracyVkZone(core->tracy_context, cmd, "example_render");
+    VkClearValue clearValue = {0.0f, 0.0f, 0.0f, 0.0f};
+    VkRenderPassBeginInfo renderPassInfo = {
+      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+      .renderPass = r->render_pass,
+      .framebuffer = r->framebuffers[frame_info->inflight_index],
+      .renderArea = {
+        .offset = {0, 0},
+        .extent = swapchain_description->image_extent,
+      },
+      .clearValueCount = 1,
+      .pClearValues = &clearValue,
+    };
+    vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, r->pipeline);
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(cmd, 0, 1, &s->vertex_stake.buffer, &offset);
+    uint32_t dynamicOffsets[2] = {
+      frame_info->inflight_index * r->total_ubo_aligned_size,
+      frame_info->inflight_index * r->total_ubo_aligned_size + r->vs_ubo_aligned_size,
+    };
+    vkCmdBindDescriptorSets(
+      cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+      s->pipeline_layout,
+      0, 1, &s->descriptor_set,
+      2, dynamicOffsets
+    );
+    vkCmdDraw(cmd, sizeof(example::vertices) / sizeof(*example::vertices), 1, 0, 0);
+    vkCmdEndRenderPass(cmd);
+  }
+  { // end
+    auto result = vkEndCommandBuffer(cmd);
+    assert(result == VK_SUCCESS);
+  }
+  command_pool_2_return(pool2, pool);
+  data->cmd = cmd;
+}
+
+void rendering_frame_example_submit(
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
+  usage::Full<VkQueue> queue_work,
+  usage::Some<VkSemaphore> example_finished_semaphore,
+  usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Full<ExampleData> data
+) {
+  ZoneScoped;
+  auto timeline_info = VkTimelineSemaphoreSubmitInfo {
+    .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
+    .signalSemaphoreValueCount = 1,
+    .pSignalSemaphoreValues = &frame_info->timeline_semaphore_value,
+  };
+  VkSubmitInfo submit_info = {
+    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+    .pNext = &timeline_info,
+    .commandBufferCount = 1,
+    .pCommandBuffers = &data->cmd,
+    .signalSemaphoreCount = 1,
+    .pSignalSemaphores = example_finished_semaphore.ptr,
+  };
+  auto result = vkQueueSubmit(*queue_work, 1, &submit_info, VK_NULL_HANDLE);
+  assert(result == VK_SUCCESS);
+  delete data.ptr;
+}
+
 void rendering_frame_acquire(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
@@ -401,13 +562,15 @@ void rendering_frame_acquire(
   assert(result == VK_SUCCESS);
 }
 
-void rendering_frame_render_composed(
+void rendering_frame_compose_render(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Full<RenderingData::Presentation> presentation,
+  usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::CommandPools> command_pools,
   usage::Some<RenderingData::FrameInfo> frame_info,
-  usage::Full<ComposedData> data
+  usage::Some<RenderingData::Example> example_r,
+  usage::Full<ComposeData> data
 ) {
   ZoneScoped;
   auto pool2 = &(*command_pools)[frame_info->inflight_index];
@@ -435,18 +598,14 @@ void rendering_frame_render_composed(
     auto result = vkBeginCommandBuffer(cmd, &info);
     assert(result == VK_SUCCESS);
   }
-  { TracyVkZone(core->tracy_context, cmd, "render_composed");
-    { // barrier for presentation
-      // @Note:
-      // https://themaister.net/blog/2019/08/14/yet-another-blog-explaining-vulkan-synchronization/
-      // "A PRACTICAL BOTTOM_OF_PIPE EXAMPLE" suggests we can
-      // use dstStageMask = BOTTOM_OF_PIPE, dstAccessMask = 0
+  { TracyVkZone(core->tracy_context, cmd, "compose_render");
+    { // barrier, prepare acquired image to copy
       VkImageMemoryBarrier barrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .srcAccessMask = 0, // wait for nothing
-        .dstAccessMask = 0, // see above
+        .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
         .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .image = presentation->swapchain_images[presentation->latest_image_index],
@@ -461,6 +620,64 @@ void rendering_frame_render_composed(
       vkCmdPipelineBarrier(
         cmd,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, // wait for nothing
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &barrier
+      );
+    }
+    { // copy image
+      auto region = VkImageCopy {
+        .srcSubresource = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .layerCount = 1,
+        },
+        .dstSubresource = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .layerCount = 1,
+        },
+        .extent = {
+          .width = swapchain_description->image_extent.width,
+          .height = swapchain_description->image_extent.height,
+          .depth = 1,
+        },
+      };
+      vkCmdCopyImage(
+        cmd,
+        example_r->image_stakes[frame_info->inflight_index].image,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        presentation->swapchain_images[presentation->latest_image_index],
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &region
+      );
+    }
+    { // barrier for presentation
+      // @Note:
+      // https://themaister.net/blog/2019/08/14/yet-another-blog-explaining-vulkan-synchronization/
+      // "A PRACTICAL BOTTOM_OF_PIPE EXAMPLE" suggests we can
+      // use dstStageMask = BOTTOM_OF_PIPE, dstAccessMask = 0
+      VkImageMemoryBarrier barrier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+        .dstAccessMask = 0, // see above
+        .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = presentation->swapchain_images[presentation->latest_image_index],
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .baseMipLevel = 0,
+          .levelCount = 1,
+          .baseArrayLayer = 0,
+          .layerCount = 1,
+        }
+      };
+      vkCmdPipelineBarrier(
+        cmd,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, // see above
         0,
         0, nullptr,
@@ -478,38 +695,50 @@ void rendering_frame_render_composed(
   data->cmd = cmd;
 }
 
-void rendering_frame_submit_composed(
+void rendering_frame_compose_submit(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<VkQueue> queue_work,
   usage::Full<RenderingData::Presentation> presentation,
   usage::Some<VkSemaphore> frame_rendered_semaphore,
+  usage::Some<VkSemaphore> example_finished_semaphore,
   usage::Some<RenderingData::FrameInfo> frame_info,
-  usage::Full<ComposedData> data
+  usage::Full<ComposeData> data
 ) {
   ZoneScoped;
-  VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+  uint64_t zero = 0;
+  VkSemaphore wait_semaphores[] = {
+    *example_finished_semaphore,
+    presentation->image_acquired[frame_info->inflight_index]
+  };
+  VkPipelineStageFlags wait_stages[] = {
+    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+  };
+  uint64_t wait_values[] = {
+    frame_info->timeline_semaphore_value,
+    zero,
+  };
   VkSemaphore signal_semaphores[] = {
     *frame_rendered_semaphore,
     presentation->image_rendered[frame_info->inflight_index],
   };
-  uint64_t binary_semaphore_irrelevant_value = 0;
   uint64_t signal_values[] = {
     frame_info->timeline_semaphore_value,
-    binary_semaphore_irrelevant_value,
+    zero,
   };
   auto timeline_info = VkTimelineSemaphoreSubmitInfo {
     .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
-    .waitSemaphoreValueCount = 1,
-    .pWaitSemaphoreValues = &binary_semaphore_irrelevant_value,
+    .waitSemaphoreValueCount = sizeof(wait_values) / sizeof(*wait_values),
+    .pWaitSemaphoreValues = wait_values,
     .signalSemaphoreValueCount = sizeof(signal_values) / sizeof(*signal_values),
     .pSignalSemaphoreValues = signal_values,
   };
   VkSubmitInfo submit_info = {
     .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
     .pNext = &timeline_info,
-    .waitSemaphoreCount = 1,
-    .pWaitSemaphores = &presentation->image_acquired[frame_info->inflight_index],
-    .pWaitDstStageMask = &wait_stage,
+    .waitSemaphoreCount = sizeof(wait_semaphores) / sizeof(*wait_semaphores),
+    .pWaitSemaphores = wait_semaphores,
+    .pWaitDstStageMask = wait_stages,
     .commandBufferCount = 1,
     .pCommandBuffers = &data->cmd,
     .signalSemaphoreCount = sizeof(signal_semaphores) / sizeof(*signal_semaphores),
@@ -568,13 +797,7 @@ void rendering_frame(
   ZoneScopedC(0xFF0000);
   FrameMark;
   bool should_stop = glfwWindowShouldClose(glfw->window);
-  #if true
-  // @Debug !!!
-  if (should_stop || latest_frame->number == 10) {
-    glfwSetWindowShouldClose(glfw->window, 1);
-  #else
   if (should_stop) {
-  #endif
     std::scoped_lock lock(inflight_gpu->mutex);
     auto task_has_finished = task::create(rendering_has_finished, rendering_yarn_end.ptr);
     task::Auxiliary aux;
@@ -590,7 +813,8 @@ void rendering_frame(
     latest_frame->number % swapchain_description->image_count
   );
   auto frame_info = new RenderingData::FrameInfo(*latest_frame);
-  auto composed_data = new ComposedData;
+  auto compose_data = new ComposeData;
+  auto example_data = new ExampleData;
   auto frame_tasks = new std::vector<task::Task *>({
     task::create(rendering_frame_poll_events),
     task::create(
@@ -614,20 +838,47 @@ void rendering_frame(
       frame_info
     ),
     task::create(
-      rendering_frame_render_composed,
+      rendering_frame_example_prepare_uniforms,
       &session->vulkan.core,
-      &data->presentation,
-      &data->command_pools,
+      &data->swapchain_description,
       frame_info,
-      composed_data
+      &data->example
     ),
     task::create(
-      rendering_frame_submit_composed,
+      rendering_frame_example_render,
+      &session->vulkan.core,
+      &data->swapchain_description,
+      &data->command_pools,
+      frame_info,
+      &data->example,
+      &session->vulkan.example,
+      example_data
+    ),
+    task::create(
+      rendering_frame_example_submit,
+      &session->vulkan.queue_work,
+      &data->example_finished_semaphore,
+      frame_info,
+      example_data
+    ),
+    task::create(
+      rendering_frame_compose_render,
+      &session->vulkan.core,
+      &data->presentation,
+      &data->swapchain_description,
+      &data->command_pools,
+      frame_info,
+      &data->example,
+      compose_data
+    ),
+    task::create(
+      rendering_frame_compose_submit,
       &session->vulkan.queue_work,
       &data->presentation,
       &data->frame_rendered_semaphore,
+      &data->example_finished_semaphore,
       frame_info,
-      composed_data
+      compose_data
     ),
     task::create(
       rendering_frame_present,
@@ -806,23 +1057,45 @@ void session_iteration_try_rendering(
     );
     assert(result == VK_SUCCESS);
   }
+  { ZoneScopedN("example_finished_semaphore");
+    VkSemaphoreTypeCreateInfo timeline_info = {
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+      .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+    };
+    VkSemaphoreCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+      .pNext = &timeline_info,
+    };
+    auto result = vkCreateSemaphore(
+      session->vulkan.core.device,
+      &create_info,
+      session->vulkan.core.allocator,
+      &rendering->example_finished_semaphore
+    );
+    assert(result == VK_SUCCESS);
+  }
+  rendering->example.vs_ubo_aligned_size = lib::gfx::utilities::aligned_size(
+    sizeof(example::VS_UBO),
+    session->vulkan.properties.basic.limits.minUniformBufferOffsetAlignment
+  );
+  rendering->example.fs_ubo_aligned_size = lib::gfx::utilities::aligned_size(
+    sizeof(example::FS_UBO),
+    session->vulkan.properties.basic.limits.minUniformBufferOffsetAlignment
+  );
+  rendering->example.total_ubo_aligned_size = (
+    rendering->example.vs_ubo_aligned_size +
+    rendering->example.fs_ubo_aligned_size
+  );
   { ZoneScopedN("multi_alloc");
-    uint32_t vs_ubo_aligned_size = lib::gfx::utilities::aligned_size(
-      sizeof(example::VS_UBO),
-      session->vulkan.properties.basic.limits.minUniformBufferOffsetAlignment
-    );
-    uint32_t fs_ubo_aligned_size = lib::gfx::utilities::aligned_size(
-      sizeof(example::FS_UBO),
-      session->vulkan.properties.basic.limits.minUniformBufferOffsetAlignment
-    );
-    uint32_t total_ubo_aligned_size = vs_ubo_aligned_size + fs_ubo_aligned_size;
-
     std::vector<lib::gfx::multi_alloc::Claim> claims;
     claims.push_back({
       .info = {
         .buffer = {
           .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-          .size = total_ubo_aligned_size * rendering->swapchain_description.image_count,
+          .size = (
+            rendering->example.total_ubo_aligned_size
+            * rendering->swapchain_description.image_count
+          ),
           .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
           .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         },
@@ -918,7 +1191,7 @@ void session_iteration_try_rendering(
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
       };
       VkAttachmentReference color_attachment_ref = {
         .attachment = 0,
@@ -1180,6 +1453,7 @@ void session_iteration_try_rendering(
       &rendering->latest_frame,
       &rendering->command_pools,
       &rendering->frame_rendered_semaphore,
+      &rendering->example_finished_semaphore,
       &rendering->multi_alloc,
       &rendering->example,
     } } },
@@ -1467,10 +1741,13 @@ void session(
       };
       const std::vector<const char*> device_extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        /*
         VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
         VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, // for RAY_TRACING_PIPELINE
         VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, // for ACCELERATION_STRUCTURE
+        */
         VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, // for Tracy
+        VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME, // for shader printf
       };
       VkPhysicalDeviceTimelineSemaphoreFeatures timeline_semaphore_features = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
@@ -1578,8 +1855,8 @@ void session(
         .info = {
           .buffer = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = 1,
-            .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            .size = sizeof(example::vertices),
+            .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
           },
         },

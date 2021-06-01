@@ -1,4 +1,5 @@
 #include <cassert>
+#include <Tracy.hpp>
 #include "multi_alloc.hxx"
 #include "utilities.hxx"
 
@@ -165,6 +166,7 @@ void _internal_end(
         .memoryTypeIndex = i,
       };
       auto result = vkAllocateMemory(device, &alloc_info, allocator, &memory);
+      TracyAllocN((void *) memory, alloc_info.allocationSize, "GPU memory usage");
       assert(result == VK_SUCCESS);
     }
     allocations[i] = memory;
@@ -173,7 +175,7 @@ void _internal_end(
   for (auto &incomplete : data->incomplete_stakes) {
     if (incomplete.type == IncompleteStake::IncompleteBuffer) {
       incomplete.p_stake_buffer->memory = allocations[incomplete.memory_type_index];
-      assert(incomplete.stake.buffer.memory != VK_NULL_HANDLE);
+      assert(incomplete.p_stake_buffer->memory != VK_NULL_HANDLE);
       {
         auto result = vkBindBufferMemory(
           device,
@@ -185,7 +187,7 @@ void _internal_end(
       }
     } else if (incomplete.type == IncompleteStake::IncompleteImage) {
       incomplete.p_stake_image->memory = allocations[incomplete.memory_type_index];
-      assert(incomplete.stake.image.memory != VK_NULL_HANDLE);
+      assert(incomplete.p_stake_image->memory != VK_NULL_HANDLE);
       {
         auto result = vkBindImageMemory(
           device,
@@ -245,16 +247,17 @@ void deinit(
   VkDevice device,
   const VkAllocationCallbacks *allocator
 ) {
-  for (auto &elem: it->all_buffers) {
+  for (auto elem: it->all_buffers) {
     vkDestroyBuffer(device, elem, allocator);
   }
 
-  for (auto &elem: it->all_images) {
+  for (auto elem: it->all_images) {
     vkDestroyImage(device, elem, allocator);
   }
 
-  for (auto &elem: it->all_memories) {
+  for (auto elem: it->all_memories) {
     vkFreeMemory(device, elem, allocator);
+    TracyFreeN((void *) elem, "GPU memory usage");
   }
 }
 
