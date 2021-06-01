@@ -10,9 +10,8 @@
 #include <src/lib/gpu_signal.hxx>
 #include <src/global.hxx>
 
-namespace task {
-  using namespace lib::task;
-}
+namespace task = lib::task;
+namespace usage = lib::usage;
 
 namespace example {
   struct Vertex {
@@ -220,7 +219,7 @@ struct ComposedData {
 void defer(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
-  task::Exclusive<task::Task> task
+  usage::Full<task::Task> task
 ) {
   ZoneScoped;
   task::inject(ctx->runner, { task.ptr });
@@ -229,7 +228,7 @@ void defer(
 void defer_many(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_HIGH_PRIORITY>,
-  task::Exclusive<std::vector<task::Task *>> tasks
+  usage::Full<std::vector<task::Task *>> tasks
 ) {
   ZoneScoped;
   task::inject(ctx->runner, std::move(*tasks));
@@ -239,9 +238,9 @@ void defer_many(
 void rendering_cleanup(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
-  task::Exclusive<task::Task> session_iteration_stop_signal,
-  task::Shared<SessionData> session,
-  task::Exclusive<RenderingData> data
+  usage::Full<task::Task> session_iteration_stop_signal,
+  usage::Some<SessionData> session,
+  usage::Full<RenderingData> data
 ) {
   ZoneScoped;
   auto vulkan = &session->vulkan;
@@ -326,8 +325,8 @@ void rendering_frame_poll_events(
 void signal_cleanup(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
-  task::Shared<RenderingData::InflightGPU> inflight_gpu,
-  task::Exclusive<uint8_t> inflight_index_saved
+  usage::Some<RenderingData::InflightGPU> inflight_gpu,
+  usage::Full<uint8_t> inflight_index_saved
 ) {
   std::scoped_lock lock(inflight_gpu->mutex);
   assert(inflight_gpu->signals[*inflight_index_saved] != nullptr);
@@ -338,11 +337,11 @@ void signal_cleanup(
 void rendering_frame_setup_gpu_signal(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
-  task::Shared<SessionData::Vulkan::Core> core,
-  task::Shared<lib::gpu_signal::Support> gpu_signal_support,
-  task::Shared<VkSemaphore> frame_rendered_semaphore,
-  task::Exclusive<RenderingData::InflightGPU> inflight_gpu,
-  task::Shared<RenderingData::FrameInfo> frame_info
+  usage::Some<SessionData::Vulkan::Core> core,
+  usage::Some<lib::gpu_signal::Support> gpu_signal_support,
+  usage::Some<VkSemaphore> frame_rendered_semaphore,
+  usage::Full<RenderingData::InflightGPU> inflight_gpu,
+  usage::Some<RenderingData::FrameInfo> frame_info
 ) {
   ZoneScoped;
   // don't use inflight_gpu->mutex, since out signal slot is currently unusedk
@@ -372,9 +371,9 @@ void rendering_frame_setup_gpu_signal(
 void rendering_frame_reset_pools(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
-  task::Shared<SessionData::Vulkan::Core> core,
-  task::Shared<RenderingData::CommandPools> command_pools,
-  task::Shared<RenderingData::FrameInfo> frame_info
+  usage::Some<SessionData::Vulkan::Core> core,
+  usage::Some<RenderingData::CommandPools> command_pools,
+  usage::Some<RenderingData::FrameInfo> frame_info
 ) {
   ZoneScoped;
   auto &pool2 = (*command_pools)[frame_info->inflight_index];
@@ -393,9 +392,9 @@ void rendering_frame_reset_pools(
 void rendering_frame_acquire(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
-  task::Shared<SessionData::Vulkan::Core> core,
-  task::Exclusive<RenderingData::Presentation> presentation,
-  task::Shared<RenderingData::FrameInfo> frame_info
+  usage::Some<SessionData::Vulkan::Core> core,
+  usage::Full<RenderingData::Presentation> presentation,
+  usage::Some<RenderingData::FrameInfo> frame_info
 ) {
   ZoneScoped;
   uint32_t image_index;
@@ -413,11 +412,11 @@ void rendering_frame_acquire(
 void rendering_frame_render_composed(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
-  task::Shared<SessionData::Vulkan::Core> core,
-  task::Exclusive<RenderingData::Presentation> presentation,
-  task::Shared<RenderingData::CommandPools> command_pools,
-  task::Shared<RenderingData::FrameInfo> frame_info,
-  task::Exclusive<ComposedData> data
+  usage::Some<SessionData::Vulkan::Core> core,
+  usage::Full<RenderingData::Presentation> presentation,
+  usage::Some<RenderingData::CommandPools> command_pools,
+  usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Full<ComposedData> data
 ) {
   ZoneScoped;
   auto pool2 = &(*command_pools)[frame_info->inflight_index];
@@ -491,11 +490,11 @@ void rendering_frame_render_composed(
 void rendering_frame_submit_composed(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
-  task::Exclusive<VkQueue> queue_work,
-  task::Exclusive<RenderingData::Presentation> presentation,
-  task::Shared<VkSemaphore> frame_rendered_semaphore,
-  task::Shared<RenderingData::FrameInfo> frame_info,
-  task::Exclusive<ComposedData> data
+  usage::Full<VkQueue> queue_work,
+  usage::Full<RenderingData::Presentation> presentation,
+  usage::Some<VkSemaphore> frame_rendered_semaphore,
+  usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Full<ComposedData> data
 ) {
   ZoneScoped;
   VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
@@ -534,9 +533,9 @@ void rendering_frame_submit_composed(
 void rendering_frame_present(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
-  task::Exclusive<RenderingData::Presentation> presentation,
-  task::Shared<RenderingData::FrameInfo> frame_info,
-  task::Exclusive<VkQueue> queue_present
+  usage::Full<RenderingData::Presentation> presentation,
+  usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Full<VkQueue> queue_present
 ) {
   ZoneScoped;
   VkPresentInfoKHR info = {
@@ -554,7 +553,7 @@ void rendering_frame_present(
 void rendering_frame_cleanup(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
-  task::Exclusive<RenderingData::FrameInfo> frame_info
+  usage::Full<RenderingData::FrameInfo> frame_info
 ) {
   ZoneScoped;
   delete frame_info.ptr;
@@ -563,7 +562,7 @@ void rendering_frame_cleanup(
 void rendering_has_finished(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
-  task::Exclusive<task::Task> rendering_stop_signal
+  usage::Full<task::Task> rendering_stop_signal
 ) {
   ZoneScoped;
   lib::task::signal(ctx->runner, rendering_stop_signal.ptr);
@@ -572,13 +571,13 @@ void rendering_has_finished(
 void rendering_frame(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
-  task::Exclusive<task::Task> rendering_stop_signal,
-  task::Track<SessionData> session,
-  task::Track<RenderingData> data,
-  task::Shared<SessionData::GLFW> glfw,
-  task::Exclusive<RenderingData::FrameInfo> latest_frame,
-  task::Shared<RenderingData::SwapchainDescription> swapchain_description,
-  task::Shared<RenderingData::InflightGPU> inflight_gpu
+  usage::Full<task::Task> rendering_stop_signal,
+  usage::None<SessionData> session,
+  usage::None<RenderingData> data,
+  usage::Some<SessionData::GLFW> glfw,
+  usage::Full<RenderingData::FrameInfo> latest_frame,
+  usage::Some<RenderingData::SwapchainDescription> swapchain_description,
+  usage::Some<RenderingData::InflightGPU> inflight_gpu
 ) {
   ZoneScopedC(0xFF0000);
   FrameMark;
@@ -680,8 +679,8 @@ void rendering_frame(
 void session_iteration_try_rendering(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
-  task::Exclusive<task::Task> session_iteration_stop_signal,
-  task::Exclusive<SessionData> session
+  usage::Full<task::Task> session_iteration_stop_signal,
+  usage::Full<SessionData> session
 ) {
   ZoneScoped;
   auto vulkan = &session->vulkan;
@@ -1205,8 +1204,8 @@ void session_iteration_try_rendering(
 void session_iteration(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
-  task::Exclusive<task::Task> session_stop_signal,
-  task::Shared<SessionData> data
+  usage::Full<task::Task> session_stop_signal,
+  usage::Some<SessionData> data
 ) {
   ZoneScoped;
   bool should_stop = glfwWindowShouldClose(data->glfw.window);
@@ -1238,7 +1237,7 @@ void session_iteration(
 void session_cleanup(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
-  task::Exclusive<SessionData> session
+  usage::Full<SessionData> session
 ) {
   ZoneScoped;
   { ZoneScopedN("gpu_signal_support");
@@ -1307,7 +1306,7 @@ void session_cleanup(
 void session(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_MAIN_THREAD_ONLY>,
-  task::Track<size_t> worker_count
+  usage::None<size_t> worker_count
 ) {
   ZoneScoped;
   auto session = new SessionData;

@@ -9,32 +9,32 @@ namespace _internal {
   inline void set_exclusive_flags_based_on_type(RADs &v, int i, T*);
 
   template <typename T, typename... FnArgs>
-  inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<Track<T>, FnArgs...>*);
+  inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<usage::None<T>, FnArgs...>*);
 
   template <typename T, typename... FnArgs>
-  inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<Shared<T>, FnArgs...>*);
+  inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<usage::Some<T>, FnArgs...>*);
 
   template <typename T, typename... FnArgs>
-  inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<Exclusive<T>, FnArgs...>*);
+  inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<usage::Full<T>, FnArgs...>*);
 
   template<>
   inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<>*) { }
 
   template <typename T, typename... FnArgs>
-  inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<Track<T>, FnArgs...>*) {
+  inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<usage::None<T>, FnArgs...>*) {
     std::tuple<FnArgs...> *p = nullptr;
     v.erase(v.begin() + i);
     set_exclusive_flags_based_on_type(v, i, p);
   }
 
   template <typename T, typename... FnArgs>
-  inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<Shared<T>, FnArgs...>*) {
+  inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<usage::Some<T>, FnArgs...>*) {
     std::tuple<FnArgs...> *p = nullptr;
     set_exclusive_flags_based_on_type(v, i + 1, p);
   }
 
   template <typename T, typename... FnArgs>
-  inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<Exclusive<T>, FnArgs...>*) {
+  inline void set_exclusive_flags_based_on_type(RADs &v, int i, std::tuple<usage::Full<T>, FnArgs...>*) {
     v[i].exclusive = true;
     std::tuple<FnArgs...> *p = nullptr;
     set_exclusive_flags_based_on_type(v, i + 1, p);

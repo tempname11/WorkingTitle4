@@ -68,6 +68,8 @@ add_executable (
   "${CMAKE_SOURCE_DIR}/submodule/imgui/backends/imgui_impl_vulkan.cpp"
 )
 target_compile_definitions(engine PUBLIC -DWINDOWS)
+# target_compile_definitions(engine PUBLIC -DWIN32_LEAN_AND_MEAN)
+target_compile_definitions(engine PUBLIC -DVC_EXTRALEAN)
 target_compile_definitions(engine PUBLIC -DGLFW_INCLUDE_VULKAN)
 target_compile_definitions(engine PUBLIC TRACY_ENABLE=1)
 # target_compile_definitions(engine PUBLIC TRACY_ON_DEMAND=1)

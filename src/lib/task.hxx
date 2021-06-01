@@ -1,6 +1,7 @@
 #pragma once
 #include <functional>
 #include <vector>
+#include "usage.hxx"
 
 namespace lib::task {
 
@@ -43,30 +44,6 @@ void signal(Runner *r, Task *s);
 
 template<QueueIndex ix, typename... FnArgs, typename... PassedArgs>
 inline Task *create(void (*fn)(Context *, QueueMarker<ix>, FnArgs...), PassedArgs... args);
-
-template<typename T>
-struct Track {
-  T *ptr;
-  Track(T *_ptr) : ptr(_ptr) {}
-  T &operator *() { return *ptr; }
-  T *operator ->() { return ptr; }
-};
-
-template<typename T>
-struct Shared {
-  T *ptr;
-  Shared(T *_ptr) : ptr(_ptr) {}
-  T &operator *() { return *ptr; }
-  T *operator ->() { return ptr; }
-};
-
-template<typename T>
-struct Exclusive {
-  T *ptr;
-  Exclusive(T *_ptr) : ptr(_ptr) {}
-  T &operator *() { return *ptr; }
-  T *operator ->() { return ptr; }
-};
 
 struct Context {
   Runner *runner;
