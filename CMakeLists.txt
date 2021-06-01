@@ -77,6 +77,3 @@ target_compile_definitions(engine PUBLIC TRACY_NO_EXIT=1)
 target_link_directories (engine PUBLIC $ENV{CUSTOM_LINK_PATH})
 target_link_libraries (engine glfw3 vulkan-1) 
 target_link_libraries(engine fmt::fmt-header-only)
-
-# MSVC-specific, needs investigation
-# target_compile_options(engine PUBLIC /EH-s-c-) # no exceptions
