@@ -1,12 +1,88 @@
-#include <GLFW/glfw3.h>
 #include <vector>
 #include <unordered_set>
+#include <glm/glm.hpp>
+#include <GLFW/glfw3.h>
+#include <TracyVulkan.hpp>
+#include <src/embedded.hxx>
 #include <src/lib/task.hxx>
+#include <src/lib/gfx/multi_alloc.hxx>
+#include <src/lib/gfx/utilities.hxx>
 #include <src/lib/gpu_signal.hxx>
 #include <src/global.hxx>
 
 namespace task {
   using namespace lib::task;
+}
+
+namespace example {
+  struct Vertex {
+    glm::vec3 position;
+    glm::vec3 normal;
+  };
+
+  struct VS_UBO {
+    glm::mat4 projection;
+    glm::mat4 view;
+  };
+
+  struct FS_UBO {
+    alignas(16) glm::vec3 camera_position;
+
+    // light
+    alignas(16) glm::vec3 light_position;
+    alignas(16) glm::vec3 light_intensity;
+
+    // material
+    alignas(16) glm::vec3 albedo;
+    float metallic;
+    float roughness;
+    float ao;
+  };
+  
+  const Vertex vertices[] = {
+    // -XY
+    {{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}},
+    {{+1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}},
+    {{+1.0f, +1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}},
+    {{+1.0f, +1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}},
+    {{-1.0f, +1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}},
+    {{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}},
+    // +XY
+    {{-1.0f, -1.0f, +1.0f}, {0.0f, 0.0f, +1.0f}},
+    {{-1.0f, +1.0f, +1.0f}, {0.0f, 0.0f, +1.0f}},
+    {{+1.0f, +1.0f, +1.0f}, {0.0f, 0.0f, +1.0f}},
+    {{+1.0f, +1.0f, +1.0f}, {0.0f, 0.0f, +1.0f}},
+    {{+1.0f, -1.0f, +1.0f}, {0.0f, 0.0f, +1.0f}},
+    {{-1.0f, -1.0f, +1.0f}, {0.0f, 0.0f, +1.0f}},
+    // -YZ
+    {{-1.0f, -1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}},
+    {{-1.0f, +1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}},
+    {{-1.0f, +1.0f, +1.0f}, {-1.0f, 0.0f, 0.0f}},
+    {{-1.0f, +1.0f, +1.0f}, {-1.0f, 0.0f, 0.0f}},
+    {{-1.0f, -1.0f, +1.0f}, {-1.0f, 0.0f, 0.0f}},
+    {{-1.0f, -1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}},
+    // +YZ
+    {{+1.0f, -1.0f, -1.0f}, {+1.0f, 0.0f, 0.0f}},
+    {{+1.0f, -1.0f, +1.0f}, {+1.0f, 0.0f, 0.0f}},
+    {{+1.0f, +1.0f, +1.0f}, {+1.0f, 0.0f, 0.0f}},
+    {{+1.0f, +1.0f, +1.0f}, {+1.0f, 0.0f, 0.0f}},
+    {{+1.0f, +1.0f, -1.0f}, {+1.0f, 0.0f, 0.0f}},
+    {{+1.0f, -1.0f, -1.0f}, {+1.0f, 0.0f, 0.0f}},
+    // -ZX
+    {{-1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}},
+    {{-1.0f, -1.0f, +1.0f}, {0.0f, -1.0f, 0.0f}},
+    {{+1.0f, -1.0f, +1.0f}, {0.0f, -1.0f, 0.0f}},
+    {{+1.0f, -1.0f, +1.0f}, {0.0f, -1.0f, 0.0f}},
+    {{+1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}},
+    {{-1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}},
+    // +ZX
+    {{-1.0f, +1.0f, -1.0f}, {0.0f, +1.0f, 0.0f}},
+    {{+1.0f, +1.0f, -1.0f}, {0.0f, +1.0f, 0.0f}},
+    {{+1.0f, +1.0f, +1.0f}, {0.0f, +1.0f, 0.0f}},
+    {{+1.0f, +1.0f, +1.0f}, {0.0f, +1.0f, 0.0f}},
+    {{-1.0f, +1.0f, +1.0f}, {0.0f, +1.0f, 0.0f}},
+    {{-1.0f, +1.0f, -1.0f}, {0.0f, +1.0f, 0.0f}},
+  };
 }
 
 const VkFormat SWAPCHAIN_FORMAT = VK_FORMAT_B8G8R8A8_SRGB;
@@ -48,6 +124,53 @@ void command_pool_2_return(CommandPool2 *pool2, VkCommandPool pool) {
   pool2->pools.push_back(pool);
 }
 
+struct SessionData : task::ParentResource {
+  struct GLFW {
+    GLFWwindow *window;
+  } glfw;
+
+  struct Vulkan : task::ParentResource {
+    VkInstance instance;
+    VkDebugUtilsMessengerEXT debug_messenger;
+    VkSurfaceKHR window_surface;
+    VkPhysicalDevice physical_device;
+
+    struct Core {
+      VkDevice device;
+      const VkAllocationCallbacks *allocator;
+      tracy::VkCtx *tracy_context;
+    } core;
+
+    struct CoreProperties {
+      VkPhysicalDeviceProperties basic;
+      VkPhysicalDeviceMemoryProperties memory;
+      VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing;
+    } properties;
+
+    VkQueue queue_present;
+    VkQueue queue_work; // graphics, compute, transfer
+    uint32_t queue_family_index;
+
+    VkCommandPool setup_command_pool;
+    VkDescriptorPool common_descriptor_pool;
+
+    lib::gfx::multi_alloc::Instance multi_alloc;
+
+    struct Example {
+      lib::gfx::multi_alloc::StakeBuffer vertex_stake;
+      VkDescriptorSetLayout descriptor_set_layout;
+      VkDescriptorSet descriptor_set;
+      VkPipelineLayout pipeline_layout;
+    } example;
+  } vulkan;
+
+  lib::gpu_signal::Support gpu_signal_support;
+
+  struct Info {
+    size_t worker_count;
+  } info;
+};
+
 struct RenderingData : task::ParentResource {
   struct Presentation {
     VkSwapchainKHR swapchain;
@@ -70,45 +193,28 @@ struct RenderingData : task::ParentResource {
 
   struct FrameInfo {
     uint64_t number;
+    uint64_t timeline_semaphore_value;
     uint8_t inflight_index;
   } latest_frame;
 
   typedef std::vector<CommandPool2> CommandPools;
   CommandPools command_pools;
+
+  VkSemaphore frame_rendered_semaphore;
+  lib::gfx::multi_alloc::Instance multi_alloc;
+
+  struct Example {
+    lib::gfx::multi_alloc::StakeBuffer uniform_stake;
+    VkRenderPass render_pass;
+    VkPipeline pipeline;
+    std::vector<lib::gfx::multi_alloc::StakeImage> image_stakes;
+    std::vector<VkImageView> image_views;
+    std::vector<VkFramebuffer> framebuffers;
+  } example;
 };
 
-struct SessionData : task::ParentResource {
-  struct GLFW {
-    GLFWwindow *window;
-  } glfw;
-
-  struct Vulkan : task::ParentResource {
-    VkInstance instance;
-    VkDebugUtilsMessengerEXT debug_messenger;
-    VkSurfaceKHR window_surface;
-    VkPhysicalDevice physical_device;
-
-    struct Core {
-      VkDevice device;
-      const VkAllocationCallbacks *allocator;
-    } core;
-
-    struct CoreProperties {
-      VkPhysicalDeviceProperties basic;
-      VkPhysicalDeviceMemoryProperties memory;
-      VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing;
-    } properties;
-
-    VkQueue queue_present;
-    VkQueue queue_work; // graphics, compute, transfer
-    uint32_t queue_family_index;
-  } vulkan;
-
-  lib::gpu_signal::Support gpu_signal_support;
-
-  struct Info {
-    size_t worker_count;
-  } info;
+struct ComposedData {
+  VkCommandBuffer cmd;
 };
 
 void defer(
@@ -139,9 +245,35 @@ void rendering_cleanup(
 ) {
   ZoneScoped;
   auto vulkan = &session->vulkan;
-  vkDestroySwapchainKHR(
+  { ZoneScopedN("example");
+    for (auto framebuffer : data->example.framebuffers) {
+      vkDestroyFramebuffer(
+        vulkan->core.device,
+        framebuffer,
+        vulkan->core.allocator
+      );
+    }
+    for (auto image_view : data->example.image_views) {
+      vkDestroyImageView(
+        vulkan->core.device,
+        image_view,
+        vulkan->core.allocator
+      );
+    }
+    vkDestroyRenderPass(
+      vulkan->core.device,
+      data->example.render_pass,
+      vulkan->core.allocator
+    );
+    vkDestroyPipeline(
+      vulkan->core.device,
+      data->example.pipeline,
+      vulkan->core.allocator
+    );
+  }
+  lib::gfx::multi_alloc::deinit(
+    &data->multi_alloc,
     vulkan->core.device,
-    data->presentation.swapchain,
     vulkan->core.allocator
   );
   for (auto &pool2 : data->command_pools) {
@@ -165,6 +297,16 @@ void rendering_cleanup(
       vulkan->core.allocator
     );
   }
+  vkDestroySemaphore(
+    vulkan->core.device,
+    data->frame_rendered_semaphore,
+    vulkan->core.allocator
+  );
+  vkDestroySwapchainKHR(
+    vulkan->core.device,
+    data->presentation.swapchain,
+    vulkan->core.allocator
+  );
   delete data.ptr;
   ctx->changed_parents = {
     { .ptr = data.ptr, .children = {} }
@@ -179,6 +321,52 @@ void rendering_frame_poll_events(
   ZoneScoped;
   // TODO
   glfwPollEvents();
+}
+
+void signal_cleanup(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_LOW_PRIORITY>,
+  task::Shared<RenderingData::InflightGPU> inflight_gpu,
+  task::Exclusive<uint8_t> inflight_index_saved
+) {
+  std::scoped_lock lock(inflight_gpu->mutex);
+  assert(inflight_gpu->signals[*inflight_index_saved] != nullptr);
+  inflight_gpu->signals[*inflight_index_saved] = nullptr;
+  delete inflight_index_saved.ptr;
+}
+
+void rendering_frame_setup_gpu_signal(
+  task::Context *ctx,
+  task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
+  task::Shared<SessionData::Vulkan::Core> core,
+  task::Shared<lib::gpu_signal::Support> gpu_signal_support,
+  task::Shared<VkSemaphore> frame_rendered_semaphore,
+  task::Exclusive<RenderingData::InflightGPU> inflight_gpu,
+  task::Shared<RenderingData::FrameInfo> frame_info
+) {
+  ZoneScoped;
+  // don't use inflight_gpu->mutex, since out signal slot is currently unusedk
+  assert(inflight_gpu->signals[frame_info->inflight_index] == nullptr);
+   auto signal = lib::gpu_signal::create(
+    gpu_signal_support.ptr,
+    core->device,
+    *frame_rendered_semaphore,
+    frame_info->timeline_semaphore_value
+  );
+  auto inflight_index_saved = new uint8_t(frame_info->inflight_index); // frame_info will not be around!
+  auto task_cleanup = task::create(signal_cleanup, inflight_gpu.ptr, inflight_index_saved);
+  auto task_deferred_cleanup = task::create(defer, task_cleanup);
+  {
+    std::scoped_lock lock(inflight_gpu->mutex);
+    inflight_gpu->signals[frame_info->inflight_index] = task_cleanup; // not the signal itself, on purpose
+  }
+  lib::task::inject(ctx->runner, {
+    task_deferred_cleanup
+  }, {
+    .new_dependencies = {
+      { signal, task_deferred_cleanup }
+    }
+  });
 }
 
 void rendering_frame_reset_pools(
@@ -228,7 +416,8 @@ void rendering_frame_render_composed(
   task::Shared<SessionData::Vulkan::Core> core,
   task::Exclusive<RenderingData::Presentation> presentation,
   task::Shared<RenderingData::CommandPools> command_pools,
-  task::Shared<RenderingData::FrameInfo> frame_info
+  task::Shared<RenderingData::FrameInfo> frame_info,
+  task::Exclusive<ComposedData> data
 ) {
   ZoneScoped;
   auto pool2 = &(*command_pools)[frame_info->inflight_index];
@@ -248,62 +437,98 @@ void rendering_frame_render_composed(
     );
     assert(result == VK_SUCCESS);
   }
-  { // barrier for presentation
-    // @Note:
-    // https://themaister.net/blog/2019/08/14/yet-another-blog-explaining-vulkan-synchronization/
-    // "A PRACTICAL BOTTOM_OF_PIPE EXAMPLE" suggests we can
-    // use dstStageMask = BOTTOM_OF_PIPE, dstAccessMask = 0
-    VkImageMemoryBarrier barrier = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-      .srcAccessMask = 0, // wait for nothing
-      .dstAccessMask = 0, // see above
-      .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-      .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .image = presentation->swapchain_images[presentation->latest_image_index],
-      .subresourceRange = {
-        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-        .baseMipLevel = 0,
-        .levelCount = 1,
-        .baseArrayLayer = 0,
-        .layerCount = 1,
-      }
+  { // begin
+    auto info = VkCommandBufferBeginInfo {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     };
-    vkCmdPipelineBarrier(
-      cmd,
-      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, // wait for nothing
-      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, // see above
-      0,
-      0, nullptr,
-      0, nullptr,
-      1, &barrier
-    );
+    auto result = vkBeginCommandBuffer(cmd, &info);
+    assert(result == VK_SUCCESS);
+  }
+  { TracyVkZone(core->tracy_context, cmd, "render_composed");
+    { // barrier for presentation
+      // @Note:
+      // https://themaister.net/blog/2019/08/14/yet-another-blog-explaining-vulkan-synchronization/
+      // "A PRACTICAL BOTTOM_OF_PIPE EXAMPLE" suggests we can
+      // use dstStageMask = BOTTOM_OF_PIPE, dstAccessMask = 0
+      VkImageMemoryBarrier barrier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = 0, // wait for nothing
+        .dstAccessMask = 0, // see above
+        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = presentation->swapchain_images[presentation->latest_image_index],
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .baseMipLevel = 0,
+          .levelCount = 1,
+          .baseArrayLayer = 0,
+          .layerCount = 1,
+        }
+      };
+      vkCmdPipelineBarrier(
+        cmd,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, // wait for nothing
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, // see above
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &barrier
+      );
+    }
+  }
+  TracyVkCollect(core->tracy_context, cmd);
+  { // end
+    auto result = vkEndCommandBuffer(cmd);
+    assert(result == VK_SUCCESS);
   }
   command_pool_2_return(pool2, pool);
+  data->cmd = cmd;
 }
 
 void rendering_frame_submit_composed(
   task::Context *ctx,
   task::QueueMarker<QUEUE_INDEX_NORMAL_PRIORITY>,
+  task::Exclusive<VkQueue> queue_work,
   task::Exclusive<RenderingData::Presentation> presentation,
+  task::Shared<VkSemaphore> frame_rendered_semaphore,
   task::Shared<RenderingData::FrameInfo> frame_info,
-  task::Exclusive<VkQueue> queue_work
+  task::Exclusive<ComposedData> data
 ) {
   ZoneScoped;
   VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+  VkSemaphore signal_semaphores[] = {
+    *frame_rendered_semaphore,
+    presentation->image_rendered[frame_info->inflight_index],
+  };
+  uint64_t binary_semaphore_irrelevant_value = 0;
+  uint64_t signal_values[] = {
+    frame_info->timeline_semaphore_value,
+    binary_semaphore_irrelevant_value,
+  };
+  auto timeline_info = VkTimelineSemaphoreSubmitInfo {
+    .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
+    .waitSemaphoreValueCount = 1,
+    .pWaitSemaphoreValues = &binary_semaphore_irrelevant_value,
+    .signalSemaphoreValueCount = sizeof(signal_values) / sizeof(*signal_values),
+    .pSignalSemaphoreValues = signal_values,
+  };
   VkSubmitInfo submit_info = {
     .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+    .pNext = &timeline_info,
     .waitSemaphoreCount = 1,
     .pWaitSemaphores = &presentation->image_acquired[frame_info->inflight_index],
     .pWaitDstStageMask = &wait_stage,
-    .commandBufferCount = 0,
-    .pCommandBuffers = nullptr,
-    .signalSemaphoreCount = 1,
-    .pSignalSemaphores = &presentation->image_rendered[frame_info->inflight_index],
+    .commandBufferCount = 1,
+    .pCommandBuffers = &data->cmd,
+    .signalSemaphoreCount = sizeof(signal_semaphores) / sizeof(*signal_semaphores),
+    .pSignalSemaphores = signal_semaphores,
   };
   auto result = vkQueueSubmit(*queue_work, 1, &submit_info, VK_NULL_HANDLE);
   assert(result == VK_SUCCESS);
+  delete data.ptr;
 }
 
 void rendering_frame_present(
@@ -355,10 +580,16 @@ void rendering_frame(
   task::Shared<RenderingData::SwapchainDescription> swapchain_description,
   task::Shared<RenderingData::InflightGPU> inflight_gpu
 ) {
-  ZoneScoped;
+  ZoneScopedC(0xFF0000);
   FrameMark;
   bool should_stop = glfwWindowShouldClose(glfw->window);
+  #if true
+  // @Debug !!!
+  if (should_stop || latest_frame->number == 10) {
+    glfwSetWindowShouldClose(glfw->window, 1);
+  #else
   if (should_stop) {
+  #endif
     std::scoped_lock lock(inflight_gpu->mutex);
     auto task_has_finished = task::create(rendering_has_finished, rendering_stop_signal.ptr);
     task::Auxiliary aux;
@@ -369,33 +600,75 @@ void rendering_frame(
     return;
   }
   latest_frame->number++;
+  latest_frame->timeline_semaphore_value = latest_frame->number + 1;
   latest_frame->inflight_index = (
     latest_frame->number % swapchain_description->image_count
   );
   auto frame_info = new RenderingData::FrameInfo(*latest_frame);
-  {
+  auto composed_data = new ComposedData;
+  auto frame_tasks = new std::vector<task::Task *>({
+    task::create(rendering_frame_poll_events),
+    task::create(
+      rendering_frame_setup_gpu_signal,
+      &session->vulkan.core,
+      &session->gpu_signal_support,
+      &data->frame_rendered_semaphore,
+      &data->inflight_gpu,
+      frame_info
+    ),
+    task::create(
+      rendering_frame_reset_pools,
+      &session->vulkan.core,
+      &data->command_pools,
+      frame_info
+    ),
+    task::create(
+      rendering_frame_acquire,
+      &session->vulkan.core,
+      &data->presentation,
+      frame_info
+    ),
+    task::create(
+      rendering_frame_render_composed,
+      &session->vulkan.core,
+      &data->presentation,
+      &data->command_pools,
+      frame_info,
+      composed_data
+    ),
+    task::create(
+      rendering_frame_submit_composed,
+      &session->vulkan.queue_work,
+      &data->presentation,
+      &data->frame_rendered_semaphore,
+      frame_info,
+      composed_data
+    ),
+    task::create(
+      rendering_frame_present,
+      &data->presentation,
+      frame_info,
+      &session->vulkan.queue_present
+    ),
+    task::create(
+      rendering_frame_cleanup,
+      frame_info
+    ),
+    task::create(
+      rendering_frame,
+      rendering_stop_signal.ptr,
+      session.ptr,
+      data.ptr,
+      glfw.ptr,
+      latest_frame.ptr,
+      swapchain_description.ptr,
+      inflight_gpu.ptr
+    ),
+  });
+  auto task_defer = task::create(defer_many, frame_tasks);
+  { // inject under inflight mutex
     std::scoped_lock lock(inflight_gpu->mutex);
     auto signal = inflight_gpu->signals[latest_frame->inflight_index];
-    auto frame_tasks = new std::vector<task::Task *>({
-      task::create(rendering_frame_poll_events),
-      task::create(rendering_frame_reset_pools, &session->vulkan.core, &data->command_pools, frame_info),
-      task::create(rendering_frame_acquire, &session->vulkan.core, &data->presentation, frame_info),
-      task::create(rendering_frame_render_composed, &session->vulkan.core, &data->presentation, &data->command_pools, frame_info),
-      task::create(rendering_frame_submit_composed, &data->presentation, frame_info, &session->vulkan.queue_work),
-      task::create(rendering_frame_present, &data->presentation, frame_info, &session->vulkan.queue_present),
-      task::create(rendering_frame_cleanup, frame_info),
-      task::create(
-        rendering_frame,
-        rendering_stop_signal.ptr,
-        session.ptr,
-        data.ptr,
-        glfw.ptr,
-        latest_frame.ptr,
-        swapchain_description.ptr,
-        inflight_gpu.ptr
-      ),
-    });
-    auto task_defer = task::create(defer_many, frame_tasks);
     task::inject(ctx->runner, {
       task_defer,
     }, {
@@ -532,7 +805,368 @@ void session_iteration_try_rendering(
       }
     }
   }
+  { ZoneScopedN("frame_rendered_semaphore");
+    VkSemaphoreTypeCreateInfo timeline_info = {
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+      .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+    };
+    VkSemaphoreCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+      .pNext = &timeline_info,
+    };
+    auto result = vkCreateSemaphore(
+      session->vulkan.core.device,
+      &create_info,
+      session->vulkan.core.allocator,
+      &rendering->frame_rendered_semaphore
+    );
+    assert(result == VK_SUCCESS);
+  }
+  { ZoneScopedN("multi_alloc");
+    uint32_t vs_ubo_aligned_size = lib::gfx::utilities::aligned_size(
+      sizeof(example::VS_UBO),
+      session->vulkan.properties.basic.limits.minUniformBufferOffsetAlignment
+    );
+    uint32_t fs_ubo_aligned_size = lib::gfx::utilities::aligned_size(
+      sizeof(example::FS_UBO),
+      session->vulkan.properties.basic.limits.minUniformBufferOffsetAlignment
+    );
+    uint32_t total_ubo_aligned_size = vs_ubo_aligned_size + fs_ubo_aligned_size;
 
+    std::vector<lib::gfx::multi_alloc::Claim> claims;
+    claims.push_back({
+      .info = {
+        .buffer = {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+          .size = total_ubo_aligned_size * rendering->swapchain_description.image_count,
+          .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        },
+      },
+      .memory_property_flags = VkMemoryPropertyFlagBits(0
+        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+      ),
+      .p_stake_buffer = &rendering->example.uniform_stake,
+    });
+    rendering->example.image_stakes.resize(
+      rendering->swapchain_description.image_count
+    );
+    for (auto &stake : rendering->example.image_stakes) {
+      claims.push_back({
+        .info = {
+          .image = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format = rendering->swapchain_description.image_format,
+            .extent = {
+              .width = rendering->swapchain_description.image_extent.width,
+              .height = rendering->swapchain_description.image_extent.height,
+              .depth = 1,
+            },
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .tiling = VK_IMAGE_TILING_OPTIMAL,
+            .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          },
+        },
+        .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        .p_stake_image = &stake,
+      });
+    }
+    lib::gfx::multi_alloc::init(
+      &rendering->multi_alloc,
+      std::move(claims),
+      session->vulkan.core.device,
+      session->vulkan.core.allocator,
+      &session->vulkan.properties.basic,
+      &session->vulkan.properties.memory
+    );
+  }
+  { ZoneScopedN("example");
+    { ZoneScopedN("update_descriptor_set");
+      VkDescriptorBufferInfo vs_info = {
+        .buffer = rendering->example.uniform_stake.buffer,
+        .offset = 0,
+        .range = sizeof(example::VS_UBO),
+      };
+      VkDescriptorBufferInfo fs_info = {
+        .buffer = rendering->example.uniform_stake.buffer,
+        .offset = 0,
+        .range = sizeof(example::FS_UBO),
+      };
+      VkWriteDescriptorSet writes[] = {
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = session->vulkan.example.descriptor_set,
+          .dstBinding = 0,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+          .pBufferInfo = &vs_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = session->vulkan.example.descriptor_set,
+          .dstBinding = 1,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+          .pBufferInfo = &fs_info,
+        },
+      };
+      vkUpdateDescriptorSets(
+        session->vulkan.core.device,
+        sizeof(writes) / sizeof(*writes), writes,
+        0, nullptr
+      );
+    }
+    { ZoneScopedN("render_pass");
+      VkAttachmentDescription attachment_description = {
+        .format = rendering->swapchain_description.image_format,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+      };
+      VkAttachmentReference color_attachment_ref = {
+        .attachment = 0,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      };
+      VkSubpassDescription subpass_description = {
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &color_attachment_ref,
+      };
+      VkRenderPassCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .attachmentCount = 1,
+        .pAttachments = &attachment_description,
+        .subpassCount = 1,
+        .pSubpasses = &subpass_description,
+      };
+      auto result = vkCreateRenderPass(
+        vulkan->core.device,
+        &create_info,
+        vulkan->core.allocator,
+        &rendering->example.render_pass
+      );
+      assert(result == VK_SUCCESS);
+    }
+    { ZoneScopedN("pipeline");
+      VkShaderModule module_frag = VK_NULL_HANDLE;
+      { ZoneScopedN("module_frag");
+        VkShaderModuleCreateInfo info = {
+          .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+          .codeSize = embedded_example_rs_frag_len,
+          .pCode = (const uint32_t*) embedded_example_rs_frag,
+        };
+        auto result = vkCreateShaderModule(
+          vulkan->core.device,
+          &info,
+          vulkan->core.allocator,
+          &module_frag
+        );
+        assert(result == VK_SUCCESS);
+      }
+      VkShaderModule module_vert = VK_NULL_HANDLE;
+      { ZoneScopedN("module_vert");
+        VkShaderModuleCreateInfo info = {
+          .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+          .codeSize = embedded_example_rs_vert_len,
+          .pCode = (const uint32_t*) embedded_example_rs_vert,
+        };
+        auto result = vkCreateShaderModule(
+          vulkan->core.device,
+          &info,
+          vulkan->core.allocator,
+          &module_vert
+        );
+        assert(result == VK_SUCCESS);
+      }
+      VkPipelineShaderStageCreateInfo shader_stages[] = {
+        {
+          .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+          .stage = VK_SHADER_STAGE_VERTEX_BIT,
+          .module = module_vert,
+          .pName = "main",
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+          .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+          .module = module_frag,
+          .pName = "main",
+        },
+      };
+      VkVertexInputBindingDescription binding_description = {
+        .binding = 0,
+        .stride = sizeof(example::Vertex),
+        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+      };
+      VkVertexInputAttributeDescription attribute_descriptions[] = {
+        {
+          .location = 0,
+          .binding = 0,
+          .format = VK_FORMAT_R32G32B32_SFLOAT,
+          .offset = offsetof(example::Vertex, position),
+        },
+        {
+          .location = 1,
+          .binding = 0,
+          .format = VK_FORMAT_R32G32B32_SFLOAT,
+          .offset = offsetof(example::Vertex, normal),
+        }
+      };
+      VkPipelineVertexInputStateCreateInfo vertex_input_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &binding_description,
+        .vertexAttributeDescriptionCount = 2,
+        .pVertexAttributeDescriptions = attribute_descriptions,
+      };
+      VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        .primitiveRestartEnable = VK_FALSE,
+      };
+      VkViewport viewport = {
+        .x = 0.0f,
+        .y = 0.0f,
+        .width = float(rendering->swapchain_description.image_extent.width),
+        .height = float(rendering->swapchain_description.image_extent.height),
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f,
+      };
+      VkRect2D scissor = {
+        .offset = {0, 0},
+        .extent = rendering->swapchain_description.image_extent,
+      };
+      VkPipelineViewportStateCreateInfo viewport_state_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount = 1,
+        .pViewports = &viewport,
+        .scissorCount = 1,
+        .pScissors = &scissor,
+      };
+      VkPipelineRasterizationStateCreateInfo rasterizer_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .depthClampEnable = VK_FALSE,
+        .rasterizerDiscardEnable = VK_FALSE,
+        .polygonMode = VK_POLYGON_MODE_FILL,
+        .cullMode = VK_CULL_MODE_BACK_BIT,
+        .frontFace = VK_FRONT_FACE_CLOCKWISE,
+        .depthBiasEnable = VK_FALSE,
+        .lineWidth = 1.0f,
+      };
+      VkPipelineMultisampleStateCreateInfo multisample_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+        .sampleShadingEnable = VK_FALSE,
+      };
+      VkPipelineColorBlendAttachmentState color_blend_attachment = {
+        .blendEnable = VK_FALSE,
+        .colorWriteMask = (0
+          | VK_COLOR_COMPONENT_R_BIT
+          | VK_COLOR_COMPONENT_G_BIT
+          | VK_COLOR_COMPONENT_B_BIT
+          | VK_COLOR_COMPONENT_A_BIT
+        ),
+      };
+      VkPipelineColorBlendStateCreateInfo color_blend_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .logicOpEnable = VK_FALSE,
+        .attachmentCount = 1,
+        .pAttachments = &color_blend_attachment,
+      };
+      VkGraphicsPipelineCreateInfo pipelineInfo = {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount = 2,
+        .pStages = shader_stages,
+        .pVertexInputState = &vertex_input_info,
+        .pInputAssemblyState = &input_assembly_info,
+        .pViewportState = &viewport_state_info,
+        .pRasterizationState = &rasterizer_info,
+        .pMultisampleState = &multisample_info,
+        .pDepthStencilState = nullptr,
+        .pColorBlendState = &color_blend_info,
+        .pDynamicState = nullptr,
+        .layout = vulkan->example.pipeline_layout,
+        .renderPass = rendering->example.render_pass,
+        .subpass = 0,
+      };
+      {
+        auto result = vkCreateGraphicsPipelines(
+          vulkan->core.device,
+          VK_NULL_HANDLE,
+          1, &pipelineInfo,
+          vulkan->core.allocator,
+          &rendering->example.pipeline
+        );
+        assert(result == VK_SUCCESS);
+      }
+      vkDestroyShaderModule(vulkan->core.device, module_frag, vulkan->core.allocator);
+      vkDestroyShaderModule(vulkan->core.device, module_vert, vulkan->core.allocator);
+    }
+    { ZoneScopedN("images");
+    }
+    { ZoneScopedN("image_views");
+      for (auto stake : rendering->example.image_stakes) {
+        VkImageView image_view;
+        VkImageViewCreateInfo create_info = {
+          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+          .image = stake.image,
+          .viewType = VK_IMAGE_VIEW_TYPE_2D,
+          .format = rendering->swapchain_description.image_format,
+          .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .levelCount = 1,
+            .layerCount = 1,
+          },
+        };
+        {
+          auto result = vkCreateImageView(
+            session->vulkan.core.device,
+            &create_info,
+            session->vulkan.core.allocator,
+            &image_view
+          );
+          assert(result == VK_SUCCESS);
+        }
+        rendering->example.image_views.push_back(image_view);
+      }
+    }
+    { ZoneScopedN("framebuffers");
+      for (auto image_view : rendering->example.image_views) {
+        VkFramebuffer framebuffer;
+        VkFramebufferCreateInfo create_info = {
+          .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+          .renderPass = rendering->example.render_pass,
+          .attachmentCount = 1,
+          .pAttachments = &image_view,
+          .width = rendering->swapchain_description.image_extent.width,
+          .height = rendering->swapchain_description.image_extent.height,
+          .layers = 1,
+        };
+        {
+          auto result = vkCreateFramebuffer(
+            session->vulkan.core.device,
+            &create_info,
+            session->vulkan.core.allocator,
+            &framebuffer
+          );
+          assert(result == VK_SUCCESS);
+        }
+        rendering->example.framebuffers.push_back(framebuffer);
+      }
+    }
+  }
   auto rendering_stop_signal = lib::task::create_signal();
   auto task_frame = task::create(
     rendering_frame,
@@ -556,10 +1190,14 @@ void session_iteration_try_rendering(
   }, {
     .new_dependencies = { { rendering_stop_signal, task_cleanup } },
     .changed_parents = { { .ptr = rendering, .children = {
+      &rendering->presentation,
+      &rendering->swapchain_description,
       &rendering->inflight_gpu,
       &rendering->latest_frame,
-      &rendering->presentation,
-      &rendering->swapchain_description
+      &rendering->command_pools,
+      &rendering->frame_rendered_semaphore,
+      &rendering->multi_alloc,
+      &rendering->example,
     } } },
   });
 }
@@ -612,17 +1250,48 @@ void session_cleanup(
   }
   { ZoneScopedN("vulkan");
     auto it = &session->vulkan;
-    auto allocator = it->core.allocator;
+    { ZoneScopedN("example");
+      vkDestroyDescriptorSetLayout(
+        it->core.device,
+        it->example.descriptor_set_layout,
+        it->core.allocator
+      );
+      vkDestroyPipelineLayout(
+        it->core.device,
+        it->example.pipeline_layout,
+        it->core.allocator
+      );
+    }
+    { ZoneScopedN("multi_alloc");
+      lib::gfx::multi_alloc::deinit(&it->multi_alloc, it->core.device, it->core.allocator);
+    }
+    { ZoneScopedN("core.tracy_context");
+      TracyVkDestroy(it->core.tracy_context);
+    }
+    vkDestroyCommandPool(
+      it->core.device,
+      it->setup_command_pool,
+      it->core.allocator
+    );
+    vkDestroyDescriptorPool(
+      it->core.device,
+      it->common_descriptor_pool,
+      it->core.allocator
+    );
     auto _vkDestroyDebugUtilsMessengerEXT = 
       (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(
         it->instance,
         "vkDestroyDebugUtilsMessengerEXT"
       );
-    _vkDestroyDebugUtilsMessengerEXT(it->instance, it->debug_messenger, allocator);
-    vkDestroyDevice(it->core.device, allocator);
-    assert(it->core.allocator == nullptr);
-    vkDestroySurfaceKHR(it->instance, it->window_surface, allocator);
-    vkDestroyInstance(it->instance, allocator);
+    _vkDestroyDebugUtilsMessengerEXT(
+      it->instance,
+      it->debug_messenger,
+      it->core.allocator
+    );
+    vkDestroyDevice(it->core.device, it->core.allocator);
+    vkDestroySurfaceKHR(it->instance, it->window_surface, it->core.allocator);
+    vkDestroyInstance(it->instance, it->core.allocator);
+    assert(it->core.allocator == nullptr); // move along, nothing to destroy
   }
   { ZoneScopedN("glfw");
     glfwDestroyWindow(session->glfw.window);
@@ -674,13 +1343,13 @@ void session(
       glfwSetInputMode(it->window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     }
   }
-  { ZoneScopedN("vulkan");
+  { ZoneScopedN(".vulkan");
     auto it = &session->vulkan;
 
     // don't use the allocator callbacks
     const VkAllocationCallbacks *allocator = nullptr;
 
-    { ZoneScopedN("instance");
+    { ZoneScopedN(".instance");
       uint32_t glfw_extension_count = 0;
       auto glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
       std::vector<const char *> extensions(
@@ -712,7 +1381,7 @@ void session(
         assert(result == VK_SUCCESS);
       }
     }
-    { ZoneScopedN("debug_messenger");
+    { ZoneScopedN(".debug_messenger");
       auto _vkCreateDebugUtilsMessengerEXT = 
         (PFN_vkCreateDebugUtilsMessengerEXT)
           vkGetInstanceProcAddr(it->instance, "vkCreateDebugUtilsMessengerEXT");
@@ -739,7 +1408,7 @@ void session(
       );
       assert(result == VK_SUCCESS);
     }
-    { ZoneScopedN("window_surface");
+    { ZoneScopedN(".window_surface");
       auto result = glfwCreateWindowSurface(
         it->instance,
         session->glfw.window,
@@ -748,7 +1417,7 @@ void session(
       );
       assert(result == VK_SUCCESS);
     }
-    { ZoneScopedN("physical_device");
+    { ZoneScopedN(".physical_device");
       // find the first discrete GPU physical device
       // in future, this should be more nuanced.
       {
@@ -768,12 +1437,11 @@ void session(
       }
     }
 
-    uint32_t queue_family_index = (uint32_t) -1;
     // find a queue family that supports everything we need:
     // graphics, compute, transfer, present.
     // this probably works on most (all?) modern desktop GPUs.
-    uint32_t queue_work_family_index = (uint32_t) -1;
-    { ZoneScopedN("family-indices");
+    uint32_t queue_family_index = (uint32_t) -1;
+    { ZoneScopedN("family_indices");
       uint32_t queue_family_count = 0;
       vkGetPhysicalDeviceQueueFamilyProperties(
         it->physical_device,
@@ -808,20 +1476,20 @@ void session(
       }
       assert(queue_family_index != (uint32_t) -1);
     }
-    { ZoneScopedN("core");
-      float queue_priority = 1.0f;
+    { ZoneScopedN(".core");
+      float queue_priorities[] = { 1.0f, 1.0f };
       VkDeviceQueueCreateInfo queue_create_info = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = queue_work_family_index,
+        .queueFamilyIndex = queue_family_index,
         .queueCount = 2,
-        .pQueuePriorities = &queue_priority,
+        .pQueuePriorities = queue_priorities,
       };
       const std::vector<const char*> device_extensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
         VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, // for RAY_TRACING_PIPELINE
         VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, // for ACCELERATION_STRUCTURE
-        VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
+        VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, // for Tracy
       };
       VkPhysicalDeviceTimelineSemaphoreFeatures timeline_semaphore_features = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
@@ -872,7 +1540,7 @@ void session(
       assert(it->queue_present != VK_NULL_HANDLE);
       assert(it->queue_work != VK_NULL_HANDLE);
     }
-    { ZoneScopedN("properties");
+    { ZoneScopedN(".properties");
       VkPhysicalDeviceProperties properties;
       vkGetPhysicalDeviceProperties(it->physical_device, &it->properties.basic);
 
@@ -890,8 +1558,178 @@ void session(
         vkGetPhysicalDeviceProperties2(it->physical_device, &properties2);
       }
     }
+    { ZoneScopedN(".setup_command_pool");
+      VkCommandPoolCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = it->queue_family_index,
+      };
+      auto result = vkCreateCommandPool(
+        it->core.device,
+        &create_info,
+        it->core.allocator,
+        &it->setup_command_pool
+      );
+      assert(result == VK_SUCCESS);
+    }
+    { ZoneScopedN(".common_descriptor_pool");
+      VkDescriptorPoolSize size = {
+        .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+        .descriptorCount = 1024, // ?
+      };
+      VkDescriptorPoolCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, 
+        .maxSets = 256, // ?
+        .poolSizeCount = 1,
+        .pPoolSizes = &size,
+      };
+      auto result = vkCreateDescriptorPool(
+        it->core.device,
+        &create_info,
+        it->core.allocator,
+        &it->common_descriptor_pool
+      );
+      assert(result == VK_SUCCESS);
+    }
+    { ZoneScopedN(".multi_alloc");
+      std::vector<lib::gfx::multi_alloc::Claim> claims;
+      claims.push_back({
+        .info = {
+          .buffer = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = 1,
+            .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+          },
+        },
+        .memory_property_flags = VkMemoryPropertyFlagBits(0
+          | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+          | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        ),
+        .p_stake_buffer = &it->example.vertex_stake
+      });
+      lib::gfx::multi_alloc::init(
+        &it->multi_alloc,
+        std::move(claims),
+        it->core.device,
+        it->core.allocator,
+        &it->properties.basic,
+        &it->properties.memory
+      );
+    }
+    { ZoneScopedN(".example");
+      { ZoneScopedN(".descriptor_set_layout");
+        VkDescriptorSetLayoutBinding layout_bindings[] = {
+          {
+            .binding = 0,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_ALL,
+          },
+          {
+            .binding = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_ALL,
+          },
+        };
+        VkDescriptorSetLayoutCreateInfo create_info = {
+          .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+          .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
+          .pBindings = layout_bindings,
+        };
+        {
+          auto result = vkCreateDescriptorSetLayout(
+            it->core.device,
+            &create_info,
+            it->core.allocator,
+            &it->example.descriptor_set_layout
+          );
+          assert(result == VK_SUCCESS);
+        }
+      }
+      { ZoneScopedN(".descriptor_set");
+        VkDescriptorSetAllocateInfo allocate_info = {
+          .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+          .descriptorPool = it->common_descriptor_pool,
+          .descriptorSetCount = 1,
+          .pSetLayouts = &it->example.descriptor_set_layout,
+        };
+        {
+          auto result = vkAllocateDescriptorSets(
+            it->core.device,
+            &allocate_info,
+            &it->example.descriptor_set
+          );
+          assert(result == VK_SUCCESS);
+        }
+      }
+      { ZoneScopedN(".pipeline_layout");
+        VkPipelineLayoutCreateInfo info = {
+          .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+          .setLayoutCount = 1,
+          .pSetLayouts = &it->example.descriptor_set_layout,
+        };
+        {
+          auto result = vkCreatePipelineLayout(
+            it->core.device,
+            &info,
+            it->core.allocator,
+            &it->example.pipeline_layout
+          );
+          assert(result == VK_SUCCESS);
+        }
+      }
+    }
+    { ZoneScopedN("copy_vertex_buffer_data");
+      void * data;
+      {
+        auto result = vkMapMemory(
+          it->core.device,
+          it->example.vertex_stake.memory,
+          it->example.vertex_stake.offset,
+          it->example.vertex_stake.size,
+          0,
+          &data
+        );
+        assert(result == VK_SUCCESS);
+      }
+      memcpy(data, example::vertices, sizeof(example::vertices));
+      vkUnmapMemory(
+        it->core.device,
+        it->example.vertex_stake.memory
+      );
+    }
+    { ZoneScopedN(".core.tracy_context");
+      auto gpdctd = (PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT)
+        vkGetInstanceProcAddr(session->vulkan.instance, "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT");
+      auto gct = (PFN_vkGetCalibratedTimestampsEXT)
+        vkGetInstanceProcAddr(session->vulkan.instance, "vkGetCalibratedTimestampsEXT");
+      assert(gpdctd != nullptr);
+      assert(gct != nullptr);
+      VkCommandBuffer cmd;
+      {
+        auto info = VkCommandBufferAllocateInfo {
+          .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+          .commandPool = session->vulkan.setup_command_pool,
+          .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+          .commandBufferCount = 1,
+        };
+        auto result = vkAllocateCommandBuffers(session->vulkan.core.device, &info, &cmd);
+        assert(result == VK_SUCCESS);
+      }
+      session->vulkan.core.tracy_context = TracyVkContextCalibrated(
+        session->vulkan.physical_device,
+        session->vulkan.core.device,
+        session->vulkan.queue_work,
+        cmd,
+        gpdctd,
+        gct
+      );
+    }
   }
-  { ZoneScopedN("gpu_signal_support");
+  { ZoneScopedN(".gpu_signal_support");
     session->gpu_signal_support = lib::gpu_signal::init_support(
       ctx->runner,
       session->vulkan.core.device,
@@ -931,6 +1769,11 @@ void session(
           &session->vulkan.properties,
           &session->vulkan.queue_present,
           &session->vulkan.queue_work,
+          &session->vulkan.queue_family_index,
+          &session->vulkan.setup_command_pool,
+          &session->vulkan.common_descriptor_pool,
+          &session->vulkan.multi_alloc,
+          &session->vulkan.example
         }
       },
     },
