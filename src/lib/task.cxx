@@ -236,6 +236,7 @@ void _internal_infer_resource_dependencies(
         }
       }
       for (auto pt : current_owners_ref.previous_tasks) {
+        assert(pt != t);
         if (!r->dependants.contains(pt)) {
           r->dependants[pt] = { t };
         } else {
@@ -283,6 +284,7 @@ void _internal_infer_resource_dependencies(
       }
 
       for (auto owner : transient_owners.tasks) {
+        assert(owner != t);
         if (!r->dependants.contains(owner)) {
           r->dependants[owner] = { t };
         } else {
@@ -314,6 +316,7 @@ void _internal_inject(Runner *r, std::vector<Task *> &tasks, Task *super) {
   );
   for (auto t : tasks) {
     if (super != nullptr) {
+      assert(super != t);
       r->dependants[t] = { super };
     }
     std::unordered_map<void *, ResourceMode> map;
@@ -439,6 +442,7 @@ void run_task_worker(Runner *r, int worker_index, uint64_t queue_access_bits) {
         _internal_task_finished(r, t);
       }
     } else {
+      assert(r_lock.owns_lock());
       // already _locked_ here
       // no task available.
       if (r->workers_should_stop_on_no_work) {
@@ -529,9 +533,10 @@ void inject(Runner *r, std::vector<Task *> && tasks, Auxiliary && aux) {
     if (d.first == nullptr) {
       continue;
     }
-    assert (d.second != nullptr);
-    assert (d.second->queue_index != QUEUE_INDEX_EXTERNAL_SIGNAL_ONLY);
-    assert (d.second->queue_index != QUEUE_INDEX_YARN_SIGNAL_ONLY);
+    assert(d.first != d.second);
+    assert(d.second != nullptr);
+    assert(d.second->queue_index != QUEUE_INDEX_EXTERNAL_SIGNAL_ONLY);
+    assert(d.second->queue_index != QUEUE_INDEX_YARN_SIGNAL_ONLY);
     if (d.first->queue_index == QUEUE_INDEX_EXTERNAL_SIGNAL_ONLY) {
       r->unresolved_dependency_external_signals.insert(d.first);
     }
@@ -578,7 +583,10 @@ void signal(Runner *r, Task *s) {
     || (s->queue_index == QUEUE_INDEX_YARN_SIGNAL_ONLY)
   );
   assert(s->resources.size() == 0);
-  r->unresolved_dependency_external_signals.erase(s);
+  if (s->queue_index == QUEUE_INDEX_EXTERNAL_SIGNAL_ONLY) {
+    assert(r->unresolved_dependency_external_signals.contains(s));
+    r->unresolved_dependency_external_signals.erase(s);
+  }
   _internal_task_finished(r, s);
 }
 

@@ -31,6 +31,12 @@ lib::task::Task *create(
     .value = value,
     .signal = signal,
   };
+
+  // sanity check
+  uint64_t current;
+  vkGetSemaphoreCounterValue(device, semaphore, &current);
+  assert(current < value);
+
   {
     std::scoped_lock(it->storage->mutex);
     it->storage->entries.push_back(entry);

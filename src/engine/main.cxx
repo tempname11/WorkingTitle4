@@ -3,6 +3,9 @@
 #include <glm/glm.hpp>
 #include <GLFW/glfw3.h>
 #include <TracyVulkan.hpp>
+#include <imgui.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_vulkan.h>
 #include <src/embedded.hxx>
 #include <src/lib/task.hxx>
 #include <src/lib/debug_camera.hxx>
@@ -151,7 +154,7 @@ struct SessionData : task::ParentResource {
     VkQueue queue_work; // graphics, compute, transfer
     uint32_t queue_family_index;
 
-    VkCommandPool setup_command_pool;
+    VkCommandPool tracy_setup_command_pool;
     VkDescriptorPool common_descriptor_pool;
 
     lib::gfx::multi_alloc::Instance multi_alloc;
@@ -163,6 +166,11 @@ struct SessionData : task::ParentResource {
       VkPipelineLayout pipeline_layout;
     } example;
   } vulkan;
+
+  struct ImguiContext {
+    // ImGui::* and ImGui_ImplGlfw_*
+    uint8_t padding;
+  } imgui_context;
 
   lib::gpu_signal::Support gpu_signal_support;
 
@@ -191,6 +199,13 @@ struct RenderingData : task::ParentResource {
     std::vector<task::Task *> signals;
   } inflight_gpu;
 
+  struct ImguiBackend {
+    // ImGui_ImplVulkan_*
+    VkRenderPass render_pass;
+    VkCommandPool setup_command_pool;
+    VkSemaphore setup_semaphore;
+  } imgui_backend;
+
   struct FrameInfo {
     uint64_t number;
     uint64_t timeline_semaphore_value;
@@ -201,7 +216,9 @@ struct RenderingData : task::ParentResource {
   CommandPools command_pools;
 
   VkSemaphore example_finished_semaphore;
+  VkSemaphore imgui_finished_semaphore;
   VkSemaphore frame_rendered_semaphore;
+
   lib::gfx::multi_alloc::Instance multi_alloc;
 
   struct Example {
@@ -222,6 +239,10 @@ struct ComposeData {
 };
 
 struct ExampleData {
+  VkCommandBuffer cmd;
+};
+
+struct ImguiData {
   VkCommandBuffer cmd;
 };
 
@@ -281,6 +302,12 @@ void rendering_cleanup(
     vulkan->core.device,
     vulkan->core.allocator
   );
+  vkDestroyRenderPass(
+    vulkan->core.device,
+    data->imgui_backend.render_pass,
+    vulkan->core.allocator
+  );
+  ImGui_ImplVulkan_Shutdown();
   for (auto &pool2 : data->command_pools) {
     for (auto pool : pool2.pools) {
       vkDestroyCommandPool(
@@ -309,6 +336,11 @@ void rendering_cleanup(
   );
   vkDestroySemaphore(
     vulkan->core.device,
+    data->imgui_finished_semaphore,
+    vulkan->core.allocator
+  );
+  vkDestroySemaphore(
+    vulkan->core.device,
     data->frame_rendered_semaphore,
     vulkan->core.allocator
   );
@@ -328,7 +360,7 @@ void rendering_frame_poll_events(
   task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx
 ) {
   ZoneScoped;
-  // TODO
+  // @Incomplete: this needs rethinking
   glfwPollEvents();
 }
 
@@ -347,14 +379,14 @@ void rendering_frame_setup_gpu_signal(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Some<lib::gpu_signal::Support> gpu_signal_support,
-  usage::Some<VkSemaphore> frame_rendered_semaphore,
+  usage::Full<VkSemaphore> frame_rendered_semaphore,
   usage::Full<RenderingData::InflightGPU> inflight_gpu,
   usage::Some<RenderingData::FrameInfo> frame_info
 ) {
   ZoneScoped;
   // don't use inflight_gpu->mutex, since out signal slot is currently unusedk
   assert(inflight_gpu->signals[frame_info->inflight_index] == nullptr);
-   auto signal = lib::gpu_signal::create(
+  auto signal = lib::gpu_signal::create(
     gpu_signal_support.ptr,
     core->device,
     *frame_rendered_semaphore,
@@ -543,6 +575,111 @@ void rendering_frame_example_submit(
   delete data.ptr;
 }
 
+void rendering_frame_imgui_populate(
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
+  usage::Full<SessionData::ImguiContext> imgui
+) {
+  ImGui::ShowDemoWindow(nullptr);
+}
+
+void rendering_frame_imgui_render(
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
+  usage::Some<SessionData::Vulkan::Core> core,
+  usage::Full<SessionData::ImguiContext> imgui_context,
+  usage::Full<RenderingData::ImguiBackend> imgui_backend,
+  usage::Some<RenderingData::Example> example_r, // for framebuffer
+  usage::Some<RenderingData::SwapchainDescription> swapchain_description,
+  usage::Some<RenderingData::CommandPools> command_pools,
+  usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Full<ImguiData> data
+) {
+  ZoneScoped;
+  ImGui::Render();
+  auto pool2 = &(*command_pools)[frame_info->inflight_index];
+  VkCommandPool pool = command_pool_2_borrow(pool2);
+  VkCommandBuffer cmd;
+  { // cmd
+    VkCommandBufferAllocateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+      .commandPool = pool,
+      .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+      .commandBufferCount = 1,
+    };
+    auto result = vkAllocateCommandBuffers(
+      core->device,
+      &info,
+      &cmd
+    );
+    assert(result == VK_SUCCESS);
+  }
+  { // begin
+    auto info = VkCommandBufferBeginInfo {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+    auto result = vkBeginCommandBuffer(cmd, &info);
+    assert(result == VK_SUCCESS);
+  }
+  auto drawData = ImGui::GetDrawData();
+  { // begin render pass
+    auto begin_info = VkRenderPassBeginInfo {
+      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+      .renderPass = imgui_backend->render_pass,
+      .framebuffer = example_r->framebuffers[frame_info->inflight_index],
+      .renderArea = {
+        .extent = swapchain_description->image_extent,
+      },
+      .clearValueCount = 0,
+      .pClearValues = nullptr,
+    };
+    vkCmdBeginRenderPass(cmd, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
+  }
+  ImGui_ImplVulkan_RenderDrawData(
+    drawData,
+    cmd
+  );
+  vkCmdEndRenderPass(cmd);
+  { // end
+    auto result = vkEndCommandBuffer(cmd);
+    assert(result == VK_SUCCESS);
+  }
+  command_pool_2_return(pool2, pool);
+  data->cmd = cmd;
+}
+
+void rendering_frame_imgui_submit(
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
+  usage::Full<VkQueue> queue_work,
+  usage::Some<VkSemaphore> example_finished_semaphore,
+  usage::Some<VkSemaphore> imgui_finished_semaphore,
+  usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Full<ImguiData> data
+) {
+  ZoneScoped;
+  VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  auto timeline_info = VkTimelineSemaphoreSubmitInfo {
+    .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
+    .waitSemaphoreValueCount = 1,
+    .pWaitSemaphoreValues = &frame_info->timeline_semaphore_value,
+    .signalSemaphoreValueCount = 1,
+    .pSignalSemaphoreValues = &frame_info->timeline_semaphore_value,
+  };
+  VkSubmitInfo submit_info = {
+    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+    .pNext = &timeline_info,
+    .waitSemaphoreCount = 1,
+    .pWaitSemaphores = example_finished_semaphore.ptr,
+    .pWaitDstStageMask = &wait_stage,
+    .commandBufferCount = 1,
+    .pCommandBuffers = &data->cmd,
+    .signalSemaphoreCount = 1,
+    .pSignalSemaphores = imgui_finished_semaphore.ptr,
+  };
+  auto result = vkQueueSubmit(*queue_work, 1, &submit_info, VK_NULL_HANDLE);
+  assert(result == VK_SUCCESS);
+  delete data.ptr;
+}
+
 void rendering_frame_acquire(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
@@ -700,14 +837,14 @@ void rendering_frame_compose_submit(
   usage::Full<VkQueue> queue_work,
   usage::Full<RenderingData::Presentation> presentation,
   usage::Some<VkSemaphore> frame_rendered_semaphore,
-  usage::Some<VkSemaphore> example_finished_semaphore,
+  usage::Some<VkSemaphore> imgui_finished_semaphore,
   usage::Some<RenderingData::FrameInfo> frame_info,
   usage::Full<ComposeData> data
 ) {
   ZoneScoped;
   uint64_t zero = 0;
   VkSemaphore wait_semaphores[] = {
-    *example_finished_semaphore,
+    *imgui_finished_semaphore,
     presentation->image_acquired[frame_info->inflight_index]
   };
   VkPipelineStageFlags wait_stages[] = {
@@ -765,7 +902,7 @@ void rendering_frame_present(
     .pImageIndices = &presentation->latest_image_index,
   };
   auto result = vkQueuePresentKHR(*queue_present, &info);
-  assert(result == VK_SUCCESS);
+  assert(result == VK_SUCCESS); // @Incomplete: check for OUT_OF_DATE etc.
 }
 
 void rendering_frame_cleanup(
@@ -790,6 +927,8 @@ void rendering_frame(
   usage::None<SessionData> session,
   usage::None<RenderingData> data,
   usage::Some<SessionData::GLFW> glfw,
+  usage::Full<SessionData::ImguiContext> imgui_context,
+  usage::Full<RenderingData::ImguiBackend> imgui_backend,
   usage::Full<RenderingData::FrameInfo> latest_frame,
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::InflightGPU> inflight_gpu
@@ -807,6 +946,9 @@ void rendering_frame(
     task::inject(ctx->runner, { task_has_finished }, std::move(aux));
     return;
   }
+  ImGui_ImplVulkan_NewFrame();
+  ImGui_ImplGlfw_NewFrame();
+  ImGui::NewFrame();
   latest_frame->number++;
   latest_frame->timeline_semaphore_value = latest_frame->number + 1;
   latest_frame->inflight_index = (
@@ -815,6 +957,7 @@ void rendering_frame(
   auto frame_info = new RenderingData::FrameInfo(*latest_frame);
   auto compose_data = new ComposeData;
   auto example_data = new ExampleData;
+  auto imgui_data = new ImguiData;
   auto frame_tasks = new std::vector<task::Task *>({
     task::create(rendering_frame_poll_events),
     task::create(
@@ -862,6 +1005,29 @@ void rendering_frame(
       example_data
     ),
     task::create(
+      rendering_frame_imgui_populate,
+      &session->imgui_context
+    ),
+    task::create(
+      rendering_frame_imgui_render,
+      &session->vulkan.core,
+      &session->imgui_context,
+      &data->imgui_backend,
+      &data->example,
+      &data->swapchain_description,
+      &data->command_pools,
+      frame_info,
+      imgui_data
+    ),
+    task::create(
+      rendering_frame_imgui_submit,
+      &session->vulkan.queue_work,
+      &data->example_finished_semaphore,
+      &data->imgui_finished_semaphore,
+      frame_info,
+      imgui_data
+    ),
+    task::create(
       rendering_frame_compose_render,
       &session->vulkan.core,
       &data->presentation,
@@ -876,7 +1042,7 @@ void rendering_frame(
       &session->vulkan.queue_work,
       &data->presentation,
       &data->frame_rendered_semaphore,
-      &data->example_finished_semaphore,
+      &data->imgui_finished_semaphore,
       frame_info,
       compose_data
     ),
@@ -896,6 +1062,8 @@ void rendering_frame(
       session.ptr,
       data.ptr,
       glfw.ptr,
+      imgui_context.ptr,
+      imgui_backend.ptr,
       latest_frame.ptr,
       swapchain_description.ptr,
       inflight_gpu.ptr
@@ -913,12 +1081,32 @@ void rendering_frame(
   }
 }
 
+void rendering_imgui_setup_cleanup(
+  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  usage::Some<SessionData::Vulkan::Core> core,
+  usage::Full<RenderingData::ImguiBackend> imgui_backend
+) {
+  ImGui_ImplVulkan_DestroyFontUploadObjects();
+  vkDestroyCommandPool(
+    core->device,
+    imgui_backend->setup_command_pool,
+    core->allocator
+  );
+  vkDestroySemaphore(
+    core->device,
+    imgui_backend->setup_semaphore,
+    core->allocator
+  );
+}
+
 void session_iteration_try_rendering(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<task::Task> session_iteration_yarn_end,
   usage::Full<SessionData> session
 ) {
   ZoneScoped;
+  VkCommandBuffer cmd_imgui_setup = VK_NULL_HANDLE;
+  task::Task* signal_imgui_setup_finished = nullptr;
   auto vulkan = &session->vulkan;
   VkSurfaceCapabilitiesKHR surface_capabilities;
   { // get capabilities
@@ -941,7 +1129,7 @@ void session_iteration_try_rendering(
   auto rendering = new RenderingData;
   // how many images are in swapchain?
   uint32_t swapchain_image_count;
-  { ZoneScopedN("presentation");
+  { ZoneScopedN(".presentation");
     VkSwapchainCreateInfoKHR swapchain_create_info = {
       .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
       .surface = vulkan->window_surface,
@@ -1015,9 +1203,129 @@ void session_iteration_try_rendering(
   rendering->swapchain_description.image_extent = surface_capabilities.currentExtent;
   rendering->swapchain_description.image_format = SWAPCHAIN_FORMAT;
   rendering->inflight_gpu.signals.resize(swapchain_image_count, nullptr);
+  { ZoneScopedN(".imgui_backend");
+    { ZoneScopedN(".setup_command_pool");
+      VkCommandPoolCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .queueFamilyIndex = session->vulkan.queue_family_index,
+      };
+      auto result = vkCreateCommandPool(
+        session->vulkan.core.device,
+        &create_info,
+        session->vulkan.core.allocator,
+        &rendering->imgui_backend.setup_command_pool
+      );
+      assert(result == VK_SUCCESS);
+    }
+    { ZoneScopedN(".setup_semaphore");
+      VkSemaphoreTypeCreateInfo timeline_info = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+      };
+      VkSemaphoreCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = &timeline_info,
+      };
+      auto result = vkCreateSemaphore(
+        session->vulkan.core.device,
+        &create_info,
+        session->vulkan.core.allocator,
+        &rendering->imgui_backend.setup_semaphore
+      );
+      assert(result == VK_SUCCESS);
+    }
+    signal_imgui_setup_finished = lib::gpu_signal::create(
+      &session->gpu_signal_support,
+      session->vulkan.core.device,
+      rendering->imgui_backend.setup_semaphore,
+      1
+    );
+    { ZoneScopedN(".render_pass");
+      VkRenderPass render_pass;
+        {
+          VkAttachmentDescription color_attachment = {
+            .format = rendering->swapchain_description.image_format,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+          };
+          VkAttachmentReference color_attachment_ref = {
+            .attachment = 0,
+            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+          };
+          VkSubpassDescription subpass = {
+            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+            .colorAttachmentCount = 1,
+            .pColorAttachments = &color_attachment_ref,
+          };
+          VkRenderPassCreateInfo create_info = {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+            .attachmentCount = 1,
+            .pAttachments = &color_attachment,
+            .subpassCount = 1,
+            .pSubpasses = &subpass,
+          };
+          {
+            auto result = vkCreateRenderPass(
+              session->vulkan.core.device,
+              &create_info,
+              session->vulkan.core.allocator,
+              &rendering->imgui_backend.render_pass
+            );
+            assert(result == VK_SUCCESS);
+          }
+        }
+    }
+    { ZoneScopedN("init");
+      ImGui_ImplVulkan_InitInfo info = {
+        .Instance = session->vulkan.instance,
+        .PhysicalDevice = session->vulkan.physical_device,
+        .Device = session->vulkan.core.device,
+        .QueueFamily = session->vulkan.queue_family_index,
+        .Queue = session->vulkan.queue_work,
+        .DescriptorPool = session->vulkan.common_descriptor_pool,
+        .Subpass = 0,
+        .MinImageCount = rendering->swapchain_description.image_count,
+        .ImageCount = rendering->swapchain_description.image_count,
+        .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
+        .Allocator = session->vulkan.core.allocator,
+      };
+      ImGui_ImplVulkan_Init(&info, rendering->imgui_backend.render_pass);
+    }
+    { ZoneScopedN("fonts_texture");
+      auto alloc_info = VkCommandBufferAllocateInfo {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = rendering->imgui_backend.setup_command_pool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+      };
+      vkAllocateCommandBuffers(
+        session->vulkan.core.device,
+        &alloc_info,
+        &cmd_imgui_setup
+      );
+      { // begin
+        VkCommandBufferBeginInfo begin_info = {
+          .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+          .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        };
+        auto result = vkBeginCommandBuffer(cmd_imgui_setup, &begin_info);
+        assert(result == VK_SUCCESS);
+      }
+      ImGui_ImplVulkan_CreateFontsTexture(cmd_imgui_setup);
+      { // end
+        auto result = vkEndCommandBuffer(cmd_imgui_setup);
+        assert(result == VK_SUCCESS);
+      }
+    }
+  }
   rendering->latest_frame.number = uint64_t(-1);
   rendering->latest_frame.inflight_index = uint8_t(-1);
-  { ZoneScopedN("command_pools");
+  { ZoneScopedN(".command_pools");
     rendering->command_pools = std::vector<CommandPool2>(swapchain_image_count);
     for (size_t i = 0; i < swapchain_image_count; i++) {
       rendering->command_pools[i].pools.resize(session->info.worker_count);
@@ -1040,7 +1348,7 @@ void session_iteration_try_rendering(
       }
     }
   }
-  { ZoneScopedN("frame_rendered_semaphore");
+  { ZoneScopedN(".frame_rendered_semaphore");
     VkSemaphoreTypeCreateInfo timeline_info = {
       .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
       .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
@@ -1057,7 +1365,7 @@ void session_iteration_try_rendering(
     );
     assert(result == VK_SUCCESS);
   }
-  { ZoneScopedN("example_finished_semaphore");
+  { ZoneScopedN(".example_finished_semaphore");
     VkSemaphoreTypeCreateInfo timeline_info = {
       .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
       .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
@@ -1074,6 +1382,23 @@ void session_iteration_try_rendering(
     );
     assert(result == VK_SUCCESS);
   }
+  { ZoneScopedN(".imgui_finished_semaphore");
+    VkSemaphoreTypeCreateInfo timeline_info = {
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+      .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+    };
+    VkSemaphoreCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+      .pNext = &timeline_info,
+    };
+    auto result = vkCreateSemaphore(
+      session->vulkan.core.device,
+      &create_info,
+      session->vulkan.core.allocator,
+      &rendering->imgui_finished_semaphore
+    );
+    assert(result == VK_SUCCESS);
+  }
   rendering->example.vs_ubo_aligned_size = lib::gfx::utilities::aligned_size(
     sizeof(example::VS_UBO),
     session->vulkan.properties.basic.limits.minUniformBufferOffsetAlignment
@@ -1086,7 +1411,7 @@ void session_iteration_try_rendering(
     rendering->example.vs_ubo_aligned_size +
     rendering->example.fs_ubo_aligned_size
   );
-  { ZoneScopedN("multi_alloc");
+  { ZoneScopedN(".multi_alloc");
     std::vector<lib::gfx::multi_alloc::Claim> claims;
     claims.push_back({
       .info = {
@@ -1144,7 +1469,7 @@ void session_iteration_try_rendering(
       &session->vulkan.properties.memory
     );
   }
-  { ZoneScopedN("example");
+  { ZoneScopedN(".example");
     { ZoneScopedN("update_descriptor_set");
       VkDescriptorBufferInfo vs_info = {
         .buffer = rendering->example.uniform_stake.buffer,
@@ -1182,7 +1507,7 @@ void session_iteration_try_rendering(
         0, nullptr
       );
     }
-    { ZoneScopedN("render_pass");
+    { ZoneScopedN(".render_pass");
       VkAttachmentDescription attachment_description = {
         .format = rendering->swapchain_description.image_format,
         .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -1191,7 +1516,7 @@ void session_iteration_try_rendering(
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       };
       VkAttachmentReference color_attachment_ref = {
         .attachment = 0,
@@ -1217,7 +1542,7 @@ void session_iteration_try_rendering(
       );
       assert(result == VK_SUCCESS);
     }
-    { ZoneScopedN("pipeline");
+    { ZoneScopedN(".pipeline");
       VkShaderModule module_frag = VK_NULL_HANDLE;
       { ZoneScopedN("module_frag");
         VkShaderModuleCreateInfo info = {
@@ -1371,9 +1696,7 @@ void session_iteration_try_rendering(
       vkDestroyShaderModule(vulkan->core.device, module_frag, vulkan->core.allocator);
       vkDestroyShaderModule(vulkan->core.device, module_vert, vulkan->core.allocator);
     }
-    { ZoneScopedN("images");
-    }
-    { ZoneScopedN("image_views");
+    { ZoneScopedN(".image_stakes");
       for (auto stake : rendering->example.image_stakes) {
         VkImageView image_view;
         VkImageViewCreateInfo create_info = {
@@ -1399,7 +1722,7 @@ void session_iteration_try_rendering(
         rendering->example.image_views.push_back(image_view);
       }
     }
-    { ZoneScopedN("framebuffers");
+    { ZoneScopedN(".framebuffers");
       for (auto image_view : rendering->example.image_views) {
         VkFramebuffer framebuffer;
         VkFramebufferCreateInfo create_info = {
@@ -1431,6 +1754,8 @@ void session_iteration_try_rendering(
     session.ptr,
     rendering,
     &session->glfw,
+    &session->imgui_context,
+    &rendering->imgui_backend,
     &rendering->latest_frame,
     &rendering->swapchain_description,
     &rendering->inflight_gpu
@@ -1441,23 +1766,64 @@ void session_iteration_try_rendering(
     session.ptr,
     rendering
   ));
+  auto task_imgui_setup_cleanup = task::create(defer, task::create(
+    rendering_imgui_setup_cleanup,
+    &session->vulkan.core,
+    &rendering->imgui_backend
+  ));
   task::inject(ctx->runner, {
     task_frame,
+    task_imgui_setup_cleanup,
     task_cleanup,
   }, {
-    .new_dependencies = { { rendering_yarn_end, task_cleanup } },
+    .new_dependencies = {
+      { signal_imgui_setup_finished, task_frame },
+      { signal_imgui_setup_finished, task_imgui_setup_cleanup },
+      { rendering_yarn_end, task_cleanup }
+    },
     .changed_parents = { { .ptr = rendering, .children = {
       &rendering->presentation,
       &rendering->swapchain_description,
       &rendering->inflight_gpu,
+      &rendering->imgui_backend,
       &rendering->latest_frame,
       &rendering->command_pools,
-      &rendering->frame_rendered_semaphore,
       &rendering->example_finished_semaphore,
+      &rendering->imgui_finished_semaphore,
+      &rendering->frame_rendered_semaphore,
       &rendering->multi_alloc,
       &rendering->example,
     } } },
   });
+  { ZoneScopedN("submit_imgui_setup");
+    // this needs to happen after `inject`,
+    // so that the signal is still valid here.
+
+    // check sanity
+    assert(signal_imgui_setup_finished != nullptr);
+    assert(cmd_imgui_setup != VK_NULL_HANDLE);
+
+    uint64_t one = 1;
+    auto timeline_info = VkTimelineSemaphoreSubmitInfo {
+      .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
+      .signalSemaphoreValueCount = 1,
+      .pSignalSemaphoreValues = &one,
+    };
+    VkSubmitInfo submit_info = {
+      .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+      .pNext = &timeline_info,
+      .commandBufferCount = 1,
+      .pCommandBuffers = &cmd_imgui_setup,
+      .signalSemaphoreCount = 1,
+      .pSignalSemaphores = &rendering->imgui_backend.setup_semaphore,
+    };
+    auto result = vkQueueSubmit(
+      session->vulkan.queue_work,
+      1, &submit_info,
+      VK_NULL_HANDLE
+    );
+    assert(result == VK_SUCCESS);
+  }
 }
 
 void session_iteration(
@@ -1497,16 +1863,16 @@ void session_cleanup(
   usage::Full<SessionData> session
 ) {
   ZoneScoped;
-  { ZoneScopedN("gpu_signal_support");
+  { ZoneScopedN(".gpu_signal_support");
     lib::gpu_signal::deinit_support(
       &session->gpu_signal_support,
       session->vulkan.core.device,
       session->vulkan.core.allocator
     );
   }
-  { ZoneScopedN("vulkan");
+  { ZoneScopedN(".vulkan");
     auto it = &session->vulkan;
-    { ZoneScopedN("example");
+    { ZoneScopedN(".example");
       vkDestroyDescriptorSetLayout(
         it->core.device,
         it->example.descriptor_set_layout,
@@ -1518,15 +1884,15 @@ void session_cleanup(
         it->core.allocator
       );
     }
-    { ZoneScopedN("multi_alloc");
+    { ZoneScopedN(".multi_alloc");
       lib::gfx::multi_alloc::deinit(&it->multi_alloc, it->core.device, it->core.allocator);
     }
-    { ZoneScopedN("core.tracy_context");
+    { ZoneScopedN(".core.tracy_context");
       TracyVkDestroy(it->core.tracy_context);
     }
     vkDestroyCommandPool(
       it->core.device,
-      it->setup_command_pool,
+      it->tracy_setup_command_pool,
       it->core.allocator
     );
     vkDestroyDescriptorPool(
@@ -1549,7 +1915,11 @@ void session_cleanup(
     vkDestroyInstance(it->instance, it->core.allocator);
     assert(it->core.allocator == nullptr); // move along, nothing to destroy
   }
-  { ZoneScopedN("glfw");
+  { ZoneScopedN(".imgui_context");
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+  } 
+  { ZoneScopedN(".glfw");
     glfwDestroyWindow(session->glfw.window);
     glfwTerminate();
   }
@@ -1597,6 +1967,11 @@ void session(
     if (glfwRawMouseMotionSupported()) {
       glfwSetInputMode(it->window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     }
+  }
+  { ZoneScopedN(".imgui_context");
+    ImGui::CreateContext();
+    ImGui_ImplGlfw_InitForVulkan(session->glfw.window, true);
+    session->imgui_context = {}; // for clarity. maybe in future some data will be populated here
   }
   { ZoneScopedN(".vulkan");
     auto it = &session->vulkan;
@@ -1816,7 +2191,7 @@ void session(
         vkGetPhysicalDeviceProperties2(it->physical_device, &properties2);
       }
     }
-    { ZoneScopedN(".setup_command_pool");
+    { ZoneScopedN(".tracy_setup_command_pool");
       VkCommandPoolCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
@@ -1826,20 +2201,33 @@ void session(
         it->core.device,
         &create_info,
         it->core.allocator,
-        &it->setup_command_pool
+        &it->tracy_setup_command_pool
       );
       assert(result == VK_SUCCESS);
     }
     { ZoneScopedN(".common_descriptor_pool");
-      VkDescriptorPoolSize size = {
-        .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-        .descriptorCount = 1024, // ?
+      // "large enough"
+      const uint32_t COMMON_DESCRIPTOR_COUNT = 1024;
+      const uint32_t COMMON_DESCRIPTOR_MAX_SETS = 256;
+
+      VkDescriptorPoolSize sizes[] = {
+        { VK_DESCRIPTOR_TYPE_SAMPLER, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, COMMON_DESCRIPTOR_COUNT },
       };
       VkDescriptorPoolCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, 
-        .maxSets = 256, // ?
+        .maxSets = COMMON_DESCRIPTOR_MAX_SETS,
         .poolSizeCount = 1,
-        .pPoolSizes = &size,
+        .pPoolSizes = sizes,
       };
       auto result = vkCreateDescriptorPool(
         it->core.device,
@@ -1970,7 +2358,7 @@ void session(
       {
         auto info = VkCommandBufferAllocateInfo {
           .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-          .commandPool = session->vulkan.setup_command_pool,
+          .commandPool = session->vulkan.tracy_setup_command_pool,
           .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
           .commandBufferCount = 1,
         };
@@ -2012,6 +2400,7 @@ void session(
         .children = {
           &session->glfw,
           &session->vulkan,
+          &session->imgui_context,
           &session->gpu_signal_support,
           &session->info,
         }
@@ -2028,7 +2417,7 @@ void session(
           &session->vulkan.queue_present,
           &session->vulkan.queue_work,
           &session->vulkan.queue_family_index,
-          &session->vulkan.setup_command_pool,
+          &session->vulkan.tracy_setup_command_pool,
           &session->vulkan.common_descriptor_pool,
           &session->vulkan.multi_alloc,
           &session->vulkan.example
@@ -2038,28 +2427,38 @@ void session(
   });
 }
 
-const task::QueueAccessFlags QUEUE_ACCESS_FLAGS_MAIN_THREAD = (0
-  | (1 << QUEUE_INDEX_MAIN_THREAD_ONLY)
-);
-
 const task::QueueAccessFlags QUEUE_ACCESS_FLAGS_WORKER_THREAD = (0
   | (1 << QUEUE_INDEX_HIGH_PRIORITY)
   | (1 << QUEUE_INDEX_NORMAL_PRIORITY)
   | (1 << QUEUE_INDEX_LOW_PRIORITY)
 );
 
+// #define NUM_TASK_THREADS 1
+
+const task::QueueAccessFlags QUEUE_ACCESS_FLAGS_MAIN_THREAD = (0
+  | (1 << QUEUE_INDEX_MAIN_THREAD_ONLY)
+  #if NUM_TASK_THREADS == 1
+    | QUEUE_ACCESS_FLAGS_WORKER_THREAD
+  #endif
+);
+
 int main() {
-  #ifndef NDEBUG
-    auto num_threads = 4u;
+  #ifdef NUM_TASK_THREADS
+    unsigned int num_threads = NUM_TASK_THREADS;
   #else
     auto num_threads = std::max(1u, std::thread::hardware_concurrency());
   #endif
-  size_t worker_count = num_threads - 1;
+  #if NUM_TASK_THREADS == 1
+    size_t worker_count = 1;
+    std::vector<task::QueueAccessFlags> worker_access_flags;
+  #else
+    size_t worker_count = num_threads - 1;
+    std::vector<task::QueueAccessFlags> worker_access_flags(worker_count, QUEUE_ACCESS_FLAGS_WORKER_THREAD);
+  #endif
   auto runner = task::create_runner(QUEUE_COUNT);
   task::inject(runner, {
     task::create(session, &worker_count),
   });
-  std::vector worker_access_flags(worker_count, QUEUE_ACCESS_FLAGS_WORKER_THREAD);
   task::run(runner, std::move(worker_access_flags), QUEUE_ACCESS_FLAGS_MAIN_THREAD);
   task::discard_runner(runner);
   #ifdef TRACY_NO_EXIT
