@@ -177,6 +177,10 @@ struct SessionData : task::ParentResource {
   struct Info {
     size_t worker_count;
   } info;
+
+  struct State {
+    bool show_imgui;
+  } state;
 };
 
 struct RenderingData : task::ParentResource {
@@ -244,6 +248,10 @@ struct ExampleData {
 
 struct ImguiData {
   VkCommandBuffer cmd;
+};
+
+struct GlfwUserData {
+  SessionData::State *state;
 };
 
 void defer(
@@ -357,11 +365,17 @@ void rendering_cleanup(
 }
 
 void rendering_frame_poll_events(
-  task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx
+  task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
+  usage::Full<SessionData::GLFW> glfw,
+  usage::Full<SessionData::State> session_state
 ) {
   ZoneScoped;
-  // @Incomplete: this needs rethinking
+  auto user_data = new GlfwUserData {
+    .state = session_state.ptr,
+  };
+  glfwSetWindowUserPointer(glfw->window, user_data);
   glfwPollEvents();
+  glfwSetWindowUserPointer(glfw->window, nullptr);
 }
 
 void signal_cleanup(
@@ -587,9 +601,12 @@ void rendering_frame_imgui_new_frame(
 
 void rendering_frame_imgui_populate(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  usage::Full<SessionData::ImguiContext> imgui
+  usage::Full<SessionData::ImguiContext> imgui,
+  usage::Some<SessionData::State> state
 ) {
-  ImGui::ShowDemoWindow(nullptr);
+  if (state->show_imgui) {
+    ImGui::ShowDemoWindow(nullptr);
+  }
 }
 
 void rendering_frame_imgui_render(
@@ -937,7 +954,7 @@ void rendering_frame(
   usage::None<SessionData> session,
   usage::None<RenderingData> data,
   usage::Some<SessionData::GLFW> glfw,
-  usage::Full<SessionData::ImguiContext> imgui_context,
+  usage::None<SessionData::ImguiContext> imgui_context,
   usage::Full<RenderingData::ImguiBackend> imgui_backend,
   usage::Full<RenderingData::FrameInfo> latest_frame,
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
@@ -966,7 +983,11 @@ void rendering_frame(
   auto example_data = new ExampleData;
   auto imgui_data = new ImguiData;
   auto frame_tasks = new std::vector<task::Task *>({
-    task::create(rendering_frame_poll_events),
+    task::create(
+      rendering_frame_poll_events,
+      &session->glfw,
+      &session->state
+    ),
     task::create(
       rendering_frame_setup_gpu_signal,
       &session->vulkan.core,
@@ -1017,7 +1038,8 @@ void rendering_frame(
     ),
     task::create(
       rendering_frame_imgui_populate,
-      &session->imgui_context
+      &session->imgui_context,
+      &session->state
     ),
     task::create(
       rendering_frame_imgui_render,
@@ -1962,14 +1984,15 @@ void session(
     int width = DEFAULT_WINDOW_WIDTH;
     int height = DEFAULT_WINDOW_HEIGHT;
     #if 0
-      // duplicates code in process_settings
       monitor = glfwGetPrimaryMonitor();
       auto mode = glfwGetVideoMode(monitor);
+
       // hints for borderless fullscreen
       glfwWindowHint(GLFW_RED_BITS, mode->redBits);
       glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
       glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
       glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+
       width = mode->width;
       height = mode->height;
     #endif
@@ -1978,6 +2001,27 @@ void session(
     if (glfwRawMouseMotionSupported()) {
       glfwSetInputMode(it->window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     }
+
+    /*
+    glfwSetMouseButtonCallback(window, [](GLFWwindow *window, int button, int action, int mods) {
+    });
+
+    glfwSetScrollCallback(window, [](GLFWwindow *window, double xoffset, double yoffset) {
+    });
+
+    glfwSetCharCallback(window, [](GLFWwindow *window, unsigned int c) {
+    });
+    */
+
+    glfwSetKeyCallback(it->window, [](GLFWwindow *window, int key, int scancode, int action, int mods) {
+      auto ptr = (GlfwUserData *) glfwGetWindowUserPointer(window);
+      if (ptr == nullptr) {
+        return;
+      }
+      if (action == GLFW_PRESS && key == GLFW_KEY_GRAVE_ACCENT) {
+        ptr->state->show_imgui = !ptr->state->show_imgui;
+      }
+    });
   }
   { ZoneScopedN(".imgui_context");
     ImGui::CreateContext();
@@ -2394,6 +2438,7 @@ void session(
     );
   }
   session->info.worker_count = *worker_count;
+  session->state = {};
   // session is fully initialized at this point
 
   auto task_iteration = task::create(session_iteration, yarn_end, session);
@@ -2414,6 +2459,7 @@ void session(
           &session->imgui_context,
           &session->gpu_signal_support,
           &session->info,
+          &session->state,
         }
       },
       {
