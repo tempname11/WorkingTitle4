@@ -16,7 +16,7 @@
 #include <src/global.hxx>
 
 // #define ENGINE_DEBUG_TASK_THREADS 1
-// #define ENGINE_DEBUG_ARTIFICIAL_DELAY 100ms
+// #define ENGINE_DEBUG_ARTIFICIAL_DELAY 33ms
 
 namespace task = lib::task;
 namespace usage = lib::usage;
@@ -134,6 +134,9 @@ void command_pool_2_return(CommandPool2 *pool2, VkCommandPool pool) {
 struct SessionData : task::ParentResource {
   struct GLFW {
     GLFWwindow *window;
+    glm::ivec2 last_window_position;
+    glm::ivec2 last_window_size;
+    glm::vec2 last_known_mouse_cursor_position;
   } glfw;
 
   struct Vulkan : task::ParentResource {
@@ -184,8 +187,8 @@ struct SessionData : task::ParentResource {
 
   struct State {
     bool show_imgui;
+    bool is_fullscreen;
     lib::debug_camera::State debug_camera;
-    glm::vec2 last_known_mouse_cursor_position;
   } state;
 };
 
@@ -406,14 +409,46 @@ void rendering_frame_handle_window_events(
     if (w > 0 && h > 0) {
       auto new_position = 2.0f * glm::vec2(x / w, y / h) - 1.0f;
       if (is_focused
-        && !isnan(session_state->last_known_mouse_cursor_position.x)
-        && !isnan(session_state->last_known_mouse_cursor_position.y)
+        && !isnan(glfw->last_known_mouse_cursor_position.x)
+        && !isnan(glfw->last_known_mouse_cursor_position.y)
       ) {
-        cursor_delta = new_position - session_state->last_known_mouse_cursor_position;
+        cursor_delta = new_position - glfw->last_known_mouse_cursor_position;
       }
-      session_state->last_known_mouse_cursor_position = new_position;
+      glfw->last_known_mouse_cursor_position = new_position;
     } else {
-      session_state->last_known_mouse_cursor_position = glm::vec2(NAN, NAN);
+      glfw->last_known_mouse_cursor_position = glm::vec2(NAN, NAN);
+    }
+  }
+  { ZoneScopedN("fullscreen");
+    // @Incomplete
+    auto monitor = glfwGetWindowMonitor(glfw->window);
+    if (monitor == nullptr && session_state->is_fullscreen) {
+      // save last position
+      glfwGetWindowPos(glfw->window, &glfw->last_window_position.x, &glfw->last_window_position.y);
+      glfwGetWindowSize(glfw->window, &glfw->last_window_size.x, &glfw->last_window_size.y);
+
+      monitor = glfwGetPrimaryMonitor();
+      auto mode = glfwGetVideoMode(monitor);
+
+      glfwSetWindowMonitor(
+        glfw->window, monitor,
+        0,
+        0,
+        mode->width,
+        mode->height,
+        mode->refreshRate
+      );
+      glfw->last_known_mouse_cursor_position = glm::vec2(NAN, NAN);
+    } else if (monitor != nullptr && !session_state->is_fullscreen) {
+      glfwSetWindowMonitor(
+        glfw->window, nullptr,
+        glfw->last_window_position.x, 
+        glfw->last_window_position.y, 
+        glfw->last_window_size.x,
+        glfw->last_window_size.y,
+        GLFW_DONT_CARE
+      );
+      glfw->last_known_mouse_cursor_position = glm::vec2(NAN, NAN);
     }
   }
   { ZoneScopedN("cursor_mode");
@@ -2198,20 +2233,11 @@ void session(
     GLFWmonitor *monitor = nullptr;
     int width = DEFAULT_WINDOW_WIDTH;
     int height = DEFAULT_WINDOW_HEIGHT;
-    #if 0
-      monitor = glfwGetPrimaryMonitor();
-      auto mode = glfwGetVideoMode(monitor);
 
-      // hints for borderless fullscreen
-      glfwWindowHint(GLFW_RED_BITS, mode->redBits);
-      glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
-      glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
-      glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
-
-      width = mode->width;
-      height = mode->height;
-    #endif
     it->window = glfwCreateWindow(width, height, "WorkingTitle", monitor, nullptr);
+    it->last_known_mouse_cursor_position = glm::vec2(NAN, NAN);
+    it->last_window_position = glm::ivec2(0, 0);
+    it->last_window_size = glm::ivec2(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
     assert(it->window != nullptr);
     if (glfwRawMouseMotionSupported()) {
       glfwSetInputMode(it->window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
@@ -2224,6 +2250,22 @@ void session(
       }
       if (action == GLFW_PRESS && key == GLFW_KEY_GRAVE_ACCENT) {
         ptr->state->show_imgui = !ptr->state->show_imgui;
+      }
+      if (false
+        || (true
+          && action == GLFW_PRESS
+          && key == GLFW_KEY_F11
+        )
+        || (true
+          && action == GLFW_PRESS
+          && key == GLFW_KEY_ENTER
+          && (false
+            || glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS
+            || glfwGetKey(window, GLFW_KEY_RIGHT_ALT) == GLFW_PRESS
+          )
+        )
+      ) {
+        ptr->state->is_fullscreen = !ptr->state->is_fullscreen;
       }
     });
   }
@@ -2644,7 +2686,6 @@ void session(
   session->info.worker_count = *worker_count;
   session->state = { .debug_camera = lib::debug_camera::init() };
   session->state.debug_camera.position = glm::vec3(0.0f, -5.0f, 0.0f);
-  session->state.last_known_mouse_cursor_position = glm::vec2(NAN, NAN);
   // session is fully initialized at this point
 
   auto task_iteration = task::create(session_iteration, yarn_end, session);
