@@ -1,3 +1,4 @@
+#include <chrono>
 #include <vector>
 #include <unordered_set>
 #include <glm/glm.hpp>
@@ -180,6 +181,8 @@ struct SessionData : task::ParentResource {
 
   struct State {
     bool show_imgui;
+    lib::debug_camera::State debug_camera;
+    glm::vec2 last_known_mouse_cursor_position;
   } state;
 };
 
@@ -211,6 +214,9 @@ struct RenderingData : task::ParentResource {
   } imgui_backend;
 
   struct FrameInfo {
+    uint64_t timestamp_ns;
+    uint64_t elapsed_ns;
+
     uint64_t number;
     uint64_t timeline_semaphore_value;
     uint8_t inflight_index;
@@ -252,6 +258,10 @@ struct ImguiData {
 
 struct GlfwUserData {
   SessionData::State *state;
+};
+
+struct UpdateData {
+  lib::debug_camera::Input debug_camera_input;
 };
 
 void defer(
@@ -364,10 +374,11 @@ void rendering_cleanup(
   task::signal(ctx->runner, session_iteration_yarn_end.ptr);
 }
 
-void rendering_frame_poll_events(
+void rendering_frame_handle_window_events(
   task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   usage::Full<SessionData::GLFW> glfw,
-  usage::Full<SessionData::State> session_state
+  usage::Full<SessionData::State> session_state,
+  usage::Full<UpdateData> update
 ) {
   ZoneScoped;
   auto user_data = new GlfwUserData {
@@ -376,8 +387,26 @@ void rendering_frame_poll_events(
   glfwSetWindowUserPointer(glfw->window, user_data);
   glfwPollEvents();
   glfwSetWindowUserPointer(glfw->window, nullptr);
+
+  auto cursor_delta = glm::vec2(0.0);
   auto is_focused = glfwGetWindowAttrib(glfw->window, GLFW_FOCUSED);
-  { ZoneScopedN("cursor");
+  { // update mouse position
+    double x, y;
+    int w, h;
+    glfwGetCursorPos(glfw->window, &x, &y);
+    glfwGetWindowSize(glfw->window, &w, &h);
+    if (w > 0 && h > 0) {
+      auto new_position = 2.0f * glm::vec2(x / w, y / h) - 1.0f;
+      if (is_focused
+        && !isnan(session_state->last_known_mouse_cursor_position.x)
+        && !isnan(session_state->last_known_mouse_cursor_position.y)
+      ) {
+        cursor_delta = new_position - session_state->last_known_mouse_cursor_position;
+      }
+      session_state->last_known_mouse_cursor_position = new_position;
+    }
+  }
+  { ZoneScopedN("cursor_mode");
     int desired_cursor_mode = (
       !is_focused || session_state->show_imgui
         ? GLFW_CURSOR_NORMAL
@@ -404,6 +433,67 @@ void rendering_frame_poll_events(
       }
       */
     }
+  }
+  { ZoneScopedN("update_data");
+    auto it = &update->debug_camera_input;
+    *it = {};
+    if (!session_state->show_imgui) {
+      it->cursor_position_delta = cursor_delta;
+    }
+    if (0
+      || (glfwGetKey(glfw->window, GLFW_KEY_W) == GLFW_PRESS)
+      || (glfwGetKey(glfw->window, GLFW_KEY_UP) == GLFW_PRESS)
+    ) {
+      it->y_pos = true;
+    }
+    if (0
+      || (glfwGetKey(glfw->window, GLFW_KEY_S) == GLFW_PRESS)
+      || (glfwGetKey(glfw->window, GLFW_KEY_DOWN) == GLFW_PRESS)
+    ) {
+      it->y_neg = true;
+    }
+    if (0
+      || (glfwGetKey(glfw->window, GLFW_KEY_D) == GLFW_PRESS)
+      || (glfwGetKey(glfw->window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+    ) {
+      it->x_pos = true;
+    }
+    if (0
+      || (glfwGetKey(glfw->window, GLFW_KEY_A) == GLFW_PRESS)
+      || (glfwGetKey(glfw->window, GLFW_KEY_LEFT) == GLFW_PRESS)
+    ) {
+      it->x_neg = true;
+    }
+    if (0
+      || (glfwGetKey(glfw->window, GLFW_KEY_E) == GLFW_PRESS)
+      || (glfwGetKey(glfw->window, GLFW_KEY_PAGE_UP) == GLFW_PRESS)
+    ) {
+      it->z_pos = true;
+    }
+    if (0
+      || (glfwGetKey(glfw->window, GLFW_KEY_Q) == GLFW_PRESS)
+      || (glfwGetKey(glfw->window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS)
+    ) {
+      it->z_neg = true;
+    }
+  }
+}
+
+void rendering_frame_update(
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
+  usage::Some<UpdateData> update,
+  usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Full<SessionData::State> session_state
+) {
+  // @Note: part of update currently happens in glfwPollEvents
+  ZoneScoped;
+  double elapsed_sec = double(frame_info->elapsed_ns) / (1000 * 1000 * 1000);
+  if (elapsed_sec > 0) {
+    lib::debug_camera::update(
+      &session_state->debug_camera,
+      &update->debug_camera_input,
+      elapsed_sec
+    );
   }
 }
 
@@ -476,6 +566,7 @@ void rendering_frame_example_prepare_uniforms(
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Some<SessionData::State> session_state, // too broad
   usage::Full<RenderingData::Example> example_r
 ) {
   ZoneScoped;
@@ -486,14 +577,12 @@ void rendering_frame_example_prepare_uniforms(
   auto light_position = glm::vec3(3.0f, 5.0f, 2.0f);
   auto light_intensity = glm::vec3(1000.0f, 1000.0f, 1000.0f);
   auto albedo = glm::vec3(1.0, 1.0, 1.0);
-  auto cam = lib::debug_camera::init();
-  cam.position = glm::vec3(0.0, -5.0, 0.0);
   const example::VS_UBO vs = {
     .projection = projection,
-    .view = lib::debug_camera::to_view_matrix(&cam),
+    .view = lib::debug_camera::to_view_matrix(&session_state->debug_camera),
   };
   const example::FS_UBO fs = {
-    .camera_position = cam.position,
+    .camera_position = session_state->debug_camera.position,
     .light_position = light_position,
     .light_intensity = light_intensity,
     .albedo = glm::vec3(1.0f, 1.0f, 1.0f),
@@ -1002,6 +1091,16 @@ void rendering_frame(
     task::inject(ctx->runner, { task_has_finished }, std::move(aux));
     return;
   }
+  { // timing
+    using namespace std::chrono_literals;
+    uint64_t new_timestamp_ns = std::chrono::high_resolution_clock::now().time_since_epoch() / 1ns;
+    if (new_timestamp_ns > latest_frame->timestamp_ns) {
+      latest_frame->elapsed_ns = new_timestamp_ns - latest_frame->timestamp_ns;
+    } else {
+      latest_frame->elapsed_ns = 0;
+    }
+    latest_frame->timestamp_ns = new_timestamp_ns;
+  }
   latest_frame->number++;
   latest_frame->timeline_semaphore_value = latest_frame->number + 1;
   latest_frame->inflight_index = (
@@ -1011,10 +1110,18 @@ void rendering_frame(
   auto compose_data = new ComposeData;
   auto example_data = new ExampleData;
   auto imgui_data = new ImguiData;
+  auto update_data = new UpdateData;
   auto frame_tasks = new std::vector<task::Task *>({
     task::create(
-      rendering_frame_poll_events,
+      rendering_frame_handle_window_events,
       &session->glfw,
+      &session->state,
+      update_data
+    ),
+    task::create(
+      rendering_frame_update,
+      update_data,
+      frame_info,
       &session->state
     ),
     task::create(
@@ -1042,6 +1149,7 @@ void rendering_frame(
       &session->vulkan.core,
       &data->swapchain_description,
       frame_info,
+      &session->state,
       &data->example
     ),
     task::create(
@@ -1385,6 +1493,8 @@ void session_iteration_try_rendering(
       }
     }
   }
+  rendering->latest_frame.timestamp_ns = 0;
+  rendering->latest_frame.elapsed_ns = 0;
   rendering->latest_frame.number = uint64_t(-1);
   rendering->latest_frame.inflight_index = uint8_t(-1);
   { ZoneScopedN(".command_pools");
@@ -2031,17 +2141,6 @@ void session(
       glfwSetInputMode(it->window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     }
 
-    /*
-    glfwSetMouseButtonCallback(window, [](GLFWwindow *window, int button, int action, int mods) {
-    });
-
-    glfwSetScrollCallback(window, [](GLFWwindow *window, double xoffset, double yoffset) {
-    });
-
-    glfwSetCharCallback(window, [](GLFWwindow *window, unsigned int c) {
-    });
-    */
-
     glfwSetKeyCallback(it->window, [](GLFWwindow *window, int key, int scancode, int action, int mods) {
       auto ptr = (GlfwUserData *) glfwGetWindowUserPointer(window);
       if (ptr == nullptr) {
@@ -2467,7 +2566,9 @@ void session(
     );
   }
   session->info.worker_count = *worker_count;
-  session->state = {};
+  session->state = { .debug_camera = lib::debug_camera::init() };
+  session->state.debug_camera.position = glm::vec3(0.0f, -5.0f, 0.0f);
+  session->state.last_known_mouse_cursor_position = glm::vec2(NAN, NAN);
   // session is fully initialized at this point
 
   auto task_iteration = task::create(session_iteration, yarn_end, session);

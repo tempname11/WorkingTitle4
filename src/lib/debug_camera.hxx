@@ -1,11 +1,6 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
-/*
-#include <glm/vec3.hpp>
-#include <glm/mat4x4.hpp>
-#include "application.hxx"
-*/
 
 namespace lib::debug_camera {
 
@@ -15,8 +10,18 @@ struct State {
   glm::quat rotation_q;
 };
 
+struct Input {
+  bool x_pos;
+  bool x_neg;
+  bool y_pos;
+  bool y_neg;
+  bool z_pos;
+  bool z_neg;
+  glm::vec2 cursor_position_delta;
+};
+
 State init();
-//void update(State *, application::Processed *);
+void update(State *it, Input *input, double elapsed_sec);
 glm::mat4 to_view_matrix(State *it);
 
 } // namespace

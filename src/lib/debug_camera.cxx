@@ -15,12 +15,11 @@ State init() {
   };
 }
 
-static const auto camera_speed = 8.0f;
-static const auto mouse_sensitivity = 2.0f;
+static const auto CAMERA_SPEED_PER_SEC = 8.0f;
+static const auto MOUSE_SENSITIVITY = 1.0f;
 
-/*
-void update(State *it, application::Processed *processed) {
-  it->lon_lat += processed->cursor_delta * mouse_sensitivity;
+void update(State *it, Input *input, double elapsed_sec) {
+  it->lon_lat += input->cursor_position_delta * MOUSE_SENSITIVITY;
 	it->lon_lat.y = fmaxf(-1.0f, fminf(1.0f, it->lon_lat.y));
 	it->lon_lat.x = fmodf(it->lon_lat.x, 4.0f);
 
@@ -30,53 +29,32 @@ void update(State *it, application::Processed *processed) {
 	);
 
 	auto movement = glm::vec3(0.0);
-	if (
-		processed->pressed_keys.contains(GLFW_KEY_W) ||
-		processed->pressed_keys.contains(GLFW_KEY_UP) 
-	) {
+	if (input->y_pos) {
 		movement += glm::vec3(0.0f, +1.0f, 0.0f);
 	}
-
-	if (
-		processed->pressed_keys.contains(GLFW_KEY_S) ||
-		processed->pressed_keys.contains(GLFW_KEY_DOWN) 
-	) {
+	if (input->y_neg) {
 		movement += glm::vec3(0.0f, -1.0f, 0.0f);
 	}
-
-	if (
-		processed->pressed_keys.contains(GLFW_KEY_D) ||
-		processed->pressed_keys.contains(GLFW_KEY_RIGHT) 
-	) {
+	if (input->x_pos) {
 		movement += glm::vec3(+1.0f, 0.0f, 0.0f);
 	}
-
-	if (
-		processed->pressed_keys.contains(GLFW_KEY_A) ||
-		processed->pressed_keys.contains(GLFW_KEY_LEFT) 
-	) {
+	if (input->x_neg) {
 		movement += glm::vec3(-1.0f, 0.0f, 0.0f);
 	}
-
-	if (
-		processed->pressed_keys.contains(GLFW_KEY_E) ||
-		processed->pressed_keys.contains(GLFW_KEY_PAGE_UP) 
-	) {
+	if (input->z_pos) {
 		movement += glm::vec3(0.0f, 0.0f, +1.0f);
 	}
-
-	if (
-		processed->pressed_keys.contains(GLFW_KEY_Q) ||
-		processed->pressed_keys.contains(GLFW_KEY_PAGE_DOWN) 
-	) {
+	if (input->z_neg) {
 		movement += glm::vec3(0.0f, 0.0f, -1.0f);
+	}
+	if (glm::length(movement) > 0.0f) {
+		movement = glm::normalize(movement);
 	}
 
   it->position +=
 		(glm::inverse(it->rotation_q) * movement) *
-		(processed->elapsed.count() * camera_speed);
+		float(elapsed_sec * CAMERA_SPEED_PER_SEC);
 }
-*/
 
 glm::mat4 to_view_matrix(State *it) {
   auto translation = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f) - it->position);
