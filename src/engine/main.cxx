@@ -575,6 +575,16 @@ void rendering_frame_example_submit(
   delete data.ptr;
 }
 
+void rendering_frame_imgui_new_frame(
+  task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
+  usage::Full<SessionData::ImguiContext> imgui
+) {
+  // main thread because of glfw usage
+  ImGui_ImplVulkan_NewFrame();
+  ImGui_ImplGlfw_NewFrame();
+  ImGui::NewFrame();
+}
+
 void rendering_frame_imgui_populate(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<SessionData::ImguiContext> imgui
@@ -946,9 +956,6 @@ void rendering_frame(
     task::inject(ctx->runner, { task_has_finished }, std::move(aux));
     return;
   }
-  ImGui_ImplVulkan_NewFrame();
-  ImGui_ImplGlfw_NewFrame();
-  ImGui::NewFrame();
   latest_frame->number++;
   latest_frame->timeline_semaphore_value = latest_frame->number + 1;
   latest_frame->inflight_index = (
@@ -1003,6 +1010,10 @@ void rendering_frame(
       &data->example_finished_semaphore,
       frame_info,
       example_data
+    ),
+    task::create(
+      rendering_frame_imgui_new_frame,
+      &session->imgui_context
     ),
     task::create(
       rendering_frame_imgui_populate,
