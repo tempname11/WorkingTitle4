@@ -404,6 +404,8 @@ void rendering_frame_handle_window_events(
         cursor_delta = new_position - session_state->last_known_mouse_cursor_position;
       }
       session_state->last_known_mouse_cursor_position = new_position;
+    } else {
+      session_state->last_known_mouse_cursor_position = glm::vec2(NAN, NAN);
     }
   }
   { ZoneScopedN("cursor_mode");
@@ -415,23 +417,6 @@ void rendering_frame_handle_window_events(
     int actual_cursor_mode = glfwGetInputMode(glfw->window, GLFW_CURSOR);
     if (desired_cursor_mode != actual_cursor_mode) {
       glfwSetInputMode(glfw->window, GLFW_CURSOR, desired_cursor_mode);
-      /* old logic that saves and restores cursor position
-      if (desired_cursor_mode == GLFW_CURSOR_DISABLED) {
-        glfwGetCursorPos(
-          window,
-          &settings->saved_cursor_position.x,
-          &settings->saved_cursor_position.y
-        );
-      } else if (desired_cursor_mode == GLFW_CURSOR_NORMAL) {
-        int w, h;
-        glfwGetWindowSize(window, &w, &h);
-        glfwSetCursorPos(
-          window,
-          settings->saved_cursor_position.x,
-          settings->saved_cursor_position.y
-        );
-      }
-      */
     }
   }
   { ZoneScopedN("update_data");
