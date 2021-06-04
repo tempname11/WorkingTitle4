@@ -376,6 +376,35 @@ void rendering_frame_poll_events(
   glfwSetWindowUserPointer(glfw->window, user_data);
   glfwPollEvents();
   glfwSetWindowUserPointer(glfw->window, nullptr);
+  auto is_focused = glfwGetWindowAttrib(glfw->window, GLFW_FOCUSED);
+  { ZoneScopedN("cursor");
+    int desired_cursor_mode = (
+      !is_focused || session_state->show_imgui
+        ? GLFW_CURSOR_NORMAL
+        : GLFW_CURSOR_DISABLED
+    );
+    int actual_cursor_mode = glfwGetInputMode(glfw->window, GLFW_CURSOR);
+    if (desired_cursor_mode != actual_cursor_mode) {
+      glfwSetInputMode(glfw->window, GLFW_CURSOR, desired_cursor_mode);
+      /* old logic that saves and restores cursor position
+      if (desired_cursor_mode == GLFW_CURSOR_DISABLED) {
+        glfwGetCursorPos(
+          window,
+          &settings->saved_cursor_position.x,
+          &settings->saved_cursor_position.y
+        );
+      } else if (desired_cursor_mode == GLFW_CURSOR_NORMAL) {
+        int w, h;
+        glfwGetWindowSize(window, &w, &h);
+        glfwSetCursorPos(
+          window,
+          settings->saved_cursor_position.x,
+          settings->saved_cursor_position.y
+        );
+      }
+      */
+    }
+  }
 }
 
 void signal_cleanup(
