@@ -198,6 +198,11 @@ struct RenderingData : task::ParentResource {
     uint32_t latest_image_index;
   } presentation;
 
+  struct PresentationFailureState {
+    std::mutex mutex;
+    bool failure;
+  } presentation_failure_state;
+
   struct SwapchainDescription {
     uint8_t image_count;
     VkExtent2D image_extent;
@@ -214,7 +219,7 @@ struct RenderingData : task::ParentResource {
     VkRenderPass render_pass;
     VkCommandPool setup_command_pool;
     VkSemaphore setup_semaphore;
-  } imgui_backend;
+  } imgui_backend; // @Note: should probably be in SessionData!
 
   struct FrameInfo {
     uint64_t timestamp_ns;
@@ -697,7 +702,8 @@ void rendering_frame_example_submit(
 
 void rendering_frame_imgui_new_frame(
   task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
-  usage::Full<SessionData::ImguiContext> imgui
+  usage::Full<SessionData::ImguiContext> imgui,
+  usage::Full<RenderingData::ImguiBackend> imgui_backend
 ) {
   // main thread because of glfw usage
   ImGui_ImplVulkan_NewFrame();
@@ -817,6 +823,7 @@ void rendering_frame_acquire(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Full<RenderingData::Presentation> presentation,
+  usage::Some<RenderingData::PresentationFailureState> presentation_failure_state,
   usage::Some<RenderingData::FrameInfo> frame_info
 ) {
   ZoneScoped;
@@ -829,13 +836,27 @@ void rendering_frame_acquire(
     VK_NULL_HANDLE,
     &presentation->latest_image_index
   );
-  assert(result == VK_SUCCESS);
+  if (result == VK_SUBOPTIMAL_KHR) {
+    // not sure what to do with this.
+    // log and treat as success.
+    LOG("vkAcquireNextImageKHR: VK_SUBOPTIMAL_KHR");
+  } else if (false
+    || result == VK_ERROR_OUT_OF_DATE_KHR
+    || result == VK_ERROR_SURFACE_LOST_KHR
+    || result == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT
+  ) {
+    std::scoped_lock lock(presentation_failure_state->mutex);
+    presentation_failure_state->failure = true;
+  } else {
+    assert(result == VK_SUCCESS);
+  }
 }
 
 void rendering_frame_compose_render(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
-  usage::Full<RenderingData::Presentation> presentation,
+  usage::Some<RenderingData::Presentation> presentation,
+  usage::Some<RenderingData::PresentationFailureState> presentation_failure_state,
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::CommandPools> command_pools,
   usage::Some<RenderingData::FrameInfo> frame_info,
@@ -843,6 +864,12 @@ void rendering_frame_compose_render(
   usage::Full<ComposeData> data
 ) {
   ZoneScoped;
+  {
+    std::scoped_lock lock(presentation_failure_state->mutex);
+    if (presentation_failure_state->failure) {
+      return;
+    }
+  }
   auto pool2 = &(*command_pools)[frame_info->inflight_index];
   VkCommandPool pool = command_pool_2_borrow(pool2);
   VkCommandBuffer cmd;
@@ -969,12 +996,40 @@ void rendering_frame_compose_submit(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<VkQueue> queue_work,
   usage::Full<RenderingData::Presentation> presentation,
+  usage::Some<RenderingData::PresentationFailureState> presentation_failure_state,
   usage::Some<VkSemaphore> frame_rendered_semaphore,
   usage::Some<VkSemaphore> imgui_finished_semaphore,
   usage::Some<RenderingData::FrameInfo> frame_info,
   usage::Full<ComposeData> data
 ) {
   ZoneScoped;
+  {
+    std::scoped_lock lock(presentation_failure_state->mutex);
+    if (presentation_failure_state->failure) {
+      // we still need to signal that gpu work is over.
+      // so do a dummy submit that has no commands,
+      // just "links" the semaphores
+      auto timeline_info = VkTimelineSemaphoreSubmitInfo {
+        .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
+        .waitSemaphoreValueCount = 1,
+        .pWaitSemaphoreValues = &frame_info->timeline_semaphore_value,
+        .signalSemaphoreValueCount = 1,
+        .pSignalSemaphoreValues = &frame_info->timeline_semaphore_value,
+      };
+      VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+      VkSubmitInfo submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext = &timeline_info,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = imgui_finished_semaphore.ptr,
+        .pWaitDstStageMask = &wait_stage,
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = frame_rendered_semaphore.ptr,
+      };
+      auto result = vkQueueSubmit(*queue_work, 1, &submit_info, VK_NULL_HANDLE);
+      return;
+    }
+  }
   uint64_t zero = 0;
   VkSemaphore wait_semaphores[] = {
     *imgui_finished_semaphore,
@@ -1022,10 +1077,17 @@ void rendering_frame_compose_submit(
 void rendering_frame_present(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<RenderingData::Presentation> presentation,
+  usage::Some<RenderingData::PresentationFailureState> presentation_failure_state,
   usage::Some<RenderingData::FrameInfo> frame_info,
   usage::Full<VkQueue> queue_present
 ) {
   ZoneScoped;
+  {
+    std::scoped_lock lock(presentation_failure_state->mutex);
+    if (presentation_failure_state->failure) {
+      return;
+    }
+  }
   VkPresentInfoKHR info = {
     .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
     .waitSemaphoreCount = 1,
@@ -1035,7 +1097,20 @@ void rendering_frame_present(
     .pImageIndices = &presentation->latest_image_index,
   };
   auto result = vkQueuePresentKHR(*queue_present, &info);
-  assert(result == VK_SUCCESS); // @Incomplete: check for OUT_OF_DATE etc.
+  if (result == VK_SUBOPTIMAL_KHR) {
+    // not sure what to do with this.
+    // log and treat as success.
+    LOG("vkQueuePresentKHR: VK_SUBOPTIMAL_KHR");
+  } else if (false
+    || result == VK_ERROR_OUT_OF_DATE_KHR
+    || result == VK_ERROR_SURFACE_LOST_KHR
+    || result == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT
+  ) {
+    std::scoped_lock lock(presentation_failure_state->mutex);
+    presentation_failure_state->failure = true;
+  } else {
+    assert(result == VK_SUCCESS);
+  }
 }
 
 void rendering_frame_cleanup(
@@ -1060,8 +1135,7 @@ void rendering_frame(
   usage::None<SessionData> session,
   usage::None<RenderingData> data,
   usage::Some<SessionData::GLFW> glfw,
-  usage::None<SessionData::ImguiContext> imgui_context,
-  usage::Full<RenderingData::ImguiBackend> imgui_backend,
+  usage::Some<RenderingData::PresentationFailureState> presentation_failure_state,
   usage::Full<RenderingData::FrameInfo> latest_frame,
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::InflightGPU> inflight_gpu
@@ -1074,8 +1148,13 @@ void rendering_frame(
       std::this_thread::sleep_for(ENGINE_DEBUG_ARTIFICIAL_DELAY);
     }
   #endif
+  bool presentation_has_failed;
+  {
+    std::scoped_lock lock(presentation_failure_state->mutex);
+    presentation_has_failed = presentation_failure_state->failure;
+  }
   bool should_stop = glfwWindowShouldClose(glfw->window);
-  if (should_stop) {
+  if (should_stop || presentation_has_failed) {
     std::scoped_lock lock(inflight_gpu->mutex);
     auto task_has_finished = task::create(rendering_has_finished, rendering_yarn_end.ptr);
     task::Auxiliary aux;
@@ -1136,6 +1215,7 @@ void rendering_frame(
       rendering_frame_acquire,
       &session->vulkan.core,
       &data->presentation,
+      &data->presentation_failure_state,
       frame_info
     ),
     task::create(
@@ -1165,7 +1245,8 @@ void rendering_frame(
     ),
     task::create(
       rendering_frame_imgui_new_frame,
-      &session->imgui_context
+      &session->imgui_context,
+      &data->imgui_backend
     ),
     task::create(
       rendering_frame_imgui_populate,
@@ -1195,6 +1276,7 @@ void rendering_frame(
       rendering_frame_compose_render,
       &session->vulkan.core,
       &data->presentation,
+      &data->presentation_failure_state,
       &data->swapchain_description,
       &data->command_pools,
       frame_info,
@@ -1205,6 +1287,7 @@ void rendering_frame(
       rendering_frame_compose_submit,
       &session->vulkan.queue_work,
       &data->presentation,
+      &data->presentation_failure_state,
       &data->frame_rendered_semaphore,
       &data->imgui_finished_semaphore,
       frame_info,
@@ -1213,6 +1296,7 @@ void rendering_frame(
     task::create(
       rendering_frame_present,
       &data->presentation,
+      &data->presentation_failure_state,
       frame_info,
       &session->vulkan.queue_present
     ),
@@ -1226,8 +1310,7 @@ void rendering_frame(
       session.ptr,
       data.ptr,
       glfw.ptr,
-      imgui_context.ptr,
-      imgui_backend.ptr,
+      presentation_failure_state.ptr,
       latest_frame.ptr,
       swapchain_description.ptr,
       inflight_gpu.ptr
@@ -1363,6 +1446,7 @@ void session_iteration_try_rendering(
     }
     rendering->presentation.latest_image_index = uint32_t(-1);
   }
+  rendering->presentation_failure_state.failure = false;
   rendering->swapchain_description.image_count = checked_integer_cast<uint8_t>(swapchain_image_count);
   rendering->swapchain_description.image_extent = surface_capabilities.currentExtent;
   rendering->swapchain_description.image_format = SWAPCHAIN_FORMAT;
@@ -1406,43 +1490,41 @@ void session_iteration_try_rendering(
     );
     { ZoneScopedN(".render_pass");
       VkRenderPass render_pass;
-        {
-          VkAttachmentDescription color_attachment = {
-            .format = rendering->swapchain_description.image_format,
-            .samples = VK_SAMPLE_COUNT_1_BIT,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-            .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            .finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-          };
-          VkAttachmentReference color_attachment_ref = {
-            .attachment = 0,
-            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-          };
-          VkSubpassDescription subpass = {
-            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-            .colorAttachmentCount = 1,
-            .pColorAttachments = &color_attachment_ref,
-          };
-          VkRenderPassCreateInfo create_info = {
-            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-            .attachmentCount = 1,
-            .pAttachments = &color_attachment,
-            .subpassCount = 1,
-            .pSubpasses = &subpass,
-          };
-          {
-            auto result = vkCreateRenderPass(
-              session->vulkan.core.device,
-              &create_info,
-              session->vulkan.core.allocator,
-              &rendering->imgui_backend.render_pass
-            );
-            assert(result == VK_SUCCESS);
-          }
-        }
+      VkAttachmentDescription color_attachment = {
+        .format = rendering->swapchain_description.image_format,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      };
+      VkAttachmentReference color_attachment_ref = {
+        .attachment = 0,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      };
+      VkSubpassDescription subpass = {
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &color_attachment_ref,
+      };
+      VkRenderPassCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .attachmentCount = 1,
+        .pAttachments = &color_attachment,
+        .subpassCount = 1,
+        .pSubpasses = &subpass,
+      };
+      {
+        auto result = vkCreateRenderPass(
+          session->vulkan.core.device,
+          &create_info,
+          session->vulkan.core.allocator,
+          &rendering->imgui_backend.render_pass
+        );
+        assert(result == VK_SUCCESS);
+      }
     }
     { ZoneScopedN("init");
       ImGui_ImplVulkan_InitInfo info = {
@@ -1920,8 +2002,7 @@ void session_iteration_try_rendering(
     session.ptr,
     rendering,
     &session->glfw,
-    &session->imgui_context,
-    &rendering->imgui_backend,
+    &rendering->presentation_failure_state,
     &rendering->latest_frame,
     &rendering->swapchain_description,
     &rendering->inflight_gpu
@@ -1949,6 +2030,7 @@ void session_iteration_try_rendering(
     },
     .changed_parents = { { .ptr = rendering, .children = {
       &rendering->presentation,
+      &rendering->presentation_failure_state,
       &rendering->swapchain_description,
       &rendering->inflight_gpu,
       &rendering->imgui_backend,
