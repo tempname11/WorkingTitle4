@@ -15,6 +15,9 @@
 #include <src/lib/gpu_signal.hxx>
 #include <src/global.hxx>
 
+// #define ENGINE_DEBUG_TASK_THREADS 1
+// #define ENGINE_DEBUG_ARTIFICIAL_DELAY 100ms
+
 namespace task = lib::task;
 namespace usage = lib::usage;
 
@@ -1065,6 +1068,12 @@ void rendering_frame(
 ) {
   ZoneScopedC(0xFF0000);
   FrameMark;
+  #ifdef ENGINE_DEBUG_ARTIFICIAL_DELAY
+    {
+      using namespace std::chrono_literals;
+      std::this_thread::sleep_for(ENGINE_DEBUG_ARTIFICIAL_DELAY);
+    }
+  #endif
   bool should_stop = glfwWindowShouldClose(glfw->window);
   if (should_stop) {
     std::scoped_lock lock(inflight_gpu->mutex);
@@ -2605,22 +2614,20 @@ const task::QueueAccessFlags QUEUE_ACCESS_FLAGS_WORKER_THREAD = (0
   | (1 << QUEUE_INDEX_LOW_PRIORITY)
 );
 
-// #define NUM_TASK_THREADS 1
-
 const task::QueueAccessFlags QUEUE_ACCESS_FLAGS_MAIN_THREAD = (0
   | (1 << QUEUE_INDEX_MAIN_THREAD_ONLY)
-  #if NUM_TASK_THREADS == 1
+  #if ENGINE_DEBUG_TASK_THREADS == 1
     | QUEUE_ACCESS_FLAGS_WORKER_THREAD
   #endif
 );
 
 int main() {
-  #ifdef NUM_TASK_THREADS
-    unsigned int num_threads = NUM_TASK_THREADS;
+  #ifdef ENGINE_DEBUG_TASK_THREADS
+    unsigned int num_threads = ENGINE_DEBUG_TASK_THREADS;
   #else
     auto num_threads = std::max(1u, std::thread::hardware_concurrency());
   #endif
-  #if NUM_TASK_THREADS == 1
+  #if ENGINE_DEBUG_TASK_THREADS == 1
     size_t worker_count = 1;
     std::vector<task::QueueAccessFlags> worker_access_flags;
   #else
