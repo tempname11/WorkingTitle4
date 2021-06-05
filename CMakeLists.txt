@@ -52,6 +52,17 @@ add_executable (
 )
 
 add_executable (
+  taskmark
+  "src/exe/taskmark.cxx"
+  "src/impl/global_overload.cxx"
+  "src/lib/task.cxx"
+  "${CMAKE_SOURCE_DIR}/submodule/tracy/TracyClient.cpp"
+)
+target_compile_definitions(taskmark PUBLIC TRACY_ENABLE=1)
+target_compile_definitions(taskmark PUBLIC TRACY_NO_EXIT=1)
+target_link_libraries(taskmark fmt::fmt-header-only)
+
+add_executable (
   engine
   WIN32
   "src/impl/global_overload.cxx"
