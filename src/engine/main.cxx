@@ -71,6 +71,7 @@ namespace example {
 }
 
 const VkFormat SWAPCHAIN_FORMAT = VK_FORMAT_B8G8R8A8_SRGB;
+const VkFormat DEPTH_FORMAT = VK_FORMAT_D32_SFLOAT;
 
 const int DEFAULT_WINDOW_WIDTH = 1280;
 const int DEFAULT_WINDOW_HEIGHT = 720;
@@ -199,6 +200,7 @@ struct RenderingData : task::ParentResource {
   struct ImguiBackend {
     // ImGui_ImplVulkan_*
     VkRenderPass render_pass;
+    std::vector<VkFramebuffer> framebuffers;
     VkCommandPool setup_command_pool;
     VkSemaphore setup_semaphore;
   } imgui_backend; // @Note: should probably be in SessionData!
@@ -229,7 +231,9 @@ struct RenderingData : task::ParentResource {
     VkRenderPass render_pass;
     VkPipeline pipeline;
     std::vector<lib::gfx::multi_alloc::StakeImage> image_stakes;
+    std::vector<lib::gfx::multi_alloc::StakeImage> depth_stakes;
     std::vector<VkImageView> image_views;
+    std::vector<VkImageView> depth_views;
     std::vector<VkFramebuffer> framebuffers;
   } example;
 };
@@ -294,6 +298,13 @@ void rendering_cleanup(
         vulkan->core.allocator
       );
     }
+    for (auto image_view : data->example.depth_views) {
+      vkDestroyImageView(
+        vulkan->core.device,
+        image_view,
+        vulkan->core.allocator
+      );
+    }
     vkDestroyRenderPass(
       vulkan->core.device,
       data->example.render_pass,
@@ -315,6 +326,13 @@ void rendering_cleanup(
     data->imgui_backend.render_pass,
     vulkan->core.allocator
   );
+  for (auto framebuffer : data->imgui_backend.framebuffers) {
+    vkDestroyFramebuffer(
+      vulkan->core.device,
+      framebuffer,
+      vulkan->core.allocator
+    );
+  }
   ImGui_ImplVulkan_Shutdown();
   for (auto &pool2 : data->command_pools) {
     for (auto pool : pool2.pools) {
@@ -651,8 +669,11 @@ void rendering_frame_example_render(
     assert(result == VK_SUCCESS);
   }
   { TracyVkZone(core->tracy_context, cmd, "example_render");
-    VkClearValue clearValue = {0.0f, 0.0f, 0.0f, 0.0f};
-    VkRenderPassBeginInfo renderPassInfo = {
+    VkClearValue clear_values[] = {
+      {0.0f, 0.0f, 0.0f, 0.0f},
+      {1.0f, 0.0f},
+    };
+    VkRenderPassBeginInfo render_pass_info = {
       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
       .renderPass = r->render_pass,
       .framebuffer = r->framebuffers[frame_info->inflight_index],
@@ -660,10 +681,10 @@ void rendering_frame_example_render(
         .offset = {0, 0},
         .extent = swapchain_description->image_extent,
       },
-      .clearValueCount = 1,
-      .pClearValues = &clearValue,
+      .clearValueCount = sizeof(clear_values) / sizeof(*clear_values),
+      .pClearValues = clear_values,
     };
-    vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, r->pipeline);
     VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(cmd, 0, 1, &s->vertex_stake.buffer, &offset);
@@ -740,7 +761,6 @@ void rendering_frame_imgui_render(
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Full<SessionData::ImguiContext> imgui_context,
   usage::Full<RenderingData::ImguiBackend> imgui_backend,
-  usage::Some<RenderingData::Example> example_r, // for framebuffer
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::CommandPools> command_pools,
   usage::Some<RenderingData::FrameInfo> frame_info,
@@ -778,7 +798,7 @@ void rendering_frame_imgui_render(
     auto begin_info = VkRenderPassBeginInfo {
       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
       .renderPass = imgui_backend->render_pass,
-      .framebuffer = example_r->framebuffers[frame_info->inflight_index],
+      .framebuffer = imgui_backend->framebuffers[frame_info->inflight_index],
       .renderArea = {
         .extent = swapchain_description->image_extent,
       },
@@ -1272,7 +1292,6 @@ void rendering_frame(
       &session->vulkan.core,
       &session->imgui_context,
       &data->imgui_backend,
-      &data->example,
       &data->swapchain_description,
       &data->command_pools,
       frame_info,
@@ -1465,124 +1484,6 @@ void session_iteration_try_rendering(
   rendering->swapchain_description.image_extent = surface_capabilities.currentExtent;
   rendering->swapchain_description.image_format = SWAPCHAIN_FORMAT;
   rendering->inflight_gpu.signals.resize(swapchain_image_count, nullptr);
-  { ZoneScopedN(".imgui_backend");
-    { ZoneScopedN(".setup_command_pool");
-      VkCommandPoolCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .queueFamilyIndex = session->vulkan.queue_family_index,
-      };
-      auto result = vkCreateCommandPool(
-        session->vulkan.core.device,
-        &create_info,
-        session->vulkan.core.allocator,
-        &rendering->imgui_backend.setup_command_pool
-      );
-      assert(result == VK_SUCCESS);
-    }
-    { ZoneScopedN(".setup_semaphore");
-      VkSemaphoreTypeCreateInfo timeline_info = {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
-        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
-      };
-      VkSemaphoreCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-        .pNext = &timeline_info,
-      };
-      auto result = vkCreateSemaphore(
-        session->vulkan.core.device,
-        &create_info,
-        session->vulkan.core.allocator,
-        &rendering->imgui_backend.setup_semaphore
-      );
-      assert(result == VK_SUCCESS);
-    }
-    signal_imgui_setup_finished = lib::gpu_signal::create(
-      &session->gpu_signal_support,
-      session->vulkan.core.device,
-      rendering->imgui_backend.setup_semaphore,
-      1
-    );
-    { ZoneScopedN(".render_pass");
-      VkRenderPass render_pass;
-      VkAttachmentDescription color_attachment = {
-        .format = rendering->swapchain_description.image_format,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-      };
-      VkAttachmentReference color_attachment_ref = {
-        .attachment = 0,
-        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-      };
-      VkSubpassDescription subpass = {
-        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &color_attachment_ref,
-      };
-      VkRenderPassCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .attachmentCount = 1,
-        .pAttachments = &color_attachment,
-        .subpassCount = 1,
-        .pSubpasses = &subpass,
-      };
-      {
-        auto result = vkCreateRenderPass(
-          session->vulkan.core.device,
-          &create_info,
-          session->vulkan.core.allocator,
-          &rendering->imgui_backend.render_pass
-        );
-        assert(result == VK_SUCCESS);
-      }
-    }
-    { ZoneScopedN("init");
-      ImGui_ImplVulkan_InitInfo info = {
-        .Instance = session->vulkan.instance,
-        .PhysicalDevice = session->vulkan.physical_device,
-        .Device = session->vulkan.core.device,
-        .QueueFamily = session->vulkan.queue_family_index,
-        .Queue = session->vulkan.queue_work,
-        .DescriptorPool = session->vulkan.common_descriptor_pool,
-        .Subpass = 0,
-        .MinImageCount = rendering->swapchain_description.image_count,
-        .ImageCount = rendering->swapchain_description.image_count,
-        .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
-        .Allocator = session->vulkan.core.allocator,
-      };
-      ImGui_ImplVulkan_Init(&info, rendering->imgui_backend.render_pass);
-    }
-    { ZoneScopedN("fonts_texture");
-      auto alloc_info = VkCommandBufferAllocateInfo {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = rendering->imgui_backend.setup_command_pool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1,
-      };
-      vkAllocateCommandBuffers(
-        session->vulkan.core.device,
-        &alloc_info,
-        &cmd_imgui_setup
-      );
-      { // begin
-        VkCommandBufferBeginInfo begin_info = {
-          .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-          .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-        };
-        auto result = vkBeginCommandBuffer(cmd_imgui_setup, &begin_info);
-        assert(result == VK_SUCCESS);
-      }
-      ImGui_ImplVulkan_CreateFontsTexture(cmd_imgui_setup);
-      { // end
-        auto result = vkEndCommandBuffer(cmd_imgui_setup);
-        assert(result == VK_SUCCESS);
-      }
-    }
-  }
   rendering->latest_frame.timestamp_ns = 0;
   rendering->latest_frame.elapsed_ns = 0;
   rendering->latest_frame.number = uint64_t(-1);
@@ -1697,6 +1598,9 @@ void session_iteration_try_rendering(
     rendering->example.image_stakes.resize(
       rendering->swapchain_description.image_count
     );
+    rendering->example.depth_stakes.resize(
+      rendering->swapchain_description.image_count
+    );
     for (auto &stake : rendering->example.image_stakes) {
       claims.push_back({
         .info = {
@@ -1714,6 +1618,31 @@ void session_iteration_try_rendering(
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .tiling = VK_IMAGE_TILING_OPTIMAL,
             .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          },
+        },
+        .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        .p_stake_image = &stake,
+      });
+    }
+    for (auto &stake : rendering->example.depth_stakes) {
+      claims.push_back({
+        .info = {
+          .image = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format = DEPTH_FORMAT,
+            .extent = {
+              .width = rendering->swapchain_description.image_extent.width,
+              .height = rendering->swapchain_description.image_extent.height,
+              .depth = 1,
+            },
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .tiling = VK_IMAGE_TILING_OPTIMAL,
+            .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
           },
@@ -1770,29 +1699,46 @@ void session_iteration_try_rendering(
       );
     }
     { ZoneScopedN(".render_pass");
-      VkAttachmentDescription attachment_description = {
-        .format = rendering->swapchain_description.image_format,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      VkAttachmentDescription attachment_descriptions[] = {
+        {
+          .format = rendering->swapchain_description.image_format,
+          .samples = VK_SAMPLE_COUNT_1_BIT,
+          .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+          .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+          .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+          .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        },
+        {
+          .format = DEPTH_FORMAT,
+          .samples = VK_SAMPLE_COUNT_1_BIT,
+          .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+          .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+          .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+          .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        },
       };
       VkAttachmentReference color_attachment_ref = {
         .attachment = 0,
         .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       };
+      VkAttachmentReference depth_attachment_ref = {
+        .attachment = 1,
+        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+      };
       VkSubpassDescription subpass_description = {
         .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
         .colorAttachmentCount = 1,
         .pColorAttachments = &color_attachment_ref,
+        .pDepthStencilAttachment = &depth_attachment_ref,
       };
       VkRenderPassCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .attachmentCount = 1,
-        .pAttachments = &attachment_description,
+        .attachmentCount = sizeof(attachment_descriptions) / sizeof(*attachment_descriptions),
+        .pAttachments = attachment_descriptions,
         .subpassCount = 1,
         .pSubpasses = &subpass_description,
       };
@@ -1916,6 +1862,12 @@ void session_iteration_try_rendering(
         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
         .sampleShadingEnable = VK_FALSE,
       };
+      VkPipelineDepthStencilStateCreateInfo depth_stencil_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        .depthTestEnable = VK_TRUE,
+        .depthWriteEnable = VK_TRUE,
+        .depthCompareOp = VK_COMPARE_OP_LESS,
+      };
       VkPipelineColorBlendAttachmentState color_blend_attachment = {
         .blendEnable = VK_FALSE,
         .colorWriteMask = (0
@@ -1940,7 +1892,7 @@ void session_iteration_try_rendering(
         .pViewportState = &viewport_state_info,
         .pRasterizationState = &rasterizer_info,
         .pMultisampleState = &multisample_info,
-        .pDepthStencilState = nullptr,
+        .pDepthStencilState = &depth_stencil_info,
         .pColorBlendState = &color_blend_info,
         .pDynamicState = nullptr,
         .layout = vulkan->example.pipeline_layout,
@@ -1960,7 +1912,7 @@ void session_iteration_try_rendering(
       vkDestroyShaderModule(vulkan->core.device, module_frag, vulkan->core.allocator);
       vkDestroyShaderModule(vulkan->core.device, module_vert, vulkan->core.allocator);
     }
-    { ZoneScopedN(".image_stakes");
+    { ZoneScopedN(".image_views");
       for (auto stake : rendering->example.image_stakes) {
         VkImageView image_view;
         VkImageViewCreateInfo create_info = {
@@ -1986,14 +1938,45 @@ void session_iteration_try_rendering(
         rendering->example.image_views.push_back(image_view);
       }
     }
+    { ZoneScopedN(".depth_views");
+      for (auto stake : rendering->example.depth_stakes) {
+        VkImageView depth_view;
+        VkImageViewCreateInfo create_info = {
+          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+          .image = stake.image,
+          .viewType = VK_IMAGE_VIEW_TYPE_2D,
+          .format = DEPTH_FORMAT,
+          .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+            .levelCount = 1,
+            .layerCount = 1,
+          },
+        };
+        {
+          auto result = vkCreateImageView(
+            session->vulkan.core.device,
+            &create_info,
+            session->vulkan.core.allocator,
+            &depth_view
+          );
+          assert(result == VK_SUCCESS);
+        }
+        rendering->example.depth_views.push_back(depth_view);
+      }
+    }
     { ZoneScopedN(".framebuffers");
-      for (auto image_view : rendering->example.image_views) {
+      assert(rendering->example.image_views.size() == rendering->example.depth_views.size());
+      for (size_t i = 0; i < rendering->example.image_views.size(); i++) {
+        VkImageView attachments[] = {
+          rendering->example.image_views[i],
+          rendering->example.depth_views[i],
+        };
         VkFramebuffer framebuffer;
         VkFramebufferCreateInfo create_info = {
           .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
           .renderPass = rendering->example.render_pass,
-          .attachmentCount = 1,
-          .pAttachments = &image_view,
+          .attachmentCount = sizeof(attachments) / sizeof(*attachments),
+          .pAttachments = attachments,
           .width = rendering->swapchain_description.image_extent.width,
           .height = rendering->swapchain_description.image_extent.height,
           .layers = 1,
@@ -2008,6 +1991,153 @@ void session_iteration_try_rendering(
           assert(result == VK_SUCCESS);
         }
         rendering->example.framebuffers.push_back(framebuffer);
+      }
+    }
+  }
+
+  { ZoneScopedN(".imgui_backend");
+    { ZoneScopedN(".setup_command_pool");
+      VkCommandPoolCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .queueFamilyIndex = session->vulkan.queue_family_index,
+      };
+      auto result = vkCreateCommandPool(
+        session->vulkan.core.device,
+        &create_info,
+        session->vulkan.core.allocator,
+        &rendering->imgui_backend.setup_command_pool
+      );
+      assert(result == VK_SUCCESS);
+    }
+    { ZoneScopedN(".setup_semaphore");
+      VkSemaphoreTypeCreateInfo timeline_info = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+      };
+      VkSemaphoreCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = &timeline_info,
+      };
+      auto result = vkCreateSemaphore(
+        session->vulkan.core.device,
+        &create_info,
+        session->vulkan.core.allocator,
+        &rendering->imgui_backend.setup_semaphore
+      );
+      assert(result == VK_SUCCESS);
+    }
+    signal_imgui_setup_finished = lib::gpu_signal::create(
+      &session->gpu_signal_support,
+      session->vulkan.core.device,
+      rendering->imgui_backend.setup_semaphore,
+      1
+    );
+    { ZoneScopedN(".render_pass");
+      VkRenderPass render_pass;
+      VkAttachmentDescription color_attachment = {
+        .format = rendering->swapchain_description.image_format,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      };
+      VkAttachmentReference color_attachment_ref = {
+        .attachment = 0,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      };
+      VkSubpassDescription subpass = {
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &color_attachment_ref,
+      };
+      VkRenderPassCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .attachmentCount = 1,
+        .pAttachments = &color_attachment,
+        .subpassCount = 1,
+        .pSubpasses = &subpass,
+      };
+      {
+        auto result = vkCreateRenderPass(
+          session->vulkan.core.device,
+          &create_info,
+          session->vulkan.core.allocator,
+          &rendering->imgui_backend.render_pass
+        );
+        assert(result == VK_SUCCESS);
+      }
+    }
+    { ZoneScopedN(".framebuffers");
+      // @Note: we reuse example.image_views here.
+      for (size_t i = 0; i < rendering->example.image_views.size(); i++) {
+        VkImageView attachments[] = {
+          rendering->example.image_views[i],
+        };
+        VkFramebuffer framebuffer;
+        VkFramebufferCreateInfo create_info = {
+          .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+          .renderPass = rendering->imgui_backend.render_pass,
+          .attachmentCount = sizeof(attachments) / sizeof(*attachments),
+          .pAttachments = attachments,
+          .width = rendering->swapchain_description.image_extent.width,
+          .height = rendering->swapchain_description.image_extent.height,
+          .layers = 1,
+        };
+        {
+          auto result = vkCreateFramebuffer(
+            session->vulkan.core.device,
+            &create_info,
+            session->vulkan.core.allocator,
+            &framebuffer
+          );
+          assert(result == VK_SUCCESS);
+        }
+        rendering->imgui_backend.framebuffers.push_back(framebuffer);
+      }
+    }
+    { ZoneScopedN("init");
+      ImGui_ImplVulkan_InitInfo info = {
+        .Instance = session->vulkan.instance,
+        .PhysicalDevice = session->vulkan.physical_device,
+        .Device = session->vulkan.core.device,
+        .QueueFamily = session->vulkan.queue_family_index,
+        .Queue = session->vulkan.queue_work,
+        .DescriptorPool = session->vulkan.common_descriptor_pool,
+        .Subpass = 0,
+        .MinImageCount = rendering->swapchain_description.image_count,
+        .ImageCount = rendering->swapchain_description.image_count,
+        .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
+        .Allocator = session->vulkan.core.allocator,
+      };
+      ImGui_ImplVulkan_Init(&info, rendering->imgui_backend.render_pass);
+    }
+    { ZoneScopedN("fonts_texture");
+      auto alloc_info = VkCommandBufferAllocateInfo {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = rendering->imgui_backend.setup_command_pool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+      };
+      vkAllocateCommandBuffers(
+        session->vulkan.core.device,
+        &alloc_info,
+        &cmd_imgui_setup
+      );
+      { // begin
+        VkCommandBufferBeginInfo begin_info = {
+          .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+          .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        };
+        auto result = vkBeginCommandBuffer(cmd_imgui_setup, &begin_info);
+        assert(result == VK_SUCCESS);
+      }
+      ImGui_ImplVulkan_CreateFontsTexture(cmd_imgui_setup);
+      { // end
+        auto result = vkEndCommandBuffer(cmd_imgui_setup);
+        assert(result == VK_SUCCESS);
       }
     }
   }
