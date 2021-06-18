@@ -43,12 +43,23 @@ include_directories (
   ${CMAKE_SOURCE_DIR}/submodule/imgui
   ${CMAKE_SOURCE_DIR}/submodule/glm
   ${CMAKE_SOURCE_DIR}/submodule/tracy
+  ${CMAKE_SOURCE_DIR}/submodule/tinygltf
   ${CMAKE_SOURCE_DIR}/submodule/fmt/include
 )
 
 add_executable (
   embedfile
   "src/exe/embedfile.cxx"
+)
+
+add_executable (
+  cubewriter
+  "src/exe/cubewriter.cxx"
+)
+
+add_executable (
+  voxelconverter
+  "src/exe/voxelconverter.cxx"
 )
 
 add_executable (
@@ -66,6 +77,9 @@ add_executable (
   engine
   WIN32
   "src/impl/global_overload.cxx"
+  "src/impl/tiny_gltf.cxx"
+  "src/impl/stb_image.cxx"
+  "src/impl/stb_image_write.cxx"
   ${SRC_LIB}
   ${SRC_ENGINE}
   ${ALL_EMBEDDED_GLSL}

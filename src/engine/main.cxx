@@ -5,6 +5,7 @@
 #include <GLFW/glfw3.h>
 #include <TracyVulkan.hpp>
 #include <imgui.h>
+#include <tiny_gltf.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_vulkan.h>
 #include <src/embedded.hxx>
@@ -12,6 +13,7 @@
 #include <src/lib/debug_camera.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
 #include <src/lib/gfx/utilities.hxx>
+#include <src/lib/gfx/mesh.hxx>
 #include <src/lib/gpu_signal.hxx>
 #include <src/global.hxx>
 
@@ -21,12 +23,33 @@
 namespace task = lib::task;
 namespace usage = lib::usage;
 
-namespace example {
-  struct Vertex {
-    glm::vec3 position;
-    glm::vec3 normal;
-  };
+namespace mesh {
+  T05 read_t05_file(const char *filename) {
+    auto file = fopen(filename, "rb");
+    assert(file != nullptr);
+    fseek(file, 0, SEEK_END);
+    auto size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    auto buffer = (uint8_t *) malloc(size);
+    fread((void *) buffer, 1, size, file);
+    assert(ferror(file) == 0);
+    fclose(file);
+    auto triangle_count = *((uint32_t*) buffer);
+    assert(size == sizeof(uint32_t) + sizeof(VertexT05) * 3 * triangle_count);
+    return {
+      .buffer = buffer,
+      .triangle_count = triangle_count,
+      // three vertices per triangle
+      .vertices = ((VertexT05 *) (buffer + sizeof(uint32_t))),
+    };
+  }
 
+  void deinit_t05(T05 *it) {
+    free(it->buffer);
+  }
+}
+
+namespace example {
   struct VS_UBO {
     glm::mat4 projection;
     glm::mat4 view;
@@ -44,51 +67,6 @@ namespace example {
     float metallic;
     float roughness;
     float ao;
-  };
-  
-  const Vertex vertices[] = {
-    // -XY
-    {{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}},
-    {{+1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}},
-    {{+1.0f, +1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}},
-    {{+1.0f, +1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}},
-    {{-1.0f, +1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}},
-    {{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, -1.0f}},
-    // +XY
-    {{-1.0f, -1.0f, +1.0f}, {0.0f, 0.0f, +1.0f}},
-    {{-1.0f, +1.0f, +1.0f}, {0.0f, 0.0f, +1.0f}},
-    {{+1.0f, +1.0f, +1.0f}, {0.0f, 0.0f, +1.0f}},
-    {{+1.0f, +1.0f, +1.0f}, {0.0f, 0.0f, +1.0f}},
-    {{+1.0f, -1.0f, +1.0f}, {0.0f, 0.0f, +1.0f}},
-    {{-1.0f, -1.0f, +1.0f}, {0.0f, 0.0f, +1.0f}},
-    // -YZ
-    {{-1.0f, -1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}},
-    {{-1.0f, +1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}},
-    {{-1.0f, +1.0f, +1.0f}, {-1.0f, 0.0f, 0.0f}},
-    {{-1.0f, +1.0f, +1.0f}, {-1.0f, 0.0f, 0.0f}},
-    {{-1.0f, -1.0f, +1.0f}, {-1.0f, 0.0f, 0.0f}},
-    {{-1.0f, -1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}},
-    // +YZ
-    {{+1.0f, -1.0f, -1.0f}, {+1.0f, 0.0f, 0.0f}},
-    {{+1.0f, -1.0f, +1.0f}, {+1.0f, 0.0f, 0.0f}},
-    {{+1.0f, +1.0f, +1.0f}, {+1.0f, 0.0f, 0.0f}},
-    {{+1.0f, +1.0f, +1.0f}, {+1.0f, 0.0f, 0.0f}},
-    {{+1.0f, +1.0f, -1.0f}, {+1.0f, 0.0f, 0.0f}},
-    {{+1.0f, -1.0f, -1.0f}, {+1.0f, 0.0f, 0.0f}},
-    // -ZX
-    {{-1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}},
-    {{-1.0f, -1.0f, +1.0f}, {0.0f, -1.0f, 0.0f}},
-    {{+1.0f, -1.0f, +1.0f}, {0.0f, -1.0f, 0.0f}},
-    {{+1.0f, -1.0f, +1.0f}, {0.0f, -1.0f, 0.0f}},
-    {{+1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}},
-    {{-1.0f, -1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}},
-    // +ZX
-    {{-1.0f, +1.0f, -1.0f}, {0.0f, +1.0f, 0.0f}},
-    {{+1.0f, +1.0f, -1.0f}, {0.0f, +1.0f, 0.0f}},
-    {{+1.0f, +1.0f, +1.0f}, {0.0f, +1.0f, 0.0f}},
-    {{+1.0f, +1.0f, +1.0f}, {0.0f, +1.0f, 0.0f}},
-    {{-1.0f, +1.0f, +1.0f}, {0.0f, +1.0f, 0.0f}},
-    {{-1.0f, +1.0f, -1.0f}, {0.0f, +1.0f, 0.0f}},
   };
 }
 
@@ -171,6 +149,7 @@ struct SessionData : task::ParentResource {
       VkDescriptorSetLayout descriptor_set_layout;
       VkDescriptorSet descriptor_set;
       VkPipelineLayout pipeline_layout;
+      size_t triangle_count;
     } example;
   } vulkan;
 
@@ -698,7 +677,7 @@ void rendering_frame_example_render(
       0, 1, &s->descriptor_set,
       2, dynamicOffsets
     );
-    vkCmdDraw(cmd, sizeof(example::vertices) / sizeof(*example::vertices), 1, 0, 0);
+    vkCmdDraw(cmd, s->triangle_count * 3, 1, 0, 0);
     vkCmdEndRenderPass(cmd);
   }
   { // end
@@ -1407,7 +1386,7 @@ void session_iteration_try_rendering(
     lib::task::signal(ctx->runner, session_iteration_yarn_end.ptr);
     return;
   }
-
+  
   auto rendering = new RenderingData;
   // how many images are in swapchain?
   uint32_t swapchain_image_count;
@@ -1870,30 +1849,32 @@ void session_iteration_try_rendering(
           .pName = "main",
         },
       };
-      VkVertexInputBindingDescription binding_description = {
-        .binding = 0,
-        .stride = sizeof(example::Vertex),
-        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+      VkVertexInputBindingDescription binding_descriptions[] = {
+        {
+          .binding = 0,
+          .stride = sizeof(mesh::VertexT05),
+          .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+        },
       };
       VkVertexInputAttributeDescription attribute_descriptions[] = {
         {
           .location = 0,
           .binding = 0,
           .format = VK_FORMAT_R32G32B32_SFLOAT,
-          .offset = offsetof(example::Vertex, position),
+          .offset = offsetof(mesh::VertexT05, position),
         },
         {
           .location = 1,
           .binding = 0,
           .format = VK_FORMAT_R32G32B32_SFLOAT,
-          .offset = offsetof(example::Vertex, normal),
+          .offset = offsetof(mesh::VertexT05, normal),
         }
       };
       VkPipelineVertexInputStateCreateInfo vertex_input_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = 1,
-        .pVertexBindingDescriptions = &binding_description,
-        .vertexAttributeDescriptionCount = 2,
+        .vertexBindingDescriptionCount = sizeof(binding_descriptions) / sizeof(*binding_descriptions),
+        .pVertexBindingDescriptions = binding_descriptions,
+        .vertexAttributeDescriptionCount = sizeof(attribute_descriptions) / sizeof(*attribute_descriptions),
         .pVertexAttributeDescriptions = attribute_descriptions,
       };
       VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {
@@ -2220,6 +2201,10 @@ void session(
   ZoneScoped;
   auto session = new SessionData;
   auto yarn_end = task::create_yarn_signal();
+  mesh::T05 the_mesh;
+  { ZoneScopedN("the_mesh_load");
+    the_mesh = mesh::read_t05_file("assets/mesh.t05");
+  }
   { ZoneScopedN("glfw");
     auto it = &session->glfw;
     {
@@ -2544,7 +2529,7 @@ void session(
         .info = {
           .buffer = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = sizeof(example::vertices),
+            .size = the_mesh.triangle_count * 3 * sizeof(mesh::VertexT05),
             .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
           },
@@ -2554,7 +2539,7 @@ void session(
           | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
           | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
         ),
-        .p_stake_buffer = &it->example.vertex_stake
+        .p_stake_buffer = &it->example.vertex_stake,
       });
       lib::gfx::multi_alloc::init(
         &it->multi_alloc,
@@ -2629,6 +2614,7 @@ void session(
         }
       }
     }
+    it->example.triangle_count = the_mesh.triangle_count;
     { ZoneScopedN("copy_vertex_buffer_data");
       void * data;
       {
@@ -2642,7 +2628,7 @@ void session(
         );
         assert(result == VK_SUCCESS);
       }
-      memcpy(data, example::vertices, sizeof(example::vertices));
+      memcpy(data, the_mesh.vertices, the_mesh.triangle_count * 3 * sizeof(mesh::VertexT05));
       vkUnmapMemory(
         it->core.device,
         it->example.vertex_stake.memory
@@ -2687,6 +2673,9 @@ void session(
   session->state = { .debug_camera = lib::debug_camera::init() };
   session->state.debug_camera.position = glm::vec3(0.0f, -5.0f, 0.0f);
   // session is fully initialized at this point
+  { ZoneScopedN("the_mesh_unload");
+    mesh::deinit_t05(&the_mesh);
+  }
 
   auto task_iteration = task::create(session_iteration, yarn_end, session);
   auto task_cleanup = task::create(defer, task::create(session_cleanup, session));
