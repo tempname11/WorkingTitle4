@@ -77,9 +77,6 @@ add_executable (
   engine
   WIN32
   "src/impl/global_overload.cxx"
-  "src/impl/tiny_gltf.cxx"
-  "src/impl/stb_image.cxx"
-  "src/impl/stb_image_write.cxx"
   ${SRC_LIB}
   ${SRC_ENGINE}
   ${ALL_EMBEDDED_GLSL}
