@@ -8,6 +8,574 @@
 const VkFormat SWAPCHAIN_FORMAT = VK_FORMAT_B8G8R8A8_SRGB;
 const VkFormat DEPTH_FORMAT = VK_FORMAT_D32_SFLOAT;
 
+void init_example_prepass(
+  RenderingData::Example::Prepass *it,
+  VkShaderModule module_vert,
+  std::vector<VkImageView> *depth_views,
+  RenderingData::SwapchainDescription *swapchain_description,
+  SessionData::Vulkan *vulkan
+) {
+  ZoneScoped;
+  { ZoneScopedN(".render_pass");
+    VkAttachmentDescription attachment_descriptions[] = {
+      {
+        .format = DEPTH_FORMAT,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+      },
+    };
+    VkAttachmentReference depth_attachment_ref = {
+      .attachment = 0,
+      .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    };
+    VkSubpassDescription subpass_description = {
+      .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+      .colorAttachmentCount = 0,
+      .pColorAttachments = nullptr,
+      .pDepthStencilAttachment = &depth_attachment_ref,
+    };
+    VkRenderPassCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+      .attachmentCount = sizeof(attachment_descriptions) / sizeof(*attachment_descriptions),
+      .pAttachments = attachment_descriptions,
+      .subpassCount = 1,
+      .pSubpasses = &subpass_description,
+    };
+    auto result = vkCreateRenderPass(
+      vulkan->core.device,
+      &create_info,
+      vulkan->core.allocator,
+      &it->render_pass
+    );
+    assert(result == VK_SUCCESS);
+  }
+  { ZoneScopedN(".pipeline");
+    VkPipelineShaderStageCreateInfo shader_stages[] = {
+      {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_VERTEX_BIT,
+        .module = module_vert,
+        .pName = "main",
+      },
+    };
+    VkVertexInputBindingDescription binding_descriptions[] = {
+      {
+        .binding = 0,
+        .stride = sizeof(mesh::VertexT05),
+        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+      },
+    };
+    VkVertexInputAttributeDescription attribute_descriptions[] = {
+      {
+        .location = 0,
+        .binding = 0,
+        .format = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset = offsetof(mesh::VertexT05, position),
+      },
+      {
+        .location = 1,
+        .binding = 0,
+        .format = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset = offsetof(mesh::VertexT05, normal),
+      }
+    };
+    VkPipelineVertexInputStateCreateInfo vertex_input_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+      .vertexBindingDescriptionCount = sizeof(binding_descriptions) / sizeof(*binding_descriptions),
+      .pVertexBindingDescriptions = binding_descriptions,
+      .vertexAttributeDescriptionCount = sizeof(attribute_descriptions) / sizeof(*attribute_descriptions),
+      .pVertexAttributeDescriptions = attribute_descriptions,
+    };
+    VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+      .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+      .primitiveRestartEnable = VK_FALSE,
+    };
+    VkViewport viewport = {
+      .x = 0.0f,
+      .y = 0.0f,
+      .width = float(swapchain_description->image_extent.width),
+      .height = float(swapchain_description->image_extent.height),
+      .minDepth = 0.0f,
+      .maxDepth = 1.0f,
+    };
+    VkRect2D scissor = {
+      .offset = {0, 0},
+      .extent = swapchain_description->image_extent,
+    };
+    VkPipelineViewportStateCreateInfo viewport_state_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+      .viewportCount = 1,
+      .pViewports = &viewport,
+      .scissorCount = 1,
+      .pScissors = &scissor,
+    };
+    VkPipelineRasterizationStateCreateInfo rasterizer_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+      .depthClampEnable = VK_FALSE,
+      .rasterizerDiscardEnable = VK_FALSE,
+      .polygonMode = VK_POLYGON_MODE_FILL,
+      .cullMode = VK_CULL_MODE_BACK_BIT,
+      .frontFace = VK_FRONT_FACE_CLOCKWISE,
+      .depthBiasEnable = VK_FALSE,
+      .lineWidth = 1.0f,
+    };
+    VkPipelineMultisampleStateCreateInfo multisample_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+      .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+      .sampleShadingEnable = VK_FALSE,
+    };
+    VkPipelineDepthStencilStateCreateInfo depth_stencil_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+      .depthTestEnable = VK_TRUE,
+      .depthWriteEnable = VK_TRUE,
+      .depthCompareOp = VK_COMPARE_OP_LESS,
+    };
+    VkPipelineColorBlendAttachmentState color_blend_attachment = {
+      .blendEnable = VK_FALSE,
+      .colorWriteMask = (0
+        | VK_COLOR_COMPONENT_R_BIT
+        | VK_COLOR_COMPONENT_G_BIT
+        | VK_COLOR_COMPONENT_B_BIT
+        | VK_COLOR_COMPONENT_A_BIT
+      ),
+    };
+    VkPipelineColorBlendStateCreateInfo color_blend_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+      .logicOpEnable = VK_FALSE,
+      .attachmentCount = 1,
+      .pAttachments = &color_blend_attachment,
+    };
+    VkGraphicsPipelineCreateInfo pipeline_info = {
+      .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+      .stageCount = sizeof(shader_stages) / sizeof(*shader_stages),
+      .pStages = shader_stages,
+      .pVertexInputState = &vertex_input_info,
+      .pInputAssemblyState = &input_assembly_info,
+      .pViewportState = &viewport_state_info,
+      .pRasterizationState = &rasterizer_info,
+      .pMultisampleState = &multisample_info,
+      .pDepthStencilState = &depth_stencil_info,
+      .pColorBlendState = &color_blend_info,
+      .pDynamicState = nullptr,
+      .layout = vulkan->example.pipeline_layout,
+      .renderPass = it->render_pass,
+      .subpass = 0,
+    };
+    {
+      auto result = vkCreateGraphicsPipelines(
+        vulkan->core.device,
+        VK_NULL_HANDLE,
+        1, &pipeline_info,
+        vulkan->core.allocator,
+        &it->pipeline
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+  { ZoneScopedN(".framebuffers");
+    for (size_t i = 0; i < swapchain_description->image_count; i++) {
+      VkImageView attachments[] = {
+        depth_views->data()[i],
+      };
+      VkFramebuffer framebuffer;
+      VkFramebufferCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .renderPass = it->render_pass,
+        .attachmentCount = sizeof(attachments) / sizeof(*attachments),
+        .pAttachments = attachments,
+        .width = swapchain_description->image_extent.width,
+        .height = swapchain_description->image_extent.height,
+        .layers = 1,
+      };
+      {
+        auto result = vkCreateFramebuffer(
+          vulkan->core.device,
+          &create_info,
+          vulkan->core.allocator,
+          &framebuffer
+        );
+        assert(result == VK_SUCCESS);
+      }
+      it->framebuffers.push_back(framebuffer);
+    }
+  }
+}
+
+void init_example_gpass(
+  RenderingData::Example::GPass *it,
+  VkShaderModule module_vert,
+  VkShaderModule module_frag,
+  std::vector<VkImageView> *image_views,
+  std::vector<VkImageView> *depth_views,
+  RenderingData::SwapchainDescription *swapchain_description,
+  SessionData::Vulkan *vulkan
+) {
+  ZoneScoped;
+  { ZoneScopedN(".render_pass");
+    VkAttachmentDescription attachment_descriptions[] = {
+      {
+        .format = swapchain_description->image_format,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      },
+      {
+        .format = DEPTH_FORMAT,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+      },
+    };
+    VkAttachmentReference color_attachment_ref = {
+      .attachment = 0,
+      .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    };
+    VkAttachmentReference depth_attachment_ref = {
+      .attachment = 1,
+      .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    };
+    VkSubpassDescription subpass_description = {
+      .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+      .colorAttachmentCount = 1,
+      .pColorAttachments = &color_attachment_ref,
+      .pDepthStencilAttachment = &depth_attachment_ref,
+    };
+    VkRenderPassCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+      .attachmentCount = sizeof(attachment_descriptions) / sizeof(*attachment_descriptions),
+      .pAttachments = attachment_descriptions,
+      .subpassCount = 1,
+      .pSubpasses = &subpass_description,
+    };
+    auto result = vkCreateRenderPass(
+      vulkan->core.device,
+      &create_info,
+      vulkan->core.allocator,
+      &it->render_pass
+    );
+    assert(result == VK_SUCCESS);
+  }
+  { ZoneScopedN(".pipeline");
+    VkPipelineShaderStageCreateInfo shader_stages[] = {
+      {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_VERTEX_BIT,
+        .module = module_vert,
+        .pName = "main",
+      },
+      {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .module = module_frag,
+        .pName = "main",
+      },
+    };
+    VkVertexInputBindingDescription binding_descriptions[] = {
+      {
+        .binding = 0,
+        .stride = sizeof(mesh::VertexT05),
+        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+      },
+    };
+    VkVertexInputAttributeDescription attribute_descriptions[] = {
+      {
+        .location = 0,
+        .binding = 0,
+        .format = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset = offsetof(mesh::VertexT05, position),
+      },
+      {
+        .location = 1,
+        .binding = 0,
+        .format = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset = offsetof(mesh::VertexT05, normal),
+      }
+    };
+    VkPipelineVertexInputStateCreateInfo vertex_input_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+      .vertexBindingDescriptionCount = sizeof(binding_descriptions) / sizeof(*binding_descriptions),
+      .pVertexBindingDescriptions = binding_descriptions,
+      .vertexAttributeDescriptionCount = sizeof(attribute_descriptions) / sizeof(*attribute_descriptions),
+      .pVertexAttributeDescriptions = attribute_descriptions,
+    };
+    VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+      .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+      .primitiveRestartEnable = VK_FALSE,
+    };
+    VkViewport viewport = {
+      .x = 0.0f,
+      .y = 0.0f,
+      .width = float(swapchain_description->image_extent.width),
+      .height = float(swapchain_description->image_extent.height),
+      .minDepth = 0.0f,
+      .maxDepth = 1.0f,
+    };
+    VkRect2D scissor = {
+      .offset = {0, 0},
+      .extent = swapchain_description->image_extent,
+    };
+    VkPipelineViewportStateCreateInfo viewport_state_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+      .viewportCount = 1,
+      .pViewports = &viewport,
+      .scissorCount = 1,
+      .pScissors = &scissor,
+    };
+    VkPipelineRasterizationStateCreateInfo rasterizer_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+      .depthClampEnable = VK_FALSE,
+      .rasterizerDiscardEnable = VK_FALSE,
+      .polygonMode = VK_POLYGON_MODE_FILL,
+      .cullMode = VK_CULL_MODE_BACK_BIT,
+      .frontFace = VK_FRONT_FACE_CLOCKWISE,
+      .depthBiasEnable = VK_FALSE,
+      .lineWidth = 1.0f,
+    };
+    VkPipelineMultisampleStateCreateInfo multisample_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+      .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+      .sampleShadingEnable = VK_FALSE,
+    };
+    VkPipelineDepthStencilStateCreateInfo depth_stencil_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+      .depthTestEnable = VK_TRUE,
+      .depthWriteEnable = VK_FALSE,
+      .depthCompareOp = VK_COMPARE_OP_EQUAL,
+    };
+    VkPipelineColorBlendAttachmentState color_blend_attachment = {
+      .blendEnable = VK_FALSE,
+      .colorWriteMask = (0
+        | VK_COLOR_COMPONENT_R_BIT
+        | VK_COLOR_COMPONENT_G_BIT
+        | VK_COLOR_COMPONENT_B_BIT
+        | VK_COLOR_COMPONENT_A_BIT
+      ),
+    };
+    VkPipelineColorBlendStateCreateInfo color_blend_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+      .logicOpEnable = VK_FALSE,
+      .attachmentCount = 1,
+      .pAttachments = &color_blend_attachment,
+    };
+    VkGraphicsPipelineCreateInfo pipeline_info = {
+      .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+      .stageCount = 2,
+      .pStages = shader_stages,
+      .pVertexInputState = &vertex_input_info,
+      .pInputAssemblyState = &input_assembly_info,
+      .pViewportState = &viewport_state_info,
+      .pRasterizationState = &rasterizer_info,
+      .pMultisampleState = &multisample_info,
+      .pDepthStencilState = &depth_stencil_info,
+      .pColorBlendState = &color_blend_info,
+      .pDynamicState = nullptr,
+      .layout = vulkan->example.pipeline_layout,
+      .renderPass = it->render_pass,
+      .subpass = 0,
+    };
+    {
+      auto result = vkCreateGraphicsPipelines(
+        vulkan->core.device,
+        VK_NULL_HANDLE,
+        1, &pipeline_info,
+        vulkan->core.allocator,
+        &it->pipeline
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+  { ZoneScopedN(".framebuffers");
+    for (size_t i = 0; i < swapchain_description->image_count; i++) {
+      VkImageView attachments[] = {
+        image_views->data()[i],
+        depth_views->data()[i],
+      };
+      VkFramebuffer framebuffer;
+      VkFramebufferCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .renderPass = it->render_pass,
+        .attachmentCount = sizeof(attachments) / sizeof(*attachments),
+        .pAttachments = attachments,
+        .width = swapchain_description->image_extent.width,
+        .height = swapchain_description->image_extent.height,
+        .layers = 1,
+      };
+      {
+        auto result = vkCreateFramebuffer(
+          vulkan->core.device,
+          &create_info,
+          vulkan->core.allocator,
+          &framebuffer
+        );
+        assert(result == VK_SUCCESS);
+      }
+      it->framebuffers.push_back(framebuffer);
+    }
+  }
+}
+
+void init_example(
+  RenderingData::Example *it,
+  RenderingData::SwapchainDescription *swapchain_description,
+  SessionData::Vulkan *vulkan
+) {
+  ZoneScoped;
+  { ZoneScopedN("update_descriptor_set");
+    VkDescriptorBufferInfo vs_info = {
+      .buffer = it->uniform_stake.buffer,
+      .offset = 0,
+      .range = sizeof(example::VS_UBO),
+    };
+    VkDescriptorBufferInfo fs_info = {
+      .buffer = it->uniform_stake.buffer,
+      .offset = 0,
+      .range = sizeof(example::FS_UBO),
+    };
+    VkWriteDescriptorSet writes[] = {
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = vulkan->example.descriptor_set,
+        .dstBinding = 0,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+        .pBufferInfo = &vs_info,
+      },
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = vulkan->example.descriptor_set,
+        .dstBinding = 1,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+        .pBufferInfo = &fs_info,
+      },
+    };
+    vkUpdateDescriptorSets(
+      vulkan->core.device,
+      sizeof(writes) / sizeof(*writes), writes,
+      0, nullptr
+    );
+  }
+  { ZoneScopedN(".image_views");
+    for (auto stake : it->image_stakes) {
+      VkImageView image_view;
+      VkImageViewCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = stake.image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = swapchain_description->image_format,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .levelCount = 1,
+          .layerCount = 1,
+        },
+      };
+      {
+        auto result = vkCreateImageView(
+          vulkan->core.device,
+          &create_info,
+          vulkan->core.allocator,
+          &image_view
+        );
+        assert(result == VK_SUCCESS);
+      }
+      it->image_views.push_back(image_view);
+    }
+  }
+  { ZoneScopedN(".depth_views");
+    for (auto stake : it->depth_stakes) {
+      VkImageView depth_view;
+      VkImageViewCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = stake.image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = DEPTH_FORMAT,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+          .levelCount = 1,
+          .layerCount = 1,
+        },
+      };
+      {
+        auto result = vkCreateImageView(
+          vulkan->core.device,
+          &create_info,
+          vulkan->core.allocator,
+          &depth_view
+        );
+        assert(result == VK_SUCCESS);
+      }
+      it->depth_views.push_back(depth_view);
+    }
+  }
+
+  // for both pipelines
+  VkShaderModule module_frag = VK_NULL_HANDLE;
+  VkShaderModule module_vert = VK_NULL_HANDLE;
+  { ZoneScopedN("module_vert");
+    VkShaderModuleCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+      .codeSize = embedded_example_rs_vert_len,
+      .pCode = (const uint32_t*) embedded_example_rs_vert,
+    };
+    auto result = vkCreateShaderModule(
+      vulkan->core.device,
+      &info,
+      vulkan->core.allocator,
+      &module_vert
+    );
+    assert(result == VK_SUCCESS);
+  }
+  { ZoneScopedN("module_frag");
+    VkShaderModuleCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+      .codeSize = embedded_example_rs_frag_len,
+      .pCode = (const uint32_t*) embedded_example_rs_frag,
+    };
+    auto result = vkCreateShaderModule(
+      vulkan->core.device,
+      &info,
+      vulkan->core.allocator,
+      &module_frag
+    );
+    assert(result == VK_SUCCESS);
+  }
+  init_example_prepass(
+    &it->prepass,
+    module_vert,
+    &it->depth_views,
+    swapchain_description,
+    vulkan
+  );
+  init_example_gpass(
+    &it->gpass,
+    module_vert,
+    module_frag,
+    &it->image_views,
+    &it->depth_views,
+    swapchain_description,
+    vulkan
+  );
+  vkDestroyShaderModule(vulkan->core.device, module_frag, vulkan->core.allocator);
+  vkDestroyShaderModule(vulkan->core.device, module_vert, vulkan->core.allocator);
+}
+
 void session_iteration_try_rendering(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<task::Task> session_iteration_yarn_end,
@@ -191,17 +759,17 @@ void session_iteration_try_rendering(
     );
     assert(result == VK_SUCCESS);
   }
-  rendering->example.vs_ubo_aligned_size = lib::gfx::utilities::aligned_size(
+  rendering->example.constants.vs_ubo_aligned_size = lib::gfx::utilities::aligned_size(
     sizeof(example::VS_UBO),
     session->vulkan.properties.basic.limits.minUniformBufferOffsetAlignment
   );
-  rendering->example.fs_ubo_aligned_size = lib::gfx::utilities::aligned_size(
+  rendering->example.constants.fs_ubo_aligned_size = lib::gfx::utilities::aligned_size(
     sizeof(example::FS_UBO),
     session->vulkan.properties.basic.limits.minUniformBufferOffsetAlignment
   );
-  rendering->example.total_ubo_aligned_size = (
-    rendering->example.vs_ubo_aligned_size +
-    rendering->example.fs_ubo_aligned_size
+  rendering->example.constants.total_ubo_aligned_size = (
+    rendering->example.constants.vs_ubo_aligned_size +
+    rendering->example.constants.fs_ubo_aligned_size
   );
   { ZoneScopedN(".multi_alloc");
     std::vector<lib::gfx::multi_alloc::Claim> claims;
@@ -210,7 +778,7 @@ void session_iteration_try_rendering(
         .buffer = {
           .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
           .size = (
-            rendering->example.total_ubo_aligned_size
+            rendering->example.constants.total_ubo_aligned_size
             * rendering->swapchain_description.image_count
           ),
           .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -290,340 +858,12 @@ void session_iteration_try_rendering(
     );
   }
   { ZoneScopedN(".example");
-    { ZoneScopedN("update_descriptor_set");
-      VkDescriptorBufferInfo vs_info = {
-        .buffer = rendering->example.uniform_stake.buffer,
-        .offset = 0,
-        .range = sizeof(example::VS_UBO),
-      };
-      VkDescriptorBufferInfo fs_info = {
-        .buffer = rendering->example.uniform_stake.buffer,
-        .offset = 0,
-        .range = sizeof(example::FS_UBO),
-      };
-      VkWriteDescriptorSet writes[] = {
-        {
-          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-          .dstSet = session->vulkan.example.descriptor_set,
-          .dstBinding = 0,
-          .dstArrayElement = 0,
-          .descriptorCount = 1,
-          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-          .pBufferInfo = &vs_info,
-        },
-        {
-          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-          .dstSet = session->vulkan.example.descriptor_set,
-          .dstBinding = 1,
-          .dstArrayElement = 0,
-          .descriptorCount = 1,
-          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-          .pBufferInfo = &fs_info,
-        },
-      };
-      vkUpdateDescriptorSets(
-        session->vulkan.core.device,
-        sizeof(writes) / sizeof(*writes), writes,
-        0, nullptr
-      );
-    }
-    { ZoneScopedN(".render_pass");
-      VkAttachmentDescription attachment_descriptions[] = {
-        {
-          .format = rendering->swapchain_description.image_format,
-          .samples = VK_SAMPLE_COUNT_1_BIT,
-          .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-          .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-          .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-          .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-          .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        },
-        {
-          .format = DEPTH_FORMAT,
-          .samples = VK_SAMPLE_COUNT_1_BIT,
-          .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-          .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-          .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-          .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-          .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        },
-      };
-      VkAttachmentReference color_attachment_ref = {
-        .attachment = 0,
-        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-      };
-      VkAttachmentReference depth_attachment_ref = {
-        .attachment = 1,
-        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-      };
-      VkSubpassDescription subpass_description = {
-        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &color_attachment_ref,
-        .pDepthStencilAttachment = &depth_attachment_ref,
-      };
-      VkRenderPassCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .attachmentCount = sizeof(attachment_descriptions) / sizeof(*attachment_descriptions),
-        .pAttachments = attachment_descriptions,
-        .subpassCount = 1,
-        .pSubpasses = &subpass_description,
-      };
-      auto result = vkCreateRenderPass(
-        vulkan->core.device,
-        &create_info,
-        vulkan->core.allocator,
-        &rendering->example.render_pass
-      );
-      assert(result == VK_SUCCESS);
-    }
-    { ZoneScopedN(".pipeline");
-      VkShaderModule module_frag = VK_NULL_HANDLE;
-      { ZoneScopedN("module_frag");
-        VkShaderModuleCreateInfo info = {
-          .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-          .codeSize = embedded_example_rs_frag_len,
-          .pCode = (const uint32_t*) embedded_example_rs_frag,
-        };
-        auto result = vkCreateShaderModule(
-          vulkan->core.device,
-          &info,
-          vulkan->core.allocator,
-          &module_frag
-        );
-        assert(result == VK_SUCCESS);
-      }
-      VkShaderModule module_vert = VK_NULL_HANDLE;
-      { ZoneScopedN("module_vert");
-        VkShaderModuleCreateInfo info = {
-          .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-          .codeSize = embedded_example_rs_vert_len,
-          .pCode = (const uint32_t*) embedded_example_rs_vert,
-        };
-        auto result = vkCreateShaderModule(
-          vulkan->core.device,
-          &info,
-          vulkan->core.allocator,
-          &module_vert
-        );
-        assert(result == VK_SUCCESS);
-      }
-      VkPipelineShaderStageCreateInfo shader_stages[] = {
-        {
-          .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-          .stage = VK_SHADER_STAGE_VERTEX_BIT,
-          .module = module_vert,
-          .pName = "main",
-        },
-        {
-          .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-          .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-          .module = module_frag,
-          .pName = "main",
-        },
-      };
-      VkVertexInputBindingDescription binding_descriptions[] = {
-        {
-          .binding = 0,
-          .stride = sizeof(mesh::VertexT05),
-          .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
-        },
-      };
-      VkVertexInputAttributeDescription attribute_descriptions[] = {
-        {
-          .location = 0,
-          .binding = 0,
-          .format = VK_FORMAT_R32G32B32_SFLOAT,
-          .offset = offsetof(mesh::VertexT05, position),
-        },
-        {
-          .location = 1,
-          .binding = 0,
-          .format = VK_FORMAT_R32G32B32_SFLOAT,
-          .offset = offsetof(mesh::VertexT05, normal),
-        }
-      };
-      VkPipelineVertexInputStateCreateInfo vertex_input_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = sizeof(binding_descriptions) / sizeof(*binding_descriptions),
-        .pVertexBindingDescriptions = binding_descriptions,
-        .vertexAttributeDescriptionCount = sizeof(attribute_descriptions) / sizeof(*attribute_descriptions),
-        .pVertexAttributeDescriptions = attribute_descriptions,
-      };
-      VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-        .primitiveRestartEnable = VK_FALSE,
-      };
-      VkViewport viewport = {
-        .x = 0.0f,
-        .y = 0.0f,
-        .width = float(rendering->swapchain_description.image_extent.width),
-        .height = float(rendering->swapchain_description.image_extent.height),
-        .minDepth = 0.0f,
-        .maxDepth = 1.0f,
-      };
-      VkRect2D scissor = {
-        .offset = {0, 0},
-        .extent = rendering->swapchain_description.image_extent,
-      };
-      VkPipelineViewportStateCreateInfo viewport_state_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .viewportCount = 1,
-        .pViewports = &viewport,
-        .scissorCount = 1,
-        .pScissors = &scissor,
-      };
-      VkPipelineRasterizationStateCreateInfo rasterizer_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-        .depthClampEnable = VK_FALSE,
-        .rasterizerDiscardEnable = VK_FALSE,
-        .polygonMode = VK_POLYGON_MODE_FILL,
-        .cullMode = VK_CULL_MODE_BACK_BIT,
-        .frontFace = VK_FRONT_FACE_CLOCKWISE,
-        .depthBiasEnable = VK_FALSE,
-        .lineWidth = 1.0f,
-      };
-      VkPipelineMultisampleStateCreateInfo multisample_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
-        .sampleShadingEnable = VK_FALSE,
-      };
-      VkPipelineDepthStencilStateCreateInfo depth_stencil_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-        .depthTestEnable = VK_TRUE,
-        .depthWriteEnable = VK_TRUE,
-        .depthCompareOp = VK_COMPARE_OP_LESS,
-      };
-      VkPipelineColorBlendAttachmentState color_blend_attachment = {
-        .blendEnable = VK_FALSE,
-        .colorWriteMask = (0
-          | VK_COLOR_COMPONENT_R_BIT
-          | VK_COLOR_COMPONENT_G_BIT
-          | VK_COLOR_COMPONENT_B_BIT
-          | VK_COLOR_COMPONENT_A_BIT
-        ),
-      };
-      VkPipelineColorBlendStateCreateInfo color_blend_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-        .logicOpEnable = VK_FALSE,
-        .attachmentCount = 1,
-        .pAttachments = &color_blend_attachment,
-      };
-      VkGraphicsPipelineCreateInfo pipelineInfo = {
-        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .stageCount = 2,
-        .pStages = shader_stages,
-        .pVertexInputState = &vertex_input_info,
-        .pInputAssemblyState = &input_assembly_info,
-        .pViewportState = &viewport_state_info,
-        .pRasterizationState = &rasterizer_info,
-        .pMultisampleState = &multisample_info,
-        .pDepthStencilState = &depth_stencil_info,
-        .pColorBlendState = &color_blend_info,
-        .pDynamicState = nullptr,
-        .layout = vulkan->example.pipeline_layout,
-        .renderPass = rendering->example.render_pass,
-        .subpass = 0,
-      };
-      {
-        auto result = vkCreateGraphicsPipelines(
-          vulkan->core.device,
-          VK_NULL_HANDLE,
-          1, &pipelineInfo,
-          vulkan->core.allocator,
-          &rendering->example.pipeline
-        );
-        assert(result == VK_SUCCESS);
-      }
-      vkDestroyShaderModule(vulkan->core.device, module_frag, vulkan->core.allocator);
-      vkDestroyShaderModule(vulkan->core.device, module_vert, vulkan->core.allocator);
-    }
-    { ZoneScopedN(".image_views");
-      for (auto stake : rendering->example.image_stakes) {
-        VkImageView image_view;
-        VkImageViewCreateInfo create_info = {
-          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-          .image = stake.image,
-          .viewType = VK_IMAGE_VIEW_TYPE_2D,
-          .format = rendering->swapchain_description.image_format,
-          .subresourceRange = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .levelCount = 1,
-            .layerCount = 1,
-          },
-        };
-        {
-          auto result = vkCreateImageView(
-            session->vulkan.core.device,
-            &create_info,
-            session->vulkan.core.allocator,
-            &image_view
-          );
-          assert(result == VK_SUCCESS);
-        }
-        rendering->example.image_views.push_back(image_view);
-      }
-    }
-    { ZoneScopedN(".depth_views");
-      for (auto stake : rendering->example.depth_stakes) {
-        VkImageView depth_view;
-        VkImageViewCreateInfo create_info = {
-          .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-          .image = stake.image,
-          .viewType = VK_IMAGE_VIEW_TYPE_2D,
-          .format = DEPTH_FORMAT,
-          .subresourceRange = {
-            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
-            .levelCount = 1,
-            .layerCount = 1,
-          },
-        };
-        {
-          auto result = vkCreateImageView(
-            session->vulkan.core.device,
-            &create_info,
-            session->vulkan.core.allocator,
-            &depth_view
-          );
-          assert(result == VK_SUCCESS);
-        }
-        rendering->example.depth_views.push_back(depth_view);
-      }
-    }
-    { ZoneScopedN(".framebuffers");
-      assert(rendering->example.image_views.size() == rendering->example.depth_views.size());
-      for (size_t i = 0; i < rendering->example.image_views.size(); i++) {
-        VkImageView attachments[] = {
-          rendering->example.image_views[i],
-          rendering->example.depth_views[i],
-        };
-        VkFramebuffer framebuffer;
-        VkFramebufferCreateInfo create_info = {
-          .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-          .renderPass = rendering->example.render_pass,
-          .attachmentCount = sizeof(attachments) / sizeof(*attachments),
-          .pAttachments = attachments,
-          .width = rendering->swapchain_description.image_extent.width,
-          .height = rendering->swapchain_description.image_extent.height,
-          .layers = 1,
-        };
-        {
-          auto result = vkCreateFramebuffer(
-            session->vulkan.core.device,
-            &create_info,
-            session->vulkan.core.allocator,
-            &framebuffer
-          );
-          assert(result == VK_SUCCESS);
-        }
-        rendering->example.framebuffers.push_back(framebuffer);
-      }
-    }
+    init_example(
+      &rendering->example,
+      &rendering->swapchain_description,
+      &session->vulkan
+    );
   }
-
   { ZoneScopedN(".imgui_backend");
     { ZoneScopedN(".setup_command_pool");
       VkCommandPoolCreateInfo create_info = {

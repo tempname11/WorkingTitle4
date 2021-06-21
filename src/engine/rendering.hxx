@@ -58,16 +58,25 @@ struct RenderingData : lib::task::ParentResource {
   lib::gfx::multi_alloc::Instance multi_alloc;
 
   struct Example {
-    uint32_t vs_ubo_aligned_size;
-    uint32_t fs_ubo_aligned_size;
-    uint32_t total_ubo_aligned_size;
+    struct Constants {
+      uint32_t vs_ubo_aligned_size;
+      uint32_t fs_ubo_aligned_size;
+      uint32_t total_ubo_aligned_size;
+    } constants;
     lib::gfx::multi_alloc::StakeBuffer uniform_stake;
-    VkRenderPass render_pass;
-    VkPipeline pipeline;
     std::vector<lib::gfx::multi_alloc::StakeImage> image_stakes;
     std::vector<lib::gfx::multi_alloc::StakeImage> depth_stakes;
     std::vector<VkImageView> image_views;
     std::vector<VkImageView> depth_views;
-    std::vector<VkFramebuffer> framebuffers;
+    struct Prepass {
+      VkRenderPass render_pass;
+      VkPipeline pipeline;
+      std::vector<VkFramebuffer> framebuffers;
+    } prepass;
+    struct GPass {
+      VkRenderPass render_pass;
+      VkPipeline pipeline;
+      std::vector<VkFramebuffer> framebuffers;
+    } gpass;
   } example;
 };

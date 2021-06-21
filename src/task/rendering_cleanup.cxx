@@ -5,6 +5,67 @@
 #include <backends/imgui_impl_vulkan.h>
 #include "task.hxx"
 
+void deinit_example(
+  RenderingData::Example *example,
+  SessionData::Vulkan *vulkan
+) {
+  ZoneScoped;
+  for (auto image_view : example->image_views) {
+    vkDestroyImageView(
+      vulkan->core.device,
+      image_view,
+      vulkan->core.allocator
+    );
+  }
+  for (auto image_view : example->depth_views) {
+    vkDestroyImageView(
+      vulkan->core.device,
+      image_view,
+      vulkan->core.allocator
+    );
+  }
+  {
+    ZoneScopedN(".prepass");
+    for (auto framebuffer : example->prepass.framebuffers) {
+      vkDestroyFramebuffer(
+        vulkan->core.device,
+        framebuffer,
+        vulkan->core.allocator
+      );
+    }
+    vkDestroyRenderPass(
+      vulkan->core.device,
+      example->prepass.render_pass,
+      vulkan->core.allocator
+    );
+    vkDestroyPipeline(
+      vulkan->core.device,
+      example->prepass.pipeline,
+      vulkan->core.allocator
+    );
+  }
+  {
+    ZoneScopedN(".gpass");
+    for (auto framebuffer : example->gpass.framebuffers) {
+      vkDestroyFramebuffer(
+        vulkan->core.device,
+        framebuffer,
+        vulkan->core.allocator
+      );
+    }
+    vkDestroyRenderPass(
+      vulkan->core.device,
+      example->gpass.render_pass,
+      vulkan->core.allocator
+    );
+    vkDestroyPipeline(
+      vulkan->core.device,
+      example->gpass.pipeline,
+      vulkan->core.allocator
+    );
+  }
+}
+
 void rendering_cleanup(
   task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   usage::Full<task::Task> session_iteration_yarn_end,
@@ -13,39 +74,10 @@ void rendering_cleanup(
 ) {
   ZoneScoped;
   auto vulkan = &session->vulkan;
-  { ZoneScopedN("example");
-    for (auto framebuffer : data->example.framebuffers) {
-      vkDestroyFramebuffer(
-        vulkan->core.device,
-        framebuffer,
-        vulkan->core.allocator
-      );
-    }
-    for (auto image_view : data->example.image_views) {
-      vkDestroyImageView(
-        vulkan->core.device,
-        image_view,
-        vulkan->core.allocator
-      );
-    }
-    for (auto image_view : data->example.depth_views) {
-      vkDestroyImageView(
-        vulkan->core.device,
-        image_view,
-        vulkan->core.allocator
-      );
-    }
-    vkDestroyRenderPass(
-      vulkan->core.device,
-      data->example.render_pass,
-      vulkan->core.allocator
-    );
-    vkDestroyPipeline(
-      vulkan->core.device,
-      data->example.pipeline,
-      vulkan->core.allocator
-    );
-  }
+  deinit_example(
+    &data->example,
+    vulkan
+  ),
   lib::gfx::multi_alloc::deinit(
     &data->multi_alloc,
     vulkan->core.device,

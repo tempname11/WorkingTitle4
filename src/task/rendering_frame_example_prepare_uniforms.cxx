@@ -37,11 +37,11 @@ void rendering_frame_example_prepare_uniforms(
     core->device,
     example_r->uniform_stake.memory,
     example_r->uniform_stake.offset
-      + frame_info->inflight_index * example_r->total_ubo_aligned_size,
-    example_r->total_ubo_aligned_size,
+      + frame_info->inflight_index * example_r->constants.total_ubo_aligned_size,
+    example_r->constants.total_ubo_aligned_size,
     0, &data
   );
   memcpy(data, &vs, sizeof(example::VS_UBO));
-  memcpy((uint8_t*) data + example_r->vs_ubo_aligned_size, &fs, sizeof(example::FS_UBO));
+  memcpy((uint8_t*) data + example_r->constants.vs_ubo_aligned_size, &fs, sizeof(example::FS_UBO));
   vkUnmapMemory(core->device, example_r->uniform_stake.memory);
 }
