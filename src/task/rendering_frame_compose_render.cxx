@@ -8,7 +8,7 @@ void rendering_frame_compose_render(
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::CommandPools> command_pools,
   usage::Some<RenderingData::FrameInfo> frame_info,
-  usage::Some<RenderingData::Example> example_r,
+  usage::Some<RenderingData::FinalImage> final_image,
   usage::Full<ComposeData> data
 ) {
   ZoneScoped;
@@ -90,7 +90,7 @@ void rendering_frame_compose_render(
       };
       vkCmdCopyImage(
         cmd,
-        example_r->image_stakes[frame_info->inflight_index].image,
+        final_image->stakes[frame_info->inflight_index].image,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         presentation->swapchain_images[presentation->latest_image_index],
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,

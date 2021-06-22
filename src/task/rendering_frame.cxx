@@ -150,7 +150,7 @@ void rendering_frame(
       &data->swapchain_description,
       &data->command_pools,
       frame_info,
-      &data->example,
+      &data->final_image,
       compose_data
     ),
     task::create(

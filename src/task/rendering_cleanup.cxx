@@ -10,14 +10,28 @@ void deinit_example(
   SessionData::Vulkan *vulkan
 ) {
   ZoneScoped;
-  for (auto image_view : example->image_views) {
+  for (auto image_view : example->gbuffer_channel0_views) {
     vkDestroyImageView(
       vulkan->core.device,
       image_view,
       vulkan->core.allocator
     );
   }
-  for (auto image_view : example->depth_views) {
+  for (auto image_view : example->gbuffer_channel1_views) {
+    vkDestroyImageView(
+      vulkan->core.device,
+      image_view,
+      vulkan->core.allocator
+    );
+  }
+  for (auto image_view : example->gbuffer_channel2_views) {
+    vkDestroyImageView(
+      vulkan->core.device,
+      image_view,
+      vulkan->core.allocator
+    );
+  }
+  for (auto image_view : example->gbuffer_depth_views) {
     vkDestroyImageView(
       vulkan->core.device,
       image_view,
@@ -114,6 +128,13 @@ void rendering_cleanup(
     vkDestroySemaphore(
       vulkan->core.device,
       data->presentation.image_rendered[i],
+      vulkan->core.allocator
+    );
+  }
+  for (auto image_view : data->final_image.views) {
+    vkDestroyImageView(
+      vulkan->core.device,
+      image_view,
       vulkan->core.allocator
     );
   }

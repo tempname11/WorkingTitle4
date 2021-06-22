@@ -51,6 +51,11 @@ struct RenderingData : lib::task::ParentResource {
   typedef std::vector<CommandPool2> CommandPools;
   CommandPools command_pools;
 
+  struct FinalImage {
+    std::vector<lib::gfx::multi_alloc::StakeImage> stakes;
+    std::vector<VkImageView> views;
+  } final_image;
+
   VkSemaphore example_finished_semaphore;
   VkSemaphore imgui_finished_semaphore;
   VkSemaphore frame_rendered_semaphore;
@@ -64,10 +69,14 @@ struct RenderingData : lib::task::ParentResource {
       uint32_t total_ubo_aligned_size;
     } constants;
     lib::gfx::multi_alloc::StakeBuffer uniform_stake;
-    std::vector<lib::gfx::multi_alloc::StakeImage> image_stakes;
-    std::vector<lib::gfx::multi_alloc::StakeImage> depth_stakes;
-    std::vector<VkImageView> image_views;
-    std::vector<VkImageView> depth_views;
+    std::vector<lib::gfx::multi_alloc::StakeImage> gbuffer_channel0_stakes;
+    std::vector<lib::gfx::multi_alloc::StakeImage> gbuffer_channel1_stakes;
+    std::vector<lib::gfx::multi_alloc::StakeImage> gbuffer_channel2_stakes;
+    std::vector<lib::gfx::multi_alloc::StakeImage> gbuffer_depth_stakes;
+    std::vector<VkImageView> gbuffer_channel0_views;
+    std::vector<VkImageView> gbuffer_channel1_views;
+    std::vector<VkImageView> gbuffer_channel2_views;
+    std::vector<VkImageView> gbuffer_depth_views;
     struct Prepass {
       VkRenderPass render_pass;
       VkPipeline pipeline;

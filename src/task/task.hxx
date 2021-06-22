@@ -131,7 +131,7 @@ void rendering_frame_compose_render(
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::CommandPools> command_pools,
   usage::Some<RenderingData::FrameInfo> frame_info,
-  usage::Some<RenderingData::Example> example_r,
+  usage::Some<RenderingData::FinalImage> final_image,
   usage::Full<ComposeData> data
 );
 

@@ -6,7 +6,10 @@
 #include "task.hxx"
 
 const VkFormat SWAPCHAIN_FORMAT = VK_FORMAT_B8G8R8A8_SRGB;
-const VkFormat DEPTH_FORMAT = VK_FORMAT_D32_SFLOAT;
+const VkFormat GBUFFER_DEPTH_FORMAT = VK_FORMAT_D32_SFLOAT;
+const VkFormat GBUFFER_CHANNEL0_FORMAT = VK_FORMAT_R16G16B16A16_SNORM;
+const VkFormat GBUFFER_CHANNEL1_FORMAT = VK_FORMAT_R16G16B16A16_UNORM;
+const VkFormat GBUFFER_CHANNEL2_FORMAT = VK_FORMAT_R8G8B8A8_UNORM;
 
 void init_example_prepass(
   RenderingData::Example::Prepass *it,
@@ -19,7 +22,7 @@ void init_example_prepass(
   { ZoneScopedN(".render_pass");
     VkAttachmentDescription attachment_descriptions[] = {
       {
-        .format = DEPTH_FORMAT,
+        .format = GBUFFER_DEPTH_FORMAT,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -136,20 +139,11 @@ void init_example_prepass(
       .depthWriteEnable = VK_TRUE,
       .depthCompareOp = VK_COMPARE_OP_LESS,
     };
-    VkPipelineColorBlendAttachmentState color_blend_attachment = {
-      .blendEnable = VK_FALSE,
-      .colorWriteMask = (0
-        | VK_COLOR_COMPONENT_R_BIT
-        | VK_COLOR_COMPONENT_G_BIT
-        | VK_COLOR_COMPONENT_B_BIT
-        | VK_COLOR_COMPONENT_A_BIT
-      ),
-    };
     VkPipelineColorBlendStateCreateInfo color_blend_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
       .logicOpEnable = VK_FALSE,
-      .attachmentCount = 1,
-      .pAttachments = &color_blend_attachment,
+      .attachmentCount = 0,
+      .pAttachments = nullptr,
     };
     VkGraphicsPipelineCreateInfo pipeline_info = {
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -211,8 +205,10 @@ void init_example_gpass(
   RenderingData::Example::GPass *it,
   VkShaderModule module_vert,
   VkShaderModule module_frag,
-  std::vector<VkImageView> *image_views,
-  std::vector<VkImageView> *depth_views,
+  std::vector<VkImageView> *gbuffer_channel0_views,
+  std::vector<VkImageView> *gbuffer_channel1_views,
+  std::vector<VkImageView> *gbuffer_channel2_views,
+  std::vector<VkImageView> *gbuffer_depth_views,
   RenderingData::SwapchainDescription *swapchain_description,
   SessionData::Vulkan *vulkan
 ) {
@@ -220,9 +216,9 @@ void init_example_gpass(
   { ZoneScopedN(".render_pass");
     VkAttachmentDescription attachment_descriptions[] = {
       {
-        .format = swapchain_description->image_format,
+        .format = GBUFFER_CHANNEL0_FORMAT,
         .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -230,7 +226,27 @@ void init_example_gpass(
         .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
       {
-        .format = DEPTH_FORMAT,
+        .format = GBUFFER_CHANNEL1_FORMAT,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      },
+      {
+        .format = GBUFFER_CHANNEL2_FORMAT,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      },
+      {
+        .format = GBUFFER_DEPTH_FORMAT,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -240,18 +256,28 @@ void init_example_gpass(
         .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
       },
     };
-    VkAttachmentReference color_attachment_ref = {
-      .attachment = 0,
-      .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    VkAttachmentReference color_attachment_refs[] = {
+      {
+        .attachment = 0,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      },
+      {
+        .attachment = 1,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      },
+      {
+        .attachment = 2,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      },
     };
     VkAttachmentReference depth_attachment_ref = {
-      .attachment = 1,
+      .attachment = 3,
       .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
     };
     VkSubpassDescription subpass_description = {
       .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-      .colorAttachmentCount = 1,
-      .pColorAttachments = &color_attachment_ref,
+      .colorAttachmentCount = sizeof(color_attachment_refs) / sizeof(*color_attachment_refs),
+      .pColorAttachments = color_attachment_refs,
       .pDepthStencilAttachment = &depth_attachment_ref,
     };
     VkRenderPassCreateInfo create_info = {
@@ -357,20 +383,40 @@ void init_example_gpass(
       .depthWriteEnable = VK_FALSE,
       .depthCompareOp = VK_COMPARE_OP_EQUAL,
     };
-    VkPipelineColorBlendAttachmentState color_blend_attachment = {
-      .blendEnable = VK_FALSE,
-      .colorWriteMask = (0
-        | VK_COLOR_COMPONENT_R_BIT
-        | VK_COLOR_COMPONENT_G_BIT
-        | VK_COLOR_COMPONENT_B_BIT
-        | VK_COLOR_COMPONENT_A_BIT
-      ),
+    VkPipelineColorBlendAttachmentState color_blend_attachments[] = {
+      {
+        .blendEnable = VK_FALSE,
+        .colorWriteMask = (0
+          | VK_COLOR_COMPONENT_R_BIT
+          | VK_COLOR_COMPONENT_G_BIT
+          | VK_COLOR_COMPONENT_B_BIT
+          | VK_COLOR_COMPONENT_A_BIT
+        ),
+      },
+      {
+        .blendEnable = VK_FALSE,
+        .colorWriteMask = (0
+          | VK_COLOR_COMPONENT_R_BIT
+          | VK_COLOR_COMPONENT_G_BIT
+          | VK_COLOR_COMPONENT_B_BIT
+          | VK_COLOR_COMPONENT_A_BIT
+        ),
+      },
+      {
+        .blendEnable = VK_FALSE,
+        .colorWriteMask = (0
+          | VK_COLOR_COMPONENT_R_BIT
+          | VK_COLOR_COMPONENT_G_BIT
+          | VK_COLOR_COMPONENT_B_BIT
+          | VK_COLOR_COMPONENT_A_BIT
+        ),
+      },
     };
     VkPipelineColorBlendStateCreateInfo color_blend_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
       .logicOpEnable = VK_FALSE,
-      .attachmentCount = 1,
-      .pAttachments = &color_blend_attachment,
+      .attachmentCount = sizeof(color_blend_attachments) / sizeof(*color_blend_attachments),
+      .pAttachments = color_blend_attachments,
     };
     VkGraphicsPipelineCreateInfo pipeline_info = {
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -402,8 +448,10 @@ void init_example_gpass(
   { ZoneScopedN(".framebuffers");
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
       VkImageView attachments[] = {
-        image_views->data()[i],
-        depth_views->data()[i],
+        gbuffer_channel0_views->data()[i],
+        gbuffer_channel1_views->data()[i],
+        gbuffer_channel2_views->data()[i],
+        gbuffer_depth_views->data()[i],
       };
       VkFramebuffer framebuffer;
       VkFramebufferCreateInfo create_info = {
@@ -435,6 +483,7 @@ void init_example(
   SessionData::Vulkan *vulkan
 ) {
   ZoneScoped;
+  // @Note: constants and stakes are initialized elsewhere.
   { ZoneScopedN("update_descriptor_set");
     VkDescriptorBufferInfo vs_info = {
       .buffer = it->uniform_stake.buffer,
@@ -472,14 +521,14 @@ void init_example(
       0, nullptr
     );
   }
-  { ZoneScopedN(".image_views");
-    for (auto stake : it->image_stakes) {
+  { ZoneScopedN(".gbuffer_channel0_views");
+    for (auto stake : it->gbuffer_channel0_stakes) {
       VkImageView image_view;
       VkImageViewCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = stake.image,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = swapchain_description->image_format,
+        .format = GBUFFER_CHANNEL0_FORMAT,
         .subresourceRange = {
           .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
           .levelCount = 1,
@@ -495,17 +544,69 @@ void init_example(
         );
         assert(result == VK_SUCCESS);
       }
-      it->image_views.push_back(image_view);
+      it->gbuffer_channel0_views.push_back(image_view);
     }
   }
-  { ZoneScopedN(".depth_views");
-    for (auto stake : it->depth_stakes) {
+  { ZoneScopedN(".gbuffer_channel1_views");
+    for (auto stake : it->gbuffer_channel1_stakes) {
+      VkImageView image_view;
+      VkImageViewCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = stake.image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = GBUFFER_CHANNEL1_FORMAT,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .levelCount = 1,
+          .layerCount = 1,
+        },
+      };
+      {
+        auto result = vkCreateImageView(
+          vulkan->core.device,
+          &create_info,
+          vulkan->core.allocator,
+          &image_view
+        );
+        assert(result == VK_SUCCESS);
+      }
+      it->gbuffer_channel1_views.push_back(image_view);
+    }
+  }
+  { ZoneScopedN(".gbuffer_channel2_views");
+    for (auto stake : it->gbuffer_channel2_stakes) {
+      VkImageView image_view;
+      VkImageViewCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = stake.image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = GBUFFER_CHANNEL2_FORMAT,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .levelCount = 1,
+          .layerCount = 1,
+        },
+      };
+      {
+        auto result = vkCreateImageView(
+          vulkan->core.device,
+          &create_info,
+          vulkan->core.allocator,
+          &image_view
+        );
+        assert(result == VK_SUCCESS);
+      }
+      it->gbuffer_channel2_views.push_back(image_view);
+    }
+  }
+  { ZoneScopedN(".gbuffer_depth_views");
+    for (auto stake : it->gbuffer_depth_stakes) {
       VkImageView depth_view;
       VkImageViewCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = stake.image,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = DEPTH_FORMAT,
+        .format = GBUFFER_DEPTH_FORMAT,
         .subresourceRange = {
           .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
           .levelCount = 1,
@@ -521,7 +622,7 @@ void init_example(
         );
         assert(result == VK_SUCCESS);
       }
-      it->depth_views.push_back(depth_view);
+      it->gbuffer_depth_views.push_back(depth_view);
     }
   }
 
@@ -559,7 +660,7 @@ void init_example(
   init_example_prepass(
     &it->prepass,
     module_vert,
-    &it->depth_views,
+    &it->gbuffer_depth_views,
     swapchain_description,
     vulkan
   );
@@ -567,8 +668,10 @@ void init_example(
     &it->gpass,
     module_vert,
     module_frag,
-    &it->image_views,
-    &it->depth_views,
+    &it->gbuffer_channel0_views,
+    &it->gbuffer_channel1_views,
+    &it->gbuffer_channel2_views,
+    &it->gbuffer_depth_views,
     swapchain_description,
     vulkan
   );
@@ -685,6 +788,7 @@ void session_iteration_try_rendering(
   rendering->latest_frame.elapsed_ns = 0;
   rendering->latest_frame.number = uint64_t(-1);
   rendering->latest_frame.inflight_index = uint8_t(-1);
+  rendering->final_image.stakes.resize(swapchain_image_count);
   { ZoneScopedN(".command_pools");
     rendering->command_pools = std::vector<CommandPool2>(swapchain_image_count);
     for (size_t i = 0; i < swapchain_image_count; i++) {
@@ -792,13 +896,119 @@ void session_iteration_try_rendering(
       ),
       .p_stake_buffer = &rendering->example.uniform_stake,
     });
-    rendering->example.image_stakes.resize(
+    rendering->example.gbuffer_channel0_stakes.resize(
       rendering->swapchain_description.image_count
     );
-    rendering->example.depth_stakes.resize(
+    rendering->example.gbuffer_channel1_stakes.resize(
       rendering->swapchain_description.image_count
     );
-    for (auto &stake : rendering->example.image_stakes) {
+    rendering->example.gbuffer_channel2_stakes.resize(
+      rendering->swapchain_description.image_count
+    );
+    rendering->example.gbuffer_depth_stakes.resize(
+      rendering->swapchain_description.image_count
+    );
+    for (auto &stake : rendering->example.gbuffer_channel0_stakes) {
+      claims.push_back({
+        .info = {
+          .image = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format = GBUFFER_CHANNEL0_FORMAT,
+            .extent = {
+              .width = rendering->swapchain_description.image_extent.width,
+              .height = rendering->swapchain_description.image_extent.height,
+              .depth = 1,
+            },
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .tiling = VK_IMAGE_TILING_OPTIMAL,
+            .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          },
+        },
+        .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        .p_stake_image = &stake,
+      });
+    }
+    for (auto &stake : rendering->example.gbuffer_channel1_stakes) {
+      claims.push_back({
+        .info = {
+          .image = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format = GBUFFER_CHANNEL1_FORMAT,
+            .extent = {
+              .width = rendering->swapchain_description.image_extent.width,
+              .height = rendering->swapchain_description.image_extent.height,
+              .depth = 1,
+            },
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .tiling = VK_IMAGE_TILING_OPTIMAL,
+            .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          },
+        },
+        .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        .p_stake_image = &stake,
+      });
+    }
+    for (auto &stake : rendering->example.gbuffer_channel2_stakes) {
+      claims.push_back({
+        .info = {
+          .image = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format = GBUFFER_CHANNEL2_FORMAT,
+            .extent = {
+              .width = rendering->swapchain_description.image_extent.width,
+              .height = rendering->swapchain_description.image_extent.height,
+              .depth = 1,
+            },
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .tiling = VK_IMAGE_TILING_OPTIMAL,
+            .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          },
+        },
+        .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        .p_stake_image = &stake,
+      });
+    }
+    for (auto &stake : rendering->example.gbuffer_depth_stakes) {
+      claims.push_back({
+        .info = {
+          .image = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format = GBUFFER_DEPTH_FORMAT,
+            .extent = {
+              .width = rendering->swapchain_description.image_extent.width,
+              .height = rendering->swapchain_description.image_extent.height,
+              .depth = 1,
+            },
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .tiling = VK_IMAGE_TILING_OPTIMAL,
+            .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          },
+        },
+        .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        .p_stake_image = &stake,
+      });
+    }
+    for (auto &stake : rendering->final_image.stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -823,31 +1033,6 @@ void session_iteration_try_rendering(
         .p_stake_image = &stake,
       });
     }
-    for (auto &stake : rendering->example.depth_stakes) {
-      claims.push_back({
-        .info = {
-          .image = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-            .imageType = VK_IMAGE_TYPE_2D,
-            .format = DEPTH_FORMAT,
-            .extent = {
-              .width = rendering->swapchain_description.image_extent.width,
-              .height = rendering->swapchain_description.image_extent.height,
-              .depth = 1,
-            },
-            .mipLevels = 1,
-            .arrayLayers = 1,
-            .samples = VK_SAMPLE_COUNT_1_BIT,
-            .tiling = VK_IMAGE_TILING_OPTIMAL,
-            .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-          },
-        },
-        .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        .p_stake_image = &stake,
-      });
-    }
     lib::gfx::multi_alloc::init(
       &rendering->multi_alloc,
       std::move(claims),
@@ -856,6 +1041,32 @@ void session_iteration_try_rendering(
       &session->vulkan.properties.basic,
       &session->vulkan.properties.memory
     );
+  }
+  { ZoneScopedN(".final_image_views");
+    for (auto stake : rendering->final_image.stakes) {
+      VkImageView image_view;
+      VkImageViewCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = stake.image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = rendering->swapchain_description.image_format,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .levelCount = 1,
+          .layerCount = 1,
+        },
+      };
+      {
+        auto result = vkCreateImageView(
+          vulkan->core.device,
+          &create_info,
+          vulkan->core.allocator,
+          &image_view
+        );
+        assert(result == VK_SUCCESS);
+      }
+      rendering->final_image.views.push_back(image_view);
+    }
   }
   { ZoneScopedN(".example");
     init_example(
@@ -940,10 +1151,9 @@ void session_iteration_try_rendering(
       }
     }
     { ZoneScopedN(".framebuffers");
-      // @Note: we reuse example.image_views here.
-      for (size_t i = 0; i < rendering->example.image_views.size(); i++) {
+      for (size_t i = 0; i < rendering->final_image.views.size(); i++) {
         VkImageView attachments[] = {
-          rendering->example.image_views[i],
+          rendering->final_image.views[i],
         };
         VkFramebuffer framebuffer;
         VkFramebufferCreateInfo create_info = {
@@ -1051,6 +1261,7 @@ void session_iteration_try_rendering(
       &rendering->imgui_backend,
       &rendering->latest_frame,
       &rendering->command_pools,
+      &rendering->final_image,
       &rendering->example_finished_semaphore,
       &rendering->imgui_finished_semaphore,
       &rendering->frame_rendered_semaphore,

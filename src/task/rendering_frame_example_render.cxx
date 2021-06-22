@@ -55,10 +55,6 @@ void record_gpass(
   RenderingData::FrameInfo *frame_info,
   SessionData::Vulkan::Example *example_s
 ) {
-  VkClearValue clear_values[] = {
-    {0.0f, 0.0f, 0.0f, 0.0f},
-    {1.0f, 0.0f},
-  };
   VkRenderPassBeginInfo render_pass_info = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
     .renderPass = gpass->render_pass,
@@ -67,8 +63,8 @@ void record_gpass(
       .offset = {0, 0},
       .extent = swapchain_description->image_extent,
     },
-    .clearValueCount = sizeof(clear_values) / sizeof(*clear_values),
-    .pClearValues = clear_values,
+    .clearValueCount = 0,
+    .pClearValues = nullptr,
   };
   vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, gpass->pipeline);

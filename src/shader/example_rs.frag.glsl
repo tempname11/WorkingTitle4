@@ -4,7 +4,9 @@
 layout (location = 0) in vec3 interpolated_normal;
 layout (location = 1) in vec3 world_position;
 
-layout (location = 0) out vec4 FragColor; 
+layout (location = 0) out vec4 channel0; 
+layout (location = 1) out vec4 channel1; 
+layout (location = 2) out vec4 channel2; 
 
 layout(binding = 1) uniform UBO {
   vec3 camera_position;
@@ -76,5 +78,7 @@ void main() {
   vec3 radiance_outgoing = (kD * ubo.albedo / PI + specular) * radiance_incoming * NdotL;
   vec3 ambient = 0.03 * ubo.albedo * ubo.ao;
 
-  FragColor = vec4(linear_to_srgb(ambient + radiance_outgoing), 1.0);
+  channel0 = vec4(linear_to_srgb(ambient + radiance_outgoing), 1.0);
+  channel1 = vec4(0.0);
+  channel2 = vec4(0.0);
 }
