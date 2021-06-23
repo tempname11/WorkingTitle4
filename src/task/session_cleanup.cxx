@@ -32,6 +32,26 @@ void session_cleanup(
         it->example.lpass.pipeline_layout,
         it->core.allocator
       );
+      vkDestroyPipeline(
+        it->core.device,
+        it->example.finalpass.pipeline,
+        it->core.allocator
+      );
+      vkDestroyPipelineLayout(
+        it->core.device,
+        it->example.finalpass.pipeline_layout,
+        it->core.allocator
+      );
+      vkDestroyDescriptorSetLayout(
+        it->core.device,
+        it->example.finalpass.descriptor_set_layout,
+        it->core.allocator
+      );
+      vkDestroySampler(
+        it->core.device,
+        it->example.finalpass.sampler_lbuffer,
+        it->core.allocator
+      );
     }
     { ZoneScopedN(".multi_alloc");
       lib::gfx::multi_alloc::deinit(&it->multi_alloc, it->core.device, it->core.allocator);

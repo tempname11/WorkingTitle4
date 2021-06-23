@@ -46,18 +46,29 @@ struct SessionData : lib::task::ParentResource {
         lib::gfx::multi_alloc::StakeBuffer vertex_stake;
         size_t triangle_count;
       } geometry;
+
       struct FullscreenQuad {
         lib::gfx::multi_alloc::StakeBuffer vertex_stake;
         size_t triangle_count;
       } fullscreen_quad;
+
       struct GPass {
         VkDescriptorSetLayout descriptor_set_layout;
         VkDescriptorSet descriptor_set;
         VkPipelineLayout pipeline_layout;
       } gpass;
+
       struct LPass {
         VkPipelineLayout pipeline_layout;
       } lpass;
+
+      struct Finalpass {
+        VkDescriptorSetLayout descriptor_set_layout;
+        VkPipeline pipeline;
+        VkPipelineLayout pipeline_layout;
+        VkSampler sampler_lbuffer;
+      } finalpass;
+
     } example;
   } vulkan;
 

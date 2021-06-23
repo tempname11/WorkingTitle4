@@ -80,8 +80,10 @@ struct RenderingData : lib::task::ParentResource {
     std::vector<VkImageView> gbuffer_channel2_views;
     std::vector<VkImageView> gbuffer_depth_views;
 
-    std::vector<lib::gfx::multi_alloc::StakeImage> lbuffer_stakes;
-    std::vector<VkImageView> lbuffer_views;
+    struct LBuffer {
+      std::vector<lib::gfx::multi_alloc::StakeImage> stakes;
+      std::vector<VkImageView> views;
+    } lbuffer;
 
     struct Prepass {
       VkRenderPass render_pass;
@@ -101,12 +103,8 @@ struct RenderingData : lib::task::ParentResource {
       std::vector<VkFramebuffer> framebuffers;
     } lpass;
 
-    /*
-    struct Postpass {
-      VkRenderPass render_pass;
-      VkPipeline pipeline;
-      std::vector<VkFramebuffer> framebuffers;
-    } lpass;
-    */
+    struct Finalpass {
+      std::vector<VkDescriptorSet> descriptor_sets;
+    } finalpass;
   } example;
 };

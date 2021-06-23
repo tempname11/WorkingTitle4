@@ -117,12 +117,118 @@ void record_lpass(
   vkCmdEndRenderPass(cmd);
 }
 
+void record_finalpass(
+  VkCommandBuffer cmd,
+  RenderingData::Example::Finalpass *finalpass,
+  RenderingData::SwapchainDescription *swapchain_description,
+  RenderingData::FrameInfo *frame_info,
+  RenderingData::Example::LBuffer *lbuffer,
+  RenderingData::FinalImage *final_image,
+  SessionData::Vulkan::Example *example_s
+) {
+  ZoneScoped;
+  { ZoneScopedN("barrier_before");
+    VkImageMemoryBarrier barriers[] = {
+      {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = lbuffer->stakes[frame_info->inflight_index].image,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .baseMipLevel = 0,
+          .levelCount = 1,
+          .baseArrayLayer = 0,
+          .layerCount = 1,
+        },
+      },
+      {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = 0,
+        .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = final_image->stakes[frame_info->inflight_index].image,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .baseMipLevel = 0,
+          .levelCount = 1,
+          .baseArrayLayer = 0,
+          .layerCount = 1,
+        },
+      },
+    };
+    vkCmdPipelineBarrier(
+      cmd,
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      0,
+      0, nullptr,
+      0, nullptr,
+      sizeof(barriers) / sizeof(*barriers),
+      barriers
+    );
+  }
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, example_s->finalpass.pipeline);
+  vkCmdBindDescriptorSets(
+    cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+    example_s->finalpass.pipeline_layout,
+    0, 1, &finalpass->descriptor_sets[frame_info->inflight_index],
+    0, nullptr
+  );
+  vkCmdDispatch(cmd,
+    swapchain_description->image_extent.width,
+    swapchain_description->image_extent.height,
+    1
+  );
+  { ZoneScopedN("barrier_after");
+    // @Note: this relies on knowing that the next thing to execute will be the transfer.
+    // Could be brittle.
+    VkImageMemoryBarrier barriers[] = {
+      {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = final_image->stakes[frame_info->inflight_index].image,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .baseMipLevel = 0,
+          .levelCount = 1,
+          .baseArrayLayer = 0,
+          .layerCount = 1,
+        },
+      },
+    };
+    vkCmdPipelineBarrier(
+      cmd,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      0,
+      0, nullptr,
+      0, nullptr,
+      sizeof(barriers) / sizeof(*barriers),
+      barriers
+    );
+  }
+}
+
 void rendering_frame_example_render(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::CommandPools> command_pools,
   usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Some<RenderingData::FinalImage> final_image,
   usage::Some<RenderingData::Example> example_r,
   usage::Some<SessionData::Vulkan::Example> example_s,
   usage::Full<ExampleData> data
@@ -181,6 +287,17 @@ void rendering_frame_example_render(
       &r->lpass,
       swapchain_description.ptr,
       frame_info.ptr,
+      example_s.ptr
+    );
+  }
+  { TracyVkZone(core->tracy_context, cmd, "example_finalpass");
+    record_finalpass(
+      cmd,
+      &r->finalpass,
+      swapchain_description.ptr,
+      frame_info.ptr,
+      &r->lbuffer,
+      final_image.ptr,
       example_s.ptr
     );
   }

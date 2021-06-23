@@ -69,6 +69,7 @@ void rendering_frame_example_render(
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::CommandPools> command_pools,
   usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Some<RenderingData::FinalImage> final_image,
   usage::Some<RenderingData::Example> example_r,
   usage::Some<SessionData::Vulkan::Example> example_s,
   usage::Full<ExampleData> data

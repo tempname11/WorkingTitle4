@@ -5,7 +5,6 @@
 #include <src/task/task.hxx>
 
 // #define ENGINE_DEBUG_TASK_THREADS 1
-// #define ENGINE_DEBUG_ARTIFICIAL_DELAY 33ms
 
 const lib::task::QueueAccessFlags QUEUE_ACCESS_FLAGS_WORKER_THREAD = (0
   | (1 << QUEUE_INDEX_HIGH_PRIORITY)

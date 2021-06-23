@@ -38,15 +38,14 @@ void deinit_example(
       vulkan->core.allocator
     );
   }
-  for (auto image_view : example->lbuffer_views) {
+  for (auto image_view : example->lbuffer.views) {
     vkDestroyImageView(
       vulkan->core.device,
       image_view,
       vulkan->core.allocator
     );
   }
-  {
-    ZoneScopedN(".prepass");
+  { ZoneScopedN(".prepass");
     for (auto framebuffer : example->prepass.framebuffers) {
       vkDestroyFramebuffer(
         vulkan->core.device,
@@ -65,8 +64,7 @@ void deinit_example(
       vulkan->core.allocator
     );
   }
-  {
-    ZoneScopedN(".gpass");
+  { ZoneScopedN(".gpass");
     for (auto framebuffer : example->gpass.framebuffers) {
       vkDestroyFramebuffer(
         vulkan->core.device,
