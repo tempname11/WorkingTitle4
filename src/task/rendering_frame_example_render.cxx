@@ -1,12 +1,12 @@
 #include "task.hxx"
 
-void record_draw_commands(
+void record_geometry_draw_commands(
   VkCommandBuffer cmd,
   SessionData::Vulkan::Example *example_s
 ) {
   VkDeviceSize offset = 0;
-  vkCmdBindVertexBuffers(cmd, 0, 1, &example_s->vertex_stake.buffer, &offset);
-  vkCmdDraw(cmd, example_s->triangle_count * 3, 1, 0, 0);
+  vkCmdBindVertexBuffers(cmd, 0, 1, &example_s->geometry.vertex_stake.buffer, &offset);
+  vkCmdDraw(cmd, example_s->geometry.triangle_count * 3, 1, 0, 0);
 }
 
 void record_prepass(
@@ -39,11 +39,11 @@ void record_prepass(
   };
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    example_s->pipeline_layout,
-    0, 1, &example_s->descriptor_set,
+    example_s->gpass.pipeline_layout,
+    0, 1, &example_s->gpass.descriptor_set,
     2, dynamic_offsets
   );
-  record_draw_commands(cmd, example_s);
+  record_geometry_draw_commands(cmd, example_s);
   vkCmdEndRenderPass(cmd);
 }
 
@@ -74,11 +74,46 @@ void record_gpass(
   };
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    example_s->pipeline_layout,
-    0, 1, &example_s->descriptor_set,
+    example_s->gpass.pipeline_layout,
+    0, 1, &example_s->gpass.descriptor_set,
     2, dynamic_offsets
   );
-  record_draw_commands(cmd, example_s);
+  record_geometry_draw_commands(cmd, example_s);
+  vkCmdEndRenderPass(cmd);
+}
+
+void record_lpass(
+  VkCommandBuffer cmd,
+  RenderingData::Example::LPass *lpass,
+  RenderingData::SwapchainDescription *swapchain_description,
+  RenderingData::FrameInfo *frame_info,
+  SessionData::Vulkan::Example *example_s
+) {
+  VkClearValue clear_value = { 0.0f, 0.0f, 0.0f, 0.0f };
+  VkRenderPassBeginInfo render_pass_info = {
+    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+    .renderPass = lpass->render_pass,
+    .framebuffer = lpass->framebuffers[frame_info->inflight_index],
+    .renderArea = {
+      .offset = {0, 0},
+      .extent = swapchain_description->image_extent,
+    },
+    .clearValueCount = 1,
+    .pClearValues = &clear_value,
+  };
+  vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, lpass->pipeline_sun);
+  /*
+  vkCmdBindDescriptorSets(
+    cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    example_s->lpass.pipeline_layout,
+    0, 0, nullptr,
+    0, nullptr
+  );
+  */
+  VkDeviceSize offset = 0;
+  vkCmdBindVertexBuffers(cmd, 0, 1, &example_s->fullscreen_quad.vertex_stake.buffer, &offset);
+  vkCmdDraw(cmd, example_s->fullscreen_quad.triangle_count * 3, 1, 0, 0);
   vkCmdEndRenderPass(cmd);
 }
 
@@ -135,6 +170,15 @@ void rendering_frame_example_render(
       cmd,
       &r->gpass,
       &r->constants,
+      swapchain_description.ptr,
+      frame_info.ptr,
+      example_s.ptr
+    );
+  }
+  { TracyVkZone(core->tracy_context, cmd, "example_lpass");
+    record_lpass(
+      cmd,
+      &r->lpass,
       swapchain_description.ptr,
       frame_info.ptr,
       example_s.ptr

@@ -68,7 +68,9 @@ struct RenderingData : lib::task::ParentResource {
       uint32_t fs_ubo_aligned_size;
       uint32_t total_ubo_aligned_size;
     } constants;
+
     lib::gfx::multi_alloc::StakeBuffer uniform_stake;
+
     std::vector<lib::gfx::multi_alloc::StakeImage> gbuffer_channel0_stakes;
     std::vector<lib::gfx::multi_alloc::StakeImage> gbuffer_channel1_stakes;
     std::vector<lib::gfx::multi_alloc::StakeImage> gbuffer_channel2_stakes;
@@ -77,15 +79,34 @@ struct RenderingData : lib::task::ParentResource {
     std::vector<VkImageView> gbuffer_channel1_views;
     std::vector<VkImageView> gbuffer_channel2_views;
     std::vector<VkImageView> gbuffer_depth_views;
+
+    std::vector<lib::gfx::multi_alloc::StakeImage> lbuffer_stakes;
+    std::vector<VkImageView> lbuffer_views;
+
     struct Prepass {
       VkRenderPass render_pass;
       VkPipeline pipeline;
       std::vector<VkFramebuffer> framebuffers;
     } prepass;
+
     struct GPass {
       VkRenderPass render_pass;
       VkPipeline pipeline;
       std::vector<VkFramebuffer> framebuffers;
     } gpass;
+
+    struct LPass {
+      VkRenderPass render_pass;
+      VkPipeline pipeline_sun;
+      std::vector<VkFramebuffer> framebuffers;
+    } lpass;
+
+    /*
+    struct Postpass {
+      VkRenderPass render_pass;
+      VkPipeline pipeline;
+      std::vector<VkFramebuffer> framebuffers;
+    } lpass;
+    */
   } example;
 };

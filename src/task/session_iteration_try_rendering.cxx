@@ -10,6 +10,7 @@ const VkFormat GBUFFER_DEPTH_FORMAT = VK_FORMAT_D32_SFLOAT;
 const VkFormat GBUFFER_CHANNEL0_FORMAT = VK_FORMAT_R16G16B16A16_SNORM;
 const VkFormat GBUFFER_CHANNEL1_FORMAT = VK_FORMAT_R16G16B16A16_UNORM;
 const VkFormat GBUFFER_CHANNEL2_FORMAT = VK_FORMAT_R8G8B8A8_UNORM;
+const VkFormat LBUFFER_FORMAT = VK_FORMAT_R16G16B16A16_SFLOAT;
 
 void init_example_prepass(
   RenderingData::Example::Prepass *it,
@@ -157,7 +158,7 @@ void init_example_prepass(
       .pDepthStencilState = &depth_stencil_info,
       .pColorBlendState = &color_blend_info,
       .pDynamicState = nullptr,
-      .layout = vulkan->example.pipeline_layout,
+      .layout = vulkan->example.gpass.pipeline_layout,
       .renderPass = it->render_pass,
       .subpass = 0,
     };
@@ -430,7 +431,7 @@ void init_example_gpass(
       .pDepthStencilState = &depth_stencil_info,
       .pColorBlendState = &color_blend_info,
       .pDynamicState = nullptr,
-      .layout = vulkan->example.pipeline_layout,
+      .layout = vulkan->example.gpass.pipeline_layout,
       .renderPass = it->render_pass,
       .subpass = 0,
     };
@@ -477,6 +478,242 @@ void init_example_gpass(
   }
 }
 
+void init_example_lpass(
+  RenderingData::Example::LPass *it,
+  RenderingData::SwapchainDescription *swapchain_description,
+  std::vector<VkImageView> *lbuffer_views,
+  SessionData::Vulkan *vulkan
+) {
+  ZoneScoped;
+  { ZoneScopedN(".render_pass");
+    VkAttachmentDescription attachment_descriptions[] = {
+      {
+        .format = LBUFFER_FORMAT,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      },
+    };
+    VkAttachmentReference color_attachment_refs[] = {
+      {
+        .attachment = 0,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      },
+    };
+    VkSubpassDescription subpass_description = {
+      .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+      .colorAttachmentCount = sizeof(color_attachment_refs) / sizeof(*color_attachment_refs),
+      .pColorAttachments = color_attachment_refs,
+      .pDepthStencilAttachment = nullptr,
+    };
+    VkRenderPassCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+      .attachmentCount = sizeof(attachment_descriptions) / sizeof(*attachment_descriptions),
+      .pAttachments = attachment_descriptions,
+      .subpassCount = 1,
+      .pSubpasses = &subpass_description,
+    };
+    auto result = vkCreateRenderPass(
+      vulkan->core.device,
+      &create_info,
+      vulkan->core.allocator,
+      &it->render_pass
+    );
+    assert(result == VK_SUCCESS);
+  }
+  { ZoneScopedN(".pipeline_sun");
+    VkShaderModule module_frag = VK_NULL_HANDLE;
+    VkShaderModule module_vert = VK_NULL_HANDLE;
+    { ZoneScopedN("module_vert");
+      VkShaderModuleCreateInfo info = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = embedded_lpass_sun_vert_len,
+        .pCode = (const uint32_t*) embedded_lpass_sun_vert,
+      };
+      auto result = vkCreateShaderModule(
+        vulkan->core.device,
+        &info,
+        vulkan->core.allocator,
+        &module_vert
+      );
+      assert(result == VK_SUCCESS);
+    }
+    { ZoneScopedN("module_frag");
+      VkShaderModuleCreateInfo info = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = embedded_lpass_sun_frag_len,
+        .pCode = (const uint32_t*) embedded_lpass_sun_frag,
+      };
+      auto result = vkCreateShaderModule(
+        vulkan->core.device,
+        &info,
+        vulkan->core.allocator,
+        &module_frag
+      );
+      assert(result == VK_SUCCESS);
+    }
+    VkPipelineShaderStageCreateInfo shader_stages[] = {
+      {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_VERTEX_BIT,
+        .module = module_vert,
+        .pName = "main",
+      },
+      {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .module = module_frag,
+        .pName = "main",
+      },
+    };
+    VkVertexInputBindingDescription binding_descriptions[] = {
+      {
+        .binding = 0,
+        .stride = sizeof(glm::vec2),
+        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+      },
+    };
+    VkVertexInputAttributeDescription attribute_descriptions[] = {
+      {
+        .location = 0,
+        .binding = 0,
+        .format = VK_FORMAT_R32G32_SFLOAT,
+        .offset = 0,
+      },
+    };
+    VkPipelineVertexInputStateCreateInfo vertex_input_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+      .vertexBindingDescriptionCount = sizeof(binding_descriptions) / sizeof(*binding_descriptions),
+      .pVertexBindingDescriptions = binding_descriptions,
+      .vertexAttributeDescriptionCount = sizeof(attribute_descriptions) / sizeof(*attribute_descriptions),
+      .pVertexAttributeDescriptions = attribute_descriptions,
+    };
+    VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+      .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+      .primitiveRestartEnable = VK_FALSE,
+    };
+    VkViewport viewport = {
+      .x = 0.0f,
+      .y = 0.0f,
+      .width = float(swapchain_description->image_extent.width),
+      .height = float(swapchain_description->image_extent.height),
+      .minDepth = 0.0f,
+      .maxDepth = 1.0f,
+    };
+    VkRect2D scissor = {
+      .offset = {0, 0},
+      .extent = swapchain_description->image_extent,
+    };
+    VkPipelineViewportStateCreateInfo viewport_state_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+      .viewportCount = 1,
+      .pViewports = &viewport,
+      .scissorCount = 1,
+      .pScissors = &scissor,
+    };
+    VkPipelineRasterizationStateCreateInfo rasterizer_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+      .depthClampEnable = VK_FALSE,
+      .rasterizerDiscardEnable = VK_FALSE,
+      .polygonMode = VK_POLYGON_MODE_FILL,
+      .cullMode = VK_CULL_MODE_BACK_BIT,
+      .frontFace = VK_FRONT_FACE_CLOCKWISE,
+      .depthBiasEnable = VK_FALSE,
+      .lineWidth = 1.0f,
+    };
+    VkPipelineMultisampleStateCreateInfo multisample_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+      .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+      .sampleShadingEnable = VK_FALSE,
+    };
+    VkPipelineDepthStencilStateCreateInfo depth_stencil_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+      .depthTestEnable = VK_FALSE,
+      .depthWriteEnable = VK_FALSE,
+      .depthCompareOp = VK_COMPARE_OP_ALWAYS,
+    };
+    VkPipelineColorBlendAttachmentState color_blend_attachments[] = {
+      {
+        .blendEnable = VK_TRUE,
+        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_COLOR,
+        .dstColorBlendFactor = VK_BLEND_FACTOR_DST_COLOR,
+        .colorBlendOp = VK_BLEND_OP_ADD,
+        .colorWriteMask = (0
+          | VK_COLOR_COMPONENT_R_BIT
+          | VK_COLOR_COMPONENT_G_BIT
+          | VK_COLOR_COMPONENT_B_BIT
+        ),
+      },
+    };
+    VkPipelineColorBlendStateCreateInfo color_blend_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+      .logicOpEnable = VK_FALSE,
+      .attachmentCount = sizeof(color_blend_attachments) / sizeof(*color_blend_attachments),
+      .pAttachments = color_blend_attachments,
+    };
+    VkGraphicsPipelineCreateInfo pipeline_info = {
+      .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+      .stageCount = 2,
+      .pStages = shader_stages,
+      .pVertexInputState = &vertex_input_info,
+      .pInputAssemblyState = &input_assembly_info,
+      .pViewportState = &viewport_state_info,
+      .pRasterizationState = &rasterizer_info,
+      .pMultisampleState = &multisample_info,
+      .pDepthStencilState = &depth_stencil_info,
+      .pColorBlendState = &color_blend_info,
+      .pDynamicState = nullptr,
+      .layout = vulkan->example.lpass.pipeline_layout,
+      .renderPass = it->render_pass,
+      .subpass = 0,
+    };
+    {
+      auto result = vkCreateGraphicsPipelines(
+        vulkan->core.device,
+        VK_NULL_HANDLE,
+        1, &pipeline_info,
+        vulkan->core.allocator,
+        &it->pipeline_sun
+      );
+      assert(result == VK_SUCCESS);
+    }
+    vkDestroyShaderModule(vulkan->core.device, module_frag, vulkan->core.allocator);
+    vkDestroyShaderModule(vulkan->core.device, module_vert, vulkan->core.allocator);
+  }
+  { ZoneScopedN(".framebuffers");
+    for (size_t i = 0; i < swapchain_description->image_count; i++) {
+      VkImageView attachments[] = {
+        lbuffer_views->data()[i],
+      };
+      VkFramebuffer framebuffer;
+      VkFramebufferCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .renderPass = it->render_pass,
+        .attachmentCount = sizeof(attachments) / sizeof(*attachments),
+        .pAttachments = attachments,
+        .width = swapchain_description->image_extent.width,
+        .height = swapchain_description->image_extent.height,
+        .layers = 1,
+      };
+      {
+        auto result = vkCreateFramebuffer(
+          vulkan->core.device,
+          &create_info,
+          vulkan->core.allocator,
+          &framebuffer
+        );
+        assert(result == VK_SUCCESS);
+      }
+      it->framebuffers.push_back(framebuffer);
+    }
+  }
+}
+
 void init_example(
   RenderingData::Example *it,
   RenderingData::SwapchainDescription *swapchain_description,
@@ -498,7 +735,7 @@ void init_example(
     VkWriteDescriptorSet writes[] = {
       {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = vulkan->example.descriptor_set,
+        .dstSet = vulkan->example.gpass.descriptor_set,
         .dstBinding = 0,
         .dstArrayElement = 0,
         .descriptorCount = 1,
@@ -507,7 +744,7 @@ void init_example(
       },
       {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = vulkan->example.descriptor_set,
+        .dstSet = vulkan->example.gpass.descriptor_set,
         .dstBinding = 1,
         .dstArrayElement = 0,
         .descriptorCount = 1,
@@ -625,6 +862,32 @@ void init_example(
       it->gbuffer_depth_views.push_back(depth_view);
     }
   }
+  { ZoneScopedN(".lbuffer_views");
+    for (auto stake : it->lbuffer_stakes) {
+      VkImageView image_view;
+      VkImageViewCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = stake.image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = LBUFFER_FORMAT,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .levelCount = 1,
+          .layerCount = 1,
+        },
+      };
+      {
+        auto result = vkCreateImageView(
+          vulkan->core.device,
+          &create_info,
+          vulkan->core.allocator,
+          &image_view
+        );
+        assert(result == VK_SUCCESS);
+      }
+      it->lbuffer_views.push_back(image_view);
+    }
+  }
 
   // for both pipelines
   VkShaderModule module_frag = VK_NULL_HANDLE;
@@ -632,8 +895,8 @@ void init_example(
   { ZoneScopedN("module_vert");
     VkShaderModuleCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-      .codeSize = embedded_example_rs_vert_len,
-      .pCode = (const uint32_t*) embedded_example_rs_vert,
+      .codeSize = embedded_gpass_vert_len,
+      .pCode = (const uint32_t*) embedded_gpass_vert,
     };
     auto result = vkCreateShaderModule(
       vulkan->core.device,
@@ -646,8 +909,8 @@ void init_example(
   { ZoneScopedN("module_frag");
     VkShaderModuleCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-      .codeSize = embedded_example_rs_frag_len,
-      .pCode = (const uint32_t*) embedded_example_rs_frag,
+      .codeSize = embedded_gpass_frag_len,
+      .pCode = (const uint32_t*) embedded_gpass_frag,
     };
     auto result = vkCreateShaderModule(
       vulkan->core.device,
@@ -677,6 +940,12 @@ void init_example(
   );
   vkDestroyShaderModule(vulkan->core.device, module_frag, vulkan->core.allocator);
   vkDestroyShaderModule(vulkan->core.device, module_vert, vulkan->core.allocator);
+  init_example_lpass(
+    &it->lpass,
+    swapchain_description,
+    &it->lbuffer_views,
+    vulkan
+  );
 }
 
 void session_iteration_try_rendering(
@@ -908,6 +1177,9 @@ void session_iteration_try_rendering(
     rendering->example.gbuffer_depth_stakes.resize(
       rendering->swapchain_description.image_count
     );
+    rendering->example.lbuffer_stakes.resize(
+      rendering->swapchain_description.image_count
+    );
     for (auto &stake : rendering->example.gbuffer_channel0_stakes) {
       claims.push_back({
         .info = {
@@ -1000,6 +1272,31 @@ void session_iteration_try_rendering(
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .tiling = VK_IMAGE_TILING_OPTIMAL,
             .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          },
+        },
+        .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        .p_stake_image = &stake,
+      });
+    }
+    for (auto &stake : rendering->example.lbuffer_stakes) {
+      claims.push_back({
+        .info = {
+          .image = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format = LBUFFER_FORMAT,
+            .extent = {
+              .width = rendering->swapchain_description.image_extent.width,
+              .height = rendering->swapchain_description.image_extent.height,
+              .depth = 1,
+            },
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .tiling = VK_IMAGE_TILING_OPTIMAL,
+            .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
           },

@@ -19,12 +19,17 @@ void session_cleanup(
     { ZoneScopedN(".example");
       vkDestroyDescriptorSetLayout(
         it->core.device,
-        it->example.descriptor_set_layout,
+        it->example.gpass.descriptor_set_layout,
         it->core.allocator
       );
       vkDestroyPipelineLayout(
         it->core.device,
-        it->example.pipeline_layout,
+        it->example.gpass.pipeline_layout,
+        it->core.allocator
+      );
+      vkDestroyPipelineLayout(
+        it->core.device,
+        it->example.lpass.pipeline_layout,
         it->core.allocator
       );
     }

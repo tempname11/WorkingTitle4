@@ -22,6 +22,15 @@ VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_callback(
 const int DEFAULT_WINDOW_WIDTH = 1280;
 const int DEFAULT_WINDOW_HEIGHT = 720;
 
+glm::vec2 fullscreen_quad_data[] = {
+  { -1.0f, -1.0f },
+  { -1.0f, +1.0f },
+  { +1.0f, -1.0f },
+  { +1.0f, -1.0f },
+  { -1.0f, +1.0f },
+  { +1.0f, +1.0f },
+};
+
 namespace mesh {
   T05 read_t05_file(const char *filename) {
     auto file = fopen(filename, "rb");
@@ -393,7 +402,23 @@ void session(
           | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
           | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
         ),
-        .p_stake_buffer = &it->example.vertex_stake,
+        .p_stake_buffer = &it->example.geometry.vertex_stake,
+      });
+      claims.push_back({
+        .info = {
+          .buffer = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = 6 * sizeof(glm::vec2),
+            .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+          },
+        },
+        .memory_property_flags = VkMemoryPropertyFlagBits(0
+          | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+          | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        ),
+        .p_stake_buffer = &it->example.fullscreen_quad.vertex_stake,
       });
       lib::gfx::multi_alloc::init(
         &it->multi_alloc,
@@ -405,7 +430,7 @@ void session(
       );
     }
     { ZoneScopedN(".example");
-      { ZoneScopedN(".descriptor_set_layout");
+      { ZoneScopedN(".gpass.descriptor_set_layout");
         VkDescriptorSetLayoutBinding layout_bindings[] = {
           {
             .binding = 0,
@@ -430,53 +455,69 @@ void session(
             it->core.device,
             &create_info,
             it->core.allocator,
-            &it->example.descriptor_set_layout
+            &it->example.gpass.descriptor_set_layout
           );
           assert(result == VK_SUCCESS);
         }
       }
-      { ZoneScopedN(".descriptor_set");
+      { ZoneScopedN(".gpass.descriptor_set");
         VkDescriptorSetAllocateInfo allocate_info = {
           .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
           .descriptorPool = it->common_descriptor_pool,
           .descriptorSetCount = 1,
-          .pSetLayouts = &it->example.descriptor_set_layout,
+          .pSetLayouts = &it->example.gpass.descriptor_set_layout,
         };
         {
           auto result = vkAllocateDescriptorSets(
             it->core.device,
             &allocate_info,
-            &it->example.descriptor_set
+            &it->example.gpass.descriptor_set
           );
           assert(result == VK_SUCCESS);
         }
       }
-      { ZoneScopedN(".pipeline_layout");
+      { ZoneScopedN(".gpass.pipeline_layout");
         VkPipelineLayoutCreateInfo info = {
           .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
           .setLayoutCount = 1,
-          .pSetLayouts = &it->example.descriptor_set_layout,
+          .pSetLayouts = &it->example.gpass.descriptor_set_layout,
         };
         {
           auto result = vkCreatePipelineLayout(
             it->core.device,
             &info,
             it->core.allocator,
-            &it->example.pipeline_layout
+            &it->example.gpass.pipeline_layout
+          );
+          assert(result == VK_SUCCESS);
+        }
+      }
+      { ZoneScopedN(".lpass.pipeline_layout");
+        VkPipelineLayoutCreateInfo info = {
+          .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+          .setLayoutCount = 0,
+          .pSetLayouts = nullptr,
+        };
+        {
+          auto result = vkCreatePipelineLayout(
+            it->core.device,
+            &info,
+            it->core.allocator,
+            &it->example.lpass.pipeline_layout
           );
           assert(result == VK_SUCCESS);
         }
       }
     }
-    it->example.triangle_count = the_mesh.triangle_count;
-    { ZoneScopedN("copy_vertex_buffer_data");
+    { ZoneScopedN(".geometry");
+      it->example.geometry.triangle_count = the_mesh.triangle_count;
       void * data;
       {
         auto result = vkMapMemory(
           it->core.device,
-          it->example.vertex_stake.memory,
-          it->example.vertex_stake.offset,
-          it->example.vertex_stake.size,
+          it->example.geometry.vertex_stake.memory,
+          it->example.geometry.vertex_stake.offset,
+          it->example.geometry.vertex_stake.size,
           0,
           &data
         );
@@ -485,7 +526,28 @@ void session(
       memcpy(data, the_mesh.vertices, the_mesh.triangle_count * 3 * sizeof(mesh::VertexT05));
       vkUnmapMemory(
         it->core.device,
-        it->example.vertex_stake.memory
+        it->example.geometry.vertex_stake.memory
+      );
+    }
+    { ZoneScopedN(".fullscreen_quad");
+      it->example.fullscreen_quad.triangle_count = 2;
+      void * data;
+      {
+        auto result = vkMapMemory(
+          it->core.device,
+          it->example.fullscreen_quad.vertex_stake.memory,
+          it->example.fullscreen_quad.vertex_stake.offset,
+          it->example.fullscreen_quad.vertex_stake.size,
+          0,
+          &data
+        );
+        assert(result == VK_SUCCESS);
+      }
+      assert(it->example.fullscreen_quad.vertex_stake.size == sizeof(fullscreen_quad_data));
+      memcpy(data, fullscreen_quad_data, sizeof(fullscreen_quad_data));
+      vkUnmapMemory(
+        it->core.device,
+        it->example.fullscreen_quad.vertex_stake.memory
       );
     }
     { ZoneScopedN(".core.tracy_context");

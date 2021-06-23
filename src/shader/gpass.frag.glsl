@@ -1,12 +1,12 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout (location = 0) in vec3 interpolated_normal;
-layout (location = 1) in vec3 world_position;
+layout(location = 0) in vec3 interpolated_normal;
+layout(location = 1) in vec3 world_position;
 
-layout (location = 0) out vec4 channel0; 
-layout (location = 1) out vec4 channel1; 
-layout (location = 2) out vec4 channel2; 
+layout(location = 0) out vec4 channel0; 
+layout(location = 1) out vec4 channel1; 
+layout(location = 2) out vec4 channel2; 
 
 layout(binding = 1) uniform UBO {
   vec3 camera_position;
