@@ -1,6 +1,6 @@
 #include "task.hxx"
 
-#define ENGINE_DEBUG_ARTIFICIAL_DELAY 33ms
+// #define ENGINE_DEBUG_ARTIFICIAL_DELAY 33ms
 
 void rendering_frame(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,

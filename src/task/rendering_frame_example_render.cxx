@@ -127,54 +127,6 @@ void record_finalpass(
   SessionData::Vulkan::Example *example_s
 ) {
   ZoneScoped;
-  { ZoneScopedN("barrier_before");
-    VkImageMemoryBarrier barriers[] = {
-      {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-        .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .newLayout = VK_IMAGE_LAYOUT_GENERAL,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = lbuffer->stakes[frame_info->inflight_index].image,
-        .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .baseMipLevel = 0,
-          .levelCount = 1,
-          .baseArrayLayer = 0,
-          .layerCount = 1,
-        },
-      },
-      {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .srcAccessMask = 0,
-        .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .newLayout = VK_IMAGE_LAYOUT_GENERAL,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = final_image->stakes[frame_info->inflight_index].image,
-        .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .baseMipLevel = 0,
-          .levelCount = 1,
-          .baseArrayLayer = 0,
-          .layerCount = 1,
-        },
-      },
-    };
-    vkCmdPipelineBarrier(
-      cmd,
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      0,
-      0, nullptr,
-      0, nullptr,
-      sizeof(barriers) / sizeof(*barriers),
-      barriers
-    );
-  }
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, example_s->finalpass.pipeline);
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -187,39 +139,388 @@ void record_finalpass(
     swapchain_description->image_extent.height,
     1
   );
-  { ZoneScopedN("barrier_after");
-    // @Note: this relies on knowing that the next thing to execute will be the transfer.
-    // Could be brittle.
-    VkImageMemoryBarrier barriers[] = {
-      {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-        .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
-        .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
-        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = final_image->stakes[frame_info->inflight_index].image,
-        .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .baseMipLevel = 0,
-          .levelCount = 1,
-          .baseArrayLayer = 0,
-          .layerCount = 1,
-        },
+}
+
+void record_barrier_before_prepass(
+  VkCommandBuffer cmd,
+  RenderingData::FrameInfo *frame_info,
+  RenderingData::Example::ZBuffer *zbuffer
+) {
+  ZoneScoped;
+  VkImageMemoryBarrier barriers[] = {
+    {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = 0,
+      .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = zbuffer->stakes[frame_info->inflight_index].image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
       },
-    };
-    vkCmdPipelineBarrier(
-      cmd,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      0,
-      0, nullptr,
-      0, nullptr,
-      sizeof(barriers) / sizeof(*barriers),
-      barriers
-    );
-  }
+    },
+  };
+  vkCmdPipelineBarrier(
+    cmd,
+    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+    VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+    0,
+    0, nullptr,
+    0, nullptr,
+    sizeof(barriers) / sizeof(*barriers),
+    barriers
+  );
+}
+
+void record_barrier_prepass_gpass(
+  VkCommandBuffer cmd,
+  RenderingData::FrameInfo *frame_info,
+  RenderingData::Example::ZBuffer *zbuffer
+) {
+  ZoneScoped;
+  VkImageMemoryBarrier barriers[] = {
+    {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+      .newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = zbuffer->stakes[frame_info->inflight_index].image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      },
+    },
+  };
+  vkCmdPipelineBarrier(
+    cmd,
+    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+    VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+    0,
+    0, nullptr,
+    0, nullptr,
+    sizeof(barriers) / sizeof(*barriers),
+    barriers
+  );
+}
+
+void record_barrier_before_gpass(
+  VkCommandBuffer cmd,
+  RenderingData::FrameInfo *frame_info,
+  RenderingData::Example::GBuffer *gbuffer
+) {
+  ZoneScoped;
+  VkImageMemoryBarrier barriers[] = {
+    {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = 0,
+      .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = gbuffer->channel0_stakes[frame_info->inflight_index].image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      },
+    },
+    {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = 0,
+      .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = gbuffer->channel1_stakes[frame_info->inflight_index].image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      },
+    },
+    {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = 0,
+      .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = gbuffer->channel2_stakes[frame_info->inflight_index].image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      },
+    },
+  };
+  vkCmdPipelineBarrier(
+    cmd,
+    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    0,
+    0, nullptr,
+    0, nullptr,
+    sizeof(barriers) / sizeof(*barriers),
+    barriers
+  );
+}
+
+void record_barrier_gpass_lpass(
+  VkCommandBuffer cmd,
+  RenderingData::FrameInfo *frame_info,
+  RenderingData::Example::ZBuffer *zbuffer,
+  RenderingData::Example::GBuffer *gbuffer
+) {
+  ZoneScoped;
+  VkImageMemoryBarrier barriers[] = {
+    {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = 0,
+      .dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+      .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = zbuffer->stakes[frame_info->inflight_index].image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      },
+    },
+    {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = gbuffer->channel0_stakes[frame_info->inflight_index].image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      },
+    },
+    {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = gbuffer->channel1_stakes[frame_info->inflight_index].image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      },
+    },
+    {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = gbuffer->channel2_stakes[frame_info->inflight_index].image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      },
+    },
+  };
+  vkCmdPipelineBarrier(
+    cmd,
+    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+    0,
+    0, nullptr,
+    0, nullptr,
+    sizeof(barriers) / sizeof(*barriers),
+    barriers
+  );
+}
+
+void record_barrier_before_lpass(
+  VkCommandBuffer cmd,
+  RenderingData::FrameInfo *frame_info,
+  RenderingData::Example::LBuffer *lbuffer
+) {
+  ZoneScoped;
+  VkImageMemoryBarrier barriers[] = {
+    {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = 0,
+      .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = lbuffer->stakes[frame_info->inflight_index].image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      },
+    },
+  };
+  vkCmdPipelineBarrier(
+    cmd,
+    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    0,
+    0, nullptr,
+    0, nullptr,
+    sizeof(barriers) / sizeof(*barriers),
+    barriers
+  );
+}
+
+void record_barrier_before_finalpass(
+  VkCommandBuffer cmd,
+  RenderingData::FrameInfo *frame_info,
+  RenderingData::FinalImage *final_image
+) {
+  ZoneScoped;
+  VkImageMemoryBarrier barriers[] = {
+    {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = 0,
+      .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = final_image->stakes[frame_info->inflight_index].image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      },
+    },
+  };
+  vkCmdPipelineBarrier(
+    cmd,
+    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+    0,
+    0, nullptr,
+    0, nullptr,
+    sizeof(barriers) / sizeof(*barriers),
+    barriers
+  );
+}
+
+void record_barrier_lpass_finalpass(
+  VkCommandBuffer cmd,
+  RenderingData::FrameInfo *frame_info,
+  RenderingData::Example::LBuffer *lbuffer
+) {
+  ZoneScoped;
+  VkImageMemoryBarrier barriers[] = {
+    {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = lbuffer->stakes[frame_info->inflight_index].image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      },
+    },
+  };
+  vkCmdPipelineBarrier(
+    cmd,
+    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+    0,
+    0, nullptr,
+    0, nullptr,
+    sizeof(barriers) / sizeof(*barriers),
+    barriers
+  );
+}
+
+void record_barrier_finalpass_imgui(
+  VkCommandBuffer cmd,
+  RenderingData::FrameInfo *frame_info,
+  RenderingData::FinalImage *final_image
+) {
+  ZoneScoped;
+  VkImageMemoryBarrier barriers[] = {
+    {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+      .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = final_image->stakes[frame_info->inflight_index].image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      },
+    },
+  };
+  vkCmdPipelineBarrier(
+    cmd,
+    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+    0,
+    0, nullptr,
+    0, nullptr,
+    sizeof(barriers) / sizeof(*barriers),
+    barriers
+  );
 }
 
 void rendering_frame_example_render(
@@ -261,6 +562,13 @@ void rendering_frame_example_render(
     auto result = vkBeginCommandBuffer(cmd, &info);
     assert(result == VK_SUCCESS);
   }
+
+  record_barrier_before_prepass(
+    cmd,
+    frame_info.ptr,
+    &r->zbuffer
+  );
+
   { TracyVkZone(core->tracy_context, cmd, "example_prepass");
     record_prepass(
       cmd,
@@ -271,6 +579,19 @@ void rendering_frame_example_render(
       example_s.ptr
     );
   }
+
+  record_barrier_prepass_gpass(
+    cmd,
+    frame_info.ptr,
+    &r->zbuffer
+  );
+
+  record_barrier_before_gpass(
+    cmd,
+    frame_info.ptr,
+    &r->gbuffer
+  );
+
   { TracyVkZone(core->tracy_context, cmd, "example_gpass");
     record_gpass(
       cmd,
@@ -281,6 +602,20 @@ void rendering_frame_example_render(
       example_s.ptr
     );
   }
+
+  record_barrier_before_lpass(
+    cmd,
+    frame_info.ptr,
+    &r->lbuffer
+  );
+
+  record_barrier_gpass_lpass(
+    cmd,
+    frame_info.ptr,
+    &r->zbuffer,
+    &r->gbuffer
+  );
+
   { TracyVkZone(core->tracy_context, cmd, "example_lpass");
     record_lpass(
       cmd,
@@ -290,6 +625,19 @@ void rendering_frame_example_render(
       example_s.ptr
     );
   }
+
+  record_barrier_before_finalpass(
+    cmd,
+    frame_info.ptr,
+    final_image.ptr
+  );
+
+  record_barrier_lpass_finalpass(
+    cmd,
+    frame_info.ptr,
+    &r->lbuffer
+  );
+
   { TracyVkZone(core->tracy_context, cmd, "example_finalpass");
     record_finalpass(
       cmd,
@@ -301,6 +649,14 @@ void rendering_frame_example_render(
       example_s.ptr
     );
   }
+
+  // @Note: this relies on imgui cmd being sent next!
+  record_barrier_finalpass_imgui(
+    cmd,
+    frame_info.ptr,
+    final_image.ptr
+  );
+
   { // end
     auto result = vkEndCommandBuffer(cmd);
     assert(result == VK_SUCCESS);

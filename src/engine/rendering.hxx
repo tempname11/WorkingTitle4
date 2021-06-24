@@ -71,14 +71,19 @@ struct RenderingData : lib::task::ParentResource {
 
     lib::gfx::multi_alloc::StakeBuffer uniform_stake;
 
-    std::vector<lib::gfx::multi_alloc::StakeImage> gbuffer_channel0_stakes;
-    std::vector<lib::gfx::multi_alloc::StakeImage> gbuffer_channel1_stakes;
-    std::vector<lib::gfx::multi_alloc::StakeImage> gbuffer_channel2_stakes;
-    std::vector<lib::gfx::multi_alloc::StakeImage> gbuffer_depth_stakes;
-    std::vector<VkImageView> gbuffer_channel0_views;
-    std::vector<VkImageView> gbuffer_channel1_views;
-    std::vector<VkImageView> gbuffer_channel2_views;
-    std::vector<VkImageView> gbuffer_depth_views;
+    struct ZBuffer {
+      std::vector<lib::gfx::multi_alloc::StakeImage> stakes;
+      std::vector<VkImageView> views;
+    } zbuffer;
+
+    struct GBuffer {
+      std::vector<lib::gfx::multi_alloc::StakeImage> channel0_stakes;
+      std::vector<lib::gfx::multi_alloc::StakeImage> channel1_stakes;
+      std::vector<lib::gfx::multi_alloc::StakeImage> channel2_stakes;
+      std::vector<VkImageView> channel0_views;
+      std::vector<VkImageView> channel1_views;
+      std::vector<VkImageView> channel2_views;
+    } gbuffer;
 
     struct LBuffer {
       std::vector<lib::gfx::multi_alloc::StakeImage> stakes;

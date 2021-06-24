@@ -16,7 +16,7 @@ const VkFormat FINAL_IMAGE_FORMAT = VK_FORMAT_B8G8R8A8_UNORM;
 void init_example_prepass(
   RenderingData::Example::Prepass *it,
   VkShaderModule module_vert,
-  std::vector<VkImageView> *depth_views,
+  RenderingData::Example::ZBuffer *zbuffer,
   RenderingData::SwapchainDescription *swapchain_description,
   SessionData::Vulkan *vulkan
 ) {
@@ -30,7 +30,7 @@ void init_example_prepass(
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
       },
     };
@@ -177,7 +177,7 @@ void init_example_prepass(
   { ZoneScopedN(".framebuffers");
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
       VkImageView attachments[] = {
-        depth_views->data()[i],
+        zbuffer->views[i],
       };
       VkFramebuffer framebuffer;
       VkFramebufferCreateInfo create_info = {
@@ -207,10 +207,8 @@ void init_example_gpass(
   RenderingData::Example::GPass *it,
   VkShaderModule module_vert,
   VkShaderModule module_frag,
-  std::vector<VkImageView> *gbuffer_channel0_views,
-  std::vector<VkImageView> *gbuffer_channel1_views,
-  std::vector<VkImageView> *gbuffer_channel2_views,
-  std::vector<VkImageView> *gbuffer_depth_views,
+  RenderingData::Example::ZBuffer *zbuffer,
+  RenderingData::Example::GBuffer *gbuffer,
   RenderingData::SwapchainDescription *swapchain_description,
   SessionData::Vulkan *vulkan
 ) {
@@ -224,7 +222,7 @@ void init_example_gpass(
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
       {
@@ -234,7 +232,7 @@ void init_example_gpass(
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
       {
@@ -244,7 +242,7 @@ void init_example_gpass(
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
       {
@@ -450,10 +448,10 @@ void init_example_gpass(
   { ZoneScopedN(".framebuffers");
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
       VkImageView attachments[] = {
-        gbuffer_channel0_views->data()[i],
-        gbuffer_channel1_views->data()[i],
-        gbuffer_channel2_views->data()[i],
-        gbuffer_depth_views->data()[i],
+        gbuffer->channel0_views[i],
+        gbuffer->channel1_views[i],
+        gbuffer->channel2_views[i],
+        zbuffer->views[i],
       };
       VkFramebuffer framebuffer;
       VkFramebufferCreateInfo create_info = {
@@ -495,7 +493,7 @@ void init_example_lpass(
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
     };
@@ -722,7 +720,6 @@ void init_example_finalpass(
   RenderingData::FinalImage *final_image,
   SessionData::Vulkan *vulkan
 ) {
-  it->descriptor_sets.resize(swapchain_description->image_count);
   std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
   for (auto &layout : layouts) {
     layout = vulkan->example.finalpass.descriptor_set_layout;
@@ -743,7 +740,6 @@ void init_example_finalpass(
     assert(result == VK_SUCCESS);
   }
   {
-    std::vector<VkWriteDescriptorSet> writes;
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
       VkDescriptorImageInfo final_image_info = {
         .imageView = final_image->views[i],
@@ -752,33 +748,34 @@ void init_example_finalpass(
       VkDescriptorImageInfo lbuffer_image_info = {
         .sampler = vulkan->example.finalpass.sampler_lbuffer,
         .imageView = lbuffer->views[i],
-        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
-      writes.push_back(VkWriteDescriptorSet {
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = it->descriptor_sets[i],
-        .dstBinding = 0,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .pImageInfo = &final_image_info,
-      });
-      writes.push_back(VkWriteDescriptorSet {
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = it->descriptor_sets[i],
-        .dstBinding = 1,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .pImageInfo = &lbuffer_image_info,
-      });
+      VkWriteDescriptorSet writes[] = {
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = it->descriptor_sets[i],
+          .dstBinding = 0,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+          .pImageInfo = &final_image_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = it->descriptor_sets[i],
+          .dstBinding = 1,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .pImageInfo = &lbuffer_image_info,
+        }
+      };
+      vkUpdateDescriptorSets(
+        vulkan->core.device,
+        sizeof(writes) / sizeof(*writes), writes,
+        0, nullptr
+      );
     }
-
-    vkUpdateDescriptorSets(
-      vulkan->core.device,
-      writes.size(), writes.data(),
-      0, nullptr
-    );
   }
 }
 
@@ -827,8 +824,8 @@ void init_example(
       0, nullptr
     );
   }
-  { ZoneScopedN(".gbuffer_channel0_views");
-    for (auto stake : it->gbuffer_channel0_stakes) {
+  { ZoneScopedN(".gbuffer.channel0_views");
+    for (auto stake : it->gbuffer.channel0_stakes) {
       VkImageView image_view;
       VkImageViewCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -850,11 +847,11 @@ void init_example(
         );
         assert(result == VK_SUCCESS);
       }
-      it->gbuffer_channel0_views.push_back(image_view);
+      it->gbuffer.channel0_views.push_back(image_view);
     }
   }
-  { ZoneScopedN(".gbuffer_channel1_views");
-    for (auto stake : it->gbuffer_channel1_stakes) {
+  { ZoneScopedN(".gbuffer.channel1_views");
+    for (auto stake : it->gbuffer.channel1_stakes) {
       VkImageView image_view;
       VkImageViewCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -876,11 +873,11 @@ void init_example(
         );
         assert(result == VK_SUCCESS);
       }
-      it->gbuffer_channel1_views.push_back(image_view);
+      it->gbuffer.channel1_views.push_back(image_view);
     }
   }
-  { ZoneScopedN(".gbuffer_channel2_views");
-    for (auto stake : it->gbuffer_channel2_stakes) {
+  { ZoneScopedN(".gbuffer.channel2_views");
+    for (auto stake : it->gbuffer.channel2_stakes) {
       VkImageView image_view;
       VkImageViewCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -902,11 +899,11 @@ void init_example(
         );
         assert(result == VK_SUCCESS);
       }
-      it->gbuffer_channel2_views.push_back(image_view);
+      it->gbuffer.channel2_views.push_back(image_view);
     }
   }
-  { ZoneScopedN(".gbuffer_depth_views");
-    for (auto stake : it->gbuffer_depth_stakes) {
+  { ZoneScopedN(".zbuffer.views");
+    for (auto stake : it->zbuffer.stakes) {
       VkImageView depth_view;
       VkImageViewCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -928,7 +925,7 @@ void init_example(
         );
         assert(result == VK_SUCCESS);
       }
-      it->gbuffer_depth_views.push_back(depth_view);
+      it->zbuffer.views.push_back(depth_view);
     }
   }
   { ZoneScopedN(".lbuffer.views");
@@ -992,7 +989,7 @@ void init_example(
   init_example_prepass(
     &it->prepass,
     module_vert,
-    &it->gbuffer_depth_views,
+    &it->zbuffer,
     swapchain_description,
     vulkan
   );
@@ -1000,10 +997,8 @@ void init_example(
     &it->gpass,
     module_vert,
     module_frag,
-    &it->gbuffer_channel0_views,
-    &it->gbuffer_channel1_views,
-    &it->gbuffer_channel2_views,
-    &it->gbuffer_depth_views,
+    &it->zbuffer,
+    &it->gbuffer,
     swapchain_description,
     vulkan
   );
@@ -1241,22 +1236,22 @@ void session_iteration_try_rendering(
       ),
       .p_stake_buffer = &rendering->example.uniform_stake,
     });
-    rendering->example.gbuffer_channel0_stakes.resize(
+    rendering->example.gbuffer.channel0_stakes.resize(
       rendering->swapchain_description.image_count
     );
-    rendering->example.gbuffer_channel1_stakes.resize(
+    rendering->example.gbuffer.channel1_stakes.resize(
       rendering->swapchain_description.image_count
     );
-    rendering->example.gbuffer_channel2_stakes.resize(
+    rendering->example.gbuffer.channel2_stakes.resize(
       rendering->swapchain_description.image_count
     );
-    rendering->example.gbuffer_depth_stakes.resize(
+    rendering->example.zbuffer.stakes.resize(
       rendering->swapchain_description.image_count
     );
     rendering->example.lbuffer.stakes.resize(
       rendering->swapchain_description.image_count
     );
-    for (auto &stake : rendering->example.gbuffer_channel0_stakes) {
+    for (auto &stake : rendering->example.gbuffer.channel0_stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -1272,7 +1267,10 @@ void session_iteration_try_rendering(
             .arrayLayers = 1,
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .tiling = VK_IMAGE_TILING_OPTIMAL,
-            .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .usage = (0
+              | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+              | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
+            ),
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
           },
@@ -1281,7 +1279,7 @@ void session_iteration_try_rendering(
         .p_stake_image = &stake,
       });
     }
-    for (auto &stake : rendering->example.gbuffer_channel1_stakes) {
+    for (auto &stake : rendering->example.gbuffer.channel1_stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -1297,7 +1295,10 @@ void session_iteration_try_rendering(
             .arrayLayers = 1,
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .tiling = VK_IMAGE_TILING_OPTIMAL,
-            .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .usage = (0
+              | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+              | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
+            ),
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
           },
@@ -1306,7 +1307,7 @@ void session_iteration_try_rendering(
         .p_stake_image = &stake,
       });
     }
-    for (auto &stake : rendering->example.gbuffer_channel2_stakes) {
+    for (auto &stake : rendering->example.gbuffer.channel2_stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -1322,7 +1323,10 @@ void session_iteration_try_rendering(
             .arrayLayers = 1,
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .tiling = VK_IMAGE_TILING_OPTIMAL,
-            .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .usage = (0
+              | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+              | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
+            ),
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
           },
@@ -1331,7 +1335,7 @@ void session_iteration_try_rendering(
         .p_stake_image = &stake,
       });
     }
-    for (auto &stake : rendering->example.gbuffer_depth_stakes) {
+    for (auto &stake : rendering->example.zbuffer.stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -1347,7 +1351,10 @@ void session_iteration_try_rendering(
             .arrayLayers = 1,
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .tiling = VK_IMAGE_TILING_OPTIMAL,
-            .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            .usage = (0
+              | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+              | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
+            ),
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
           },
@@ -1503,7 +1510,7 @@ void session_iteration_try_rendering(
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
         .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       };
       VkAttachmentReference color_attachment_ref = {
         .attachment = 0,
