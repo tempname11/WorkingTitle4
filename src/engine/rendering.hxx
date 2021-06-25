@@ -106,6 +106,7 @@ struct RenderingData : lib::task::ParentResource {
       VkRenderPass render_pass;
       VkPipeline pipeline_sun;
       std::vector<VkFramebuffer> framebuffers;
+      std::vector<VkDescriptorSet> descriptor_sets;
     } lpass;
 
     struct Finalpass {

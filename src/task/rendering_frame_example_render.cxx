@@ -55,6 +55,11 @@ void record_gpass(
   RenderingData::FrameInfo *frame_info,
   SessionData::Vulkan::Example *example_s
 ) {
+  VkClearValue clear_values[] = {
+    {0.0f, 0.0f, 0.0f, 0.0f},
+    {0.0f, 0.0f, 0.0f, 0.0f},
+    {0.0f, 0.0f, 0.0f, 0.0f},
+  };
   VkRenderPassBeginInfo render_pass_info = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
     .renderPass = gpass->render_pass,
@@ -63,8 +68,8 @@ void record_gpass(
       .offset = {0, 0},
       .extent = swapchain_description->image_extent,
     },
-    .clearValueCount = 0,
-    .pClearValues = nullptr,
+    .clearValueCount = sizeof(clear_values) / sizeof(*clear_values),
+    .pClearValues = clear_values,
   };
   vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, gpass->pipeline);
@@ -103,14 +108,12 @@ void record_lpass(
   };
   vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, lpass->pipeline_sun);
-  /*
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
     example_s->lpass.pipeline_layout,
-    0, 0, nullptr,
+    0, 1, &lpass->descriptor_sets[frame_info->inflight_index],
     0, nullptr
   );
-  */
   VkDeviceSize offset = 0;
   vkCmdBindVertexBuffers(cmd, 0, 1, &example_s->fullscreen_quad.vertex_stake.buffer, &offset);
   vkCmdDraw(cmd, example_s->fullscreen_quad.triangle_count * 3, 1, 0, 0);

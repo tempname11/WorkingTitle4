@@ -27,6 +27,11 @@ void session_cleanup(
         it->example.gpass.pipeline_layout,
         it->core.allocator
       );
+      vkDestroyDescriptorSetLayout(
+        it->core.device,
+        it->example.lpass.descriptor_set_layout,
+        it->core.allocator
+      );
       vkDestroyPipelineLayout(
         it->core.device,
         it->example.lpass.pipeline_layout,

@@ -23,13 +23,10 @@ VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_callback(
 const int DEFAULT_WINDOW_WIDTH = 1280;
 const int DEFAULT_WINDOW_HEIGHT = 720;
 
-glm::vec2 fullscreen_quad_data[] = {
+glm::vec2 fullscreen_quad_data[] = { // not a quad now!
   { -1.0f, -1.0f },
-  { -1.0f, +1.0f },
-  { +1.0f, -1.0f },
-  { +1.0f, -1.0f },
-  { -1.0f, +1.0f },
-  { +1.0f, +1.0f },
+  { -1.0f, +3.0f },
+  { +3.0f, -1.0f },
 };
 
 namespace mesh {
@@ -125,11 +122,47 @@ void init_example(
       assert(result == VK_SUCCESS);
     }
   }
+  { ZoneScopedN(".lpass.descriptor_set_layout");
+    VkDescriptorSetLayoutBinding layout_bindings[] = {
+      {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      },
+      {
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      },
+      {
+        .binding = 2,
+        .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      },
+    };
+    VkDescriptorSetLayoutCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
+      .pBindings = layout_bindings,
+    };
+    {
+      auto result = vkCreateDescriptorSetLayout(
+        it->core.device,
+        &create_info,
+        it->core.allocator,
+        &it->example.lpass.descriptor_set_layout
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
   { ZoneScopedN(".lpass.pipeline_layout");
     VkPipelineLayoutCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 0,
-      .pSetLayouts = nullptr,
+      .setLayoutCount = 1,
+      .pSetLayouts = &it->example.lpass.descriptor_set_layout,
     };
     {
       auto result = vkCreatePipelineLayout(
@@ -594,7 +627,7 @@ void session(
         .info = {
           .buffer = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = 6 * sizeof(glm::vec2),
+            .size = sizeof(fullscreen_quad_data),
             .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
           },
@@ -637,7 +670,7 @@ void session(
       );
     }
     { ZoneScopedN(".fullscreen_quad");
-      it->example.fullscreen_quad.triangle_count = 2;
+      it->example.fullscreen_quad.triangle_count = sizeof(fullscreen_quad_data) / sizeof(glm::vec2);
       void * data;
       {
         auto result = vkMapMemory(

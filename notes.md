@@ -1,6 +1,3 @@
-### immediate things to do
-[ ] debug until scene is seen again
-
 ### larger things to do
 [ ] G-Pass for real
 [ ] L-Pass for real (sun)

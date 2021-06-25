@@ -59,6 +59,7 @@ struct SessionData : lib::task::ParentResource {
       } gpass;
 
       struct LPass {
+        VkDescriptorSetLayout descriptor_set_layout;
         VkPipelineLayout pipeline_layout;
       } lpass;
 
@@ -68,7 +69,6 @@ struct SessionData : lib::task::ParentResource {
         VkPipelineLayout pipeline_layout;
         VkSampler sampler_lbuffer;
       } finalpass;
-
     } example;
   } vulkan;
 

@@ -218,7 +218,7 @@ void init_example_gpass(
       {
         .format = GBUFFER_CHANNEL0_FORMAT,
         .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -228,7 +228,7 @@ void init_example_gpass(
       {
         .format = GBUFFER_CHANNEL1_FORMAT,
         .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -238,7 +238,7 @@ void init_example_gpass(
       {
         .format = GBUFFER_CHANNEL2_FORMAT,
         .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -480,6 +480,7 @@ void init_example_gpass(
 void init_example_lpass(
   RenderingData::Example::LPass *it,
   RenderingData::SwapchainDescription *swapchain_description,
+  RenderingData::Example::GBuffer *gbuffer,
   RenderingData::Example::LBuffer *lbuffer,
   SessionData::Vulkan *vulkan
 ) {
@@ -496,6 +497,36 @@ void init_example_lpass(
         .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
+      {
+        .format = GBUFFER_CHANNEL0_FORMAT,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      },
+      {
+        .format = GBUFFER_CHANNEL1_FORMAT,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      },
+      {
+        .format = GBUFFER_CHANNEL2_FORMAT,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      },
     };
     VkAttachmentReference color_attachment_refs[] = {
       {
@@ -503,8 +534,24 @@ void init_example_lpass(
         .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
     };
+    VkAttachmentReference input_attachment_refs[] = {
+      {
+        .attachment = 1,
+        .layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      },
+      {
+        .attachment = 2,
+        .layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      },
+      {
+        .attachment = 3,
+        .layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      },
+    };
     VkSubpassDescription subpass_description = {
       .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+      .inputAttachmentCount = sizeof(input_attachment_refs) / sizeof(*input_attachment_refs),
+      .pInputAttachments = input_attachment_refs,
       .colorAttachmentCount = sizeof(color_attachment_refs) / sizeof(*color_attachment_refs),
       .pColorAttachments = color_attachment_refs,
       .pDepthStencilAttachment = nullptr,
@@ -523,6 +570,77 @@ void init_example_lpass(
       &it->render_pass
     );
     assert(result == VK_SUCCESS);
+  }
+  { ZoneScopedN(".descriptor_sets");
+    std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
+    for (auto &layout : layouts) {
+      layout = vulkan->example.lpass.descriptor_set_layout;
+    }
+    it->descriptor_sets.resize(swapchain_description->image_count);
+    VkDescriptorSetAllocateInfo allocate_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool = vulkan->common_descriptor_pool,
+      .descriptorSetCount = swapchain_description->image_count,
+      .pSetLayouts = layouts.data(),
+    };
+    {
+      auto result = vkAllocateDescriptorSets(
+        vulkan->core.device,
+        &allocate_info,
+        it->descriptor_sets.data()
+      );
+      assert(result == VK_SUCCESS);
+    }
+    {
+      for (size_t i = 0; i < swapchain_description->image_count; i++) {
+        VkDescriptorImageInfo channel0_image_info = {
+          .imageView = gbuffer->channel0_views[i],
+          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+        VkDescriptorImageInfo channel1_image_info = {
+          .imageView = gbuffer->channel1_views[i],
+          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+        VkDescriptorImageInfo channel2_image_info = {
+          .imageView = gbuffer->channel2_views[i],
+          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+        VkWriteDescriptorSet writes[] = {
+          {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = it->descriptor_sets[i],
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+            .pImageInfo = &channel0_image_info,
+          },
+          {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = it->descriptor_sets[i],
+            .dstBinding = 1,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+            .pImageInfo = &channel1_image_info,
+          },
+          {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = it->descriptor_sets[i],
+            .dstBinding = 2,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+            .pImageInfo = &channel2_image_info,
+          }
+        };
+        vkUpdateDescriptorSets(
+          vulkan->core.device,
+          sizeof(writes) / sizeof(*writes), writes,
+          0, nullptr
+        );
+      }
+    }
   }
   { ZoneScopedN(".pipeline_sun");
     VkShaderModule module_frag = VK_NULL_HANDLE;
@@ -620,7 +738,7 @@ void init_example_lpass(
       .depthClampEnable = VK_FALSE,
       .rasterizerDiscardEnable = VK_FALSE,
       .polygonMode = VK_POLYGON_MODE_FILL,
-      .cullMode = VK_CULL_MODE_BACK_BIT,
+      .cullMode = VK_CULL_MODE_NONE,
       .frontFace = VK_FRONT_FACE_CLOCKWISE,
       .depthBiasEnable = VK_FALSE,
       .lineWidth = 1.0f,
@@ -688,6 +806,9 @@ void init_example_lpass(
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
       VkImageView attachments[] = {
         lbuffer->views[i],
+        gbuffer->channel0_views[i],
+        gbuffer->channel1_views[i],
+        gbuffer->channel2_views[i],
       };
       VkFramebuffer framebuffer;
       VkFramebufferCreateInfo create_info = {
@@ -1007,6 +1128,7 @@ void init_example(
   init_example_lpass(
     &it->lpass,
     swapchain_description,
+    &it->gbuffer,
     &it->lbuffer,
     vulkan
   );

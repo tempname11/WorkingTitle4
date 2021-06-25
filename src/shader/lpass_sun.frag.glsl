@@ -2,8 +2,11 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(location = 0) in vec2 position;
-layout(location = 0) out vec4 output_channel; 
+layout(input_attachment_index = 0, binding = 0) uniform subpassInput gchannel0;
+layout(input_attachment_index = 1, binding = 1) uniform subpassInput gchannel1;
+layout(input_attachment_index = 2, binding = 2) uniform subpassInput gchannel2;
+layout(location = 0) out vec4 result; 
 
 void main() {
-  output_channel = vec4(1.0);
+  result = subpassLoad(gchannel0);
 }
