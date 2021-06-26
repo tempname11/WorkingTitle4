@@ -1,19 +1,19 @@
 #include <glm/glm.hpp>
 
 namespace example {
-  struct VS_UBO {
+  struct UBO_Frame {
     glm::mat4 projection;
     glm::mat4 view;
+    glm::mat4 projection_inverse;
+    glm::mat4 view_inverse;
   };
 
-  struct FS_UBO {
-    alignas(16) glm::vec3 camera_position;
+  struct UBO_DirectionalLight {
+    alignas(16) glm::vec3 direction;
+    alignas(16) glm::vec3 intensity;
+  };
 
-    // light
-    alignas(16) glm::vec3 light_position;
-    alignas(16) glm::vec3 light_intensity;
-
-    // material
+  struct UBO_Material {
     alignas(16) glm::vec3 albedo;
     float metallic;
     float roughness;

@@ -37,7 +37,6 @@ struct SessionData : lib::task::ParentResource {
     uint32_t queue_family_index;
 
     VkCommandPool tracy_setup_command_pool;
-    VkDescriptorPool common_descriptor_pool;
 
     lib::gfx::multi_alloc::Instance multi_alloc;
 
@@ -54,19 +53,19 @@ struct SessionData : lib::task::ParentResource {
 
       struct GPass {
         VkDescriptorSetLayout descriptor_set_layout;
-        VkDescriptorSet descriptor_set;
         VkPipelineLayout pipeline_layout;
       } gpass;
 
       struct LPass {
-        VkDescriptorSetLayout descriptor_set_layout;
+        VkDescriptorSetLayout descriptor_set_layout_frame;
+        VkDescriptorSetLayout descriptor_set_layout_directional_light;
         VkPipelineLayout pipeline_layout;
       } lpass;
 
       struct Finalpass {
         VkDescriptorSetLayout descriptor_set_layout;
-        VkPipeline pipeline;
         VkPipelineLayout pipeline_layout;
+        VkPipeline pipeline;
         VkSampler sampler_lbuffer;
       } finalpass;
     } example;

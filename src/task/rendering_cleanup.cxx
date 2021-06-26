@@ -6,39 +6,39 @@
 #include "task.hxx"
 
 void deinit_example(
-  RenderingData::Example *example,
+  RenderingData::Example *it,
   SessionData::Vulkan *vulkan
 ) {
   ZoneScoped;
-  for (auto image_view : example->gbuffer.channel0_views) {
+  for (auto image_view : it->gbuffer.channel0_views) {
     vkDestroyImageView(
       vulkan->core.device,
       image_view,
       vulkan->core.allocator
     );
   }
-  for (auto image_view : example->gbuffer.channel1_views) {
+  for (auto image_view : it->gbuffer.channel1_views) {
     vkDestroyImageView(
       vulkan->core.device,
       image_view,
       vulkan->core.allocator
     );
   }
-  for (auto image_view : example->gbuffer.channel2_views) {
+  for (auto image_view : it->gbuffer.channel2_views) {
     vkDestroyImageView(
       vulkan->core.device,
       image_view,
       vulkan->core.allocator
     );
   }
-  for (auto image_view : example->zbuffer.views) {
+  for (auto image_view : it->zbuffer.views) {
     vkDestroyImageView(
       vulkan->core.device,
       image_view,
       vulkan->core.allocator
     );
   }
-  for (auto image_view : example->lbuffer.views) {
+  for (auto image_view : it->lbuffer.views) {
     vkDestroyImageView(
       vulkan->core.device,
       image_view,
@@ -46,7 +46,7 @@ void deinit_example(
     );
   }
   { ZoneScopedN(".prepass");
-    for (auto framebuffer : example->prepass.framebuffers) {
+    for (auto framebuffer : it->prepass.framebuffers) {
       vkDestroyFramebuffer(
         vulkan->core.device,
         framebuffer,
@@ -55,17 +55,17 @@ void deinit_example(
     }
     vkDestroyRenderPass(
       vulkan->core.device,
-      example->prepass.render_pass,
+      it->prepass.render_pass,
       vulkan->core.allocator
     );
     vkDestroyPipeline(
       vulkan->core.device,
-      example->prepass.pipeline,
+      it->prepass.pipeline,
       vulkan->core.allocator
     );
   }
   { ZoneScopedN(".gpass");
-    for (auto framebuffer : example->gpass.framebuffers) {
+    for (auto framebuffer : it->gpass.framebuffers) {
       vkDestroyFramebuffer(
         vulkan->core.device,
         framebuffer,
@@ -74,18 +74,18 @@ void deinit_example(
     }
     vkDestroyRenderPass(
       vulkan->core.device,
-      example->gpass.render_pass,
+      it->gpass.render_pass,
       vulkan->core.allocator
     );
     vkDestroyPipeline(
       vulkan->core.device,
-      example->gpass.pipeline,
+      it->gpass.pipeline,
       vulkan->core.allocator
     );
   }
   {
     ZoneScopedN(".lpass");
-    for (auto framebuffer : example->lpass.framebuffers) {
+    for (auto framebuffer : it->lpass.framebuffers) {
       vkDestroyFramebuffer(
         vulkan->core.device,
         framebuffer,
@@ -94,12 +94,12 @@ void deinit_example(
     }
     vkDestroyRenderPass(
       vulkan->core.device,
-      example->lpass.render_pass,
+      it->lpass.render_pass,
       vulkan->core.allocator
     );
     vkDestroyPipeline(
       vulkan->core.device,
-      example->lpass.pipeline_sun,
+      it->lpass.pipeline_sun,
       vulkan->core.allocator
     );
   }
@@ -116,7 +116,12 @@ void rendering_cleanup(
   deinit_example(
     &data->example,
     vulkan
-  ),
+  );
+  vkDestroyDescriptorPool(
+    vulkan->core.device,
+    data->common_descriptor_pool,
+    vulkan->core.allocator
+  );
   lib::gfx::multi_alloc::deinit(
     &data->multi_alloc,
     vulkan->core.device,

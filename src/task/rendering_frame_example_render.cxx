@@ -12,7 +12,7 @@ void record_geometry_draw_commands(
 void record_prepass(
   VkCommandBuffer cmd,
   RenderingData::Example::Prepass *prepass,
-  RenderingData::Example::Constants *constants,
+  RenderingData::Example::GPass *gpass,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::FrameInfo *frame_info,
   SessionData::Vulkan::Example *example_s
@@ -33,15 +33,11 @@ void record_prepass(
   };
   vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, prepass->pipeline);
-  uint32_t dynamic_offsets[2] = {
-    frame_info->inflight_index * constants->total_ubo_aligned_size,
-    frame_info->inflight_index * constants->total_ubo_aligned_size + constants->vs_ubo_aligned_size,
-  };
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
     example_s->gpass.pipeline_layout,
-    0, 1, &example_s->gpass.descriptor_set,
-    2, dynamic_offsets
+    0, 1, &gpass->descriptor_sets[frame_info->inflight_index],
+    0, nullptr
   );
   record_geometry_draw_commands(cmd, example_s);
   vkCmdEndRenderPass(cmd);
@@ -50,7 +46,6 @@ void record_prepass(
 void record_gpass(
   VkCommandBuffer cmd,
   RenderingData::Example::GPass *gpass,
-  RenderingData::Example::Constants *constants,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::FrameInfo *frame_info,
   SessionData::Vulkan::Example *example_s
@@ -73,15 +68,11 @@ void record_gpass(
   };
   vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, gpass->pipeline);
-  uint32_t dynamic_offsets[2] = {
-    frame_info->inflight_index * constants->total_ubo_aligned_size,
-    frame_info->inflight_index * constants->total_ubo_aligned_size + constants->vs_ubo_aligned_size,
-  };
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
     example_s->gpass.pipeline_layout,
-    0, 1, &example_s->gpass.descriptor_set,
-    2, dynamic_offsets
+    0, 1, &gpass->descriptor_sets[frame_info->inflight_index],
+    0, nullptr
   );
   record_geometry_draw_commands(cmd, example_s);
   vkCmdEndRenderPass(cmd);
@@ -111,7 +102,13 @@ void record_lpass(
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
     example_s->lpass.pipeline_layout,
-    0, 1, &lpass->descriptor_sets[frame_info->inflight_index],
+    0, 1, &lpass->descriptor_sets_frame[frame_info->inflight_index],
+    0, nullptr
+  );
+  vkCmdBindDescriptorSets(
+    cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    example_s->lpass.pipeline_layout,
+    1, 1, &lpass->descriptor_sets_directional_light[frame_info->inflight_index],
     0, nullptr
   );
   VkDeviceSize offset = 0;
@@ -299,23 +296,6 @@ void record_barrier_gpass_lpass(
   VkImageMemoryBarrier barriers[] = {
     {
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-      .srcAccessMask = 0,
-      .dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT,
-      .oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-      .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .image = zbuffer->stakes[frame_info->inflight_index].image,
-      .subresourceRange = {
-        .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
-        .baseMipLevel = 0,
-        .levelCount = 1,
-        .baseArrayLayer = 0,
-        .layerCount = 1,
-      },
-    },
-    {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
       .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
       .dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT,
       .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -359,6 +339,23 @@ void record_barrier_gpass_lpass(
       .image = gbuffer->channel2_stakes[frame_info->inflight_index].image,
       .subresourceRange = {
         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      },
+    },
+    {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = 0,
+      .dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+      .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = zbuffer->stakes[frame_info->inflight_index].image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
         .baseMipLevel = 0,
         .levelCount = 1,
         .baseArrayLayer = 0,
@@ -576,7 +573,7 @@ void rendering_frame_example_render(
     record_prepass(
       cmd,
       &r->prepass,
-      &r->constants,
+      &r->gpass,
       swapchain_description.ptr,
       frame_info.ptr,
       example_s.ptr
@@ -599,7 +596,6 @@ void rendering_frame_example_render(
     record_gpass(
       cmd,
       &r->gpass,
-      &r->constants,
       swapchain_description.ptr,
       frame_info.ptr,
       example_s.ptr

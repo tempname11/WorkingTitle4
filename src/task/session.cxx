@@ -64,13 +64,13 @@ void init_example(
     VkDescriptorSetLayoutBinding layout_bindings[] = {
       {
         .binding = 0,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL,
       },
       {
         .binding = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL,
       },
@@ -86,22 +86,6 @@ void init_example(
         &create_info,
         it->core.allocator,
         &it->example.gpass.descriptor_set_layout
-      );
-      assert(result == VK_SUCCESS);
-    }
-  }
-  { ZoneScopedN(".gpass.descriptor_set");
-    VkDescriptorSetAllocateInfo allocate_info = {
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = it->common_descriptor_pool,
-      .descriptorSetCount = 1,
-      .pSetLayouts = &it->example.gpass.descriptor_set_layout,
-    };
-    {
-      auto result = vkAllocateDescriptorSets(
-        it->core.device,
-        &allocate_info,
-        &it->example.gpass.descriptor_set
       );
       assert(result == VK_SUCCESS);
     }
@@ -122,7 +106,7 @@ void init_example(
       assert(result == VK_SUCCESS);
     }
   }
-  { ZoneScopedN(".lpass.descriptor_set_layout");
+  { ZoneScopedN(".lpass.descriptor_set_layout_frame");
     VkDescriptorSetLayoutBinding layout_bindings[] = {
       {
         .binding = 0,
@@ -142,6 +126,18 @@ void init_example(
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
       },
+      {
+        .binding = 3,
+        .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      },
+      {
+        .binding = 4,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      },
     };
     VkDescriptorSetLayoutCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -153,16 +149,44 @@ void init_example(
         it->core.device,
         &create_info,
         it->core.allocator,
-        &it->example.lpass.descriptor_set_layout
+        &it->example.lpass.descriptor_set_layout_frame
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+  { ZoneScopedN(".lpass.descriptor_set_layout_directional_light");
+    VkDescriptorSetLayoutBinding layout_bindings[] = {
+      {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
+    };
+    VkDescriptorSetLayoutCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
+      .pBindings = layout_bindings,
+    };
+    {
+      auto result = vkCreateDescriptorSetLayout(
+        it->core.device,
+        &create_info,
+        it->core.allocator,
+        &it->example.lpass.descriptor_set_layout_directional_light
       );
       assert(result == VK_SUCCESS);
     }
   }
   { ZoneScopedN(".lpass.pipeline_layout");
+    VkDescriptorSetLayout layouts[] = {
+      it->example.lpass.descriptor_set_layout_frame,
+      it->example.lpass.descriptor_set_layout_directional_light,
+    };
     VkPipelineLayoutCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 1,
-      .pSetLayouts = &it->example.lpass.descriptor_set_layout,
+      .setLayoutCount = sizeof(layouts) / sizeof(*layouts),
+      .pSetLayouts = layouts,
     };
     {
       auto result = vkCreatePipelineLayout(
@@ -573,38 +597,6 @@ void session(
       );
       assert(result == VK_SUCCESS);
     }
-    { ZoneScopedN(".common_descriptor_pool");
-      // "large enough"
-      const uint32_t COMMON_DESCRIPTOR_COUNT = 1024;
-      const uint32_t COMMON_DESCRIPTOR_MAX_SETS = 256;
-
-      VkDescriptorPoolSize sizes[] = {
-        { VK_DESCRIPTOR_TYPE_SAMPLER, COMMON_DESCRIPTOR_COUNT },
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, COMMON_DESCRIPTOR_COUNT },
-        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, COMMON_DESCRIPTOR_COUNT },
-        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, COMMON_DESCRIPTOR_COUNT },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, COMMON_DESCRIPTOR_COUNT },
-        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, COMMON_DESCRIPTOR_COUNT },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, COMMON_DESCRIPTOR_COUNT },
-        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, COMMON_DESCRIPTOR_COUNT },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, COMMON_DESCRIPTOR_COUNT },
-        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, COMMON_DESCRIPTOR_COUNT },
-        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, COMMON_DESCRIPTOR_COUNT },
-      };
-      VkDescriptorPoolCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, 
-        .maxSets = COMMON_DESCRIPTOR_MAX_SETS,
-        .poolSizeCount = 1,
-        .pPoolSizes = sizes,
-      };
-      auto result = vkCreateDescriptorPool(
-        it->core.device,
-        &create_info,
-        it->core.allocator,
-        &it->common_descriptor_pool
-      );
-      assert(result == VK_SUCCESS);
-    }
     { ZoneScopedN(".multi_alloc");
       std::vector<lib::gfx::multi_alloc::Claim> claims;
       claims.push_back({
@@ -767,7 +759,6 @@ void session(
           &session->vulkan.queue_work,
           &session->vulkan.queue_family_index,
           &session->vulkan.tracy_setup_command_pool,
-          &session->vulkan.common_descriptor_pool,
           &session->vulkan.multi_alloc,
           &session->vulkan.example
         }

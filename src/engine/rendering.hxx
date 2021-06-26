@@ -60,17 +60,11 @@ struct RenderingData : lib::task::ParentResource {
   VkSemaphore imgui_finished_semaphore;
   VkSemaphore frame_rendered_semaphore;
 
+  VkDescriptorPool common_descriptor_pool;
+
   lib::gfx::multi_alloc::Instance multi_alloc;
 
   struct Example {
-    struct Constants {
-      uint32_t vs_ubo_aligned_size;
-      uint32_t fs_ubo_aligned_size;
-      uint32_t total_ubo_aligned_size;
-    } constants;
-
-    lib::gfx::multi_alloc::StakeBuffer uniform_stake;
-
     struct ZBuffer {
       std::vector<lib::gfx::multi_alloc::StakeImage> stakes;
       std::vector<VkImageView> views;
@@ -97,16 +91,21 @@ struct RenderingData : lib::task::ParentResource {
     } prepass;
 
     struct GPass {
+      std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_frame_stakes;
+      std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_material_stakes;
       VkRenderPass render_pass;
       VkPipeline pipeline;
       std::vector<VkFramebuffer> framebuffers;
+      std::vector<VkDescriptorSet> descriptor_sets;
     } gpass;
 
     struct LPass {
+      std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_directional_light_stakes;
       VkRenderPass render_pass;
       VkPipeline pipeline_sun;
       std::vector<VkFramebuffer> framebuffers;
-      std::vector<VkDescriptorSet> descriptor_sets;
+      std::vector<VkDescriptorSet> descriptor_sets_frame;
+      std::vector<VkDescriptorSet> descriptor_sets_directional_light;
     } lpass;
 
     struct Finalpass {

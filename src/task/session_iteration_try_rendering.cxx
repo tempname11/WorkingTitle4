@@ -6,9 +6,9 @@
 #include "task.hxx"
 
 const VkFormat SWAPCHAIN_FORMAT = VK_FORMAT_B8G8R8A8_SRGB;
-const VkFormat GBUFFER_DEPTH_FORMAT = VK_FORMAT_D32_SFLOAT;
+const VkFormat ZBUFFER_FORMAT = VK_FORMAT_D32_SFLOAT;
 const VkFormat GBUFFER_CHANNEL0_FORMAT = VK_FORMAT_R16G16B16A16_SNORM;
-const VkFormat GBUFFER_CHANNEL1_FORMAT = VK_FORMAT_R16G16B16A16_UNORM;
+const VkFormat GBUFFER_CHANNEL1_FORMAT = VK_FORMAT_R8G8B8A8_UNORM;
 const VkFormat GBUFFER_CHANNEL2_FORMAT = VK_FORMAT_R8G8B8A8_UNORM;
 const VkFormat LBUFFER_FORMAT = VK_FORMAT_R16G16B16A16_SFLOAT;
 const VkFormat FINAL_IMAGE_FORMAT = VK_FORMAT_B8G8R8A8_UNORM;
@@ -18,13 +18,14 @@ void init_example_prepass(
   VkShaderModule module_vert,
   RenderingData::Example::ZBuffer *zbuffer,
   RenderingData::SwapchainDescription *swapchain_description,
-  SessionData::Vulkan *vulkan
+  SessionData::Vulkan::Example::GPass *s_gpass,
+  SessionData::Vulkan::Core *core
 ) {
   ZoneScoped;
   { ZoneScopedN(".render_pass");
     VkAttachmentDescription attachment_descriptions[] = {
       {
-        .format = GBUFFER_DEPTH_FORMAT,
+        .format = ZBUFFER_FORMAT,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -52,9 +53,9 @@ void init_example_prepass(
       .pSubpasses = &subpass_description,
     };
     auto result = vkCreateRenderPass(
-      vulkan->core.device,
+      core->device,
       &create_info,
-      vulkan->core.allocator,
+      core->allocator,
       &it->render_pass
     );
     assert(result == VK_SUCCESS);
@@ -159,16 +160,16 @@ void init_example_prepass(
       .pDepthStencilState = &depth_stencil_info,
       .pColorBlendState = &color_blend_info,
       .pDynamicState = nullptr,
-      .layout = vulkan->example.gpass.pipeline_layout,
+      .layout = s_gpass->pipeline_layout,
       .renderPass = it->render_pass,
       .subpass = 0,
     };
     {
       auto result = vkCreateGraphicsPipelines(
-        vulkan->core.device,
+        core->device,
         VK_NULL_HANDLE,
         1, &pipeline_info,
-        vulkan->core.allocator,
+        core->allocator,
         &it->pipeline
       );
       assert(result == VK_SUCCESS);
@@ -191,9 +192,9 @@ void init_example_prepass(
       };
       {
         auto result = vkCreateFramebuffer(
-          vulkan->core.device,
+          core->device,
           &create_info,
-          vulkan->core.allocator,
+          core->allocator,
           &framebuffer
         );
         assert(result == VK_SUCCESS);
@@ -205,14 +206,74 @@ void init_example_prepass(
 
 void init_example_gpass(
   RenderingData::Example::GPass *it,
+  VkDescriptorPool common_descriptor_pool,
   VkShaderModule module_vert,
   VkShaderModule module_frag,
   RenderingData::Example::ZBuffer *zbuffer,
   RenderingData::Example::GBuffer *gbuffer,
   RenderingData::SwapchainDescription *swapchain_description,
-  SessionData::Vulkan *vulkan
+  SessionData::Vulkan::Example::GPass *s_gpass,
+  SessionData::Vulkan::Core *core
 ) {
   ZoneScoped;
+  { ZoneScopedN(".descriptor_sets");
+    it->descriptor_sets.resize(swapchain_description->image_count);
+    std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
+    for (auto &layout : layouts) {
+      layout = s_gpass->descriptor_set_layout;
+    }
+    VkDescriptorSetAllocateInfo allocate_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool = common_descriptor_pool,
+      .descriptorSetCount = swapchain_description->image_count,
+      .pSetLayouts = layouts.data(),
+    };
+    {
+      auto result = vkAllocateDescriptorSets(
+        core->device,
+        &allocate_info,
+        it->descriptor_sets.data()
+      );
+      assert(result == VK_SUCCESS);
+    }
+    for (size_t i = 0; i < swapchain_description->image_count; i++) {
+      VkDescriptorBufferInfo ubo_frame_info = {
+        .buffer = it->ubo_frame_stakes[i].buffer,
+        .offset = 0,
+        .range = VK_WHOLE_SIZE,
+      };
+      VkDescriptorBufferInfo ubo_material_info = {
+        .buffer = it->ubo_material_stakes[i].buffer,
+        .offset = 0,
+        .range = VK_WHOLE_SIZE,
+      };
+      VkWriteDescriptorSet writes[] = {
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = it->descriptor_sets[i],
+          .dstBinding = 0,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .pBufferInfo = &ubo_frame_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = it->descriptor_sets[i],
+          .dstBinding = 1,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .pBufferInfo = &ubo_material_info,
+        },
+      };
+      vkUpdateDescriptorSets(
+        core->device,
+        sizeof(writes) / sizeof(*writes), writes,
+        0, nullptr
+      );
+    }
+  }
   { ZoneScopedN(".render_pass");
     VkAttachmentDescription attachment_descriptions[] = {
       {
@@ -246,7 +307,7 @@ void init_example_gpass(
         .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
       {
-        .format = GBUFFER_DEPTH_FORMAT,
+        .format = ZBUFFER_FORMAT,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -288,9 +349,9 @@ void init_example_gpass(
       .pSubpasses = &subpass_description,
     };
     auto result = vkCreateRenderPass(
-      vulkan->core.device,
+      core->device,
       &create_info,
-      vulkan->core.allocator,
+      core->allocator,
       &it->render_pass
     );
     assert(result == VK_SUCCESS);
@@ -430,16 +491,16 @@ void init_example_gpass(
       .pDepthStencilState = &depth_stencil_info,
       .pColorBlendState = &color_blend_info,
       .pDynamicState = nullptr,
-      .layout = vulkan->example.gpass.pipeline_layout,
+      .layout = s_gpass->pipeline_layout,
       .renderPass = it->render_pass,
       .subpass = 0,
     };
     {
       auto result = vkCreateGraphicsPipelines(
-        vulkan->core.device,
+        core->device,
         VK_NULL_HANDLE,
         1, &pipeline_info,
-        vulkan->core.allocator,
+        core->allocator,
         &it->pipeline
       );
       assert(result == VK_SUCCESS);
@@ -465,9 +526,9 @@ void init_example_gpass(
       };
       {
         auto result = vkCreateFramebuffer(
-          vulkan->core.device,
+          core->device,
           &create_info,
-          vulkan->core.allocator,
+          core->allocator,
           &framebuffer
         );
         assert(result == VK_SUCCESS);
@@ -479,7 +540,10 @@ void init_example_gpass(
 
 void init_example_lpass(
   RenderingData::Example::LPass *it,
+  RenderingData::Example::GPass *gpass, // a bit dirty to depend on this
+  VkDescriptorPool common_descriptor_pool,
   RenderingData::SwapchainDescription *swapchain_description,
+  RenderingData::Example::ZBuffer *zbuffer,
   RenderingData::Example::GBuffer *gbuffer,
   RenderingData::Example::LBuffer *lbuffer,
   SessionData::Vulkan *vulkan
@@ -527,6 +591,16 @@ void init_example_lpass(
         .initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         .finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       },
+      {
+        .format = ZBUFFER_FORMAT,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      },
     };
     VkAttachmentReference color_attachment_refs[] = {
       {
@@ -545,6 +619,10 @@ void init_example_lpass(
       },
       {
         .attachment = 3,
+        .layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      },
+      {
+        .attachment = 4,
         .layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       },
     };
@@ -571,15 +649,15 @@ void init_example_lpass(
     );
     assert(result == VK_SUCCESS);
   }
-  { ZoneScopedN(".descriptor_sets");
+  { ZoneScopedN(".descriptor_sets_frame");
+    it->descriptor_sets_frame.resize(swapchain_description->image_count);
     std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
     for (auto &layout : layouts) {
-      layout = vulkan->example.lpass.descriptor_set_layout;
+      layout = vulkan->example.lpass.descriptor_set_layout_frame;
     }
-    it->descriptor_sets.resize(swapchain_description->image_count);
     VkDescriptorSetAllocateInfo allocate_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = vulkan->common_descriptor_pool,
+      .descriptorPool = common_descriptor_pool,
       .descriptorSetCount = swapchain_description->image_count,
       .pSetLayouts = layouts.data(),
     };
@@ -587,7 +665,7 @@ void init_example_lpass(
       auto result = vkAllocateDescriptorSets(
         vulkan->core.device,
         &allocate_info,
-        it->descriptor_sets.data()
+        it->descriptor_sets_frame.data()
       );
       assert(result == VK_SUCCESS);
     }
@@ -605,10 +683,19 @@ void init_example_lpass(
           .imageView = gbuffer->channel2_views[i],
           .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
+        VkDescriptorImageInfo depth_image_info = {
+          .imageView = zbuffer->views[i],
+          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+        VkDescriptorBufferInfo ubo_frame_info = {
+          .buffer = gpass->ubo_frame_stakes[i].buffer,
+          .offset = 0,
+          .range = VK_WHOLE_SIZE,
+        };
         VkWriteDescriptorSet writes[] = {
           {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = it->descriptor_sets[i],
+            .dstSet = it->descriptor_sets_frame[i],
             .dstBinding = 0,
             .dstArrayElement = 0,
             .descriptorCount = 1,
@@ -617,7 +704,7 @@ void init_example_lpass(
           },
           {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = it->descriptor_sets[i],
+            .dstSet = it->descriptor_sets_frame[i],
             .dstBinding = 1,
             .dstArrayElement = 0,
             .descriptorCount = 1,
@@ -626,13 +713,76 @@ void init_example_lpass(
           },
           {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = it->descriptor_sets[i],
+            .dstSet = it->descriptor_sets_frame[i],
             .dstBinding = 2,
             .dstArrayElement = 0,
             .descriptorCount = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
             .pImageInfo = &channel2_image_info,
-          }
+          },
+          {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = it->descriptor_sets_frame[i],
+            .dstBinding = 3,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+            .pImageInfo = &depth_image_info,
+          },
+          {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = it->descriptor_sets_frame[i],
+            .dstBinding = 4,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .pBufferInfo = &ubo_frame_info,
+          },
+        };
+        vkUpdateDescriptorSets(
+          vulkan->core.device,
+          sizeof(writes) / sizeof(*writes), writes,
+          0, nullptr
+        );
+      }
+    }
+  }
+  { ZoneScopedN(".descriptor_sets_directional_light");
+    it->descriptor_sets_directional_light.resize(swapchain_description->image_count);
+    std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
+    for (auto &layout : layouts) {
+      layout = vulkan->example.lpass.descriptor_set_layout_directional_light;
+    }
+    VkDescriptorSetAllocateInfo allocate_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool = common_descriptor_pool,
+      .descriptorSetCount = swapchain_description->image_count,
+      .pSetLayouts = layouts.data(),
+    };
+    {
+      auto result = vkAllocateDescriptorSets(
+        vulkan->core.device,
+        &allocate_info,
+        it->descriptor_sets_directional_light.data()
+      );
+      assert(result == VK_SUCCESS);
+    }
+    {
+      for (size_t i = 0; i < swapchain_description->image_count; i++) {
+        VkDescriptorBufferInfo buffer_info = {
+          .buffer = it->ubo_directional_light_stakes[i].buffer,
+          .range = VK_WHOLE_SIZE,
+        };
+        VkWriteDescriptorSet writes[] = {
+          {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = it->descriptor_sets_directional_light[i],
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .pBufferInfo = &buffer_info,
+          },
         };
         vkUpdateDescriptorSets(
           vulkan->core.device,
@@ -809,6 +959,7 @@ void init_example_lpass(
         gbuffer->channel0_views[i],
         gbuffer->channel1_views[i],
         gbuffer->channel2_views[i],
+        zbuffer->views[i],
       };
       VkFramebuffer framebuffer;
       VkFramebufferCreateInfo create_info = {
@@ -836,19 +987,20 @@ void init_example_lpass(
 
 void init_example_finalpass(
   RenderingData::Example::Finalpass *it,
+  VkDescriptorPool common_descriptor_pool,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::Example::LBuffer *lbuffer,
   RenderingData::FinalImage *final_image,
   SessionData::Vulkan *vulkan
 ) {
+  it->descriptor_sets.resize(swapchain_description->image_count);
   std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
   for (auto &layout : layouts) {
     layout = vulkan->example.finalpass.descriptor_set_layout;
   }
-  it->descriptor_sets.resize(swapchain_description->image_count);
   VkDescriptorSetAllocateInfo allocate_info = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-    .descriptorPool = vulkan->common_descriptor_pool,
+    .descriptorPool = common_descriptor_pool,
     .descriptorSetCount = swapchain_description->image_count,
     .pSetLayouts = layouts.data(),
   };
@@ -902,49 +1054,13 @@ void init_example_finalpass(
 
 void init_example(
   RenderingData::Example *it,
+  VkDescriptorPool common_descriptor_pool,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::FinalImage *final_image,
   SessionData::Vulkan *vulkan
 ) {
   ZoneScoped;
-  // @Note: constants and stakes are initialized elsewhere.
-  { ZoneScopedN("update_gpass_descriptor_set");
-    VkDescriptorBufferInfo vs_info = {
-      .buffer = it->uniform_stake.buffer,
-      .offset = 0,
-      .range = sizeof(example::VS_UBO),
-    };
-    VkDescriptorBufferInfo fs_info = {
-      .buffer = it->uniform_stake.buffer,
-      .offset = 0,
-      .range = sizeof(example::FS_UBO),
-    };
-    VkWriteDescriptorSet writes[] = {
-      {
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = vulkan->example.gpass.descriptor_set,
-        .dstBinding = 0,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-        .pBufferInfo = &vs_info,
-      },
-      {
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = vulkan->example.gpass.descriptor_set,
-        .dstBinding = 1,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-        .pBufferInfo = &fs_info,
-      },
-    };
-    vkUpdateDescriptorSets(
-      vulkan->core.device,
-      sizeof(writes) / sizeof(*writes), writes,
-      0, nullptr
-    );
-  }
+  // @Note: stakes are initialized elsewhere.
   { ZoneScopedN(".gbuffer.channel0_views");
     for (auto stake : it->gbuffer.channel0_stakes) {
       VkImageView image_view;
@@ -1030,7 +1146,7 @@ void init_example(
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = stake.image,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = GBUFFER_DEPTH_FORMAT,
+        .format = ZBUFFER_FORMAT,
         .subresourceRange = {
           .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
           .levelCount = 1,
@@ -1112,28 +1228,35 @@ void init_example(
     module_vert,
     &it->zbuffer,
     swapchain_description,
-    vulkan
+    &vulkan->example.gpass,
+    &vulkan->core
   );
   init_example_gpass(
     &it->gpass,
+    common_descriptor_pool,
     module_vert,
     module_frag,
     &it->zbuffer,
     &it->gbuffer,
     swapchain_description,
-    vulkan
+    &vulkan->example.gpass,
+    &vulkan->core
   );
   vkDestroyShaderModule(vulkan->core.device, module_frag, vulkan->core.allocator);
   vkDestroyShaderModule(vulkan->core.device, module_vert, vulkan->core.allocator);
   init_example_lpass(
     &it->lpass,
+    &it->gpass,
+    common_descriptor_pool,
     swapchain_description,
+    &it->zbuffer,
     &it->gbuffer,
     &it->lbuffer,
     vulkan
   );
   init_example_finalpass(
     &it->finalpass,
+    common_descriptor_pool,
     swapchain_description,
     &it->lbuffer,
     final_image,
@@ -1171,6 +1294,7 @@ void session_iteration_try_rendering(
   auto rendering = new RenderingData;
   // how many images are in swapchain?
   uint32_t swapchain_image_count;
+
   { ZoneScopedN(".presentation");
     VkSwapchainCreateInfoKHR swapchain_create_info = {
       .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -1250,7 +1374,7 @@ void session_iteration_try_rendering(
   rendering->latest_frame.elapsed_ns = 0;
   rendering->latest_frame.number = uint64_t(-1);
   rendering->latest_frame.inflight_index = uint8_t(-1);
-  rendering->final_image.stakes.resize(swapchain_image_count);
+
   { ZoneScopedN(".command_pools");
     rendering->command_pools = std::vector<CommandPool2>(swapchain_image_count);
     for (size_t i = 0; i < swapchain_image_count; i++) {
@@ -1274,6 +1398,7 @@ void session_iteration_try_rendering(
       }
     }
   }
+
   { ZoneScopedN(".frame_rendered_semaphore");
     VkSemaphoreTypeCreateInfo timeline_info = {
       .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
@@ -1291,6 +1416,7 @@ void session_iteration_try_rendering(
     );
     assert(result == VK_SUCCESS);
   }
+
   { ZoneScopedN(".example_finished_semaphore");
     VkSemaphoreTypeCreateInfo timeline_info = {
       .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
@@ -1308,6 +1434,7 @@ void session_iteration_try_rendering(
     );
     assert(result == VK_SUCCESS);
   }
+
   { ZoneScopedN(".imgui_finished_semaphore");
     VkSemaphoreTypeCreateInfo timeline_info = {
       .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
@@ -1325,54 +1452,112 @@ void session_iteration_try_rendering(
     );
     assert(result == VK_SUCCESS);
   }
-  rendering->example.constants.vs_ubo_aligned_size = lib::gfx::utilities::aligned_size(
-    sizeof(example::VS_UBO),
-    session->vulkan.properties.basic.limits.minUniformBufferOffsetAlignment
-  );
-  rendering->example.constants.fs_ubo_aligned_size = lib::gfx::utilities::aligned_size(
-    sizeof(example::FS_UBO),
-    session->vulkan.properties.basic.limits.minUniformBufferOffsetAlignment
-  );
-  rendering->example.constants.total_ubo_aligned_size = (
-    rendering->example.constants.vs_ubo_aligned_size +
-    rendering->example.constants.fs_ubo_aligned_size
-  );
+
+  { ZoneScopedN(".common_descriptor_pool");
+    // "large enough"
+    const uint32_t COMMON_DESCRIPTOR_COUNT = 1024;
+    const uint32_t COMMON_DESCRIPTOR_MAX_SETS = 256;
+
+    VkDescriptorPoolSize sizes[] = {
+      { VK_DESCRIPTOR_TYPE_SAMPLER, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, COMMON_DESCRIPTOR_COUNT },
+    };
+    VkDescriptorPoolCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, 
+      .maxSets = COMMON_DESCRIPTOR_MAX_SETS,
+      .poolSizeCount = 1,
+      .pPoolSizes = sizes,
+    };
+    auto result = vkCreateDescriptorPool(
+      session->vulkan.core.device,
+      &create_info,
+      session->vulkan.core.allocator,
+      &rendering->common_descriptor_pool
+    );
+    assert(result == VK_SUCCESS);
+  }
   { ZoneScopedN(".multi_alloc");
     std::vector<lib::gfx::multi_alloc::Claim> claims;
-    claims.push_back({
-      .info = {
-        .buffer = {
-          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-          .size = (
-            rendering->example.constants.total_ubo_aligned_size
-            * rendering->swapchain_description.image_count
-          ),
-          .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+
+    rendering->example.gpass.ubo_frame_stakes.resize(swapchain_image_count);
+    rendering->example.gpass.ubo_material_stakes.resize(swapchain_image_count);
+    rendering->example.lpass.ubo_directional_light_stakes.resize(swapchain_image_count);
+    rendering->example.gbuffer.channel0_stakes.resize(swapchain_image_count);
+    rendering->example.gbuffer.channel1_stakes.resize(swapchain_image_count);
+    rendering->example.gbuffer.channel2_stakes.resize(swapchain_image_count);
+    rendering->example.zbuffer.stakes.resize(swapchain_image_count);
+    rendering->example.lbuffer.stakes.resize(swapchain_image_count);
+    rendering->final_image.stakes.resize(swapchain_image_count);
+
+    for (auto &stake : rendering->example.gpass.ubo_frame_stakes) {
+      claims.push_back({
+        .info = {
+          .buffer = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = (
+              sizeof(example::UBO_Frame)
+            ),
+            .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+          },
         },
-      },
-      .memory_property_flags = VkMemoryPropertyFlagBits(0
-        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-        | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-      ),
-      .p_stake_buffer = &rendering->example.uniform_stake,
-    });
-    rendering->example.gbuffer.channel0_stakes.resize(
-      rendering->swapchain_description.image_count
-    );
-    rendering->example.gbuffer.channel1_stakes.resize(
-      rendering->swapchain_description.image_count
-    );
-    rendering->example.gbuffer.channel2_stakes.resize(
-      rendering->swapchain_description.image_count
-    );
-    rendering->example.zbuffer.stakes.resize(
-      rendering->swapchain_description.image_count
-    );
-    rendering->example.lbuffer.stakes.resize(
-      rendering->swapchain_description.image_count
-    );
+        .memory_property_flags = VkMemoryPropertyFlagBits(0
+          | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+          | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        ),
+        .p_stake_buffer = &stake,
+      });
+    }
+    for (auto &stake : rendering->example.gpass.ubo_material_stakes) {
+      claims.push_back({
+        .info = {
+          .buffer = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = (
+              sizeof(example::UBO_Material)
+            ),
+            .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+          },
+        },
+        .memory_property_flags = VkMemoryPropertyFlagBits(0
+          | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+          | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        ),
+        .p_stake_buffer = &stake,
+      });
+    }
+    for (auto &stake : rendering->example.lpass.ubo_directional_light_stakes) {
+      claims.push_back({
+        .info = {
+          .buffer = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = (
+              sizeof(example::UBO_DirectionalLight)
+            ),
+            .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+          },
+        },
+        .memory_property_flags = VkMemoryPropertyFlagBits(0
+          | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+          | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        ),
+        .p_stake_buffer = &stake,
+      });
+    }
     for (auto &stake : rendering->example.gbuffer.channel0_stakes) {
       claims.push_back({
         .info = {
@@ -1463,7 +1648,7 @@ void session_iteration_try_rendering(
           .image = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .imageType = VK_IMAGE_TYPE_2D,
-            .format = GBUFFER_DEPTH_FORMAT,
+            .format = ZBUFFER_FORMAT,
             .extent = {
               .width = rendering->swapchain_description.image_extent.width,
               .height = rendering->swapchain_description.image_extent.height,
@@ -1551,6 +1736,7 @@ void session_iteration_try_rendering(
       &session->vulkan.properties.memory
     );
   }
+
   { ZoneScopedN(".final_image_views");
     for (auto stake : rendering->final_image.stakes) {
       VkImageView image_view;
@@ -1577,14 +1763,17 @@ void session_iteration_try_rendering(
       rendering->final_image.views.push_back(image_view);
     }
   }
+
   { ZoneScopedN(".example");
     init_example(
       &rendering->example,
+      rendering->common_descriptor_pool,
       &rendering->swapchain_description,
       &rendering->final_image,
       &session->vulkan
     );
   }
+
   { ZoneScopedN(".imgui_backend");
     { ZoneScopedN(".setup_command_pool");
       VkCommandPoolCreateInfo create_info = {
@@ -1599,6 +1788,7 @@ void session_iteration_try_rendering(
       );
       assert(result == VK_SUCCESS);
     }
+
     { ZoneScopedN(".setup_semaphore");
       VkSemaphoreTypeCreateInfo timeline_info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
@@ -1616,12 +1806,14 @@ void session_iteration_try_rendering(
       );
       assert(result == VK_SUCCESS);
     }
+
     signal_imgui_setup_finished = lib::gpu_signal::create(
       &session->gpu_signal_support,
       session->vulkan.core.device,
       rendering->imgui_backend.setup_semaphore,
       1
     );
+
     { ZoneScopedN(".render_pass");
       VkRenderPass render_pass;
       VkAttachmentDescription color_attachment = {
@@ -1660,6 +1852,7 @@ void session_iteration_try_rendering(
         assert(result == VK_SUCCESS);
       }
     }
+
     { ZoneScopedN(".framebuffers");
       for (size_t i = 0; i < rendering->final_image.views.size(); i++) {
         VkImageView attachments[] = {
@@ -1687,6 +1880,7 @@ void session_iteration_try_rendering(
         rendering->imgui_backend.framebuffers.push_back(framebuffer);
       }
     }
+
     { ZoneScopedN("init");
       ImGui_ImplVulkan_InitInfo info = {
         .Instance = session->vulkan.instance,
@@ -1694,7 +1888,7 @@ void session_iteration_try_rendering(
         .Device = session->vulkan.core.device,
         .QueueFamily = session->vulkan.queue_family_index,
         .Queue = session->vulkan.queue_work,
-        .DescriptorPool = session->vulkan.common_descriptor_pool,
+        .DescriptorPool = rendering->common_descriptor_pool,
         .Subpass = 0,
         .MinImageCount = rendering->swapchain_description.image_count,
         .ImageCount = rendering->swapchain_description.image_count,
@@ -1703,6 +1897,7 @@ void session_iteration_try_rendering(
       };
       ImGui_ImplVulkan_Init(&info, rendering->imgui_backend.render_pass);
     }
+
     { ZoneScopedN("fonts_texture");
       auto alloc_info = VkCommandBufferAllocateInfo {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -1776,6 +1971,7 @@ void session_iteration_try_rendering(
       &rendering->imgui_finished_semaphore,
       &rendering->frame_rendered_semaphore,
       &rendering->multi_alloc,
+      &rendering->common_descriptor_pool,
       &rendering->example,
     } } },
   });

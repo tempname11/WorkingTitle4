@@ -10,38 +10,71 @@ void rendering_frame_example_prepare_uniforms(
   usage::Some<SessionData::State> session_state, // too broad
   usage::Full<RenderingData::Example> example_r
 ) {
-  ZoneScoped;
-  auto projection = lib::gfx::utilities::get_projection(
-    float(swapchain_description->image_extent.width)
-      / swapchain_description->image_extent.height
-  );
-  auto light_position = glm::vec3(3.0f, 5.0f, 2.0f);
-  auto light_intensity = glm::vec3(1000.0f, 1000.0f, 1000.0f);
-  auto albedo = glm::vec3(1.0, 1.0, 1.0);
-  const example::VS_UBO vs = {
-    .projection = projection,
-    .view = lib::debug_camera::to_view_matrix(&session_state->debug_camera),
-  };
-  const example::FS_UBO fs = {
-    .camera_position = session_state->debug_camera.position,
-    .light_position = light_position,
-    .light_intensity = light_intensity,
-    .albedo = glm::vec3(1.0f, 1.0f, 1.0f),
-    .metallic = 1.0f,
-    .roughness = 0.5f,
-    .ao = 0.1f,
-  };
+  // @Note: this is probably the wrong place to update the buffers!
+  // Need to think on what's right.
 
-  void * data;
-  vkMapMemory(
-    core->device,
-    example_r->uniform_stake.memory,
-    example_r->uniform_stake.offset
-      + frame_info->inflight_index * example_r->constants.total_ubo_aligned_size,
-    example_r->constants.total_ubo_aligned_size,
-    0, &data
-  );
-  memcpy(data, &vs, sizeof(example::VS_UBO));
-  memcpy((uint8_t*) data + example_r->constants.vs_ubo_aligned_size, &fs, sizeof(example::FS_UBO));
-  vkUnmapMemory(core->device, example_r->uniform_stake.memory);
+  ZoneScoped;
+  { ZoneScopedN("frame");
+    auto projection = lib::gfx::utilities::get_projection(
+      float(swapchain_description->image_extent.width)
+        / swapchain_description->image_extent.height
+    );
+    auto view = lib::debug_camera::to_view_matrix(&session_state->debug_camera);
+    const example::UBO_Frame data = {
+      .projection = projection,
+      .view = view,
+      .projection_inverse = glm::inverse(projection),
+      .view_inverse = glm::inverse(view),
+    };
+    auto stake = &example_r->gpass.ubo_frame_stakes[frame_info->inflight_index];
+    void * dst;
+    vkMapMemory(
+      core->device,
+      stake->memory,
+      stake->offset,
+      stake->size,
+      0, &dst
+    );
+    memcpy(dst, &data, sizeof(data));
+    vkUnmapMemory(core->device, stake->memory);
+  }
+
+  { ZoneScopedN("material");
+    auto albedo = glm::vec3(1.0, 1.0, 1.0);
+    const example::UBO_Material data = {
+      .albedo = glm::vec3(1.0f, 1.0f, 1.0f),
+      .metallic = 0.5f,
+      .roughness = 0.5f,
+      .ao = 0.1f,
+    };
+    auto stake = &example_r->gpass.ubo_material_stakes[frame_info->inflight_index];
+    void * dst;
+    vkMapMemory(
+      core->device,
+      stake->memory,
+      stake->offset,
+      stake->size,
+      0, &dst
+    );
+    memcpy(dst, &data, sizeof(data));
+    vkUnmapMemory(core->device, stake->memory);
+  }
+
+  { ZoneScopedN("directional_light");
+    const example::UBO_DirectionalLight data = {
+      .direction = glm::vec3(0.0f, 0.0f, -1.0f),
+      .intensity = 10.0f * glm::vec3(1.0f, 1.0f, 1.0f),
+    };
+    auto stake = &example_r->lpass.ubo_directional_light_stakes[frame_info->inflight_index];
+    void * dst;
+    vkMapMemory(
+      core->device,
+      stake->memory,
+      stake->offset,
+      stake->size,
+      0, &dst
+    );
+    memcpy(dst, &data, sizeof(data));
+    vkUnmapMemory(core->device, stake->memory);
+  }
 }

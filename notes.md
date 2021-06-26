@@ -1,11 +1,18 @@
-### larger things to do
-[ ] G-Pass for real
-[ ] L-Pass for real (sun)
+### more things to do
 [ ] remove "example" from naming
+[ ] move session code to engine/session**
+[ ] move rendering code to engine/rendering/**
 [ ] fix the intermittent bug
+[ ] linear_to_srgb?
+
+### find out
+[ ] can't we create graphics pipelines and render passes before knowing the swapchain info?
+[ ] how do push constants work?
+
+### code annoyances
+* some files are too large, target is 500 LOC at most
+* initialize structs with "{ ... }", not ".member = ..."
+* no GLSL includes?
 
 ### architectural problems
-* "lots of text": hard to navigate and understand flow of code
-* struct member init in-place (has this member been already initialized or not?)
-* scheduling is dynamic and costly, but it shouldn't really be
-* barrier code is brittle with regard to new/changed passes
+* task scheduling is dynamic and costly, but it shouldn't really be

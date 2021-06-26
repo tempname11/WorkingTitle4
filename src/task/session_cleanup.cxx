@@ -29,7 +29,12 @@ void session_cleanup(
       );
       vkDestroyDescriptorSetLayout(
         it->core.device,
-        it->example.lpass.descriptor_set_layout,
+        it->example.lpass.descriptor_set_layout_frame,
+        it->core.allocator
+      );
+      vkDestroyDescriptorSetLayout(
+        it->core.device,
+        it->example.lpass.descriptor_set_layout_directional_light,
         it->core.allocator
       );
       vkDestroyPipelineLayout(
@@ -67,11 +72,6 @@ void session_cleanup(
     vkDestroyCommandPool(
       it->core.device,
       it->tracy_setup_command_pool,
-      it->core.allocator
-    );
-    vkDestroyDescriptorPool(
-      it->core.device,
-      it->common_descriptor_pool,
       it->core.allocator
     );
     auto _vkDestroyDebugUtilsMessengerEXT = 
