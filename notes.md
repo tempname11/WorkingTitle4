@@ -3,7 +3,6 @@
 [ ] move rendering code to engine/rendering/**
 [ ] fix the intermittent bug
 [ ] linear_to_srgb?
-[ ] static pipelines with dynamic viewport and scissor
 
 ### find out
 [ ] how do push constants work?
