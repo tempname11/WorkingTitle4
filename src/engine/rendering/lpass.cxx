@@ -456,7 +456,6 @@ void init_rendering_lpass(
   RenderingData::LPass *out,
   RenderingData::LPass::Stakes stakes,
   RenderingData::Common *common,
-  VkDescriptorPool common_descriptor_pool,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::ZBuffer *zbuffer,
   RenderingData::GBuffer *gbuffer,
@@ -475,7 +474,7 @@ void init_rendering_lpass(
     }
     VkDescriptorSetAllocateInfo allocate_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = common_descriptor_pool,
+      .descriptorPool = common->descriptor_pool,
       .descriptorSetCount = swapchain_description->image_count,
       .pSetLayouts = layouts.data(),
     };
@@ -575,7 +574,7 @@ void init_rendering_lpass(
     }
     VkDescriptorSetAllocateInfo allocate_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = common_descriptor_pool,
+      .descriptorPool = common->descriptor_pool,
       .descriptorSetCount = swapchain_description->image_count,
       .pSetLayouts = layouts.data(),
     };

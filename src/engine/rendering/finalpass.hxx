@@ -15,7 +15,7 @@ void deinit_session_finalpass(
 
 void init_rendering_finalpass(
   RenderingData::Finalpass *out,
-  VkDescriptorPool common_descriptor_pool,
+  RenderingData::Common *common,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::LBuffer *lbuffer,
   RenderingData::FinalImage *final_image,

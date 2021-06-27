@@ -85,8 +85,6 @@ struct RenderingData : lib::task::ParentResource {
   VkSemaphore imgui_finished_semaphore;
   VkSemaphore frame_finished_semaphore;
 
-  VkDescriptorPool common_descriptor_pool;
-
   lib::gfx::multi_alloc::Instance multi_alloc;
 
   struct ZBuffer {
@@ -114,6 +112,8 @@ struct RenderingData : lib::task::ParentResource {
   } final_image;
 
   struct Common {
+    VkDescriptorPool descriptor_pool;
+
     struct Stakes {
       std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_frame;
     } stakes;

@@ -151,7 +151,7 @@ void deinit_session_finalpass(
 
 void init_rendering_finalpass(
   RenderingData::Finalpass *out,
-  VkDescriptorPool common_descriptor_pool,
+  RenderingData::Common *common,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::LBuffer *lbuffer,
   RenderingData::FinalImage *final_image,
@@ -167,7 +167,7 @@ void init_rendering_finalpass(
   }
   VkDescriptorSetAllocateInfo allocate_info = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-    .descriptorPool = common_descriptor_pool,
+    .descriptorPool = common->descriptor_pool,
     .descriptorSetCount = swapchain_description->image_count,
     .pSetLayouts = layouts.data(),
   };

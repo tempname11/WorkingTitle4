@@ -23,7 +23,6 @@ void init_rendering_lpass(
   RenderingData::LPass *out,
   RenderingData::LPass::Stakes stakes,
   RenderingData::Common *common,
-  VkDescriptorPool common_descriptor_pool,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::ZBuffer *zbuffer,
   RenderingData::GBuffer *gbuffer,

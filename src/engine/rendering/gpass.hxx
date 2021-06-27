@@ -25,7 +25,6 @@ void init_rendering_gpass(
   RenderingData::GPass *out,
   RenderingData::Common *common,
   RenderingData::GPass::Stakes stakes,
-  VkDescriptorPool common_descriptor_pool,
   RenderingData::ZBuffer *zbuffer,
   RenderingData::GBuffer *gbuffer,
   RenderingData::SwapchainDescription *swapchain_description,

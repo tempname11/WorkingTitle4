@@ -198,39 +198,6 @@ void session_iteration_try_rendering(
     assert(result == VK_SUCCESS);
   }
 
-  { ZoneScopedN(".common_descriptor_pool");
-    // "large enough"
-    const uint32_t COMMON_DESCRIPTOR_COUNT = 1024;
-    const uint32_t COMMON_DESCRIPTOR_MAX_SETS = 256;
-
-    VkDescriptorPoolSize sizes[] = {
-      { VK_DESCRIPTOR_TYPE_SAMPLER, COMMON_DESCRIPTOR_COUNT },
-      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, COMMON_DESCRIPTOR_COUNT },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, COMMON_DESCRIPTOR_COUNT },
-      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, COMMON_DESCRIPTOR_COUNT },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, COMMON_DESCRIPTOR_COUNT },
-      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, COMMON_DESCRIPTOR_COUNT },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, COMMON_DESCRIPTOR_COUNT },
-      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, COMMON_DESCRIPTOR_COUNT },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, COMMON_DESCRIPTOR_COUNT },
-      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, COMMON_DESCRIPTOR_COUNT },
-      { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, COMMON_DESCRIPTOR_COUNT },
-    };
-    VkDescriptorPoolCreateInfo create_info = {
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, 
-      .maxSets = COMMON_DESCRIPTOR_MAX_SETS,
-      .poolSizeCount = 1,
-      .pPoolSizes = sizes,
-    };
-    auto result = vkCreateDescriptorPool(
-      session->vulkan.core.device,
-      &create_info,
-      session->vulkan.core.allocator,
-      &rendering->common_descriptor_pool
-    );
-    assert(result == VK_SUCCESS);
-  }
-
   RenderingData::Common::Stakes common_stakes;
   RenderingData::GPass::Stakes gpass_stakes;
   RenderingData::LPass::Stakes lpass_stakes;
@@ -605,7 +572,8 @@ void session_iteration_try_rendering(
 
   init_rendering_common(
     common_stakes,
-    &rendering->common
+    &rendering->common,
+    &vulkan->core
   );
 
   init_rendering_prepass(
@@ -620,7 +588,6 @@ void session_iteration_try_rendering(
     &rendering->gpass,
     &rendering->common,
     gpass_stakes,
-    rendering->common_descriptor_pool,
     &rendering->zbuffer,
     &rendering->gbuffer,
     &rendering->swapchain_description,
@@ -632,7 +599,6 @@ void session_iteration_try_rendering(
     &rendering->lpass,
     lpass_stakes,
     &rendering->common,
-    rendering->common_descriptor_pool,
     &rendering->swapchain_description,
     &rendering->zbuffer,
     &rendering->gbuffer,
@@ -643,7 +609,7 @@ void session_iteration_try_rendering(
 
   init_rendering_finalpass(
     &rendering->finalpass,
-    rendering->common_descriptor_pool,
+    &rendering->common,
     &rendering->swapchain_description,
     &rendering->lbuffer,
     &rendering->final_image,
@@ -765,7 +731,7 @@ void session_iteration_try_rendering(
         .Device = session->vulkan.core.device,
         .QueueFamily = session->vulkan.queue_family_index,
         .Queue = session->vulkan.queue_work,
-        .DescriptorPool = rendering->common_descriptor_pool,
+        .DescriptorPool = rendering->common.descriptor_pool,
         .Subpass = 0,
         .MinImageCount = rendering->swapchain_description.image_count,
         .ImageCount = rendering->swapchain_description.image_count,
@@ -846,7 +812,6 @@ void session_iteration_try_rendering(
       &rendering->graphics_finished_semaphore,
       &rendering->imgui_finished_semaphore,
       &rendering->frame_finished_semaphore,
-      &rendering->common_descriptor_pool,
       &rendering->multi_alloc,
       &rendering->zbuffer,
       &rendering->gbuffer,

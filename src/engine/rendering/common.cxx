@@ -33,9 +33,56 @@ void claim_rendering_common(
 
 void init_rendering_common(
   RenderingData::Common::Stakes stakes,
-  RenderingData::Common *it
+  RenderingData::Common *out,
+  SessionData::Vulkan::Core *core
 ) {
-  *it = {
+  VkDescriptorPool descriptor_pool;
+  { ZoneScopedN("descriptor_pool");
+    // "large enough"
+    const uint32_t COMMON_DESCRIPTOR_COUNT = 1024;
+    const uint32_t COMMON_DESCRIPTOR_MAX_SETS = 256;
+
+    VkDescriptorPoolSize sizes[] = {
+      { VK_DESCRIPTOR_TYPE_SAMPLER, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, COMMON_DESCRIPTOR_COUNT },
+      { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, COMMON_DESCRIPTOR_COUNT },
+    };
+    VkDescriptorPoolCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, 
+      .maxSets = COMMON_DESCRIPTOR_MAX_SETS,
+      .poolSizeCount = 1,
+      .pPoolSizes = sizes,
+    };
+    auto result = vkCreateDescriptorPool(
+      core->device,
+      &create_info,
+      core->allocator,
+      &descriptor_pool
+    );
+    assert(result == VK_SUCCESS);
+  }
+
+  *out = {
+    .descriptor_pool = descriptor_pool,
     .stakes = stakes,
   };
+}
+
+void deinit_rendering_common(
+  RenderingData::Common *it,
+  SessionData::Vulkan::Core *core
+) {
+  vkDestroyDescriptorPool(
+    core->device,
+    it->descriptor_pool,
+    core->allocator
+  );
 }

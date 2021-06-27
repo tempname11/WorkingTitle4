@@ -368,7 +368,6 @@ void init_rendering_gpass(
   RenderingData::GPass *out,
   RenderingData::Common *common,
   RenderingData::GPass::Stakes stakes,
-  VkDescriptorPool common_descriptor_pool,
   RenderingData::ZBuffer *zbuffer,
   RenderingData::GBuffer *gbuffer,
   RenderingData::SwapchainDescription *swapchain_description,
@@ -385,7 +384,7 @@ void init_rendering_gpass(
     }
     VkDescriptorSetAllocateInfo allocate_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = common_descriptor_pool,
+      .descriptorPool = common->descriptor_pool,
       .descriptorSetCount = swapchain_description->image_count,
       .pSetLayouts = layouts.data(),
     };

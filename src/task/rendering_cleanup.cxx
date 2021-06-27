@@ -2,9 +2,11 @@
 #include <src/lib/gfx/multi_alloc.hxx>
 #include <src/engine/session.hxx>
 #include <src/engine/rendering.hxx>
+#include <src/engine/rendering/common.hxx>
 #include <src/engine/rendering/prepass.hxx>
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
+#include <src/engine/rendering/finalpass.hxx>
 #include <backends/imgui_impl_vulkan.h>
 #include "task.hxx"
 
@@ -52,6 +54,11 @@ void rendering_cleanup(
     );
   }
 
+  deinit_rendering_common(
+    &data->common,
+    &vulkan->core
+  );
+
   deinit_rendering_prepass(
     &data->prepass,
     &vulkan->core
@@ -67,11 +74,11 @@ void rendering_cleanup(
     &vulkan->core
   );
 
-  vkDestroyDescriptorPool(
-    vulkan->core.device,
-    data->common_descriptor_pool,
-    vulkan->core.allocator
+  deinit_rendering_finalpass(
+    &data->finalpass,
+    &vulkan->core
   );
+
   lib::gfx::multi_alloc::deinit(
     &data->multi_alloc,
     vulkan->core.device,
