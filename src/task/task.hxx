@@ -25,21 +25,21 @@ void rendering_cleanup(
   usage::Full<RenderingData> data
 );
 
-void rendering_frame_handle_window_events(
+void frame_handle_window_events(
   task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   usage::Full<SessionData::GLFW> glfw,
   usage::Full<SessionData::State> session_state,
   usage::Full<UpdateData> update
 );
 
-void rendering_frame_update(
+void frame_update(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<UpdateData> update,
   usage::Some<RenderingData::FrameInfo> frame_info,
   usage::Full<SessionData::State> session_state
 );
 
-void rendering_frame_setup_gpu_signal(
+void frame_setup_gpu_signal(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Some<lib::gpu_signal::Support> gpu_signal_support,
@@ -48,55 +48,66 @@ void rendering_frame_setup_gpu_signal(
   usage::Some<RenderingData::FrameInfo> frame_info
 );
 
-void rendering_frame_reset_pools(
+void frame_reset_pools(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Some<RenderingData::CommandPools> command_pools,
   usage::Some<RenderingData::FrameInfo> frame_info
 );
 
-void rendering_frame_example_submit(
+void frame_graphics_submit(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<VkQueue> queue_work,
-  usage::Some<VkSemaphore> example_finished_semaphore,
+  usage::Some<VkSemaphore> graphics_finished_semaphore,
   usage::Some<RenderingData::FrameInfo> frame_info,
-  usage::Full<ExampleData> data
+  usage::Full<GraphicsData> data
 );
 
-void rendering_frame_example_render(
+void frame_graphics_render(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::CommandPools> command_pools,
   usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Some<RenderingData::Prepass> prepass,
+  usage::Some<RenderingData::GPass> gpass,
+  usage::Some<RenderingData::LPass> lpass,
+  usage::Some<RenderingData::Finalpass> finalpass,
+  usage::Some<RenderingData::ZBuffer> zbuffer,
+  usage::Some<RenderingData::GBuffer> gbuffer,
+  usage::Some<RenderingData::LBuffer> lbuffer,
   usage::Some<RenderingData::FinalImage> final_image,
-  usage::Some<RenderingData::Example> example_r,
-  usage::Some<SessionData::Vulkan::Example> example_s,
-  usage::Full<ExampleData> data
+  usage::Some<SessionData::Vulkan::GPass> s_gpass,
+  usage::Some<SessionData::Vulkan::LPass> s_lpass,
+  usage::Some<SessionData::Vulkan::Finalpass> s_finalpass,
+  usage::Some<SessionData::Vulkan::Geometry> geometry,
+  usage::Some<SessionData::Vulkan::FullscreenQuad> fullscreen_quad,
+  usage::Full<GraphicsData> data
 );
 
-void rendering_frame_example_prepare_uniforms(
+void frame_prepare_uniforms(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::FrameInfo> frame_info,
-  usage::Some<SessionData::State> session_state, // too broad
-  usage::Full<RenderingData::Example> example_r
+  usage::Some<SessionData::State> session_state,
+  usage::Full<RenderingData::GPass> gpass,
+  usage::Full<RenderingData::LPass> lpass
 );
 
-void rendering_frame_imgui_populate(
+void frame_imgui_populate(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<SessionData::ImguiContext> imgui,
   usage::Some<SessionData::State> state
 );
 
-void rendering_frame_imgui_new_frame(
+void frame_imgui_new_frame(
   task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   usage::Full<SessionData::ImguiContext> imgui,
   usage::Full<RenderingData::ImguiBackend> imgui_backend
 );
 
-void rendering_frame_imgui_render(
+void frame_imgui_render(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Full<SessionData::ImguiContext> imgui_context,
@@ -107,16 +118,16 @@ void rendering_frame_imgui_render(
   usage::Full<ImguiData> data
 );
 
-void rendering_frame_imgui_submit(
+void frame_imgui_submit(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<VkQueue> queue_work,
-  usage::Some<VkSemaphore> example_finished_semaphore,
+  usage::Some<VkSemaphore> graphics_finished_semaphore,
   usage::Some<VkSemaphore> imgui_finished_semaphore,
   usage::Some<RenderingData::FrameInfo> frame_info,
   usage::Full<ImguiData> data
 );
 
-void rendering_frame_acquire(
+void frame_acquire(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Full<RenderingData::Presentation> presentation,
@@ -124,7 +135,7 @@ void rendering_frame_acquire(
   usage::Some<RenderingData::FrameInfo> frame_info
 );
 
-void rendering_frame_compose_render(
+void frame_compose_render(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Some<RenderingData::Presentation> presentation,
@@ -136,7 +147,7 @@ void rendering_frame_compose_render(
   usage::Full<ComposeData> data
 );
 
-void rendering_frame_compose_submit(
+void frame_compose_submit(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<VkQueue> queue_work,
   usage::Full<RenderingData::Presentation> presentation,
@@ -147,7 +158,7 @@ void rendering_frame_compose_submit(
   usage::Full<ComposeData> data
 );
 
-void rendering_frame_present(
+void frame_present(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<RenderingData::Presentation> presentation,
   usage::Some<RenderingData::PresentationFailureState> presentation_failure_state,
@@ -155,7 +166,7 @@ void rendering_frame_present(
   usage::Full<VkQueue> queue_present
 );
 
-void rendering_frame_cleanup(
+void frame_cleanup(
   task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   usage::Full<RenderingData::FrameInfo> frame_info
 );

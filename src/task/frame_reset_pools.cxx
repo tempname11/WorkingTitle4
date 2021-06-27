@@ -1,6 +1,6 @@
 #include "task.hxx"
 
-void rendering_frame_reset_pools(
+void frame_reset_pools(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Some<RenderingData::CommandPools> command_pools,

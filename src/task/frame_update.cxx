@@ -3,7 +3,7 @@
 #include <src/engine/misc.hxx>
 #include "task.hxx"
 
-void rendering_frame_update(
+void frame_update(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<UpdateData> update,
   usage::Some<RenderingData::FrameInfo> frame_info,

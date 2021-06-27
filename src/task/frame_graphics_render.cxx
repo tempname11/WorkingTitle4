@@ -2,20 +2,21 @@
 
 void record_geometry_draw_commands(
   VkCommandBuffer cmd,
-  SessionData::Vulkan::Example *example_s
+  SessionData::Vulkan::Geometry *geometry
 ) {
   VkDeviceSize offset = 0;
-  vkCmdBindVertexBuffers(cmd, 0, 1, &example_s->geometry.vertex_stake.buffer, &offset);
-  vkCmdDraw(cmd, example_s->geometry.triangle_count * 3, 1, 0, 0);
+  vkCmdBindVertexBuffers(cmd, 0, 1, &geometry->vertex_stake.buffer, &offset);
+  vkCmdDraw(cmd, geometry->triangle_count * 3, 1, 0, 0);
 }
 
 void record_prepass(
   VkCommandBuffer cmd,
-  RenderingData::Example::Prepass *prepass,
-  RenderingData::Example::GPass *gpass,
+  RenderingData::Prepass *prepass,
+  RenderingData::GPass *gpass,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::FrameInfo *frame_info,
-  SessionData::Vulkan::Example *example_s
+  SessionData::Vulkan::GPass *s_gpass,
+  SessionData::Vulkan::Geometry *geometry
 ) {
   VkClearValue clear_values[] = {
     {1.0f, 0.0f},
@@ -35,20 +36,22 @@ void record_prepass(
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, prepass->pipeline);
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    example_s->gpass.pipeline_layout,
+    s_gpass->pipeline_layout,
     0, 1, &gpass->descriptor_sets[frame_info->inflight_index],
     0, nullptr
   );
-  record_geometry_draw_commands(cmd, example_s);
+  record_geometry_draw_commands(cmd, geometry);
   vkCmdEndRenderPass(cmd);
 }
 
 void record_gpass(
   VkCommandBuffer cmd,
-  RenderingData::Example::GPass *gpass,
+  RenderingData::GPass *gpass,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::FrameInfo *frame_info,
-  SessionData::Vulkan::Example *example_s
+  SessionData::Vulkan::GPass *s_gpass,
+  SessionData::Vulkan::Geometry *geometry
+
 ) {
   VkClearValue clear_values[] = {
     {0.0f, 0.0f, 0.0f, 0.0f},
@@ -70,20 +73,21 @@ void record_gpass(
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, gpass->pipeline);
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    example_s->gpass.pipeline_layout,
+    s_gpass->pipeline_layout,
     0, 1, &gpass->descriptor_sets[frame_info->inflight_index],
     0, nullptr
   );
-  record_geometry_draw_commands(cmd, example_s);
+  record_geometry_draw_commands(cmd, geometry);
   vkCmdEndRenderPass(cmd);
 }
 
 void record_lpass(
   VkCommandBuffer cmd,
-  RenderingData::Example::LPass *lpass,
+  RenderingData::LPass *lpass,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::FrameInfo *frame_info,
-  SessionData::Vulkan::Example *example_s
+  SessionData::Vulkan::LPass *s_lpass,
+  SessionData::Vulkan::FullscreenQuad *fullscreen_quad
 ) {
   VkClearValue clear_value = { 0.0f, 0.0f, 0.0f, 0.0f };
   VkRenderPassBeginInfo render_pass_info = {
@@ -101,36 +105,36 @@ void record_lpass(
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, lpass->pipeline_sun);
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    example_s->lpass.pipeline_layout,
+    s_lpass->pipeline_layout,
     0, 1, &lpass->descriptor_sets_frame[frame_info->inflight_index],
     0, nullptr
   );
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    example_s->lpass.pipeline_layout,
+    s_lpass->pipeline_layout,
     1, 1, &lpass->descriptor_sets_directional_light[frame_info->inflight_index],
     0, nullptr
   );
   VkDeviceSize offset = 0;
-  vkCmdBindVertexBuffers(cmd, 0, 1, &example_s->fullscreen_quad.vertex_stake.buffer, &offset);
-  vkCmdDraw(cmd, example_s->fullscreen_quad.triangle_count * 3, 1, 0, 0);
+  vkCmdBindVertexBuffers(cmd, 0, 1, &fullscreen_quad->vertex_stake.buffer, &offset);
+  vkCmdDraw(cmd, fullscreen_quad->triangle_count * 3, 1, 0, 0);
   vkCmdEndRenderPass(cmd);
 }
 
 void record_finalpass(
   VkCommandBuffer cmd,
-  RenderingData::Example::Finalpass *finalpass,
+  RenderingData::Finalpass *finalpass,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::FrameInfo *frame_info,
-  RenderingData::Example::LBuffer *lbuffer,
+  RenderingData::LBuffer *lbuffer,
   RenderingData::FinalImage *final_image,
-  SessionData::Vulkan::Example *example_s
+  SessionData::Vulkan::Finalpass *s_finalpass
 ) {
   ZoneScoped;
-  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, example_s->finalpass.pipeline);
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, s_finalpass->pipeline);
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-    example_s->finalpass.pipeline_layout,
+    s_finalpass->pipeline_layout,
     0, 1, &finalpass->descriptor_sets[frame_info->inflight_index],
     0, nullptr
   );
@@ -144,7 +148,7 @@ void record_finalpass(
 void record_barrier_before_prepass(
   VkCommandBuffer cmd,
   RenderingData::FrameInfo *frame_info,
-  RenderingData::Example::ZBuffer *zbuffer
+  RenderingData::ZBuffer *zbuffer
 ) {
   ZoneScoped;
   VkImageMemoryBarrier barriers[] = {
@@ -181,7 +185,7 @@ void record_barrier_before_prepass(
 void record_barrier_prepass_gpass(
   VkCommandBuffer cmd,
   RenderingData::FrameInfo *frame_info,
-  RenderingData::Example::ZBuffer *zbuffer
+  RenderingData::ZBuffer *zbuffer
 ) {
   ZoneScoped;
   VkImageMemoryBarrier barriers[] = {
@@ -218,7 +222,7 @@ void record_barrier_prepass_gpass(
 void record_barrier_before_gpass(
   VkCommandBuffer cmd,
   RenderingData::FrameInfo *frame_info,
-  RenderingData::Example::GBuffer *gbuffer
+  RenderingData::GBuffer *gbuffer
 ) {
   ZoneScoped;
   VkImageMemoryBarrier barriers[] = {
@@ -289,8 +293,8 @@ void record_barrier_before_gpass(
 void record_barrier_gpass_lpass(
   VkCommandBuffer cmd,
   RenderingData::FrameInfo *frame_info,
-  RenderingData::Example::ZBuffer *zbuffer,
-  RenderingData::Example::GBuffer *gbuffer
+  RenderingData::ZBuffer *zbuffer,
+  RenderingData::GBuffer *gbuffer
 ) {
   ZoneScoped;
   VkImageMemoryBarrier barriers[] = {
@@ -378,7 +382,7 @@ void record_barrier_gpass_lpass(
 void record_barrier_before_lpass(
   VkCommandBuffer cmd,
   RenderingData::FrameInfo *frame_info,
-  RenderingData::Example::LBuffer *lbuffer
+  RenderingData::LBuffer *lbuffer
 ) {
   ZoneScoped;
   VkImageMemoryBarrier barriers[] = {
@@ -452,7 +456,7 @@ void record_barrier_before_finalpass(
 void record_barrier_lpass_finalpass(
   VkCommandBuffer cmd,
   RenderingData::FrameInfo *frame_info,
-  RenderingData::Example::LBuffer *lbuffer
+  RenderingData::LBuffer *lbuffer
 ) {
   ZoneScoped;
   VkImageMemoryBarrier barriers[] = {
@@ -523,21 +527,29 @@ void record_barrier_finalpass_imgui(
   );
 }
 
-void rendering_frame_example_render(
+void frame_graphics_render(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::CommandPools> command_pools,
   usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Some<RenderingData::Prepass> prepass,
+  usage::Some<RenderingData::GPass> gpass,
+  usage::Some<RenderingData::LPass> lpass,
+  usage::Some<RenderingData::Finalpass> finalpass,
+  usage::Some<RenderingData::ZBuffer> zbuffer,
+  usage::Some<RenderingData::GBuffer> gbuffer,
+  usage::Some<RenderingData::LBuffer> lbuffer,
   usage::Some<RenderingData::FinalImage> final_image,
-  usage::Some<RenderingData::Example> example_r,
-  usage::Some<SessionData::Vulkan::Example> example_s,
-  usage::Full<ExampleData> data
+  usage::Some<SessionData::Vulkan::GPass> s_gpass,
+  usage::Some<SessionData::Vulkan::LPass> s_lpass,
+  usage::Some<SessionData::Vulkan::Finalpass> s_finalpass,
+  usage::Some<SessionData::Vulkan::Geometry> geometry,
+  usage::Some<SessionData::Vulkan::FullscreenQuad> fullscreen_quad,
+  usage::Full<GraphicsData> data
 ) {
   ZoneScoped;
   auto pool2 = &(*command_pools)[frame_info->inflight_index];
-  auto r = example_r.ptr;
-  auto s = example_s.ptr;
   VkCommandPool pool = command_pool_2_borrow(pool2);
   VkCommandBuffer cmd;
   { // cmd
@@ -566,62 +578,65 @@ void rendering_frame_example_render(
   record_barrier_before_prepass(
     cmd,
     frame_info.ptr,
-    &r->zbuffer
+    zbuffer.ptr
   );
 
-  { TracyVkZone(core->tracy_context, cmd, "example_prepass");
+  { TracyVkZone(core->tracy_context, cmd, "prepass");
     record_prepass(
       cmd,
-      &r->prepass,
-      &r->gpass,
+      prepass.ptr,
+      gpass.ptr,
       swapchain_description.ptr,
       frame_info.ptr,
-      example_s.ptr
+      s_gpass.ptr,
+      geometry.ptr
     );
   }
 
   record_barrier_prepass_gpass(
     cmd,
     frame_info.ptr,
-    &r->zbuffer
+    zbuffer.ptr
   );
 
   record_barrier_before_gpass(
     cmd,
     frame_info.ptr,
-    &r->gbuffer
+    gbuffer.ptr
   );
 
-  { TracyVkZone(core->tracy_context, cmd, "example_gpass");
+  { TracyVkZone(core->tracy_context, cmd, "gpass");
     record_gpass(
       cmd,
-      &r->gpass,
+      gpass.ptr,
       swapchain_description.ptr,
       frame_info.ptr,
-      example_s.ptr
+      s_gpass.ptr,
+      geometry.ptr
     );
   }
 
   record_barrier_before_lpass(
     cmd,
     frame_info.ptr,
-    &r->lbuffer
+    lbuffer.ptr
   );
 
   record_barrier_gpass_lpass(
     cmd,
     frame_info.ptr,
-    &r->zbuffer,
-    &r->gbuffer
+    zbuffer.ptr,
+    gbuffer.ptr
   );
 
-  { TracyVkZone(core->tracy_context, cmd, "example_lpass");
+  { TracyVkZone(core->tracy_context, cmd, "lpass");
     record_lpass(
       cmd,
-      &r->lpass,
+      lpass.ptr,
       swapchain_description.ptr,
       frame_info.ptr,
-      example_s.ptr
+      s_lpass.ptr,
+      fullscreen_quad.ptr
     );
   }
 
@@ -634,18 +649,18 @@ void rendering_frame_example_render(
   record_barrier_lpass_finalpass(
     cmd,
     frame_info.ptr,
-    &r->lbuffer
+    lbuffer.ptr
   );
 
-  { TracyVkZone(core->tracy_context, cmd, "example_finalpass");
+  { TracyVkZone(core->tracy_context, cmd, "finalpass");
     record_finalpass(
       cmd,
-      &r->finalpass,
+      finalpass.ptr,
       swapchain_description.ptr,
       frame_info.ptr,
-      &r->lbuffer,
+      lbuffer.ptr,
       final_image.ptr,
-      example_s.ptr
+      s_finalpass.ptr
     );
   }
 

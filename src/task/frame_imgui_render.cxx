@@ -2,7 +2,7 @@
 #include <backends/imgui_impl_vulkan.h>
 #include "task.hxx"
 
-void rendering_frame_imgui_render(
+void frame_imgui_render(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Full<SessionData::ImguiContext> imgui_context,

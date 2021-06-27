@@ -7,7 +7,7 @@
 #include <src/lib/gfx/command_pool_2.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
 
-namespace example {
+namespace rendering {
   struct UBO_Frame {
     glm::mat4 projection;
     glm::mat4 view;
@@ -27,6 +27,7 @@ namespace example {
     float ao;
   };
 }
+
 const VkFormat SWAPCHAIN_FORMAT = VK_FORMAT_B8G8R8A8_SRGB;
 const VkFormat ZBUFFER_FORMAT = VK_FORMAT_D32_SFLOAT;
 const VkFormat GBUFFER_CHANNEL0_FORMAT = VK_FORMAT_R16G16B16A16_SNORM;
@@ -80,65 +81,63 @@ struct RenderingData : lib::task::ParentResource {
   typedef std::vector<CommandPool2> CommandPools;
   CommandPools command_pools;
 
-  struct FinalImage {
-    std::vector<lib::gfx::multi_alloc::StakeImage> stakes;
-    std::vector<VkImageView> views;
-  } final_image;
-
-  VkSemaphore example_finished_semaphore;
+  VkSemaphore graphics_finished_semaphore;
   VkSemaphore imgui_finished_semaphore;
-  VkSemaphore frame_rendered_semaphore;
+  VkSemaphore frame_finished_semaphore;
 
   VkDescriptorPool common_descriptor_pool;
 
   lib::gfx::multi_alloc::Instance multi_alloc;
 
-  struct Example {
-    struct ZBuffer {
-      std::vector<lib::gfx::multi_alloc::StakeImage> stakes;
-      std::vector<VkImageView> views;
-    } zbuffer;
+  struct ZBuffer {
+    std::vector<lib::gfx::multi_alloc::StakeImage> stakes;
+    std::vector<VkImageView> views;
+  } zbuffer;
 
-    struct GBuffer {
-      std::vector<lib::gfx::multi_alloc::StakeImage> channel0_stakes;
-      std::vector<lib::gfx::multi_alloc::StakeImage> channel1_stakes;
-      std::vector<lib::gfx::multi_alloc::StakeImage> channel2_stakes;
-      std::vector<VkImageView> channel0_views;
-      std::vector<VkImageView> channel1_views;
-      std::vector<VkImageView> channel2_views;
-    } gbuffer;
+  struct GBuffer {
+    std::vector<lib::gfx::multi_alloc::StakeImage> channel0_stakes;
+    std::vector<lib::gfx::multi_alloc::StakeImage> channel1_stakes;
+    std::vector<lib::gfx::multi_alloc::StakeImage> channel2_stakes;
+    std::vector<VkImageView> channel0_views;
+    std::vector<VkImageView> channel1_views;
+    std::vector<VkImageView> channel2_views;
+  } gbuffer;
 
-    struct LBuffer {
-      std::vector<lib::gfx::multi_alloc::StakeImage> stakes;
-      std::vector<VkImageView> views;
-    } lbuffer;
+  struct LBuffer {
+    std::vector<lib::gfx::multi_alloc::StakeImage> stakes;
+    std::vector<VkImageView> views;
+  } lbuffer;
 
-    struct Prepass {
-      VkRenderPass render_pass;
-      VkPipeline pipeline;
-      std::vector<VkFramebuffer> framebuffers;
-    } prepass;
+  struct FinalImage {
+    std::vector<lib::gfx::multi_alloc::StakeImage> stakes;
+    std::vector<VkImageView> views;
+  } final_image;
 
-    struct GPass {
-      std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_frame_stakes;
-      std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_material_stakes;
-      VkRenderPass render_pass;
-      VkPipeline pipeline;
-      std::vector<VkFramebuffer> framebuffers;
-      std::vector<VkDescriptorSet> descriptor_sets;
-    } gpass;
+  struct Prepass {
+    VkRenderPass render_pass;
+    VkPipeline pipeline;
+    std::vector<VkFramebuffer> framebuffers;
+  } prepass;
 
-    struct LPass {
-      std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_directional_light_stakes;
-      VkRenderPass render_pass;
-      VkPipeline pipeline_sun;
-      std::vector<VkFramebuffer> framebuffers;
-      std::vector<VkDescriptorSet> descriptor_sets_frame;
-      std::vector<VkDescriptorSet> descriptor_sets_directional_light;
-    } lpass;
+  struct GPass {
+    std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_frame_stakes;
+    std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_material_stakes;
+    VkRenderPass render_pass;
+    VkPipeline pipeline;
+    std::vector<VkFramebuffer> framebuffers;
+    std::vector<VkDescriptorSet> descriptor_sets;
+  } gpass;
 
-    struct Finalpass {
-      std::vector<VkDescriptorSet> descriptor_sets;
-    } finalpass;
-  } example;
+  struct LPass {
+    std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_directional_light_stakes;
+    VkRenderPass render_pass;
+    VkPipeline pipeline_sun;
+    std::vector<VkFramebuffer> framebuffers;
+    std::vector<VkDescriptorSet> descriptor_sets_frame;
+    std::vector<VkDescriptorSet> descriptor_sets_directional_light;
+  } lpass;
+
+  struct Finalpass {
+    std::vector<VkDescriptorSet> descriptor_sets;
+  } finalpass;
 };

@@ -1,17 +1,17 @@
 #include "lpass.hxx"
 
-void init_example_finalpass(
-  RenderingData::Example::Finalpass *it,
+void init_finalpass(
+  RenderingData::Finalpass *it,
   VkDescriptorPool common_descriptor_pool,
   RenderingData::SwapchainDescription *swapchain_description,
-  RenderingData::Example::LBuffer *lbuffer,
+  RenderingData::LBuffer *lbuffer,
   RenderingData::FinalImage *final_image,
   SessionData::Vulkan *vulkan
 ) {
   it->descriptor_sets.resize(swapchain_description->image_count);
   std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
   for (auto &layout : layouts) {
-    layout = vulkan->example.finalpass.descriptor_set_layout;
+    layout = vulkan->finalpass.descriptor_set_layout;
   }
   VkDescriptorSetAllocateInfo allocate_info = {
     .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -34,7 +34,7 @@ void init_example_finalpass(
         .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
       };
       VkDescriptorImageInfo lbuffer_image_info = {
-        .sampler = vulkan->example.finalpass.sampler_lbuffer,
+        .sampler = vulkan->finalpass.sampler_lbuffer,
         .imageView = lbuffer->views[i],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };

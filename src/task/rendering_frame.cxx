@@ -54,81 +54,92 @@ void rendering_frame(
   );
   auto frame_info = new RenderingData::FrameInfo(*latest_frame);
   auto compose_data = new ComposeData;
-  auto example_data = new ExampleData;
+  auto graphics_data = new GraphicsData;
   auto imgui_data = new ImguiData;
   auto update_data = new UpdateData;
   auto frame_tasks = new std::vector<task::Task *>({
     task::create(
-      rendering_frame_handle_window_events,
+      frame_handle_window_events,
       &session->glfw,
       &session->state,
       update_data
     ),
     task::create(
-      rendering_frame_update,
+      frame_update,
       update_data,
       frame_info,
       &session->state
     ),
     task::create(
-      rendering_frame_setup_gpu_signal,
+      frame_setup_gpu_signal,
       &session->vulkan.core,
       &session->gpu_signal_support,
-      &data->frame_rendered_semaphore,
+      &data->frame_finished_semaphore,
       &data->inflight_gpu,
       frame_info
     ),
     task::create(
-      rendering_frame_reset_pools,
+      frame_reset_pools,
       &session->vulkan.core,
       &data->command_pools,
       frame_info
     ),
     task::create(
-      rendering_frame_acquire,
+      frame_acquire,
       &session->vulkan.core,
       &data->presentation,
       &data->presentation_failure_state,
       frame_info
     ),
     task::create(
-      rendering_frame_example_prepare_uniforms,
+      frame_prepare_uniforms,
       &session->vulkan.core,
       &data->swapchain_description,
       frame_info,
       &session->state,
-      &data->example
+      &data->gpass,
+      &data->lpass
     ),
     task::create(
-      rendering_frame_example_render,
+      frame_graphics_render,
       &session->vulkan.core,
       &data->swapchain_description,
       &data->command_pools,
       frame_info,
+      &data->prepass,
+      &data->gpass,
+      &data->lpass,
+      &data->finalpass,
+      &data->zbuffer,
+      &data->gbuffer,
+      &data->lbuffer,
       &data->final_image,
-      &data->example,
-      &session->vulkan.example,
-      example_data
+      &session->vulkan.gpass,
+      &session->vulkan.lpass,
+      &session->vulkan.finalpass,
+      &session->vulkan.geometry,
+      &session->vulkan.fullscreen_quad,
+      graphics_data
     ),
     task::create(
-      rendering_frame_example_submit,
+      frame_graphics_submit,
       &session->vulkan.queue_work,
-      &data->example_finished_semaphore,
+      &data->graphics_finished_semaphore,
       frame_info,
-      example_data
+      graphics_data
     ),
     task::create(
-      rendering_frame_imgui_new_frame,
+      frame_imgui_new_frame,
       &session->imgui_context,
       &data->imgui_backend
     ),
     task::create(
-      rendering_frame_imgui_populate,
+      frame_imgui_populate,
       &session->imgui_context,
       &session->state
     ),
     task::create(
-      rendering_frame_imgui_render,
+      frame_imgui_render,
       &session->vulkan.core,
       &session->imgui_context,
       &data->imgui_backend,
@@ -138,15 +149,15 @@ void rendering_frame(
       imgui_data
     ),
     task::create(
-      rendering_frame_imgui_submit,
+      frame_imgui_submit,
       &session->vulkan.queue_work,
-      &data->example_finished_semaphore,
+      &data->graphics_finished_semaphore,
       &data->imgui_finished_semaphore,
       frame_info,
       imgui_data
     ),
     task::create(
-      rendering_frame_compose_render,
+      frame_compose_render,
       &session->vulkan.core,
       &data->presentation,
       &data->presentation_failure_state,
@@ -157,24 +168,24 @@ void rendering_frame(
       compose_data
     ),
     task::create(
-      rendering_frame_compose_submit,
+      frame_compose_submit,
       &session->vulkan.queue_work,
       &data->presentation,
       &data->presentation_failure_state,
-      &data->frame_rendered_semaphore,
+      &data->frame_finished_semaphore,
       &data->imgui_finished_semaphore,
       frame_info,
       compose_data
     ),
     task::create(
-      rendering_frame_present,
+      frame_present,
       &data->presentation,
       &data->presentation_failure_state,
       frame_info,
       &session->vulkan.queue_present
     ),
     task::create(
-      rendering_frame_cleanup,
+      frame_cleanup,
       frame_info
     ),
     task::create(

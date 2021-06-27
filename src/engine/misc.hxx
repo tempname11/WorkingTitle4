@@ -7,7 +7,7 @@ struct ComposeData {
   VkCommandBuffer cmd;
 };
 
-struct ExampleData {
+struct GraphicsData {
   VkCommandBuffer cmd;
 };
 

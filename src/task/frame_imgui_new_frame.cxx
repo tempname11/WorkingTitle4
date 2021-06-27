@@ -3,7 +3,7 @@
 #include <backends/imgui_impl_vulkan.h>
 #include "task.hxx"
 
-void rendering_frame_imgui_new_frame(
+void frame_imgui_new_frame(
   task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   usage::Full<SessionData::ImguiContext> imgui,
   usage::Full<RenderingData::ImguiBackend> imgui_backend

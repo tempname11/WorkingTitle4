@@ -1,6 +1,6 @@
 #include "task.hxx"
 
-void rendering_frame_present(
+void frame_present(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<RenderingData::Presentation> presentation,
   usage::Some<RenderingData::PresentationFailureState> presentation_failure_state,

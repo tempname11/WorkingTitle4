@@ -40,35 +40,33 @@ struct SessionData : lib::task::ParentResource {
 
     lib::gfx::multi_alloc::Instance multi_alloc;
 
-    struct Example {
-      struct Geometry {
-        lib::gfx::multi_alloc::StakeBuffer vertex_stake;
-        size_t triangle_count;
-      } geometry;
+    struct Geometry {
+      lib::gfx::multi_alloc::StakeBuffer vertex_stake;
+      size_t triangle_count;
+    } geometry;
 
-      struct FullscreenQuad {
-        lib::gfx::multi_alloc::StakeBuffer vertex_stake;
-        size_t triangle_count;
-      } fullscreen_quad;
+    struct FullscreenQuad {
+      lib::gfx::multi_alloc::StakeBuffer vertex_stake;
+      size_t triangle_count;
+    } fullscreen_quad;
 
-      struct GPass {
-        VkDescriptorSetLayout descriptor_set_layout;
-        VkPipelineLayout pipeline_layout;
-      } gpass;
+    struct GPass {
+      VkDescriptorSetLayout descriptor_set_layout;
+      VkPipelineLayout pipeline_layout;
+    } gpass;
 
-      struct LPass {
-        VkDescriptorSetLayout descriptor_set_layout_frame;
-        VkDescriptorSetLayout descriptor_set_layout_directional_light;
-        VkPipelineLayout pipeline_layout;
-      } lpass;
+    struct LPass {
+      VkDescriptorSetLayout descriptor_set_layout_frame;
+      VkDescriptorSetLayout descriptor_set_layout_directional_light;
+      VkPipelineLayout pipeline_layout;
+    } lpass;
 
-      struct Finalpass {
-        VkDescriptorSetLayout descriptor_set_layout;
-        VkPipelineLayout pipeline_layout;
-        VkPipeline pipeline;
-        VkSampler sampler_lbuffer;
-      } finalpass;
-    } example;
+    struct Finalpass {
+      VkDescriptorSetLayout descriptor_set_layout;
+      VkPipelineLayout pipeline_layout;
+      VkPipeline pipeline;
+      VkSampler sampler_lbuffer;
+    } finalpass;
   } vulkan;
 
   struct ImguiContext {

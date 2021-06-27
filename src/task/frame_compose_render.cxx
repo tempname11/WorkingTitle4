@@ -1,6 +1,6 @@
 #include "task.hxx"
 
-void rendering_frame_compose_render(
+void frame_compose_render(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Some<RenderingData::Presentation> presentation,

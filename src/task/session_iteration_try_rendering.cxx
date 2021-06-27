@@ -8,218 +8,6 @@
 #include <src/lib/gfx/mesh.hxx>
 #include "task.hxx"
 
-void init_example(
-  RenderingData::Example *it,
-  VkDescriptorPool common_descriptor_pool,
-  RenderingData::SwapchainDescription *swapchain_description,
-  RenderingData::FinalImage *final_image,
-  SessionData::Vulkan *vulkan
-) {
-  ZoneScoped;
-  // @Note: stakes are initialized elsewhere.
-  { ZoneScopedN(".gbuffer.channel0_views");
-    for (auto stake : it->gbuffer.channel0_stakes) {
-      VkImageView image_view;
-      VkImageViewCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = stake.image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = GBUFFER_CHANNEL0_FORMAT,
-        .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .levelCount = 1,
-          .layerCount = 1,
-        },
-      };
-      {
-        auto result = vkCreateImageView(
-          vulkan->core.device,
-          &create_info,
-          vulkan->core.allocator,
-          &image_view
-        );
-        assert(result == VK_SUCCESS);
-      }
-      it->gbuffer.channel0_views.push_back(image_view);
-    }
-  }
-  { ZoneScopedN(".gbuffer.channel1_views");
-    for (auto stake : it->gbuffer.channel1_stakes) {
-      VkImageView image_view;
-      VkImageViewCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = stake.image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = GBUFFER_CHANNEL1_FORMAT,
-        .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .levelCount = 1,
-          .layerCount = 1,
-        },
-      };
-      {
-        auto result = vkCreateImageView(
-          vulkan->core.device,
-          &create_info,
-          vulkan->core.allocator,
-          &image_view
-        );
-        assert(result == VK_SUCCESS);
-      }
-      it->gbuffer.channel1_views.push_back(image_view);
-    }
-  }
-  { ZoneScopedN(".gbuffer.channel2_views");
-    for (auto stake : it->gbuffer.channel2_stakes) {
-      VkImageView image_view;
-      VkImageViewCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = stake.image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = GBUFFER_CHANNEL2_FORMAT,
-        .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .levelCount = 1,
-          .layerCount = 1,
-        },
-      };
-      {
-        auto result = vkCreateImageView(
-          vulkan->core.device,
-          &create_info,
-          vulkan->core.allocator,
-          &image_view
-        );
-        assert(result == VK_SUCCESS);
-      }
-      it->gbuffer.channel2_views.push_back(image_view);
-    }
-  }
-  { ZoneScopedN(".zbuffer.views");
-    for (auto stake : it->zbuffer.stakes) {
-      VkImageView depth_view;
-      VkImageViewCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = stake.image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = ZBUFFER_FORMAT,
-        .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
-          .levelCount = 1,
-          .layerCount = 1,
-        },
-      };
-      {
-        auto result = vkCreateImageView(
-          vulkan->core.device,
-          &create_info,
-          vulkan->core.allocator,
-          &depth_view
-        );
-        assert(result == VK_SUCCESS);
-      }
-      it->zbuffer.views.push_back(depth_view);
-    }
-  }
-  { ZoneScopedN(".lbuffer.views");
-    for (auto stake : it->lbuffer.stakes) {
-      VkImageView image_view;
-      VkImageViewCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = stake.image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = LBUFFER_FORMAT,
-        .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .levelCount = 1,
-          .layerCount = 1,
-        },
-      };
-      {
-        auto result = vkCreateImageView(
-          vulkan->core.device,
-          &create_info,
-          vulkan->core.allocator,
-          &image_view
-        );
-        assert(result == VK_SUCCESS);
-      }
-      it->lbuffer.views.push_back(image_view);
-    }
-  }
-
-  // for both pipelines
-  VkShaderModule module_frag = VK_NULL_HANDLE;
-  VkShaderModule module_vert = VK_NULL_HANDLE;
-  { ZoneScopedN("module_vert");
-    VkShaderModuleCreateInfo info = {
-      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-      .codeSize = embedded_gpass_vert_len,
-      .pCode = (const uint32_t*) embedded_gpass_vert,
-    };
-    auto result = vkCreateShaderModule(
-      vulkan->core.device,
-      &info,
-      vulkan->core.allocator,
-      &module_vert
-    );
-    assert(result == VK_SUCCESS);
-  }
-  { ZoneScopedN("module_frag");
-    VkShaderModuleCreateInfo info = {
-      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-      .codeSize = embedded_gpass_frag_len,
-      .pCode = (const uint32_t*) embedded_gpass_frag,
-    };
-    auto result = vkCreateShaderModule(
-      vulkan->core.device,
-      &info,
-      vulkan->core.allocator,
-      &module_frag
-    );
-    assert(result == VK_SUCCESS);
-  }
-  init_example_prepass(
-    &it->prepass,
-    module_vert,
-    &it->zbuffer,
-    swapchain_description,
-    &vulkan->example.gpass,
-    &vulkan->core
-  );
-  init_example_gpass(
-    &it->gpass,
-    common_descriptor_pool,
-    module_vert,
-    module_frag,
-    &it->zbuffer,
-    &it->gbuffer,
-    swapchain_description,
-    &vulkan->example.gpass,
-    &vulkan->core
-  );
-  vkDestroyShaderModule(vulkan->core.device, module_frag, vulkan->core.allocator);
-  vkDestroyShaderModule(vulkan->core.device, module_vert, vulkan->core.allocator);
-  init_example_lpass(
-    &it->lpass,
-    &it->gpass,
-    common_descriptor_pool,
-    swapchain_description,
-    &it->zbuffer,
-    &it->gbuffer,
-    &it->lbuffer,
-    vulkan
-  );
-  init_example_finalpass(
-    &it->finalpass,
-    common_descriptor_pool,
-    swapchain_description,
-    &it->lbuffer,
-    final_image,
-    vulkan
-  );
-}
-
 void session_iteration_try_rendering(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<task::Task> session_iteration_yarn_end,
@@ -355,7 +143,7 @@ void session_iteration_try_rendering(
     }
   }
 
-  { ZoneScopedN(".frame_rendered_semaphore");
+  { ZoneScopedN(".frame_finished_semaphore");
     VkSemaphoreTypeCreateInfo timeline_info = {
       .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
       .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
@@ -368,12 +156,12 @@ void session_iteration_try_rendering(
       session->vulkan.core.device,
       &create_info,
       session->vulkan.core.allocator,
-      &rendering->frame_rendered_semaphore
+      &rendering->frame_finished_semaphore
     );
     assert(result == VK_SUCCESS);
   }
 
-  { ZoneScopedN(".example_finished_semaphore");
+  { ZoneScopedN(".graphics_finished_semaphore");
     VkSemaphoreTypeCreateInfo timeline_info = {
       .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
       .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
@@ -386,7 +174,7 @@ void session_iteration_try_rendering(
       session->vulkan.core.device,
       &create_info,
       session->vulkan.core.allocator,
-      &rendering->example_finished_semaphore
+      &rendering->graphics_finished_semaphore
     );
     assert(result == VK_SUCCESS);
   }
@@ -444,23 +232,23 @@ void session_iteration_try_rendering(
   { ZoneScopedN(".multi_alloc");
     std::vector<lib::gfx::multi_alloc::Claim> claims;
 
-    rendering->example.gpass.ubo_frame_stakes.resize(swapchain_image_count);
-    rendering->example.gpass.ubo_material_stakes.resize(swapchain_image_count);
-    rendering->example.lpass.ubo_directional_light_stakes.resize(swapchain_image_count);
-    rendering->example.gbuffer.channel0_stakes.resize(swapchain_image_count);
-    rendering->example.gbuffer.channel1_stakes.resize(swapchain_image_count);
-    rendering->example.gbuffer.channel2_stakes.resize(swapchain_image_count);
-    rendering->example.zbuffer.stakes.resize(swapchain_image_count);
-    rendering->example.lbuffer.stakes.resize(swapchain_image_count);
+    rendering->gpass.ubo_frame_stakes.resize(swapchain_image_count);
+    rendering->gpass.ubo_material_stakes.resize(swapchain_image_count);
+    rendering->lpass.ubo_directional_light_stakes.resize(swapchain_image_count);
+    rendering->gbuffer.channel0_stakes.resize(swapchain_image_count);
+    rendering->gbuffer.channel1_stakes.resize(swapchain_image_count);
+    rendering->gbuffer.channel2_stakes.resize(swapchain_image_count);
+    rendering->zbuffer.stakes.resize(swapchain_image_count);
+    rendering->lbuffer.stakes.resize(swapchain_image_count);
     rendering->final_image.stakes.resize(swapchain_image_count);
 
-    for (auto &stake : rendering->example.gpass.ubo_frame_stakes) {
+    for (auto &stake : rendering->gpass.ubo_frame_stakes) {
       claims.push_back({
         .info = {
           .buffer = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
             .size = (
-              sizeof(example::UBO_Frame)
+              sizeof(rendering::UBO_Frame)
             ),
             .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
@@ -474,13 +262,13 @@ void session_iteration_try_rendering(
         .p_stake_buffer = &stake,
       });
     }
-    for (auto &stake : rendering->example.gpass.ubo_material_stakes) {
+    for (auto &stake : rendering->gpass.ubo_material_stakes) {
       claims.push_back({
         .info = {
           .buffer = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
             .size = (
-              sizeof(example::UBO_Material)
+              sizeof(rendering::UBO_Material)
             ),
             .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
@@ -494,13 +282,13 @@ void session_iteration_try_rendering(
         .p_stake_buffer = &stake,
       });
     }
-    for (auto &stake : rendering->example.lpass.ubo_directional_light_stakes) {
+    for (auto &stake : rendering->lpass.ubo_directional_light_stakes) {
       claims.push_back({
         .info = {
           .buffer = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
             .size = (
-              sizeof(example::UBO_DirectionalLight)
+              sizeof(rendering::UBO_DirectionalLight)
             ),
             .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
@@ -514,7 +302,7 @@ void session_iteration_try_rendering(
         .p_stake_buffer = &stake,
       });
     }
-    for (auto &stake : rendering->example.gbuffer.channel0_stakes) {
+    for (auto &stake : rendering->gbuffer.channel0_stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -542,7 +330,7 @@ void session_iteration_try_rendering(
         .p_stake_image = &stake,
       });
     }
-    for (auto &stake : rendering->example.gbuffer.channel1_stakes) {
+    for (auto &stake : rendering->gbuffer.channel1_stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -570,7 +358,7 @@ void session_iteration_try_rendering(
         .p_stake_image = &stake,
       });
     }
-    for (auto &stake : rendering->example.gbuffer.channel2_stakes) {
+    for (auto &stake : rendering->gbuffer.channel2_stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -598,7 +386,7 @@ void session_iteration_try_rendering(
         .p_stake_image = &stake,
       });
     }
-    for (auto &stake : rendering->example.zbuffer.stakes) {
+    for (auto &stake : rendering->zbuffer.stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -626,7 +414,7 @@ void session_iteration_try_rendering(
         .p_stake_image = &stake,
       });
     }
-    for (auto &stake : rendering->example.lbuffer.stakes) {
+    for (auto &stake : rendering->lbuffer.stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -720,15 +508,216 @@ void session_iteration_try_rendering(
     }
   }
 
-  { ZoneScopedN(".example");
-    init_example(
-      &rendering->example,
-      rendering->common_descriptor_pool,
-      &rendering->swapchain_description,
-      &rendering->final_image,
-      &session->vulkan
-    );
+  { ZoneScopedN(".gbuffer.channel0_views");
+    for (auto stake : rendering->gbuffer.channel0_stakes) {
+      VkImageView image_view;
+      VkImageViewCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = stake.image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = GBUFFER_CHANNEL0_FORMAT,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .levelCount = 1,
+          .layerCount = 1,
+        },
+      };
+      {
+        auto result = vkCreateImageView(
+          vulkan->core.device,
+          &create_info,
+          vulkan->core.allocator,
+          &image_view
+        );
+        assert(result == VK_SUCCESS);
+      }
+      rendering->gbuffer.channel0_views.push_back(image_view);
+    }
   }
+
+  { ZoneScopedN(".gbuffer.channel1_views");
+    for (auto stake : rendering->gbuffer.channel1_stakes) {
+      VkImageView image_view;
+      VkImageViewCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = stake.image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = GBUFFER_CHANNEL1_FORMAT,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .levelCount = 1,
+          .layerCount = 1,
+        },
+      };
+      {
+        auto result = vkCreateImageView(
+          vulkan->core.device,
+          &create_info,
+          vulkan->core.allocator,
+          &image_view
+        );
+        assert(result == VK_SUCCESS);
+      }
+      rendering->gbuffer.channel1_views.push_back(image_view);
+    }
+  }
+
+  { ZoneScopedN(".gbuffer.channel2_views");
+    for (auto stake : rendering->gbuffer.channel2_stakes) {
+      VkImageView image_view;
+      VkImageViewCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = stake.image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = GBUFFER_CHANNEL2_FORMAT,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .levelCount = 1,
+          .layerCount = 1,
+        },
+      };
+      {
+        auto result = vkCreateImageView(
+          vulkan->core.device,
+          &create_info,
+          vulkan->core.allocator,
+          &image_view
+        );
+        assert(result == VK_SUCCESS);
+      }
+      rendering->gbuffer.channel2_views.push_back(image_view);
+    }
+  }
+
+  { ZoneScopedN(".zbuffer.views");
+    for (auto stake : rendering->zbuffer.stakes) {
+      VkImageView depth_view;
+      VkImageViewCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = stake.image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = ZBUFFER_FORMAT,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+          .levelCount = 1,
+          .layerCount = 1,
+        },
+      };
+      {
+        auto result = vkCreateImageView(
+          vulkan->core.device,
+          &create_info,
+          vulkan->core.allocator,
+          &depth_view
+        );
+        assert(result == VK_SUCCESS);
+      }
+      rendering->zbuffer.views.push_back(depth_view);
+    }
+  }
+
+  { ZoneScopedN(".lbuffer.views");
+    for (auto stake : rendering->lbuffer.stakes) {
+      VkImageView image_view;
+      VkImageViewCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = stake.image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = LBUFFER_FORMAT,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .levelCount = 1,
+          .layerCount = 1,
+        },
+      };
+      {
+        auto result = vkCreateImageView(
+          vulkan->core.device,
+          &create_info,
+          vulkan->core.allocator,
+          &image_view
+        );
+        assert(result == VK_SUCCESS);
+      }
+      rendering->lbuffer.views.push_back(image_view);
+    }
+  }
+
+  // for both pipelines
+  VkShaderModule module_frag = VK_NULL_HANDLE;
+  VkShaderModule module_vert = VK_NULL_HANDLE;
+  { ZoneScopedN("module_vert");
+    VkShaderModuleCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+      .codeSize = embedded_gpass_vert_len,
+      .pCode = (const uint32_t*) embedded_gpass_vert,
+    };
+    auto result = vkCreateShaderModule(
+      vulkan->core.device,
+      &info,
+      vulkan->core.allocator,
+      &module_vert
+    );
+    assert(result == VK_SUCCESS);
+  }
+  { ZoneScopedN("module_frag");
+    VkShaderModuleCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+      .codeSize = embedded_gpass_frag_len,
+      .pCode = (const uint32_t*) embedded_gpass_frag,
+    };
+    auto result = vkCreateShaderModule(
+      vulkan->core.device,
+      &info,
+      vulkan->core.allocator,
+      &module_frag
+    );
+    assert(result == VK_SUCCESS);
+  }
+
+  init_prepass(
+    &rendering->prepass,
+    module_vert,
+    &rendering->zbuffer,
+    &rendering->swapchain_description,
+    &vulkan->gpass,
+    &vulkan->core
+  );
+
+  init_gpass(
+    &rendering->gpass,
+    rendering->common_descriptor_pool,
+    module_vert,
+    module_frag,
+    &rendering->zbuffer,
+    &rendering->gbuffer,
+    &rendering->swapchain_description,
+    &vulkan->gpass,
+    &vulkan->core
+  );
+
+  vkDestroyShaderModule(vulkan->core.device, module_frag, vulkan->core.allocator);
+  vkDestroyShaderModule(vulkan->core.device, module_vert, vulkan->core.allocator);
+
+  init_lpass(
+    &rendering->lpass,
+    &rendering->gpass,
+    rendering->common_descriptor_pool,
+    &rendering->swapchain_description,
+    &rendering->zbuffer,
+    &rendering->gbuffer,
+    &rendering->lbuffer,
+    vulkan
+  );
+
+  init_finalpass(
+    &rendering->finalpass,
+    rendering->common_descriptor_pool,
+    &rendering->swapchain_description,
+    &rendering->lbuffer,
+    &rendering->final_image,
+    vulkan
+  );
 
   { ZoneScopedN(".imgui_backend");
     { ZoneScopedN(".setup_command_pool");
@@ -922,13 +911,19 @@ void session_iteration_try_rendering(
       &rendering->imgui_backend,
       &rendering->latest_frame,
       &rendering->command_pools,
-      &rendering->final_image,
-      &rendering->example_finished_semaphore,
+      &rendering->graphics_finished_semaphore,
       &rendering->imgui_finished_semaphore,
-      &rendering->frame_rendered_semaphore,
-      &rendering->multi_alloc,
+      &rendering->frame_finished_semaphore,
       &rendering->common_descriptor_pool,
-      &rendering->example,
+      &rendering->multi_alloc,
+      &rendering->zbuffer,
+      &rendering->gbuffer,
+      &rendering->lbuffer,
+      &rendering->final_image,
+      &rendering->prepass,
+      &rendering->gpass,
+      &rendering->lpass,
+      &rendering->finalpass,
     } } },
   });
   { ZoneScopedN("submit_imgui_setup");

@@ -1,14 +1,14 @@
 #include <src/embedded.hxx>
 #include "lpass.hxx"
 
-void init_example_lpass(
-  RenderingData::Example::LPass *it,
-  RenderingData::Example::GPass *gpass, // a bit dirty to depend on this
+void init_lpass(
+  RenderingData::LPass *it,
+  RenderingData::GPass *gpass, // a bit dirty to depend on this
   VkDescriptorPool common_descriptor_pool,
   RenderingData::SwapchainDescription *swapchain_description,
-  RenderingData::Example::ZBuffer *zbuffer,
-  RenderingData::Example::GBuffer *gbuffer,
-  RenderingData::Example::LBuffer *lbuffer,
+  RenderingData::ZBuffer *zbuffer,
+  RenderingData::GBuffer *gbuffer,
+  RenderingData::LBuffer *lbuffer,
   SessionData::Vulkan *vulkan
 ) {
   ZoneScoped;
@@ -116,7 +116,7 @@ void init_example_lpass(
     it->descriptor_sets_frame.resize(swapchain_description->image_count);
     std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
     for (auto &layout : layouts) {
-      layout = vulkan->example.lpass.descriptor_set_layout_frame;
+      layout = vulkan->lpass.descriptor_set_layout_frame;
     }
     VkDescriptorSetAllocateInfo allocate_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -214,7 +214,7 @@ void init_example_lpass(
     it->descriptor_sets_directional_light.resize(swapchain_description->image_count);
     std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
     for (auto &layout : layouts) {
-      layout = vulkan->example.lpass.descriptor_set_layout_directional_light;
+      layout = vulkan->lpass.descriptor_set_layout_directional_light;
     }
     VkDescriptorSetAllocateInfo allocate_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -398,7 +398,7 @@ void init_example_lpass(
       .pDepthStencilState = &depth_stencil_info,
       .pColorBlendState = &color_blend_info,
       .pDynamicState = nullptr,
-      .layout = vulkan->example.lpass.pipeline_layout,
+      .layout = vulkan->lpass.pipeline_layout,
       .renderPass = it->render_pass,
       .subpass = 0,
     };

@@ -1,15 +1,15 @@
 #include <src/lib/gfx/mesh.hxx>
 #include "gpass.hxx"
 
-void init_example_gpass(
-  RenderingData::Example::GPass *it,
+void init_gpass(
+  RenderingData::GPass *it,
   VkDescriptorPool common_descriptor_pool,
   VkShaderModule module_vert,
   VkShaderModule module_frag,
-  RenderingData::Example::ZBuffer *zbuffer,
-  RenderingData::Example::GBuffer *gbuffer,
+  RenderingData::ZBuffer *zbuffer,
+  RenderingData::GBuffer *gbuffer,
   RenderingData::SwapchainDescription *swapchain_description,
-  SessionData::Vulkan::Example::GPass *s_gpass,
+  SessionData::Vulkan::GPass *s_gpass,
   SessionData::Vulkan::Core *core
 ) {
   ZoneScoped;

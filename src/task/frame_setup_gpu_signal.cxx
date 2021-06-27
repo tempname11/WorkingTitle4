@@ -13,7 +13,7 @@ void signal_cleanup(
   delete inflight_index_saved.ptr;
 }
 
-void rendering_frame_setup_gpu_signal(
+void frame_setup_gpu_signal(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Some<lib::gpu_signal::Support> gpu_signal_support,

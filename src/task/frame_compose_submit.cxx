@@ -1,6 +1,6 @@
 #include "task.hxx"
 
-void rendering_frame_compose_submit(
+void frame_compose_submit(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   usage::Full<VkQueue> queue_work,
   usage::Full<RenderingData::Presentation> presentation,

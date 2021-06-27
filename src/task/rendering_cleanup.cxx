@@ -5,106 +5,6 @@
 #include <backends/imgui_impl_vulkan.h>
 #include "task.hxx"
 
-void deinit_example(
-  RenderingData::Example *it,
-  SessionData::Vulkan *vulkan
-) {
-  ZoneScoped;
-  for (auto image_view : it->gbuffer.channel0_views) {
-    vkDestroyImageView(
-      vulkan->core.device,
-      image_view,
-      vulkan->core.allocator
-    );
-  }
-  for (auto image_view : it->gbuffer.channel1_views) {
-    vkDestroyImageView(
-      vulkan->core.device,
-      image_view,
-      vulkan->core.allocator
-    );
-  }
-  for (auto image_view : it->gbuffer.channel2_views) {
-    vkDestroyImageView(
-      vulkan->core.device,
-      image_view,
-      vulkan->core.allocator
-    );
-  }
-  for (auto image_view : it->zbuffer.views) {
-    vkDestroyImageView(
-      vulkan->core.device,
-      image_view,
-      vulkan->core.allocator
-    );
-  }
-  for (auto image_view : it->lbuffer.views) {
-    vkDestroyImageView(
-      vulkan->core.device,
-      image_view,
-      vulkan->core.allocator
-    );
-  }
-  { ZoneScopedN(".prepass");
-    for (auto framebuffer : it->prepass.framebuffers) {
-      vkDestroyFramebuffer(
-        vulkan->core.device,
-        framebuffer,
-        vulkan->core.allocator
-      );
-    }
-    vkDestroyRenderPass(
-      vulkan->core.device,
-      it->prepass.render_pass,
-      vulkan->core.allocator
-    );
-    vkDestroyPipeline(
-      vulkan->core.device,
-      it->prepass.pipeline,
-      vulkan->core.allocator
-    );
-  }
-  { ZoneScopedN(".gpass");
-    for (auto framebuffer : it->gpass.framebuffers) {
-      vkDestroyFramebuffer(
-        vulkan->core.device,
-        framebuffer,
-        vulkan->core.allocator
-      );
-    }
-    vkDestroyRenderPass(
-      vulkan->core.device,
-      it->gpass.render_pass,
-      vulkan->core.allocator
-    );
-    vkDestroyPipeline(
-      vulkan->core.device,
-      it->gpass.pipeline,
-      vulkan->core.allocator
-    );
-  }
-  {
-    ZoneScopedN(".lpass");
-    for (auto framebuffer : it->lpass.framebuffers) {
-      vkDestroyFramebuffer(
-        vulkan->core.device,
-        framebuffer,
-        vulkan->core.allocator
-      );
-    }
-    vkDestroyRenderPass(
-      vulkan->core.device,
-      it->lpass.render_pass,
-      vulkan->core.allocator
-    );
-    vkDestroyPipeline(
-      vulkan->core.device,
-      it->lpass.pipeline_sun,
-      vulkan->core.allocator
-    );
-  }
-}
-
 void rendering_cleanup(
   task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   usage::Full<task::Task> session_iteration_yarn_end,
@@ -113,10 +13,99 @@ void rendering_cleanup(
 ) {
   ZoneScoped;
   auto vulkan = &session->vulkan;
-  deinit_example(
-    &data->example,
-    vulkan
-  );
+  for (auto image_view : data->gbuffer.channel0_views) {
+    vkDestroyImageView(
+      vulkan->core.device,
+      image_view,
+      vulkan->core.allocator
+    );
+  }
+  for (auto image_view : data->gbuffer.channel1_views) {
+    vkDestroyImageView(
+      vulkan->core.device,
+      image_view,
+      vulkan->core.allocator
+    );
+  }
+  for (auto image_view : data->gbuffer.channel2_views) {
+    vkDestroyImageView(
+      vulkan->core.device,
+      image_view,
+      vulkan->core.allocator
+    );
+  }
+  for (auto image_view : data->zbuffer.views) {
+    vkDestroyImageView(
+      vulkan->core.device,
+      image_view,
+      vulkan->core.allocator
+    );
+  }
+  for (auto image_view : data->lbuffer.views) {
+    vkDestroyImageView(
+      vulkan->core.device,
+      image_view,
+      vulkan->core.allocator
+    );
+  }
+  { ZoneScopedN(".prepass");
+    for (auto framebuffer : data->prepass.framebuffers) {
+      vkDestroyFramebuffer(
+        vulkan->core.device,
+        framebuffer,
+        vulkan->core.allocator
+      );
+    }
+    vkDestroyRenderPass(
+      vulkan->core.device,
+      data->prepass.render_pass,
+      vulkan->core.allocator
+    );
+    vkDestroyPipeline(
+      vulkan->core.device,
+      data->prepass.pipeline,
+      vulkan->core.allocator
+    );
+  }
+  { ZoneScopedN(".gpass");
+    for (auto framebuffer : data->gpass.framebuffers) {
+      vkDestroyFramebuffer(
+        vulkan->core.device,
+        framebuffer,
+        vulkan->core.allocator
+      );
+    }
+    vkDestroyRenderPass(
+      vulkan->core.device,
+      data->gpass.render_pass,
+      vulkan->core.allocator
+    );
+    vkDestroyPipeline(
+      vulkan->core.device,
+      data->gpass.pipeline,
+      vulkan->core.allocator
+    );
+  }
+  {
+    ZoneScopedN(".lpass");
+    for (auto framebuffer : data->lpass.framebuffers) {
+      vkDestroyFramebuffer(
+        vulkan->core.device,
+        framebuffer,
+        vulkan->core.allocator
+      );
+    }
+    vkDestroyRenderPass(
+      vulkan->core.device,
+      data->lpass.render_pass,
+      vulkan->core.allocator
+    );
+    vkDestroyPipeline(
+      vulkan->core.device,
+      data->lpass.pipeline_sun,
+      vulkan->core.allocator
+    );
+  }
   vkDestroyDescriptorPool(
     vulkan->core.device,
     data->common_descriptor_pool,
@@ -170,7 +159,7 @@ void rendering_cleanup(
   }
   vkDestroySemaphore(
     vulkan->core.device,
-    data->example_finished_semaphore,
+    data->graphics_finished_semaphore,
     vulkan->core.allocator
   );
   vkDestroySemaphore(
@@ -180,7 +169,7 @@ void rendering_cleanup(
   );
   vkDestroySemaphore(
     vulkan->core.device,
-    data->frame_rendered_semaphore,
+    data->frame_finished_semaphore,
     vulkan->core.allocator
   );
   vkDestroySwapchainKHR(

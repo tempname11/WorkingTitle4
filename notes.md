@@ -1,5 +1,4 @@
 ### more things to do
-[ ] remove "example" from naming
 [ ] move session code to engine/session**
 [ ] move rendering code to engine/rendering/**
 [ ] fix the intermittent bug
@@ -15,4 +14,5 @@
 * no GLSL includes?
 
 ### architectural problems
+* semaphores are used unnecessarily to separate work <-> imgui <-> compose
 * task scheduling is dynamic and costly, but it shouldn't really be

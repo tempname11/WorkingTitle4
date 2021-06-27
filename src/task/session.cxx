@@ -55,251 +55,6 @@ namespace mesh {
   }
 }
 
-void init_example(
-  SessionData::Vulkan::Example *example,
-  SessionData::Vulkan *it
-) {
-  ZoneScoped;
-  { ZoneScopedN(".gpass.descriptor_set_layout");
-    VkDescriptorSetLayoutBinding layout_bindings[] = {
-      {
-        .binding = 0,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_ALL,
-      },
-      {
-        .binding = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_ALL,
-      },
-    };
-    VkDescriptorSetLayoutCreateInfo create_info = {
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-      .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
-      .pBindings = layout_bindings,
-    };
-    {
-      auto result = vkCreateDescriptorSetLayout(
-        it->core.device,
-        &create_info,
-        it->core.allocator,
-        &it->example.gpass.descriptor_set_layout
-      );
-      assert(result == VK_SUCCESS);
-    }
-  }
-  { ZoneScopedN(".gpass.pipeline_layout");
-    VkPipelineLayoutCreateInfo info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 1,
-      .pSetLayouts = &it->example.gpass.descriptor_set_layout,
-    };
-    {
-      auto result = vkCreatePipelineLayout(
-        it->core.device,
-        &info,
-        it->core.allocator,
-        &it->example.gpass.pipeline_layout
-      );
-      assert(result == VK_SUCCESS);
-    }
-  }
-  { ZoneScopedN(".lpass.descriptor_set_layout_frame");
-    VkDescriptorSetLayoutBinding layout_bindings[] = {
-      {
-        .binding = 0,
-        .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-      },
-      {
-        .binding = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-      },
-      {
-        .binding = 2,
-        .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-      },
-      {
-        .binding = 3,
-        .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-      },
-      {
-        .binding = 4,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-      },
-    };
-    VkDescriptorSetLayoutCreateInfo create_info = {
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-      .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
-      .pBindings = layout_bindings,
-    };
-    {
-      auto result = vkCreateDescriptorSetLayout(
-        it->core.device,
-        &create_info,
-        it->core.allocator,
-        &it->example.lpass.descriptor_set_layout_frame
-      );
-      assert(result == VK_SUCCESS);
-    }
-  }
-  { ZoneScopedN(".lpass.descriptor_set_layout_directional_light");
-    VkDescriptorSetLayoutBinding layout_bindings[] = {
-      {
-        .binding = 0,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_ALL,
-      },
-    };
-    VkDescriptorSetLayoutCreateInfo create_info = {
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-      .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
-      .pBindings = layout_bindings,
-    };
-    {
-      auto result = vkCreateDescriptorSetLayout(
-        it->core.device,
-        &create_info,
-        it->core.allocator,
-        &it->example.lpass.descriptor_set_layout_directional_light
-      );
-      assert(result == VK_SUCCESS);
-    }
-  }
-  { ZoneScopedN(".lpass.pipeline_layout");
-    VkDescriptorSetLayout layouts[] = {
-      it->example.lpass.descriptor_set_layout_frame,
-      it->example.lpass.descriptor_set_layout_directional_light,
-    };
-    VkPipelineLayoutCreateInfo info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = sizeof(layouts) / sizeof(*layouts),
-      .pSetLayouts = layouts,
-    };
-    {
-      auto result = vkCreatePipelineLayout(
-        it->core.device,
-        &info,
-        it->core.allocator,
-        &it->example.lpass.pipeline_layout
-      );
-      assert(result == VK_SUCCESS);
-    }
-  }
-  { ZoneScopedN(".finalpass.descriptor_set_layout");
-    VkDescriptorSetLayoutBinding layout_bindings[] = {
-      {
-        .binding = 0,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_ALL,
-      },
-      {
-        .binding = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_ALL,
-      },
-    };
-    VkDescriptorSetLayoutCreateInfo create_info = {
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-      .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
-      .pBindings = layout_bindings,
-    };
-    {
-      auto result = vkCreateDescriptorSetLayout(
-        it->core.device,
-        &create_info,
-        it->core.allocator,
-        &it->example.finalpass.descriptor_set_layout
-      );
-      assert(result == VK_SUCCESS);
-    }
-  }
-  { ZoneScopedN(".finalpass.pipeline_layout");
-    VkPipelineLayoutCreateInfo info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 1,
-      .pSetLayouts = &it->example.finalpass.descriptor_set_layout,
-    };
-    {
-      auto result = vkCreatePipelineLayout(
-        it->core.device,
-        &info,
-        it->core.allocator,
-        &it->example.finalpass.pipeline_layout
-      );
-      assert(result == VK_SUCCESS);
-    }
-  }
-  { ZoneScopedN(".finalpass.pipeline");
-    VkShaderModule module_compute;
-    { ZoneScopedN("module_compute");
-      VkShaderModuleCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = embedded_finalpass_comp_len,
-        .pCode = (const uint32_t*) embedded_finalpass_comp,
-      };
-      auto result = vkCreateShaderModule(
-        it->core.device,
-        &create_info,
-        it->core.allocator,
-        &module_compute
-      );
-      assert(result == VK_SUCCESS);
-    }
-    { ZoneScopedN(".pipeline");
-      VkComputePipelineCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-        .stage = {
-          .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-          .stage = VK_SHADER_STAGE_COMPUTE_BIT,
-          .module = module_compute,
-          .pName = "main"
-        },
-        .layout = it->example.finalpass.pipeline_layout,
-      };
-      auto result = vkCreateComputePipelines(
-        it->core.device,
-        VK_NULL_HANDLE,
-        1,
-        &create_info,
-        it->core.allocator,
-        &it->example.finalpass.pipeline
-      );
-      assert(result == VK_SUCCESS);
-    }
-    vkDestroyShaderModule(
-      it->core.device,
-      module_compute,
-      it->core.allocator
-    );
-  }
-  { ZoneScopedN(".finalpass.sampler_lbuffer");
-    VkSamplerCreateInfo create_info = {
-      .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-    };
-    vkCreateSampler(
-      it->core.device,
-      &create_info,
-      it->core.allocator,
-      &it->example.finalpass.sampler_lbuffer
-    );
-  }
-}
-
 void session(
   task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   usage::None<size_t> worker_count
@@ -613,7 +368,7 @@ void session(
           | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
           | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
         ),
-        .p_stake_buffer = &it->example.geometry.vertex_stake,
+        .p_stake_buffer = &it->geometry.vertex_stake,
       });
       claims.push_back({
         .info = {
@@ -629,7 +384,7 @@ void session(
           | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
           | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
         ),
-        .p_stake_buffer = &it->example.fullscreen_quad.vertex_stake,
+        .p_stake_buffer = &it->fullscreen_quad.vertex_stake,
       });
       lib::gfx::multi_alloc::init(
         &it->multi_alloc,
@@ -640,16 +395,253 @@ void session(
         &it->properties.memory
       );
     }
-    init_example(&it->example, it);
+    { ZoneScopedN(".gpass.descriptor_set_layout");
+      VkDescriptorSetLayoutBinding layout_bindings[] = {
+        {
+          .binding = 0,
+          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .descriptorCount = 1,
+          .stageFlags = VK_SHADER_STAGE_ALL,
+        },
+        {
+          .binding = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .descriptorCount = 1,
+          .stageFlags = VK_SHADER_STAGE_ALL,
+        },
+      };
+      VkDescriptorSetLayoutCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
+        .pBindings = layout_bindings,
+      };
+      {
+        auto result = vkCreateDescriptorSetLayout(
+          it->core.device,
+          &create_info,
+          it->core.allocator,
+          &it->gpass.descriptor_set_layout
+        );
+        assert(result == VK_SUCCESS);
+      }
+    }
+    { ZoneScopedN(".gpass.pipeline_layout");
+      VkPipelineLayoutCreateInfo info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1,
+        .pSetLayouts = &it->gpass.descriptor_set_layout,
+      };
+      {
+        auto result = vkCreatePipelineLayout(
+          it->core.device,
+          &info,
+          it->core.allocator,
+          &it->gpass.pipeline_layout
+        );
+        assert(result == VK_SUCCESS);
+      }
+    }
+    { ZoneScopedN(".lpass.descriptor_set_layout_frame");
+      VkDescriptorSetLayoutBinding layout_bindings[] = {
+        {
+          .binding = 0,
+          .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .descriptorCount = 1,
+          .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        },
+        {
+          .binding = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .descriptorCount = 1,
+          .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        },
+        {
+          .binding = 2,
+          .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .descriptorCount = 1,
+          .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        },
+        {
+          .binding = 3,
+          .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .descriptorCount = 1,
+          .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        },
+        {
+          .binding = 4,
+          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .descriptorCount = 1,
+          .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        },
+      };
+      VkDescriptorSetLayoutCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
+        .pBindings = layout_bindings,
+      };
+      {
+        auto result = vkCreateDescriptorSetLayout(
+          it->core.device,
+          &create_info,
+          it->core.allocator,
+          &it->lpass.descriptor_set_layout_frame
+        );
+        assert(result == VK_SUCCESS);
+      }
+    }
+    { ZoneScopedN(".lpass.descriptor_set_layout_directional_light");
+      VkDescriptorSetLayoutBinding layout_bindings[] = {
+        {
+          .binding = 0,
+          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .descriptorCount = 1,
+          .stageFlags = VK_SHADER_STAGE_ALL,
+        },
+      };
+      VkDescriptorSetLayoutCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
+        .pBindings = layout_bindings,
+      };
+      {
+        auto result = vkCreateDescriptorSetLayout(
+          it->core.device,
+          &create_info,
+          it->core.allocator,
+          &it->lpass.descriptor_set_layout_directional_light
+        );
+        assert(result == VK_SUCCESS);
+      }
+    }
+    { ZoneScopedN(".lpass.pipeline_layout");
+      VkDescriptorSetLayout layouts[] = {
+        it->lpass.descriptor_set_layout_frame,
+        it->lpass.descriptor_set_layout_directional_light,
+      };
+      VkPipelineLayoutCreateInfo info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = sizeof(layouts) / sizeof(*layouts),
+        .pSetLayouts = layouts,
+      };
+      {
+        auto result = vkCreatePipelineLayout(
+          it->core.device,
+          &info,
+          it->core.allocator,
+          &it->lpass.pipeline_layout
+        );
+        assert(result == VK_SUCCESS);
+      }
+    }
+    { ZoneScopedN(".finalpass.descriptor_set_layout");
+      VkDescriptorSetLayoutBinding layout_bindings[] = {
+        {
+          .binding = 0,
+          .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+          .descriptorCount = 1,
+          .stageFlags = VK_SHADER_STAGE_ALL,
+        },
+        {
+          .binding = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .descriptorCount = 1,
+          .stageFlags = VK_SHADER_STAGE_ALL,
+        },
+      };
+      VkDescriptorSetLayoutCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
+        .pBindings = layout_bindings,
+      };
+      {
+        auto result = vkCreateDescriptorSetLayout(
+          it->core.device,
+          &create_info,
+          it->core.allocator,
+          &it->finalpass.descriptor_set_layout
+        );
+        assert(result == VK_SUCCESS);
+      }
+    }
+    { ZoneScopedN(".finalpass.pipeline_layout");
+      VkPipelineLayoutCreateInfo info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1,
+        .pSetLayouts = &it->finalpass.descriptor_set_layout,
+      };
+      {
+        auto result = vkCreatePipelineLayout(
+          it->core.device,
+          &info,
+          it->core.allocator,
+          &it->finalpass.pipeline_layout
+        );
+        assert(result == VK_SUCCESS);
+      }
+    }
+    { ZoneScopedN(".finalpass.pipeline");
+      VkShaderModule module_compute;
+      { ZoneScopedN("module_compute");
+        VkShaderModuleCreateInfo create_info = {
+          .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+          .codeSize = embedded_finalpass_comp_len,
+          .pCode = (const uint32_t*) embedded_finalpass_comp,
+        };
+        auto result = vkCreateShaderModule(
+          it->core.device,
+          &create_info,
+          it->core.allocator,
+          &module_compute
+        );
+        assert(result == VK_SUCCESS);
+      }
+      { ZoneScopedN(".pipeline");
+        VkComputePipelineCreateInfo create_info = {
+          .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+          .stage = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+            .module = module_compute,
+            .pName = "main"
+          },
+          .layout = it->finalpass.pipeline_layout,
+        };
+        auto result = vkCreateComputePipelines(
+          it->core.device,
+          VK_NULL_HANDLE,
+          1,
+          &create_info,
+          it->core.allocator,
+          &it->finalpass.pipeline
+        );
+        assert(result == VK_SUCCESS);
+      }
+      vkDestroyShaderModule(
+        it->core.device,
+        module_compute,
+        it->core.allocator
+      );
+    }
+    { ZoneScopedN(".finalpass.sampler_lbuffer");
+      VkSamplerCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+      };
+      vkCreateSampler(
+        it->core.device,
+        &create_info,
+        it->core.allocator,
+        &it->finalpass.sampler_lbuffer
+      );
+    }
     { ZoneScopedN(".geometry");
-      it->example.geometry.triangle_count = the_mesh.triangle_count;
+      it->geometry.triangle_count = the_mesh.triangle_count;
       void * data;
       {
         auto result = vkMapMemory(
           it->core.device,
-          it->example.geometry.vertex_stake.memory,
-          it->example.geometry.vertex_stake.offset,
-          it->example.geometry.vertex_stake.size,
+          it->geometry.vertex_stake.memory,
+          it->geometry.vertex_stake.offset,
+          it->geometry.vertex_stake.size,
           0,
           &data
         );
@@ -658,28 +650,28 @@ void session(
       memcpy(data, the_mesh.vertices, the_mesh.triangle_count * 3 * sizeof(mesh::VertexT05));
       vkUnmapMemory(
         it->core.device,
-        it->example.geometry.vertex_stake.memory
+        it->geometry.vertex_stake.memory
       );
     }
     { ZoneScopedN(".fullscreen_quad");
-      it->example.fullscreen_quad.triangle_count = sizeof(fullscreen_quad_data) / sizeof(glm::vec2);
+      it->fullscreen_quad.triangle_count = sizeof(fullscreen_quad_data) / sizeof(glm::vec2);
       void * data;
       {
         auto result = vkMapMemory(
           it->core.device,
-          it->example.fullscreen_quad.vertex_stake.memory,
-          it->example.fullscreen_quad.vertex_stake.offset,
-          it->example.fullscreen_quad.vertex_stake.size,
+          it->fullscreen_quad.vertex_stake.memory,
+          it->fullscreen_quad.vertex_stake.offset,
+          it->fullscreen_quad.vertex_stake.size,
           0,
           &data
         );
         assert(result == VK_SUCCESS);
       }
-      assert(it->example.fullscreen_quad.vertex_stake.size == sizeof(fullscreen_quad_data));
+      assert(it->fullscreen_quad.vertex_stake.size == sizeof(fullscreen_quad_data));
       memcpy(data, fullscreen_quad_data, sizeof(fullscreen_quad_data));
       vkUnmapMemory(
         it->core.device,
-        it->example.fullscreen_quad.vertex_stake.memory
+        it->fullscreen_quad.vertex_stake.memory
       );
     }
     { ZoneScopedN(".core.tracy_context");
@@ -760,7 +752,11 @@ void session(
           &session->vulkan.queue_family_index,
           &session->vulkan.tracy_setup_command_pool,
           &session->vulkan.multi_alloc,
-          &session->vulkan.example
+          &session->vulkan.geometry,
+          &session->vulkan.fullscreen_quad,
+          &session->vulkan.gpass,
+          &session->vulkan.lpass,
+          &session->vulkan.finalpass,
         }
       },
     },

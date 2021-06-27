@@ -3,11 +3,11 @@
 #include "../rendering.hxx"
 #include "../session.hxx"
 
-void init_example_prepass(
-  RenderingData::Example::Prepass *it,
+void init_prepass(
+  RenderingData::Prepass *it,
   VkShaderModule module_vert,
-  RenderingData::Example::ZBuffer *zbuffer,
+  RenderingData::ZBuffer *zbuffer,
   RenderingData::SwapchainDescription *swapchain_description,
-  SessionData::Vulkan::Example::GPass *s_gpass,
+  SessionData::Vulkan::GPass *s_gpass,
   SessionData::Vulkan::Core *core
 );
