@@ -4,9 +4,9 @@
 [ ] move rendering code to engine/rendering/**
 [ ] fix the intermittent bug
 [ ] linear_to_srgb?
+[ ] static pipelines with dynamic viewport and scissor
 
 ### find out
-[ ] can't we create graphics pipelines and render passes before knowing the swapchain info?
 [ ] how do push constants work?
 
 ### code annoyances

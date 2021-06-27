@@ -2,9 +2,38 @@
 #include <mutex>
 #include <vector>
 #include <vulkan/vulkan.h>
+#include <glm/glm.hpp>
 #include <src/lib/task.hxx>
 #include <src/lib/gfx/command_pool_2.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
+
+namespace example {
+  struct UBO_Frame {
+    glm::mat4 projection;
+    glm::mat4 view;
+    glm::mat4 projection_inverse;
+    glm::mat4 view_inverse;
+  };
+
+  struct UBO_DirectionalLight {
+    alignas(16) glm::vec3 direction;
+    alignas(16) glm::vec3 intensity;
+  };
+
+  struct UBO_Material {
+    alignas(16) glm::vec3 albedo;
+    float metallic;
+    float roughness;
+    float ao;
+  };
+}
+const VkFormat SWAPCHAIN_FORMAT = VK_FORMAT_B8G8R8A8_SRGB;
+const VkFormat ZBUFFER_FORMAT = VK_FORMAT_D32_SFLOAT;
+const VkFormat GBUFFER_CHANNEL0_FORMAT = VK_FORMAT_R16G16B16A16_SNORM;
+const VkFormat GBUFFER_CHANNEL1_FORMAT = VK_FORMAT_R8G8B8A8_UNORM;
+const VkFormat GBUFFER_CHANNEL2_FORMAT = VK_FORMAT_R8G8B8A8_UNORM;
+const VkFormat LBUFFER_FORMAT = VK_FORMAT_R16G16B16A16_SFLOAT;
+const VkFormat FINAL_IMAGE_FORMAT = VK_FORMAT_B8G8R8A8_UNORM;
 
 struct RenderingData : lib::task::ParentResource {
   struct Presentation {
