@@ -97,6 +97,7 @@ void rendering_frame(
       &data->swapchain_description,
       frame_info,
       &session->state,
+      &data->common,
       &data->gpass,
       &data->lpass
     ),
@@ -114,6 +115,7 @@ void rendering_frame(
       &data->gbuffer,
       &data->lbuffer,
       &data->final_image,
+      &session->vulkan.prepass,
       &session->vulkan.gpass,
       &session->vulkan.lpass,
       &session->vulkan.finalpass,

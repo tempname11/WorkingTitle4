@@ -15,6 +15,7 @@ void record_prepass(
   RenderingData::GPass *gpass,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::FrameInfo *frame_info,
+  SessionData::Vulkan::Prepass *s_prepass,
   SessionData::Vulkan::GPass *s_gpass,
   SessionData::Vulkan::Geometry *geometry
 ) {
@@ -23,7 +24,7 @@ void record_prepass(
   };
   VkRenderPassBeginInfo render_pass_info = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-    .renderPass = prepass->render_pass,
+    .renderPass = s_prepass->render_pass,
     .framebuffer = prepass->framebuffers[frame_info->inflight_index],
     .renderArea = {
       .offset = {0, 0},
@@ -33,7 +34,27 @@ void record_prepass(
     .pClearValues = clear_values,
   };
   vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, prepass->pipeline);
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, s_prepass->pipeline);
+  VkViewport viewport = {
+    .x = 0.0f,
+    .y = 0.0f,
+    .width = float(swapchain_description->image_extent.width),
+    .height = float(swapchain_description->image_extent.height),
+    .minDepth = 0.0f,
+    .maxDepth = 1.0f,
+  };
+  VkRect2D scissor = {
+    .offset = {0, 0},
+    .extent = swapchain_description->image_extent,
+  };
+  vkCmdSetViewport(cmd, 0, 1, &viewport);
+  vkCmdSetScissor(cmd, 0, 1, &scissor);
+  vkCmdBindDescriptorSets(
+    cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    s_gpass->pipeline_layout,
+    0, 1, &gpass->descriptor_sets[frame_info->inflight_index],
+    0, nullptr
+  );
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
     s_gpass->pipeline_layout,
@@ -60,7 +81,7 @@ void record_gpass(
   };
   VkRenderPassBeginInfo render_pass_info = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-    .renderPass = gpass->render_pass,
+    .renderPass = s_gpass->render_pass,
     .framebuffer = gpass->framebuffers[frame_info->inflight_index],
     .renderArea = {
       .offset = {0, 0},
@@ -70,7 +91,21 @@ void record_gpass(
     .pClearValues = clear_values,
   };
   vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, gpass->pipeline);
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, s_gpass->pipeline);
+  VkViewport viewport = {
+    .x = 0.0f,
+    .y = 0.0f,
+    .width = float(swapchain_description->image_extent.width),
+    .height = float(swapchain_description->image_extent.height),
+    .minDepth = 0.0f,
+    .maxDepth = 1.0f,
+  };
+  VkRect2D scissor = {
+    .offset = {0, 0},
+    .extent = swapchain_description->image_extent,
+  };
+  vkCmdSetViewport(cmd, 0, 1, &viewport);
+  vkCmdSetScissor(cmd, 0, 1, &scissor);
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
     s_gpass->pipeline_layout,
@@ -541,6 +576,7 @@ void frame_graphics_render(
   usage::Some<RenderingData::GBuffer> gbuffer,
   usage::Some<RenderingData::LBuffer> lbuffer,
   usage::Some<RenderingData::FinalImage> final_image,
+  usage::Some<SessionData::Vulkan::Prepass> s_prepass,
   usage::Some<SessionData::Vulkan::GPass> s_gpass,
   usage::Some<SessionData::Vulkan::LPass> s_lpass,
   usage::Some<SessionData::Vulkan::Finalpass> s_finalpass,
@@ -588,6 +624,7 @@ void frame_graphics_render(
       gpass.ptr,
       swapchain_description.ptr,
       frame_info.ptr,
+      s_prepass.ptr,
       s_gpass.ptr,
       geometry.ptr
     );

@@ -77,6 +77,7 @@ void frame_graphics_render(
   usage::Some<RenderingData::GBuffer> gbuffer,
   usage::Some<RenderingData::LBuffer> lbuffer,
   usage::Some<RenderingData::FinalImage> final_image,
+  usage::Some<SessionData::Vulkan::Prepass> s_prepass,
   usage::Some<SessionData::Vulkan::GPass> s_gpass,
   usage::Some<SessionData::Vulkan::LPass> s_lpass,
   usage::Some<SessionData::Vulkan::Finalpass> s_finalpass,
@@ -91,6 +92,7 @@ void frame_prepare_uniforms(
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::FrameInfo> frame_info,
   usage::Some<SessionData::State> session_state,
+  usage::Full<RenderingData::Common> common,
   usage::Full<RenderingData::GPass> gpass,
   usage::Full<RenderingData::LPass> lpass
 );

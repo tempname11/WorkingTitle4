@@ -3,6 +3,7 @@
 
 void init_lpass(
   RenderingData::LPass *it,
+  RenderingData::Common *common,
   RenderingData::GPass *gpass, // a bit dirty to depend on this
   VkDescriptorPool common_descriptor_pool,
   RenderingData::SwapchainDescription *swapchain_description,
@@ -151,7 +152,7 @@ void init_lpass(
           .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
         VkDescriptorBufferInfo ubo_frame_info = {
-          .buffer = gpass->ubo_frame_stakes[i].buffer,
+          .buffer = common->stakes.ubo_frame[i].buffer,
           .offset = 0,
           .range = VK_WHOLE_SIZE,
         };

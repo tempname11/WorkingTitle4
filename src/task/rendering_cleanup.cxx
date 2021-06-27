@@ -2,6 +2,8 @@
 #include <src/lib/gfx/multi_alloc.hxx>
 #include <src/engine/session.hxx>
 #include <src/engine/rendering.hxx>
+#include <src/engine/rendering/prepass.hxx>
+#include <src/engine/rendering/gpass.hxx>
 #include <backends/imgui_impl_vulkan.h>
 #include "task.hxx"
 
@@ -48,44 +50,16 @@ void rendering_cleanup(
       vulkan->core.allocator
     );
   }
-  { ZoneScopedN(".prepass");
-    for (auto framebuffer : data->prepass.framebuffers) {
-      vkDestroyFramebuffer(
-        vulkan->core.device,
-        framebuffer,
-        vulkan->core.allocator
-      );
-    }
-    vkDestroyRenderPass(
-      vulkan->core.device,
-      data->prepass.render_pass,
-      vulkan->core.allocator
-    );
-    vkDestroyPipeline(
-      vulkan->core.device,
-      data->prepass.pipeline,
-      vulkan->core.allocator
-    );
-  }
-  { ZoneScopedN(".gpass");
-    for (auto framebuffer : data->gpass.framebuffers) {
-      vkDestroyFramebuffer(
-        vulkan->core.device,
-        framebuffer,
-        vulkan->core.allocator
-      );
-    }
-    vkDestroyRenderPass(
-      vulkan->core.device,
-      data->gpass.render_pass,
-      vulkan->core.allocator
-    );
-    vkDestroyPipeline(
-      vulkan->core.device,
-      data->gpass.pipeline,
-      vulkan->core.allocator
-    );
-  }
+
+  deinit_rendering_prepass(
+    &data->prepass,
+    &vulkan->core
+  );
+  deinit_rendering_gpass(
+    &data->gpass,
+    &vulkan->core
+  );
+
   {
     ZoneScopedN(".lpass");
     for (auto framebuffer : data->lpass.framebuffers) {

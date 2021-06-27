@@ -1,6 +1,8 @@
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <src/embedded.hxx>
+#include <src/engine/rendering/prepass.hxx>
+#include <src/engine/rendering/gpass.hxx>
 #include <src/lib/gfx/mesh.hxx>
 #include "task.hxx"
 
@@ -395,52 +397,66 @@ void session(
         &it->properties.memory
       );
     }
-    { ZoneScopedN(".gpass.descriptor_set_layout");
-      VkDescriptorSetLayoutBinding layout_bindings[] = {
-        {
-          .binding = 0,
-          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          .descriptorCount = 1,
-          .stageFlags = VK_SHADER_STAGE_ALL,
-        },
-        {
-          .binding = 1,
-          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          .descriptorCount = 1,
-          .stageFlags = VK_SHADER_STAGE_ALL,
-        },
+
+    // for both pipelines
+    VkShaderModule module_frag = VK_NULL_HANDLE;
+    VkShaderModule module_vert = VK_NULL_HANDLE;
+
+    { ZoneScopedN("module_vert");
+      VkShaderModuleCreateInfo info = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = embedded_gpass_vert_len,
+        .pCode = (const uint32_t*) embedded_gpass_vert,
       };
-      VkDescriptorSetLayoutCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
-        .pBindings = layout_bindings,
-      };
-      {
-        auto result = vkCreateDescriptorSetLayout(
-          it->core.device,
-          &create_info,
-          it->core.allocator,
-          &it->gpass.descriptor_set_layout
-        );
-        assert(result == VK_SUCCESS);
-      }
+      auto result = vkCreateShaderModule(
+        it->core.device,
+        &info,
+        it->core.allocator,
+        &module_vert
+      );
+      assert(result == VK_SUCCESS);
     }
-    { ZoneScopedN(".gpass.pipeline_layout");
-      VkPipelineLayoutCreateInfo info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = 1,
-        .pSetLayouts = &it->gpass.descriptor_set_layout,
+
+    { ZoneScopedN("module_frag");
+      VkShaderModuleCreateInfo info = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = embedded_gpass_frag_len,
+        .pCode = (const uint32_t*) embedded_gpass_frag,
       };
-      {
-        auto result = vkCreatePipelineLayout(
-          it->core.device,
-          &info,
-          it->core.allocator,
-          &it->gpass.pipeline_layout
-        );
-        assert(result == VK_SUCCESS);
-      }
+      auto result = vkCreateShaderModule(
+        it->core.device,
+        &info,
+        it->core.allocator,
+        &module_frag
+      );
+      assert(result == VK_SUCCESS);
     }
+
+    init_session_gpass(
+      &it->gpass,
+      &it->core,
+      module_vert,
+      module_frag
+    );
+
+    init_session_prepass(
+      &it->prepass,
+      &it->gpass,
+      &it->core,
+      module_vert
+    );
+
+    vkDestroyShaderModule(
+      it->core.device,
+      module_frag,
+      it->core.allocator
+    );
+    vkDestroyShaderModule(
+      it->core.device,
+      module_vert,
+      it->core.allocator
+    );
+
     { ZoneScopedN(".lpass.descriptor_set_layout_frame");
       VkDescriptorSetLayoutBinding layout_bindings[] = {
         {

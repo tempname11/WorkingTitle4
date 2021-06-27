@@ -5,7 +5,8 @@
 
 void init_lpass(
   RenderingData::LPass *it,
-  RenderingData::GPass *gpass, // a bit dirty to depend on this
+  RenderingData::Common *common,
+  RenderingData::GPass *gpass,
   VkDescriptorPool common_descriptor_pool,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::ZBuffer *zbuffer,

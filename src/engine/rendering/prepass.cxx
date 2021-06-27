@@ -1,16 +1,15 @@
 #include <src/lib/gfx/mesh.hxx>
 #include "prepass.hxx"
 
-void init_prepass(
-  RenderingData::Prepass *it,
-  VkShaderModule module_vert,
-  RenderingData::ZBuffer *zbuffer,
-  RenderingData::SwapchainDescription *swapchain_description,
-  SessionData::Vulkan::GPass *s_gpass,
-  SessionData::Vulkan::Core *core
+void init_session_prepass(
+  SessionData::Vulkan::Prepass *out,
+  SessionData::Vulkan::GPass *gpass,
+  SessionData::Vulkan::Core *core,
+  VkShaderModule module_vert
 ) {
   ZoneScoped;
-  { ZoneScopedN(".render_pass");
+  VkRenderPass render_pass;
+  { ZoneScopedN("render_pass");
     VkAttachmentDescription attachment_descriptions[] = {
       {
         .format = ZBUFFER_FORMAT,
@@ -44,10 +43,12 @@ void init_prepass(
       core->device,
       &create_info,
       core->allocator,
-      &it->render_pass
+      &render_pass
     );
     assert(result == VK_SUCCESS);
   }
+
+  VkPipeline pipeline;
   { ZoneScopedN(".pipeline");
     VkPipelineShaderStageCreateInfo shader_stages[] = {
       {
@@ -93,14 +94,14 @@ void init_prepass(
     VkViewport viewport = {
       .x = 0.0f,
       .y = 0.0f,
-      .width = float(swapchain_description->image_extent.width),
-      .height = float(swapchain_description->image_extent.height),
+      .width = 1.0f,
+      .height = 1.0f,
       .minDepth = 0.0f,
       .maxDepth = 1.0f,
     };
     VkRect2D scissor = {
       .offset = {0, 0},
-      .extent = swapchain_description->image_extent,
+      .extent = {1, 1},
     };
     VkPipelineViewportStateCreateInfo viewport_state_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
@@ -136,6 +137,15 @@ void init_prepass(
       .attachmentCount = 0,
       .pAttachments = nullptr,
     };
+    VkDynamicState dynamic_states[] = {
+      VK_DYNAMIC_STATE_VIEWPORT,
+      VK_DYNAMIC_STATE_SCISSOR
+    };
+    VkPipelineDynamicStateCreateInfo dynamic_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+      .dynamicStateCount = 2,
+      .pDynamicStates = dynamic_states,
+    };
     VkGraphicsPipelineCreateInfo pipeline_info = {
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
       .stageCount = sizeof(shader_stages) / sizeof(*shader_stages),
@@ -147,9 +157,9 @@ void init_prepass(
       .pMultisampleState = &multisample_info,
       .pDepthStencilState = &depth_stencil_info,
       .pColorBlendState = &color_blend_info,
-      .pDynamicState = nullptr,
-      .layout = s_gpass->pipeline_layout,
-      .renderPass = it->render_pass,
+      .pDynamicState = &dynamic_info,
+      .layout = gpass->pipeline_layout,
+      .renderPass = render_pass,
       .subpass = 0,
     };
     {
@@ -158,12 +168,45 @@ void init_prepass(
         VK_NULL_HANDLE,
         1, &pipeline_info,
         core->allocator,
-        &it->pipeline
+        &pipeline
       );
       assert(result == VK_SUCCESS);
     }
   }
-  { ZoneScopedN(".framebuffers");
+
+  *out = {
+    .render_pass = render_pass,
+    .pipeline = pipeline,
+  };
+}
+
+void deinit_session_prepass(
+  SessionData::Vulkan::Prepass *it,
+  SessionData::Vulkan::Core *core
+) {
+  ZoneScoped;
+  vkDestroyRenderPass(
+    core->device,
+    it->render_pass,
+    core->allocator
+  );
+  vkDestroyPipeline(
+    core->device,
+    it->pipeline,
+    core->allocator
+  );
+}
+
+void init_rendering_prepass(
+  RenderingData::Prepass *out,
+  RenderingData::ZBuffer *zbuffer,
+  RenderingData::SwapchainDescription *swapchain_description,
+  SessionData::Vulkan::Prepass *s_prepass,
+  SessionData::Vulkan::Core *core
+) {
+  ZoneScoped;
+  std::vector<VkFramebuffer> framebuffers;
+  { ZoneScopedN("framebuffers");
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
       VkImageView attachments[] = {
         zbuffer->views[i],
@@ -171,7 +214,7 @@ void init_prepass(
       VkFramebuffer framebuffer;
       VkFramebufferCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass = it->render_pass,
+        .renderPass = s_prepass->render_pass,
         .attachmentCount = sizeof(attachments) / sizeof(*attachments),
         .pAttachments = attachments,
         .width = swapchain_description->image_extent.width,
@@ -187,7 +230,25 @@ void init_prepass(
         );
         assert(result == VK_SUCCESS);
       }
-      it->framebuffers.push_back(framebuffer);
+      framebuffers.push_back(framebuffer);
     }
+  }
+
+  *out = {
+    .framebuffers = framebuffers,
+  };
+}
+
+void deinit_rendering_prepass(
+  RenderingData::Prepass *it,
+  SessionData::Vulkan::Core *core
+) {
+  ZoneScoped;
+  for (auto framebuffer : it->framebuffers) {
+    vkDestroyFramebuffer(
+      core->device,
+      framebuffer,
+      core->allocator
+    );
   }
 }

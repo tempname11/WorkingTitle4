@@ -1,5 +1,6 @@
 #include <backends/imgui_impl_vulkan.h>
 #include <src/embedded.hxx>
+#include <src/engine/rendering/common.hxx>
 #include <src/engine/rendering/prepass.hxx>
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
@@ -229,11 +230,12 @@ void session_iteration_try_rendering(
     );
     assert(result == VK_SUCCESS);
   }
+
+  RenderingData::Common::Stakes common_stakes;
+  RenderingData::GPass::Stakes gpass_stakes;
   { ZoneScopedN(".multi_alloc");
     std::vector<lib::gfx::multi_alloc::Claim> claims;
 
-    rendering->gpass.ubo_frame_stakes.resize(swapchain_image_count);
-    rendering->gpass.ubo_material_stakes.resize(swapchain_image_count);
     rendering->lpass.ubo_directional_light_stakes.resize(swapchain_image_count);
     rendering->gbuffer.channel0_stakes.resize(swapchain_image_count);
     rendering->gbuffer.channel1_stakes.resize(swapchain_image_count);
@@ -242,46 +244,18 @@ void session_iteration_try_rendering(
     rendering->lbuffer.stakes.resize(swapchain_image_count);
     rendering->final_image.stakes.resize(swapchain_image_count);
 
-    for (auto &stake : rendering->gpass.ubo_frame_stakes) {
-      claims.push_back({
-        .info = {
-          .buffer = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = (
-              sizeof(rendering::UBO_Frame)
-            ),
-            .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-          },
-        },
-        .memory_property_flags = VkMemoryPropertyFlagBits(0
-          | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-          | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        ),
-        .p_stake_buffer = &stake,
-      });
-    }
-    for (auto &stake : rendering->gpass.ubo_material_stakes) {
-      claims.push_back({
-        .info = {
-          .buffer = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = (
-              sizeof(rendering::UBO_Material)
-            ),
-            .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-          },
-        },
-        .memory_property_flags = VkMemoryPropertyFlagBits(0
-          | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-          | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        ),
-        .p_stake_buffer = &stake,
-      });
-    }
+    claim_rendering_common(
+      swapchain_image_count,
+      claims,
+      &common_stakes
+    );
+
+    claim_rendering_gpass(
+      swapchain_image_count,
+      claims,
+      &gpass_stakes
+    );
+
     for (auto &stake : rendering->lpass.ubo_directional_light_stakes) {
       claims.push_back({
         .info = {
@@ -643,52 +617,24 @@ void session_iteration_try_rendering(
     }
   }
 
-  // for both pipelines
-  VkShaderModule module_frag = VK_NULL_HANDLE;
-  VkShaderModule module_vert = VK_NULL_HANDLE;
-  { ZoneScopedN("module_vert");
-    VkShaderModuleCreateInfo info = {
-      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-      .codeSize = embedded_gpass_vert_len,
-      .pCode = (const uint32_t*) embedded_gpass_vert,
-    };
-    auto result = vkCreateShaderModule(
-      vulkan->core.device,
-      &info,
-      vulkan->core.allocator,
-      &module_vert
-    );
-    assert(result == VK_SUCCESS);
-  }
-  { ZoneScopedN("module_frag");
-    VkShaderModuleCreateInfo info = {
-      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-      .codeSize = embedded_gpass_frag_len,
-      .pCode = (const uint32_t*) embedded_gpass_frag,
-    };
-    auto result = vkCreateShaderModule(
-      vulkan->core.device,
-      &info,
-      vulkan->core.allocator,
-      &module_frag
-    );
-    assert(result == VK_SUCCESS);
-  }
+  init_rendering_common(
+    common_stakes,
+    &rendering->common
+  );
 
-  init_prepass(
+  init_rendering_prepass(
     &rendering->prepass,
-    module_vert,
     &rendering->zbuffer,
     &rendering->swapchain_description,
-    &vulkan->gpass,
+    &vulkan->prepass,
     &vulkan->core
   );
 
-  init_gpass(
+  init_rendering_gpass(
     &rendering->gpass,
+    &rendering->common,
+    gpass_stakes,
     rendering->common_descriptor_pool,
-    module_vert,
-    module_frag,
     &rendering->zbuffer,
     &rendering->gbuffer,
     &rendering->swapchain_description,
@@ -696,11 +642,9 @@ void session_iteration_try_rendering(
     &vulkan->core
   );
 
-  vkDestroyShaderModule(vulkan->core.device, module_frag, vulkan->core.allocator);
-  vkDestroyShaderModule(vulkan->core.device, module_vert, vulkan->core.allocator);
-
   init_lpass(
     &rendering->lpass,
+    &rendering->common,
     &rendering->gpass,
     rendering->common_descriptor_pool,
     &rendering->swapchain_description,
@@ -920,6 +864,7 @@ void session_iteration_try_rendering(
       &rendering->gbuffer,
       &rendering->lbuffer,
       &rendering->final_image,
+      &rendering->common,
       &rendering->prepass,
       &rendering->gpass,
       &rendering->lpass,

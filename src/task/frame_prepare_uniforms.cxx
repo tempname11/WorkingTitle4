@@ -7,6 +7,7 @@ void frame_prepare_uniforms(
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::FrameInfo> frame_info,
   usage::Some<SessionData::State> session_state, // too broad
+  usage::Full<RenderingData::Common> common,
   usage::Full<RenderingData::GPass> gpass,
   usage::Full<RenderingData::LPass> lpass
 ) {
@@ -26,7 +27,7 @@ void frame_prepare_uniforms(
       .projection_inverse = glm::inverse(projection),
       .view_inverse = glm::inverse(view),
     };
-    auto stake = &gpass->ubo_frame_stakes[frame_info->inflight_index];
+    auto stake = &common->stakes.ubo_frame[frame_info->inflight_index];
     void * dst;
     vkMapMemory(
       core->device,
@@ -47,7 +48,7 @@ void frame_prepare_uniforms(
       .roughness = 0.5f,
       .ao = 0.1f,
     };
-    auto stake = &gpass->ubo_material_stakes[frame_info->inflight_index];
+    auto stake = &gpass->stakes.ubo_material[frame_info->inflight_index];
     void * dst;
     vkMapMemory(
       core->device,

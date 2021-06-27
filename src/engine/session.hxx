@@ -50,9 +50,16 @@ struct SessionData : lib::task::ParentResource {
       size_t triangle_count;
     } fullscreen_quad;
 
+    struct Prepass {
+      VkRenderPass render_pass;
+      VkPipeline pipeline;
+    } prepass;
+
     struct GPass {
       VkDescriptorSetLayout descriptor_set_layout;
-      VkPipelineLayout pipeline_layout;
+      VkPipelineLayout pipeline_layout; // shared with prepass
+      VkRenderPass render_pass;
+      VkPipeline pipeline;
     } gpass;
 
     struct LPass {

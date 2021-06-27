@@ -1,77 +1,63 @@
 #include <src/lib/gfx/mesh.hxx>
 #include "gpass.hxx"
 
-void init_gpass(
-  RenderingData::GPass *it,
-  VkDescriptorPool common_descriptor_pool,
+void init_session_gpass(
+  SessionData::Vulkan::GPass *out,
+  SessionData::Vulkan::Core *core,
   VkShaderModule module_vert,
-  VkShaderModule module_frag,
-  RenderingData::ZBuffer *zbuffer,
-  RenderingData::GBuffer *gbuffer,
-  RenderingData::SwapchainDescription *swapchain_description,
-  SessionData::Vulkan::GPass *s_gpass,
-  SessionData::Vulkan::Core *core
+  VkShaderModule module_frag
 ) {
   ZoneScoped;
-  { ZoneScopedN(".descriptor_sets");
-    it->descriptor_sets.resize(swapchain_description->image_count);
-    std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
-    for (auto &layout : layouts) {
-      layout = s_gpass->descriptor_set_layout;
-    }
-    VkDescriptorSetAllocateInfo allocate_info = {
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = common_descriptor_pool,
-      .descriptorSetCount = swapchain_description->image_count,
-      .pSetLayouts = layouts.data(),
+  VkDescriptorSetLayout descriptor_set_layout;
+  { ZoneScopedN("descriptor_set_layout");
+    VkDescriptorSetLayoutBinding layout_bindings[] = {
+      {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
+      {
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
+    };
+    VkDescriptorSetLayoutCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
+      .pBindings = layout_bindings,
     };
     {
-      auto result = vkAllocateDescriptorSets(
+      auto result = vkCreateDescriptorSetLayout(
         core->device,
-        &allocate_info,
-        it->descriptor_sets.data()
+        &create_info,
+        core->allocator,
+        &descriptor_set_layout
       );
       assert(result == VK_SUCCESS);
     }
-    for (size_t i = 0; i < swapchain_description->image_count; i++) {
-      VkDescriptorBufferInfo ubo_frame_info = {
-        .buffer = it->ubo_frame_stakes[i].buffer,
-        .offset = 0,
-        .range = VK_WHOLE_SIZE,
-      };
-      VkDescriptorBufferInfo ubo_material_info = {
-        .buffer = it->ubo_material_stakes[i].buffer,
-        .offset = 0,
-        .range = VK_WHOLE_SIZE,
-      };
-      VkWriteDescriptorSet writes[] = {
-        {
-          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-          .dstSet = it->descriptor_sets[i],
-          .dstBinding = 0,
-          .dstArrayElement = 0,
-          .descriptorCount = 1,
-          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          .pBufferInfo = &ubo_frame_info,
-        },
-        {
-          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-          .dstSet = it->descriptor_sets[i],
-          .dstBinding = 1,
-          .dstArrayElement = 0,
-          .descriptorCount = 1,
-          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          .pBufferInfo = &ubo_material_info,
-        },
-      };
-      vkUpdateDescriptorSets(
+  }
+  VkPipelineLayout pipeline_layout;
+  { ZoneScopedN("pipeline_layout");
+    VkPipelineLayoutCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .setLayoutCount = 1,
+      .pSetLayouts = &descriptor_set_layout,
+    };
+    {
+      auto result = vkCreatePipelineLayout(
         core->device,
-        sizeof(writes) / sizeof(*writes), writes,
-        0, nullptr
+        &info,
+        core->allocator,
+        &pipeline_layout
       );
+      assert(result == VK_SUCCESS);
     }
   }
-  { ZoneScopedN(".render_pass");
+  VkRenderPass render_pass;
+  { ZoneScopedN("render_pass");
     VkAttachmentDescription attachment_descriptions[] = {
       {
         .format = GBUFFER_CHANNEL0_FORMAT,
@@ -149,11 +135,12 @@ void init_gpass(
       core->device,
       &create_info,
       core->allocator,
-      &it->render_pass
+      &render_pass
     );
     assert(result == VK_SUCCESS);
   }
-  { ZoneScopedN(".pipeline");
+  VkPipeline pipeline;
+  { ZoneScopedN("pipeline");
     VkPipelineShaderStageCreateInfo shader_stages[] = {
       {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -201,17 +188,17 @@ void init_gpass(
       .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
       .primitiveRestartEnable = VK_FALSE,
     };
-    VkViewport viewport = {
+    VkViewport viewport = { // overridden by dynamic
       .x = 0.0f,
       .y = 0.0f,
-      .width = float(swapchain_description->image_extent.width),
-      .height = float(swapchain_description->image_extent.height),
+      .width = 1.0f,
+      .height = 1.0f,
       .minDepth = 0.0f,
       .maxDepth = 1.0f,
     };
-    VkRect2D scissor = {
+    VkRect2D scissor = { // overridden by dynamic
       .offset = {0, 0},
-      .extent = swapchain_description->image_extent,
+      .extent = {1, 1},
     };
     VkPipelineViewportStateCreateInfo viewport_state_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
@@ -276,6 +263,15 @@ void init_gpass(
       .attachmentCount = sizeof(color_blend_attachments) / sizeof(*color_blend_attachments),
       .pAttachments = color_blend_attachments,
     };
+    VkDynamicState dynamic_states[] = {
+      VK_DYNAMIC_STATE_VIEWPORT,
+      VK_DYNAMIC_STATE_SCISSOR
+    };
+    VkPipelineDynamicStateCreateInfo dynamic_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+      .dynamicStateCount = 2,
+      .pDynamicStates = dynamic_states,
+    };
     VkGraphicsPipelineCreateInfo pipeline_info = {
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
       .stageCount = 2,
@@ -287,9 +283,9 @@ void init_gpass(
       .pMultisampleState = &multisample_info,
       .pDepthStencilState = &depth_stencil_info,
       .pColorBlendState = &color_blend_info,
-      .pDynamicState = nullptr,
-      .layout = s_gpass->pipeline_layout,
-      .renderPass = it->render_pass,
+      .pDynamicState = &dynamic_info,
+      .layout = pipeline_layout,
+      .renderPass = render_pass,
       .subpass = 0,
     };
     {
@@ -298,12 +294,149 @@ void init_gpass(
         VK_NULL_HANDLE,
         1, &pipeline_info,
         core->allocator,
-        &it->pipeline
+        &pipeline
       );
       assert(result == VK_SUCCESS);
     }
   }
-  { ZoneScopedN(".framebuffers");
+  *out = {
+    .descriptor_set_layout = descriptor_set_layout,
+    .pipeline_layout = pipeline_layout,
+    .render_pass = render_pass,
+    .pipeline = pipeline,
+  };
+}
+
+void deinit_session_gpass(
+  SessionData::Vulkan::GPass *it,
+  SessionData::Vulkan::Core *core
+) {
+  ZoneScoped;
+  vkDestroyDescriptorSetLayout(
+    core->device,
+    it->descriptor_set_layout,
+    core->allocator
+  );
+  vkDestroyPipelineLayout(
+    core->device,
+    it->pipeline_layout,
+    core->allocator
+  );
+  vkDestroyRenderPass(
+    core->device,
+    it->render_pass,
+    core->allocator
+  );
+  vkDestroyPipeline(
+    core->device,
+    it->pipeline,
+    core->allocator
+  );
+}
+
+void claim_rendering_gpass(
+  size_t swapchain_image_count,
+  std::vector<lib::gfx::multi_alloc::Claim> &claims,
+  RenderingData::GPass::Stakes *out
+) {
+  ZoneScoped;
+  *out = {};
+  out->ubo_material.resize(swapchain_image_count);
+  for (auto &stake : out->ubo_material) {
+    claims.push_back({
+      .info = {
+        .buffer = {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+          .size = (
+            sizeof(rendering::UBO_Material)
+          ),
+          .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        },
+      },
+      .memory_property_flags = VkMemoryPropertyFlagBits(0
+        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+      ),
+      .p_stake_buffer = &stake,
+    });
+  }
+}
+
+void init_rendering_gpass(
+  RenderingData::GPass *out,
+  RenderingData::Common *common,
+  RenderingData::GPass::Stakes stakes,
+  VkDescriptorPool common_descriptor_pool,
+  RenderingData::ZBuffer *zbuffer,
+  RenderingData::GBuffer *gbuffer,
+  RenderingData::SwapchainDescription *swapchain_description,
+  SessionData::Vulkan::GPass *s_gpass,
+  SessionData::Vulkan::Core *core
+) {
+  ZoneScoped;
+  std::vector<VkDescriptorSet> descriptor_sets;
+  { ZoneScopedN("descriptor_sets");
+    descriptor_sets.resize(swapchain_description->image_count);
+    std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
+    for (auto &layout : layouts) {
+      layout = s_gpass->descriptor_set_layout;
+    }
+    VkDescriptorSetAllocateInfo allocate_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool = common_descriptor_pool,
+      .descriptorSetCount = swapchain_description->image_count,
+      .pSetLayouts = layouts.data(),
+    };
+    {
+      auto result = vkAllocateDescriptorSets(
+        core->device,
+        &allocate_info,
+        descriptor_sets.data()
+      );
+      assert(result == VK_SUCCESS);
+    }
+    for (size_t i = 0; i < swapchain_description->image_count; i++) {
+      VkDescriptorBufferInfo ubo_frame_info = {
+        .buffer = common->stakes.ubo_frame[i].buffer,
+        .offset = 0,
+        .range = VK_WHOLE_SIZE,
+      };
+      VkDescriptorBufferInfo ubo_material_info = {
+        .buffer = stakes.ubo_material[i].buffer,
+        .offset = 0,
+        .range = VK_WHOLE_SIZE,
+      };
+      VkWriteDescriptorSet writes[] = {
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets[i],
+          .dstBinding = 0,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .pBufferInfo = &ubo_frame_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets[i],
+          .dstBinding = 1,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .pBufferInfo = &ubo_material_info,
+        },
+      };
+      vkUpdateDescriptorSets(
+        core->device,
+        sizeof(writes) / sizeof(*writes), writes,
+        0, nullptr
+      );
+    }
+  }
+  std::vector<VkFramebuffer> framebuffers;
+  { ZoneScopedN("framebuffers");
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
       VkImageView attachments[] = {
         gbuffer->channel0_views[i],
@@ -314,7 +447,7 @@ void init_gpass(
       VkFramebuffer framebuffer;
       VkFramebufferCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass = it->render_pass,
+        .renderPass = s_gpass->render_pass,
         .attachmentCount = sizeof(attachments) / sizeof(*attachments),
         .pAttachments = attachments,
         .width = swapchain_description->image_extent.width,
@@ -330,7 +463,26 @@ void init_gpass(
         );
         assert(result == VK_SUCCESS);
       }
-      it->framebuffers.push_back(framebuffer);
+      framebuffers.push_back(framebuffer);
     }
+  }
+  *out = {
+    .stakes = stakes,
+    .framebuffers = framebuffers,
+    .descriptor_sets = descriptor_sets,
+  };
+}
+
+void deinit_rendering_gpass(
+  RenderingData::GPass *it,
+  SessionData::Vulkan::Core *core
+) {
+  ZoneScoped;
+  for (auto framebuffer : it->framebuffers) {
+    vkDestroyFramebuffer(
+      core->device,
+      framebuffer,
+      core->allocator
+    );
   }
 }

@@ -1,4 +1,6 @@
 #include <imgui.h>
+#include <src/engine/rendering/prepass.hxx>
+#include <src/engine/rendering/gpass.hxx>
 #include <backends/imgui_impl_glfw.h>
 #include "task.hxx"
 
@@ -16,16 +18,17 @@ void session_cleanup(
   }
   { ZoneScopedN(".vulkan");
     auto it = &session->vulkan;
-    vkDestroyDescriptorSetLayout(
-      it->core.device,
-      it->gpass.descriptor_set_layout,
-      it->core.allocator
+
+    deinit_session_prepass(
+      &session->vulkan.prepass,
+      &session->vulkan.core
     );
-    vkDestroyPipelineLayout(
-      it->core.device,
-      it->gpass.pipeline_layout,
-      it->core.allocator
+
+    deinit_session_gpass(
+      &session->vulkan.gpass,
+      &session->vulkan.core
     );
+
     vkDestroyDescriptorSetLayout(
       it->core.device,
       it->lpass.descriptor_set_layout_frame,
