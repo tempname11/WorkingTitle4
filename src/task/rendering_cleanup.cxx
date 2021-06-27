@@ -4,6 +4,7 @@
 #include <src/engine/rendering.hxx>
 #include <src/engine/rendering/prepass.hxx>
 #include <src/engine/rendering/gpass.hxx>
+#include <src/engine/rendering/lpass.hxx>
 #include <backends/imgui_impl_vulkan.h>
 #include "task.hxx"
 
@@ -55,31 +56,17 @@ void rendering_cleanup(
     &data->prepass,
     &vulkan->core
   );
+
   deinit_rendering_gpass(
     &data->gpass,
     &vulkan->core
   );
 
-  {
-    ZoneScopedN(".lpass");
-    for (auto framebuffer : data->lpass.framebuffers) {
-      vkDestroyFramebuffer(
-        vulkan->core.device,
-        framebuffer,
-        vulkan->core.allocator
-      );
-    }
-    vkDestroyRenderPass(
-      vulkan->core.device,
-      data->lpass.render_pass,
-      vulkan->core.allocator
-    );
-    vkDestroyPipeline(
-      vulkan->core.device,
-      data->lpass.pipeline_sun,
-      vulkan->core.allocator
-    );
-  }
+  deinit_rendering_lpass(
+    &data->lpass,
+    &vulkan->core
+  );
+
   vkDestroyDescriptorPool(
     vulkan->core.device,
     data->common_descriptor_pool,

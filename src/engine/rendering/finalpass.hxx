@@ -3,11 +3,27 @@
 #include "../rendering.hxx"
 #include "../session.hxx"
 
-void init_finalpass(
-  RenderingData::Finalpass *it,
+void init_session_finalpass(
+  SessionData::Vulkan::Finalpass *out,
+  SessionData::Vulkan::Core *core
+);
+
+void deinit_session_finalpass(
+  SessionData::Vulkan::Finalpass *it,
+  SessionData::Vulkan::Core *core
+);
+
+void init_rendering_finalpass(
+  RenderingData::Finalpass *out,
   VkDescriptorPool common_descriptor_pool,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::LBuffer *lbuffer,
   RenderingData::FinalImage *final_image,
-  SessionData::Vulkan *vulkan
+  SessionData::Vulkan::Finalpass *s_finalpass,
+  SessionData::Vulkan::Core *core
+);
+
+void deinit_rendering_finalpass(
+  RenderingData::Finalpass *it,
+  SessionData::Vulkan::Core *core
 );

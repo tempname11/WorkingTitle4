@@ -66,7 +66,7 @@ void frame_prepare_uniforms(
       .direction = glm::vec3(0.0f, 0.0f, -1.0f),
       .intensity = 10.0f * glm::vec3(1.0f, 1.0f, 1.0f),
     };
-    auto stake = &lpass->ubo_directional_light_stakes[frame_info->inflight_index];
+    auto stake = &lpass->stakes.ubo_directional_light[frame_info->inflight_index];
     void * dst;
     vkMapMemory(
       core->device,

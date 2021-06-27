@@ -1,19 +1,112 @@
 #include <src/embedded.hxx>
 #include "lpass.hxx"
 
-void init_lpass(
-  RenderingData::LPass *it,
-  RenderingData::Common *common,
-  RenderingData::GPass *gpass, // a bit dirty to depend on this
-  VkDescriptorPool common_descriptor_pool,
-  RenderingData::SwapchainDescription *swapchain_description,
-  RenderingData::ZBuffer *zbuffer,
-  RenderingData::GBuffer *gbuffer,
-  RenderingData::LBuffer *lbuffer,
-  SessionData::Vulkan *vulkan
+void init_session_lpass(
+  SessionData::Vulkan::LPass *out,
+  SessionData::Vulkan::Core *core
 ) {
   ZoneScoped;
-  { ZoneScopedN(".render_pass");
+
+  VkDescriptorSetLayout descriptor_set_layout_frame;
+  { ZoneScopedN("descriptor_set_layout_frame");
+    VkDescriptorSetLayoutBinding layout_bindings[] = {
+      {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      },
+      {
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      },
+      {
+        .binding = 2,
+        .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      },
+      {
+        .binding = 3,
+        .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      },
+      {
+        .binding = 4,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      },
+    };
+    VkDescriptorSetLayoutCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
+      .pBindings = layout_bindings,
+    };
+    {
+      auto result = vkCreateDescriptorSetLayout(
+        core->device,
+        &create_info,
+        core->allocator,
+        &descriptor_set_layout_frame
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+
+  VkDescriptorSetLayout descriptor_set_layout_directional_light;
+  { ZoneScopedN("descriptor_set_layout_directional_light");
+    VkDescriptorSetLayoutBinding layout_bindings[] = {
+      {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
+    };
+    VkDescriptorSetLayoutCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
+      .pBindings = layout_bindings,
+    };
+    {
+      auto result = vkCreateDescriptorSetLayout(
+        core->device,
+        &create_info,
+        core->allocator,
+        &descriptor_set_layout_directional_light
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+
+  VkPipelineLayout pipeline_layout;
+  { ZoneScopedN("pipeline_layout");
+    VkDescriptorSetLayout layouts[] = {
+      descriptor_set_layout_frame,
+      descriptor_set_layout_directional_light,
+    };
+    VkPipelineLayoutCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .setLayoutCount = sizeof(layouts) / sizeof(*layouts),
+      .pSetLayouts = layouts,
+    };
+    {
+      auto result = vkCreatePipelineLayout(
+        core->device,
+        &info,
+        core->allocator,
+        &pipeline_layout
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+
+  VkRenderPass render_pass;
+  { ZoneScopedN("render_pass");
     VkAttachmentDescription attachment_descriptions[] = {
       {
         .format = LBUFFER_FORMAT,
@@ -106,159 +199,19 @@ void init_lpass(
       .pSubpasses = &subpass_description,
     };
     auto result = vkCreateRenderPass(
-      vulkan->core.device,
+      core->device,
       &create_info,
-      vulkan->core.allocator,
-      &it->render_pass
+      core->allocator,
+      &render_pass
     );
     assert(result == VK_SUCCESS);
   }
-  { ZoneScopedN(".descriptor_sets_frame");
-    it->descriptor_sets_frame.resize(swapchain_description->image_count);
-    std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
-    for (auto &layout : layouts) {
-      layout = vulkan->lpass.descriptor_set_layout_frame;
-    }
-    VkDescriptorSetAllocateInfo allocate_info = {
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = common_descriptor_pool,
-      .descriptorSetCount = swapchain_description->image_count,
-      .pSetLayouts = layouts.data(),
-    };
-    {
-      auto result = vkAllocateDescriptorSets(
-        vulkan->core.device,
-        &allocate_info,
-        it->descriptor_sets_frame.data()
-      );
-      assert(result == VK_SUCCESS);
-    }
-    {
-      for (size_t i = 0; i < swapchain_description->image_count; i++) {
-        VkDescriptorImageInfo channel0_image_info = {
-          .imageView = gbuffer->channel0_views[i],
-          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-        VkDescriptorImageInfo channel1_image_info = {
-          .imageView = gbuffer->channel1_views[i],
-          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-        VkDescriptorImageInfo channel2_image_info = {
-          .imageView = gbuffer->channel2_views[i],
-          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-        VkDescriptorImageInfo depth_image_info = {
-          .imageView = zbuffer->views[i],
-          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-        VkDescriptorBufferInfo ubo_frame_info = {
-          .buffer = common->stakes.ubo_frame[i].buffer,
-          .offset = 0,
-          .range = VK_WHOLE_SIZE,
-        };
-        VkWriteDescriptorSet writes[] = {
-          {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = it->descriptor_sets_frame[i],
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-            .pImageInfo = &channel0_image_info,
-          },
-          {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = it->descriptor_sets_frame[i],
-            .dstBinding = 1,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-            .pImageInfo = &channel1_image_info,
-          },
-          {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = it->descriptor_sets_frame[i],
-            .dstBinding = 2,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-            .pImageInfo = &channel2_image_info,
-          },
-          {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = it->descriptor_sets_frame[i],
-            .dstBinding = 3,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-            .pImageInfo = &depth_image_info,
-          },
-          {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = it->descriptor_sets_frame[i],
-            .dstBinding = 4,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .pBufferInfo = &ubo_frame_info,
-          },
-        };
-        vkUpdateDescriptorSets(
-          vulkan->core.device,
-          sizeof(writes) / sizeof(*writes), writes,
-          0, nullptr
-        );
-      }
-    }
-  }
-  { ZoneScopedN(".descriptor_sets_directional_light");
-    it->descriptor_sets_directional_light.resize(swapchain_description->image_count);
-    std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
-    for (auto &layout : layouts) {
-      layout = vulkan->lpass.descriptor_set_layout_directional_light;
-    }
-    VkDescriptorSetAllocateInfo allocate_info = {
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = common_descriptor_pool,
-      .descriptorSetCount = swapchain_description->image_count,
-      .pSetLayouts = layouts.data(),
-    };
-    {
-      auto result = vkAllocateDescriptorSets(
-        vulkan->core.device,
-        &allocate_info,
-        it->descriptor_sets_directional_light.data()
-      );
-      assert(result == VK_SUCCESS);
-    }
-    {
-      for (size_t i = 0; i < swapchain_description->image_count; i++) {
-        VkDescriptorBufferInfo buffer_info = {
-          .buffer = it->ubo_directional_light_stakes[i].buffer,
-          .range = VK_WHOLE_SIZE,
-        };
-        VkWriteDescriptorSet writes[] = {
-          {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = it->descriptor_sets_directional_light[i],
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .pBufferInfo = &buffer_info,
-          },
-        };
-        vkUpdateDescriptorSets(
-          vulkan->core.device,
-          sizeof(writes) / sizeof(*writes), writes,
-          0, nullptr
-        );
-      }
-    }
-  }
-  { ZoneScopedN(".pipeline_sun");
+
+  VkPipeline pipeline_sun;
+  { ZoneScopedN("pipeline_sun");
     VkShaderModule module_frag = VK_NULL_HANDLE;
     VkShaderModule module_vert = VK_NULL_HANDLE;
+
     { ZoneScopedN("module_vert");
       VkShaderModuleCreateInfo info = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -266,13 +219,14 @@ void init_lpass(
         .pCode = (const uint32_t*) embedded_lpass_sun_vert,
       };
       auto result = vkCreateShaderModule(
-        vulkan->core.device,
+        core->device,
         &info,
-        vulkan->core.allocator,
+        core->allocator,
         &module_vert
       );
       assert(result == VK_SUCCESS);
     }
+
     { ZoneScopedN("module_frag");
       VkShaderModuleCreateInfo info = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -280,13 +234,14 @@ void init_lpass(
         .pCode = (const uint32_t*) embedded_lpass_sun_frag,
       };
       auto result = vkCreateShaderModule(
-        vulkan->core.device,
+        core->device,
         &info,
-        vulkan->core.allocator,
+        core->allocator,
         &module_frag
       );
       assert(result == VK_SUCCESS);
     }
+
     VkPipelineShaderStageCreateInfo shader_stages[] = {
       {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -331,14 +286,14 @@ void init_lpass(
     VkViewport viewport = {
       .x = 0.0f,
       .y = 0.0f,
-      .width = float(swapchain_description->image_extent.width),
-      .height = float(swapchain_description->image_extent.height),
+      .width = 1.0f,
+      .height = 1.0f,
       .minDepth = 0.0f,
       .maxDepth = 1.0f,
     };
     VkRect2D scissor = {
       .offset = {0, 0},
-      .extent = swapchain_description->image_extent,
+      .extent = {1, 1},
     };
     VkPipelineViewportStateCreateInfo viewport_state_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
@@ -387,6 +342,15 @@ void init_lpass(
       .attachmentCount = sizeof(color_blend_attachments) / sizeof(*color_blend_attachments),
       .pAttachments = color_blend_attachments,
     };
+    VkDynamicState dynamic_states[] = {
+      VK_DYNAMIC_STATE_VIEWPORT,
+      VK_DYNAMIC_STATE_SCISSOR
+    };
+    VkPipelineDynamicStateCreateInfo dynamic_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+      .dynamicStateCount = 2,
+      .pDynamicStates = dynamic_states,
+    };
     VkGraphicsPipelineCreateInfo pipeline_info = {
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
       .stageCount = 2,
@@ -398,25 +362,259 @@ void init_lpass(
       .pMultisampleState = &multisample_info,
       .pDepthStencilState = &depth_stencil_info,
       .pColorBlendState = &color_blend_info,
-      .pDynamicState = nullptr,
-      .layout = vulkan->lpass.pipeline_layout,
-      .renderPass = it->render_pass,
+      .pDynamicState = &dynamic_info,
+      .layout = pipeline_layout,
+      .renderPass = render_pass,
       .subpass = 0,
     };
     {
       auto result = vkCreateGraphicsPipelines(
-        vulkan->core.device,
+        core->device,
         VK_NULL_HANDLE,
         1, &pipeline_info,
-        vulkan->core.allocator,
-        &it->pipeline_sun
+        core->allocator,
+        &pipeline_sun
       );
       assert(result == VK_SUCCESS);
     }
-    vkDestroyShaderModule(vulkan->core.device, module_frag, vulkan->core.allocator);
-    vkDestroyShaderModule(vulkan->core.device, module_vert, vulkan->core.allocator);
+    vkDestroyShaderModule(core->device, module_frag, core->allocator);
+    vkDestroyShaderModule(core->device, module_vert, core->allocator);
   }
-  { ZoneScopedN(".framebuffers");
+
+  *out = {
+    .descriptor_set_layout_frame = descriptor_set_layout_frame,
+    .descriptor_set_layout_directional_light = descriptor_set_layout_directional_light,
+    .pipeline_layout = pipeline_layout,
+    .render_pass = render_pass,
+    .pipeline_sun = pipeline_sun,
+  };
+}
+
+void deinit_session_lpass(
+  SessionData::Vulkan::LPass *it,
+  SessionData::Vulkan::Core *core
+) {
+  ZoneScoped;
+  vkDestroyDescriptorSetLayout(
+    core->device,
+    it->descriptor_set_layout_frame,
+    core->allocator
+  );
+  vkDestroyDescriptorSetLayout(
+    core->device,
+    it->descriptor_set_layout_directional_light,
+    core->allocator
+  );
+  vkDestroyPipelineLayout(
+    core->device,
+    it->pipeline_layout,
+    core->allocator
+  );
+  vkDestroyRenderPass(
+    core->device,
+    it->render_pass,
+    core->allocator
+  );
+  vkDestroyPipeline(
+    core->device,
+    it->pipeline_sun,
+    core->allocator
+  );
+}
+
+void claim_rendering_lpass(
+  size_t swapchain_image_count,
+  std::vector<lib::gfx::multi_alloc::Claim> &claims,
+  RenderingData::LPass::Stakes *out
+) {
+  ZoneScoped;
+  *out = {};
+  out->ubo_directional_light.resize(swapchain_image_count);
+  for (auto &stake : out->ubo_directional_light) {
+    claims.push_back({
+      .info = {
+        .buffer = {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+          .size = (
+            sizeof(rendering::UBO_DirectionalLight)
+          ),
+          .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        },
+      },
+      .memory_property_flags = VkMemoryPropertyFlagBits(0
+        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+      ),
+      .p_stake_buffer = &stake,
+    });
+  }
+}
+
+void init_rendering_lpass(
+  RenderingData::LPass *out,
+  RenderingData::LPass::Stakes stakes,
+  RenderingData::Common *common,
+  VkDescriptorPool common_descriptor_pool,
+  RenderingData::SwapchainDescription *swapchain_description,
+  RenderingData::ZBuffer *zbuffer,
+  RenderingData::GBuffer *gbuffer,
+  RenderingData::LBuffer *lbuffer,
+  SessionData::Vulkan::LPass *s_lpass,
+  SessionData::Vulkan::Core *core
+) {
+  ZoneScoped;
+  std::vector<VkDescriptorSet> descriptor_sets_frame;
+
+  { ZoneScopedN("descriptor_sets_frame");
+    descriptor_sets_frame.resize(swapchain_description->image_count);
+    std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
+    for (auto &layout : layouts) {
+      layout = s_lpass->descriptor_set_layout_frame;
+    }
+    VkDescriptorSetAllocateInfo allocate_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool = common_descriptor_pool,
+      .descriptorSetCount = swapchain_description->image_count,
+      .pSetLayouts = layouts.data(),
+    };
+    {
+      auto result = vkAllocateDescriptorSets(
+        core->device,
+        &allocate_info,
+        descriptor_sets_frame.data()
+      );
+      assert(result == VK_SUCCESS);
+    }
+    {
+      for (size_t i = 0; i < swapchain_description->image_count; i++) {
+        VkDescriptorImageInfo channel0_image_info = {
+          .imageView = gbuffer->channel0_views[i],
+          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+        VkDescriptorImageInfo channel1_image_info = {
+          .imageView = gbuffer->channel1_views[i],
+          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+        VkDescriptorImageInfo channel2_image_info = {
+          .imageView = gbuffer->channel2_views[i],
+          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+        VkDescriptorImageInfo depth_image_info = {
+          .imageView = zbuffer->views[i],
+          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+        VkDescriptorBufferInfo ubo_frame_info = {
+          .buffer = common->stakes.ubo_frame[i].buffer,
+          .offset = 0,
+          .range = VK_WHOLE_SIZE,
+        };
+        VkWriteDescriptorSet writes[] = {
+          {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = descriptor_sets_frame[i],
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+            .pImageInfo = &channel0_image_info,
+          },
+          {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = descriptor_sets_frame[i],
+            .dstBinding = 1,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+            .pImageInfo = &channel1_image_info,
+          },
+          {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = descriptor_sets_frame[i],
+            .dstBinding = 2,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+            .pImageInfo = &channel2_image_info,
+          },
+          {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = descriptor_sets_frame[i],
+            .dstBinding = 3,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+            .pImageInfo = &depth_image_info,
+          },
+          {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = descriptor_sets_frame[i],
+            .dstBinding = 4,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .pBufferInfo = &ubo_frame_info,
+          },
+        };
+        vkUpdateDescriptorSets(
+          core->device,
+          sizeof(writes) / sizeof(*writes), writes,
+          0, nullptr
+        );
+      }
+    }
+  }
+
+  std::vector<VkDescriptorSet> descriptor_sets_directional_light;
+  { ZoneScopedN("descriptor_sets_directional_light");
+    descriptor_sets_directional_light.resize(swapchain_description->image_count);
+    std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
+    for (auto &layout : layouts) {
+      layout = s_lpass->descriptor_set_layout_directional_light;
+    }
+    VkDescriptorSetAllocateInfo allocate_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool = common_descriptor_pool,
+      .descriptorSetCount = swapchain_description->image_count,
+      .pSetLayouts = layouts.data(),
+    };
+    {
+      auto result = vkAllocateDescriptorSets(
+        core->device,
+        &allocate_info,
+        descriptor_sets_directional_light.data()
+      );
+      assert(result == VK_SUCCESS);
+    }
+    {
+      for (size_t i = 0; i < swapchain_description->image_count; i++) {
+        VkDescriptorBufferInfo buffer_info = {
+          .buffer = stakes.ubo_directional_light[i].buffer,
+          .range = VK_WHOLE_SIZE,
+        };
+        VkWriteDescriptorSet writes[] = {
+          {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = descriptor_sets_directional_light[i],
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .pBufferInfo = &buffer_info,
+          },
+        };
+        vkUpdateDescriptorSets(
+          core->device,
+          sizeof(writes) / sizeof(*writes), writes,
+          0, nullptr
+        );
+      }
+    }
+  }
+
+  std::vector<VkFramebuffer> framebuffers;
+  { ZoneScopedN("framebuffers");
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
       VkImageView attachments[] = {
         lbuffer->views[i],
@@ -428,7 +626,7 @@ void init_lpass(
       VkFramebuffer framebuffer;
       VkFramebufferCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass = it->render_pass,
+        .renderPass = s_lpass->render_pass,
         .attachmentCount = sizeof(attachments) / sizeof(*attachments),
         .pAttachments = attachments,
         .width = swapchain_description->image_extent.width,
@@ -437,14 +635,35 @@ void init_lpass(
       };
       {
         auto result = vkCreateFramebuffer(
-          vulkan->core.device,
+          core->device,
           &create_info,
-          vulkan->core.allocator,
+          core->allocator,
           &framebuffer
         );
         assert(result == VK_SUCCESS);
       }
-      it->framebuffers.push_back(framebuffer);
+      framebuffers.push_back(framebuffer);
     }
+  }
+
+  *out = {
+    .stakes = stakes,
+    .descriptor_sets_frame = descriptor_sets_frame,
+    .descriptor_sets_directional_light = descriptor_sets_directional_light,
+    .framebuffers = framebuffers,
+  };
+}
+
+void deinit_rendering_lpass(
+  RenderingData::LPass *it,
+  SessionData::Vulkan::Core *core
+) {
+  ZoneScoped;
+  for (auto framebuffer : it->framebuffers) {
+    vkDestroyFramebuffer(
+      core->device,
+      framebuffer,
+      core->allocator
+    );
   }
 }

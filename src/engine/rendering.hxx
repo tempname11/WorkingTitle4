@@ -127,17 +127,19 @@ struct RenderingData : lib::task::ParentResource {
     struct Stakes {
       std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_material;
     } stakes;
+
     std::vector<VkFramebuffer> framebuffers;
     std::vector<VkDescriptorSet> descriptor_sets;
   } gpass;
 
   struct LPass {
-    std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_directional_light_stakes;
-    VkRenderPass render_pass;
-    VkPipeline pipeline_sun;
-    std::vector<VkFramebuffer> framebuffers;
+    struct Stakes {
+      std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_directional_light;
+    } stakes;
+
     std::vector<VkDescriptorSet> descriptor_sets_frame;
     std::vector<VkDescriptorSet> descriptor_sets_directional_light;
+    std::vector<VkFramebuffer> framebuffers;
   } lpass;
 
   struct Finalpass {

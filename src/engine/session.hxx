@@ -57,7 +57,7 @@ struct SessionData : lib::task::ParentResource {
 
     struct GPass {
       VkDescriptorSetLayout descriptor_set_layout;
-      VkPipelineLayout pipeline_layout; // shared with prepass
+      VkPipelineLayout pipeline_layout; // shared with prepass!
       VkRenderPass render_pass;
       VkPipeline pipeline;
     } gpass;
@@ -66,6 +66,8 @@ struct SessionData : lib::task::ParentResource {
       VkDescriptorSetLayout descriptor_set_layout_frame;
       VkDescriptorSetLayout descriptor_set_layout_directional_light;
       VkPipelineLayout pipeline_layout;
+      VkRenderPass render_pass;
+      VkPipeline pipeline_sun;
     } lpass;
 
     struct Finalpass {

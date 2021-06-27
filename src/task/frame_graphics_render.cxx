@@ -127,7 +127,7 @@ void record_lpass(
   VkClearValue clear_value = { 0.0f, 0.0f, 0.0f, 0.0f };
   VkRenderPassBeginInfo render_pass_info = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-    .renderPass = lpass->render_pass,
+    .renderPass = s_lpass->render_pass,
     .framebuffer = lpass->framebuffers[frame_info->inflight_index],
     .renderArea = {
       .offset = {0, 0},
@@ -137,7 +137,21 @@ void record_lpass(
     .pClearValues = &clear_value,
   };
   vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, lpass->pipeline_sun);
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, s_lpass->pipeline_sun);
+  VkViewport viewport = {
+    .x = 0.0f,
+    .y = 0.0f,
+    .width = float(swapchain_description->image_extent.width),
+    .height = float(swapchain_description->image_extent.height),
+    .minDepth = 0.0f,
+    .maxDepth = 1.0f,
+  };
+  VkRect2D scissor = {
+    .offset = {0, 0},
+    .extent = swapchain_description->image_extent,
+  };
+  vkCmdSetViewport(cmd, 0, 1, &viewport);
+  vkCmdSetScissor(cmd, 0, 1, &scissor);
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
     s_lpass->pipeline_layout,

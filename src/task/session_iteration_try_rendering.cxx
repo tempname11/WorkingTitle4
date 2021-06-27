@@ -233,10 +233,10 @@ void session_iteration_try_rendering(
 
   RenderingData::Common::Stakes common_stakes;
   RenderingData::GPass::Stakes gpass_stakes;
+  RenderingData::LPass::Stakes lpass_stakes;
   { ZoneScopedN(".multi_alloc");
     std::vector<lib::gfx::multi_alloc::Claim> claims;
 
-    rendering->lpass.ubo_directional_light_stakes.resize(swapchain_image_count);
     rendering->gbuffer.channel0_stakes.resize(swapchain_image_count);
     rendering->gbuffer.channel1_stakes.resize(swapchain_image_count);
     rendering->gbuffer.channel2_stakes.resize(swapchain_image_count);
@@ -256,26 +256,12 @@ void session_iteration_try_rendering(
       &gpass_stakes
     );
 
-    for (auto &stake : rendering->lpass.ubo_directional_light_stakes) {
-      claims.push_back({
-        .info = {
-          .buffer = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = (
-              sizeof(rendering::UBO_DirectionalLight)
-            ),
-            .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-          },
-        },
-        .memory_property_flags = VkMemoryPropertyFlagBits(0
-          | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-          | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        ),
-        .p_stake_buffer = &stake,
-      });
-    }
+    claim_rendering_lpass(
+      swapchain_image_count,
+      claims,
+      &lpass_stakes
+    );
+
     for (auto &stake : rendering->gbuffer.channel0_stakes) {
       claims.push_back({
         .info = {
@@ -642,25 +628,27 @@ void session_iteration_try_rendering(
     &vulkan->core
   );
 
-  init_lpass(
+  init_rendering_lpass(
     &rendering->lpass,
+    lpass_stakes,
     &rendering->common,
-    &rendering->gpass,
     rendering->common_descriptor_pool,
     &rendering->swapchain_description,
     &rendering->zbuffer,
     &rendering->gbuffer,
     &rendering->lbuffer,
-    vulkan
+    &session->vulkan.lpass,
+    &session->vulkan.core
   );
 
-  init_finalpass(
+  init_rendering_finalpass(
     &rendering->finalpass,
     rendering->common_descriptor_pool,
     &rendering->swapchain_description,
     &rendering->lbuffer,
     &rendering->final_image,
-    vulkan
+    &vulkan->finalpass,
+    &vulkan->core
   );
 
   { ZoneScopedN(".imgui_backend");
