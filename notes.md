@@ -1,11 +1,14 @@
 ### more things to do
-[ ] move session code to engine/session**
-[ ] move rendering code to engine/rendering/**
-[ ] fix the intermittent bug
+[ ] why do weird artifacts appear?
+[ ] fix the intermittent bug?
 [ ] linear_to_srgb?
 
 ### find out
 [ ] how do push constants work?
+
+### refactoring
+[ ] move engine/rendering/** -> engine/**
+[ ] move runtime stuff to engine/**
 
 ### code annoyances
 * some files are too large, target is 500 LOC at most
