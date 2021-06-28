@@ -46,7 +46,7 @@ void frame_prepare_uniforms(
       .albedo = glm::vec3(1.0f, 1.0f, 1.0f),
       .metallic = 0.5f,
       .roughness = 0.5f,
-      .ao = 0.1f,
+      .ao = 0.0f,
     };
     auto stake = &gpass->stakes.ubo_material[frame_info->inflight_index];
     void * dst;
@@ -64,7 +64,7 @@ void frame_prepare_uniforms(
   { ZoneScopedN("directional_light");
     const rendering::UBO_DirectionalLight data = {
       .direction = glm::vec3(0.0f, 0.0f, -1.0f),
-      .intensity = 10.0f * glm::vec3(1.0f, 1.0f, 1.0f),
+      .intensity = 3.0f * glm::vec3(1.0f, 1.0f, 1.0f),
     };
     auto stake = &lpass->stakes.ubo_directional_light[frame_info->inflight_index];
     void * dst;

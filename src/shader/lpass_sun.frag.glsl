@@ -2,7 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(location = 0) in vec2 position;
-layout(location = 0) out vec4 result; 
+layout(location = 0) out vec3 result; 
 
 layout(input_attachment_index = 0, binding = 0) uniform subpassInput gchannel0;
 layout(input_attachment_index = 1, binding = 1) uniform subpassInput gchannel1;
@@ -23,10 +23,6 @@ layout(set = 1, binding = 0) uniform DirectionalLight {
 
 const vec3 F0_dielectric = vec3(0.04);
 const float PI = 3.14159265359;
-
-vec3 linear_to_srgb(vec3 linear) {
-  return pow(linear, vec3(1.0 / 2.2));
-}
 
 vec3 F_fresnelSchlick(float cosTheta, vec3 F0) {
   return F0 + (1.0 - F0) * pow(max(0.0, 1.0 - cosTheta), 5.0);
@@ -54,13 +50,15 @@ float G_Smith(float NdotV, float NdotL, float roughness) {
 }
 
 void main() {
+  /*
   float z_near = 0.1;
   float z_far = 100.0;
   float z = z_near + (z_far - z_near) * subpassLoad(zchannel).r;
+  */
   vec4 target = frame.projection_inverse * vec4(position, 1.0, 1.0);
 
   // light direction vectors
-  vec3 V = -normalize(target.rgb) * z;
+  vec3 V = -normalize(target.rgb);
   vec3 N = subpassLoad(gchannel0).rgb;
   vec3 L = -(frame.view * vec4(directional_light.direction, 0.0)).xyz;
   vec3 H = normalize(V + L);
@@ -85,5 +83,5 @@ void main() {
   vec3 radiance_outgoing = (kD * albedo / PI + specular) * radiance_incoming * NdotL;
   vec3 ambient = 0.03 * albedo * ao;
 
-  result = vec4(ambient + radiance_outgoing, 1.0);
+  result = ambient + radiance_outgoing;
 }
