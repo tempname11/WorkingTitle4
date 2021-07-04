@@ -108,6 +108,7 @@ void rendering_frame(
       &data->swapchain_description,
       &data->command_pools,
       frame_info,
+      &data->descriptor_pools,
       &data->prepass,
       &data->gpass,
       &data->lpass,
@@ -121,6 +122,7 @@ void rendering_frame(
       &session->vulkan.lpass,
       &session->vulkan.finalpass,
       &session->vulkan.geometry,
+      &session->vulkan.textures,
       &session->vulkan.fullscreen_quad,
       graphics_data
     ),

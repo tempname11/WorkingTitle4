@@ -70,6 +70,7 @@ void frame_graphics_render(
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::CommandPools> command_pools,
   usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Some<RenderingData::DescriptorPools> descriptor_pools,
   usage::Some<RenderingData::Prepass> prepass,
   usage::Some<RenderingData::GPass> gpass,
   usage::Some<RenderingData::LPass> lpass,
@@ -83,6 +84,7 @@ void frame_graphics_render(
   usage::Some<SessionData::Vulkan::LPass> s_lpass,
   usage::Some<SessionData::Vulkan::Finalpass> s_finalpass,
   usage::Some<SessionData::Vulkan::Geometry> geometry,
+  usage::Some<SessionData::Vulkan::Textures> textures,
   usage::Some<SessionData::Vulkan::FullscreenQuad> fullscreen_quad,
   usage::Full<GraphicsData> data
 );

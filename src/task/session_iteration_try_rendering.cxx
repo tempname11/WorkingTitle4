@@ -144,10 +144,9 @@ void session_iteration_try_rendering(
     }
   }
 
-  RenderingData::DescriptorPools descriptor_pools;
-  { ZoneScopedN("descriptor_pools");
-    descriptor_pools.resize(swapchain_image_count);
-    for (auto &pool : descriptor_pools) {
+  { ZoneScopedN(".descriptor_pools");
+    rendering->descriptor_pools = std::vector<DescriptorPool>(swapchain_image_count);
+    for (auto &pool : rendering->descriptor_pools) {
       // "large enough"
       const uint32_t COMMON_DESCRIPTOR_COUNT = 1024;
       const uint32_t COMMON_DESCRIPTOR_MAX_SETS = 256;
@@ -180,7 +179,6 @@ void session_iteration_try_rendering(
       assert(result == VK_SUCCESS);
     }
   }
-  rendering->descriptor_pools = descriptor_pools;
 
   { ZoneScopedN(".frame_finished_semaphore");
     VkSemaphoreTypeCreateInfo timeline_info = {

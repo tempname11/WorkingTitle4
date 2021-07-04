@@ -1,4 +1,5 @@
 #include <imgui.h>
+#include <stb_image.h>
 #include <backends/imgui_impl_glfw.h>
 #include <src/embedded.hxx>
 #include <src/engine/rendering/prepass.hxx>
@@ -6,6 +7,9 @@
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/lib/gfx/mesh.hxx>
+#include <src/lib/gfx/texture.hxx>
+#include <src/lib/gfx/utilities.hxx>
+#include "session_setup_cleanup.hxx"
 #include "task.hxx"
 
 VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_callback(
@@ -59,6 +63,742 @@ namespace mesh {
   }
 }
 
+const auto ALBEDO_TEXTURE_FORMAT = VK_FORMAT_R8G8B8A8_SRGB;
+const size_t ALBEDO_TEXEL_SIZE = 4;
+
+namespace texture {
+  texture::Data<uint8_t> load_rgba8(const char *filename) {
+    int width, height, _channels = 4;
+    auto data = stbi_load(filename, &width, &height, &_channels, 4);
+    assert(data != nullptr);
+    return texture::Data<uint8_t> {
+      .data = data,
+      .width = width,
+      .height = height,
+      .channels = 4,
+      .computed_mip_levels = lib::gfx::utilities::mip_levels(width, height),
+    };
+  }
+}
+
+void prepare_textures(
+  SessionData::Vulkan::Textures *it,
+  SessionData::Vulkan::Core *core,
+  SessionSetupData *setup_data
+) {
+  ZoneScoped;
+  { ZoneScopedN("create_command_pool");
+    VkCommandPoolCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+      .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+      .queueFamilyIndex = core->queue_family_index,
+    };
+    auto result = vkCreateCommandPool(
+      core->device,
+      &create_info,
+      core->allocator,
+      &setup_data->command_pool
+    );
+    assert(result == VK_SUCCESS);
+  }
+  { ZoneScopedN("copy_to_buffer");
+    void *mem = nullptr;
+    auto result = vkMapMemory(
+      core->device,
+      it->albedo_stake.memory, it->albedo_stake.offset, it->albedo_stake.size,
+      0, &mem
+    );
+    assert(result == VK_SUCCESS);
+    memcpy(
+      mem,
+      setup_data->albedo.data,
+      setup_data->albedo.width * setup_data->albedo.height * ALBEDO_TEXEL_SIZE
+    );
+    vkUnmapMemory(core->device, it->albedo_stake.memory);
+  }
+
+   VkCommandBuffer cmd;
+  { ZoneScopedN("allocate_command_buffer");
+    VkCommandBufferAllocateInfo alloc_info = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+      .commandPool = setup_data->command_pool,
+      .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+      .commandBufferCount = 1,
+    };
+    {
+      auto result = vkAllocateCommandBuffers(
+        core->device,
+        &alloc_info,
+        &cmd
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+
+  { // begin
+    auto info = VkCommandBufferBeginInfo {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+    auto result = vkBeginCommandBuffer(cmd, &info);
+    assert(result == VK_SUCCESS);
+  }
+
+
+  { // transition before copy
+    VkImageMemoryBarrier barrier = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = 0,
+      .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = it->albedo_stake.image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = setup_data->albedo.computed_mip_levels,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      },
+    };
+
+    vkCmdPipelineBarrier(
+      cmd, 
+      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      0,
+      0, nullptr,
+      0, nullptr,
+      1, &barrier
+    );
+  }
+
+  { // copy
+    VkBufferImageCopy region = {
+      .imageSubresource = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .mipLevel = 0,
+        .layerCount = 1,
+      },
+      .imageExtent = {
+        .width = setup_data->albedo.width,
+        .height = setup_data->albedo.height,
+        .depth = 1,
+      },
+    };
+
+    vkCmdCopyBufferToImage(
+      cmd,
+      setup_data->albedo_staging_stake.buffer,
+      it->albedo_stake.image,
+      VK_IMAGE_LAYOUT_GENERAL,
+      1, &region
+    );
+  }
+
+  { // generate mip levels
+    auto w = int32_t(setup_data->albedo.width);
+    auto h = int32_t(setup_data->albedo.height);
+
+    for (uint32_t m = 0; m < setup_data->albedo.computed_mip_levels - 1; m++) {
+      auto next_w = w > 1 ? w / 2 : 1;
+      auto next_h = h > 1 ? h / 2 : 1;
+      VkImageBlit blit = {
+        .srcSubresource = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .mipLevel = m,
+          .layerCount = 1,
+        },
+        .srcOffsets = {
+          {},
+          { .x = w, .y = h, .z = 1, },
+        },
+        .dstSubresource = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .mipLevel = m + 1,
+          .layerCount = 1,
+        },
+        .dstOffsets = {
+          {},
+          { .x = next_w, .y = next_h, .z = 1, },
+        },
+      };
+      vkCmdBlitImage(
+        cmd,
+        it->albedo_stake.image, VK_IMAGE_LAYOUT_GENERAL,
+        it->albedo_stake.image, VK_IMAGE_LAYOUT_GENERAL,
+        1, &blit,
+        VK_FILTER_LINEAR
+      );
+      w = next_w;
+      h = next_h;
+    }
+  }
+
+  { // transition after copy
+    VkImageMemoryBarrier barrier = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+      .dstAccessMask = 0,
+      .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+      .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .image = it->albedo_stake.image,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel = 0,
+        .levelCount = setup_data->albedo.computed_mip_levels,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+      },
+    };
+
+    // VK_PIPELINE_STAGE_ALL_COMMANDS_BIT is dirty,
+    // but we don't know who will be using this texture here.
+    vkCmdPipelineBarrier(
+      cmd, 
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+      0,
+      0, nullptr,
+      0, nullptr,
+      1, &barrier
+    );
+  }
+
+  { // end
+    auto result = vkEndCommandBuffer(cmd);
+    assert(result == VK_SUCCESS);
+  }
+
+   nocompile;
+  // create semaphore
+  // create signal
+  // submit AFTER inject!
+}
+
+SessionSetupData *init_vulkan(
+  SessionData::Vulkan *it,
+  SessionData::GLFW *glfw,
+  mesh::T05 *the_mesh
+) {
+  ZoneScoped;
+  auto core = &it->core;
+
+  auto session_setup_data = new SessionSetupData {
+    .albedo = texture::load_rgba8("assets/texture/albedo.jpg"),
+  };
+
+  // don't use the allocator callbacks
+  const VkAllocationCallbacks *allocator = nullptr;
+
+  { ZoneScopedN(".instance");
+    uint32_t glfw_extension_count = 0;
+    auto glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
+    std::vector<const char *> extensions(
+      glfw_extensions,
+      glfw_extensions + glfw_extension_count
+    );
+    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    const VkApplicationInfo application_info = {
+      .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+      .pApplicationName = "WorkingTitle",
+      .applicationVersion = VK_MAKE_VERSION(0, 0, 0),
+      .pEngineName = "No Engine",
+      .engineVersion = VK_MAKE_VERSION(0, 0, 0),
+      .apiVersion = VK_API_VERSION_1_2,
+    };
+    std::vector<const char*> layers = {
+      "VK_LAYER_KHRONOS_validation"
+    };
+    const auto instance_create_info = VkInstanceCreateInfo {
+      .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+      .pApplicationInfo = &application_info,
+      .enabledLayerCount = (uint32_t) layers.size(),
+      .ppEnabledLayerNames = layers.data(),
+      .enabledExtensionCount = (uint32_t) extensions.size(),
+      .ppEnabledExtensionNames = extensions.data(),
+    };
+    {
+      auto result = vkCreateInstance(&instance_create_info, allocator, &it->instance);
+      assert(result == VK_SUCCESS);
+    }
+  }
+
+  { ZoneScopedN(".debug_messenger");
+    auto _vkCreateDebugUtilsMessengerEXT = 
+      (PFN_vkCreateDebugUtilsMessengerEXT)
+        vkGetInstanceProcAddr(it->instance, "vkCreateDebugUtilsMessengerEXT");
+    VkDebugUtilsMessengerCreateInfoEXT create_info = {
+      .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+      .messageSeverity = (0
+        | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT 
+        | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
+      ),
+      .messageType = (0
+        | VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
+        | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
+      ),
+      .pfnUserCallback = vulkan_debug_callback,
+    };
+    auto result = _vkCreateDebugUtilsMessengerEXT(
+      it->instance,
+      &create_info,
+      allocator,
+      &it->debug_messenger
+    );
+    assert(result == VK_SUCCESS);
+  }
+
+  { ZoneScopedN(".window_surface");
+    auto result = glfwCreateWindowSurface(
+      it->instance,
+      glfw->window,
+      allocator,
+      &it->window_surface
+    );
+    assert(result == VK_SUCCESS);
+  }
+
+  { ZoneScopedN(".physical_device");
+    // find the first discrete GPU physical device
+    // in future, this should be more nuanced.
+    {
+      uint32_t device_count = 0;
+      vkEnumeratePhysicalDevices(it->instance, &device_count, nullptr);
+      std::vector<VkPhysicalDevice> devices(device_count);
+      vkEnumeratePhysicalDevices(it->instance, &device_count, devices.data());
+      for (const auto& device : devices) {
+        VkPhysicalDeviceProperties properties;
+        vkGetPhysicalDeviceProperties(device, &properties);
+        if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+          it->physical_device = device;
+          break;
+        }
+      }
+      assert(it->physical_device != VK_NULL_HANDLE);
+    }
+  }
+
+  // find a queue family that supports everything we need:
+  // graphics, compute, transfer, present.
+  // this probably works on most (all?) modern desktop GPUs.
+  uint32_t queue_family_index = (uint32_t) -1;
+  { ZoneScopedN("family_indices");
+    uint32_t queue_family_count = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(
+      it->physical_device,
+      &queue_family_count,
+      nullptr
+    );
+    std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+    vkGetPhysicalDeviceQueueFamilyProperties(
+      it->physical_device,
+      &queue_family_count,
+      queue_families.data()
+    );
+    {
+      int i = 0;
+      for (const auto& queue_family : queue_families) {
+        VkBool32 has_present_support = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(
+          it->physical_device,
+          i,
+          it->window_surface,
+          &has_present_support
+        );
+        if (has_present_support
+          && (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+          && (queue_family.queueFlags & VK_QUEUE_COMPUTE_BIT)
+          && (queue_family.queueFlags & VK_QUEUE_TRANSFER_BIT)
+        ) {
+          queue_family_index = i;
+          break;
+        }
+      }
+    }
+    assert(queue_family_index != (uint32_t) -1);
+  }
+
+  { ZoneScopedN(".core");
+    float queue_priorities[] = { 1.0f, 1.0f };
+    VkDeviceQueueCreateInfo queue_create_info = {
+      .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+      .queueFamilyIndex = queue_family_index,
+      .queueCount = 2,
+      .pQueuePriorities = queue_priorities,
+    };
+    const std::vector<const char*> device_extensions = {
+      VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+      /*
+      VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+      VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, // for RAY_TRACING_PIPELINE
+      VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, // for ACCELERATION_STRUCTURE
+      */
+      VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, // for Tracy
+      VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME, // for shader printf
+    };
+    VkPhysicalDeviceTimelineSemaphoreFeatures timeline_semaphore_features = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
+      .timelineSemaphore = VK_TRUE,
+    };
+    VkPhysicalDeviceBufferDeviceAddressFeaturesEXT buffer_device_address_features = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT,
+      .pNext = &timeline_semaphore_features,
+      .bufferDeviceAddress = VK_TRUE,
+    };
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure_features = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
+      .pNext = &buffer_device_address_features,
+      .accelerationStructure = VK_TRUE,
+    };
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_features = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR,
+      .pNext = &acceleration_structure_features,
+      .rayTracingPipeline = VK_TRUE,
+    };
+    VkPhysicalDeviceFeatures device_features = {
+      .samplerAnisotropy = VK_TRUE,
+    };
+    const VkDeviceCreateInfo device_create_info = {
+      .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+      .pNext = &ray_tracing_features,
+      .queueCreateInfoCount = 1,
+      .pQueueCreateInfos = &queue_create_info,
+      .enabledExtensionCount = (uint32_t) device_extensions.size(),
+      .ppEnabledExtensionNames = device_extensions.data(),
+      .pEnabledFeatures = &device_features,
+    };
+    {
+      auto result = vkCreateDevice(
+        it->physical_device,
+        &device_create_info,
+        allocator,
+        &it->core.device
+      );
+      assert(result == VK_SUCCESS);
+    }
+    it->core.allocator = allocator;
+  }
+
+  { ZoneScopedN("queues");
+    vkGetDeviceQueue(it->core.device, queue_family_index, 0, &it->queue_present);
+    vkGetDeviceQueue(it->core.device, queue_family_index, 1, &it->queue_work);
+    it->core.queue_family_index = queue_family_index;
+    assert(it->queue_present != VK_NULL_HANDLE);
+    assert(it->queue_work != VK_NULL_HANDLE);
+  }
+
+  { ZoneScopedN(".core.properties");
+    VkPhysicalDeviceProperties properties;
+    vkGetPhysicalDeviceProperties(it->physical_device, &it->core.properties.basic);
+
+    VkPhysicalDeviceMemoryProperties memory_properties;
+    vkGetPhysicalDeviceMemoryProperties(it->physical_device, &it->core.properties.memory);
+
+    it->core.properties.ray_tracing = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR,
+    };
+    {
+      VkPhysicalDeviceProperties2 properties2 = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+        .pNext = &it->core.properties.ray_tracing,
+      };
+      vkGetPhysicalDeviceProperties2(it->physical_device, &properties2);
+    }
+  }
+
+  { ZoneScopedN(".tracy_setup_command_pool");
+    VkCommandPoolCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+      .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+      .queueFamilyIndex = it->core.queue_family_index,
+    };
+    auto result = vkCreateCommandPool(
+      it->core.device,
+      &create_info,
+      it->core.allocator,
+      &it->tracy_setup_command_pool
+    );
+    assert(result == VK_SUCCESS);
+  }
+
+  { ZoneScopedN(".multi_alloc");
+    std::vector<lib::gfx::multi_alloc::Claim> claims;
+    claims.push_back({
+      .info = {
+        .buffer = {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+          .size = the_mesh->triangle_count * 3 * sizeof(mesh::VertexT05),
+          .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        },
+      },
+      .memory_property_flags = VkMemoryPropertyFlagBits(0
+        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+      ),
+      .p_stake_buffer = &it->geometry.vertex_stake,
+    });
+    claims.push_back({
+      .info = {
+        .buffer = {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+          .size = sizeof(fullscreen_quad_data),
+          .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        },
+      },
+      .memory_property_flags = VkMemoryPropertyFlagBits(0
+        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+      ),
+      .p_stake_buffer = &it->fullscreen_quad.vertex_stake,
+    });
+    claims.push_back({
+      .info = {
+        .image = {
+          .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+          .imageType = VK_IMAGE_TYPE_2D,
+          .format = ALBEDO_TEXTURE_FORMAT,
+          .extent = {
+            .width = uint32_t(session_setup_data->albedo.width),
+            .height = uint32_t(session_setup_data->albedo.height),
+            .depth = 1,
+          },
+          .mipLevels = session_setup_data->albedo.computed_mip_levels,
+          .arrayLayers = 1,
+          .samples = VK_SAMPLE_COUNT_1_BIT,
+          .tiling = VK_IMAGE_TILING_OPTIMAL,
+          .usage = (0
+            | VK_IMAGE_USAGE_SAMPLED_BIT
+            | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+          ),
+          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        },
+      },
+      .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      .p_stake_image = &it->textures.albedo_stake,
+    });
+    lib::gfx::multi_alloc::init(
+      &it->multi_alloc,
+      std::move(claims),
+      it->core.device,
+      it->core.allocator,
+      &it->core.properties.basic,
+      &it->core.properties.memory
+    );
+  }
+
+  { ZoneScopedN("setup_multi_alloc");
+    std::vector<lib::gfx::multi_alloc::Claim> claims;
+     claims.push_back({
+       .info = {
+         .buffer = {
+           .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+           .size = VkDeviceSize(
+              session_setup_data->albedo.width *
+              session_setup_data->albedo.height *
+              ALBEDO_TEXEL_SIZE
+           ),
+           .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+           .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+         },
+       },
+       .memory_property_flags = VkMemoryPropertyFlagBits(0
+         | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+       ),
+       .p_stake_buffer = &session_setup_data->albedo_staging_stake,
+    });
+    lib::gfx::multi_alloc::init(
+      &session_setup_data->multi_alloc,
+      std::move(claims),
+      it->core.device,
+      it->core.allocator,
+      &it->core.properties.basic,
+      &it->core.properties.memory
+    );
+  }
+
+  { ZoneScopedN("textures");
+    VkImageView image_view;
+    VkImageViewCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .image = it->textures.albedo_stake.image,
+      .viewType = VK_IMAGE_VIEW_TYPE_2D,
+      .format = ALBEDO_TEXTURE_FORMAT,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .levelCount = 1,
+        .layerCount = 1,
+      },
+    };
+    {
+      auto result = vkCreateImageView(
+        core->device,
+        &create_info,
+        core->allocator,
+        &it->textures.albedo_view
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+
+  // for both pipelines
+  VkShaderModule module_frag = VK_NULL_HANDLE;
+  VkShaderModule module_vert = VK_NULL_HANDLE;
+
+  { ZoneScopedN("module_vert");
+    VkShaderModuleCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+      .codeSize = embedded_gpass_vert_len,
+      .pCode = (const uint32_t*) embedded_gpass_vert,
+    };
+    auto result = vkCreateShaderModule(
+      it->core.device,
+      &info,
+      it->core.allocator,
+      &module_vert
+    );
+    assert(result == VK_SUCCESS);
+  }
+
+  { ZoneScopedN("module_frag");
+    VkShaderModuleCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+      .codeSize = embedded_gpass_frag_len,
+      .pCode = (const uint32_t*) embedded_gpass_frag,
+    };
+    auto result = vkCreateShaderModule(
+      it->core.device,
+      &info,
+      it->core.allocator,
+      &module_frag
+    );
+    assert(result == VK_SUCCESS);
+  }
+
+  init_session_gpass(
+    &it->gpass,
+    &it->core,
+    module_vert,
+    module_frag
+  );
+
+  init_session_prepass(
+    &it->prepass,
+    &it->gpass,
+    &it->core,
+    module_vert
+  );
+
+  init_session_lpass(
+    &it->lpass,
+    &it->core
+  );
+
+  init_session_finalpass(
+    &it->finalpass,
+    &it->core
+  );
+
+  vkDestroyShaderModule(
+    it->core.device,
+    module_frag,
+    it->core.allocator
+  );
+  vkDestroyShaderModule(
+    it->core.device,
+    module_vert,
+    it->core.allocator
+  );
+
+  { ZoneScopedN(".geometry");
+    it->geometry.triangle_count = the_mesh->triangle_count;
+    void * data;
+    {
+      auto result = vkMapMemory(
+        it->core.device,
+        it->geometry.vertex_stake.memory,
+        it->geometry.vertex_stake.offset,
+        it->geometry.vertex_stake.size,
+        0,
+        &data
+      );
+      assert(result == VK_SUCCESS);
+    }
+    memcpy(data, the_mesh->vertices, the_mesh->triangle_count * 3 * sizeof(mesh::VertexT05));
+    vkUnmapMemory(
+      it->core.device,
+      it->geometry.vertex_stake.memory
+    );
+  }
+
+  { ZoneScopedN(".fullscreen_quad");
+    it->fullscreen_quad.triangle_count = sizeof(fullscreen_quad_data) / sizeof(glm::vec2);
+    void * data;
+    {
+      auto result = vkMapMemory(
+        it->core.device,
+        it->fullscreen_quad.vertex_stake.memory,
+        it->fullscreen_quad.vertex_stake.offset,
+        it->fullscreen_quad.vertex_stake.size,
+        0,
+        &data
+      );
+      assert(result == VK_SUCCESS);
+    }
+    assert(it->fullscreen_quad.vertex_stake.size == sizeof(fullscreen_quad_data));
+    memcpy(data, fullscreen_quad_data, sizeof(fullscreen_quad_data));
+    vkUnmapMemory(
+      it->core.device,
+      it->fullscreen_quad.vertex_stake.memory
+    );
+  }
+
+  { ZoneScopedN(".core.tracy_context");
+    auto gpdctd = (PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT)
+      vkGetInstanceProcAddr(it->instance, "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT");
+    auto gct = (PFN_vkGetCalibratedTimestampsEXT)
+      vkGetInstanceProcAddr(it->instance, "vkGetCalibratedTimestampsEXT");
+    assert(gpdctd != nullptr);
+    assert(gct != nullptr);
+    VkCommandBuffer cmd;
+    {
+      auto info = VkCommandBufferAllocateInfo {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = it->tracy_setup_command_pool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+      };
+      auto result = vkAllocateCommandBuffers(it->core.device, &info, &cmd);
+      assert(result == VK_SUCCESS);
+    }
+    it->core.tracy_context = TracyVkContextCalibrated(
+      it->physical_device,
+      it->core.device,
+      it->queue_work,
+      cmd,
+      gpdctd,
+      gct
+    );
+  }
+
+  it->ready = true;
+
+  return session_setup_data;
+}
+
 void session(
   task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   usage::None<size_t> worker_count
@@ -66,11 +806,14 @@ void session(
   ZoneScoped;
   auto session = new SessionData;
   auto yarn_end = task::create_yarn_signal();
+  task::Task* signal_setup_finished = nullptr;
+
   mesh::T05 the_mesh;
   { ZoneScopedN("the_mesh_load");
     the_mesh = mesh::read_t05_file("assets/mesh.t05");
   }
-  { ZoneScopedN("glfw");
+
+  { ZoneScopedN(".glfw");
     auto it = &session->glfw;
     {
       bool success = glfwInit();
@@ -118,448 +861,55 @@ void session(
         ptr->state->is_fullscreen = !ptr->state->is_fullscreen;
       }
     });
+    it->ready = true;
   }
+  auto glfw = &session->glfw;
+
   { ZoneScopedN(".imgui_context");
+    auto it = &session->imgui_context;
     ImGui::CreateContext();
-    ImGui_ImplGlfw_InitForVulkan(session->glfw.window, true);
-    session->imgui_context = {}; // for clarity. maybe in future some data will be populated here
+    ImGui_ImplGlfw_InitForVulkan(glfw->window, true);
+    it->ready = true;
   }
-  { ZoneScopedN(".vulkan");
-    auto it = &session->vulkan;
 
-    // don't use the allocator callbacks
-    const VkAllocationCallbacks *allocator = nullptr;
-
-    { ZoneScopedN(".instance");
-      uint32_t glfw_extension_count = 0;
-      auto glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
-      std::vector<const char *> extensions(
-        glfw_extensions,
-        glfw_extensions + glfw_extension_count
-      );
-      extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-      const VkApplicationInfo application_info = {
-        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-        .pApplicationName = "WorkingTitle",
-        .applicationVersion = VK_MAKE_VERSION(0, 0, 0),
-        .pEngineName = "No Engine",
-        .engineVersion = VK_MAKE_VERSION(0, 0, 0),
-        .apiVersion = VK_API_VERSION_1_2,
-      };
-      std::vector<const char*> layers = {
-        "VK_LAYER_KHRONOS_validation"
-      };
-      const auto instance_create_info = VkInstanceCreateInfo {
-        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-        .pApplicationInfo = &application_info,
-        .enabledLayerCount = (uint32_t) layers.size(),
-        .ppEnabledLayerNames = layers.data(),
-        .enabledExtensionCount = (uint32_t) extensions.size(),
-        .ppEnabledExtensionNames = extensions.data(),
-      };
-      {
-        auto result = vkCreateInstance(&instance_create_info, allocator, &it->instance);
-        assert(result == VK_SUCCESS);
-      }
-    }
-    { ZoneScopedN(".debug_messenger");
-      auto _vkCreateDebugUtilsMessengerEXT = 
-        (PFN_vkCreateDebugUtilsMessengerEXT)
-          vkGetInstanceProcAddr(it->instance, "vkCreateDebugUtilsMessengerEXT");
-      VkDebugUtilsMessengerCreateInfoEXT create_info = {
-        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-        .messageSeverity = (0
-          | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT 
-          | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
-          | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
-          | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
-        ),
-        .messageType = (0
-          | VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
-          | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
-          | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
-        ),
-        .pfnUserCallback = vulkan_debug_callback,
-      };
-      auto result = _vkCreateDebugUtilsMessengerEXT(
-        it->instance,
-        &create_info,
-        allocator,
-        &it->debug_messenger
-      );
-      assert(result == VK_SUCCESS);
-    }
-    { ZoneScopedN(".window_surface");
-      auto result = glfwCreateWindowSurface(
-        it->instance,
-        session->glfw.window,
-        allocator,
-        &it->window_surface
-      );
-      assert(result == VK_SUCCESS);
-    }
-    { ZoneScopedN(".physical_device");
-      // find the first discrete GPU physical device
-      // in future, this should be more nuanced.
-      {
-        uint32_t device_count = 0;
-        vkEnumeratePhysicalDevices(it->instance, &device_count, nullptr);
-        std::vector<VkPhysicalDevice> devices(device_count);
-        vkEnumeratePhysicalDevices(it->instance, &device_count, devices.data());
-        for (const auto& device : devices) {
-          VkPhysicalDeviceProperties properties;
-          vkGetPhysicalDeviceProperties(device, &properties);
-          if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-            it->physical_device = device;
-            break;
-          }
-        }
-        assert(it->physical_device != VK_NULL_HANDLE);
-      }
-    }
-
-    // find a queue family that supports everything we need:
-    // graphics, compute, transfer, present.
-    // this probably works on most (all?) modern desktop GPUs.
-    uint32_t queue_family_index = (uint32_t) -1;
-    { ZoneScopedN("family_indices");
-      uint32_t queue_family_count = 0;
-      vkGetPhysicalDeviceQueueFamilyProperties(
-        it->physical_device,
-        &queue_family_count,
-        nullptr
-      );
-      std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
-      vkGetPhysicalDeviceQueueFamilyProperties(
-        it->physical_device,
-        &queue_family_count,
-        queue_families.data()
-      );
-      {
-        int i = 0;
-        for (const auto& queue_family : queue_families) {
-          VkBool32 has_present_support = false;
-          vkGetPhysicalDeviceSurfaceSupportKHR(
-            it->physical_device,
-            i,
-            it->window_surface,
-            &has_present_support
-          );
-          if (has_present_support
-            && (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-            && (queue_family.queueFlags & VK_QUEUE_COMPUTE_BIT)
-            && (queue_family.queueFlags & VK_QUEUE_TRANSFER_BIT)
-          ) {
-            queue_family_index = i;
-            break;
-          }
-        }
-      }
-      assert(queue_family_index != (uint32_t) -1);
-    }
-    { ZoneScopedN(".core");
-      float queue_priorities[] = { 1.0f, 1.0f };
-      VkDeviceQueueCreateInfo queue_create_info = {
-        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = queue_family_index,
-        .queueCount = 2,
-        .pQueuePriorities = queue_priorities,
-      };
-      const std::vector<const char*> device_extensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        /*
-        VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
-        VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, // for RAY_TRACING_PIPELINE
-        VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, // for ACCELERATION_STRUCTURE
-        */
-        VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, // for Tracy
-        VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME, // for shader printf
-      };
-      VkPhysicalDeviceTimelineSemaphoreFeatures timeline_semaphore_features = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
-        .timelineSemaphore = VK_TRUE,
-      };
-      VkPhysicalDeviceBufferDeviceAddressFeaturesEXT buffer_device_address_features = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT,
-        .pNext = &timeline_semaphore_features,
-        .bufferDeviceAddress = VK_TRUE,
-      };
-      VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure_features = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
-        .pNext = &buffer_device_address_features,
-        .accelerationStructure = VK_TRUE,
-      };
-      VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_features = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR,
-        .pNext = &acceleration_structure_features,
-        .rayTracingPipeline = VK_TRUE,
-      };
-      VkPhysicalDeviceFeatures device_features = {
-        .samplerAnisotropy = VK_TRUE,
-      };
-      const VkDeviceCreateInfo device_create_info = {
-        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext = &ray_tracing_features,
-        .queueCreateInfoCount = 1,
-        .pQueueCreateInfos = &queue_create_info,
-        .enabledExtensionCount = (uint32_t) device_extensions.size(),
-        .ppEnabledExtensionNames = device_extensions.data(),
-        .pEnabledFeatures = &device_features,
-      };
-      {
-        auto result = vkCreateDevice(
-          it->physical_device,
-          &device_create_info,
-          allocator,
-          &it->core.device
-        );
-        assert(result == VK_SUCCESS);
-      }
-      it->core.allocator = allocator;
-    }
-    { ZoneScopedN("queues");
-      vkGetDeviceQueue(it->core.device, queue_family_index, 0, &it->queue_present);
-      vkGetDeviceQueue(it->core.device, queue_family_index, 1, &it->queue_work);
-      it->queue_family_index = queue_family_index;
-      assert(it->queue_present != VK_NULL_HANDLE);
-      assert(it->queue_work != VK_NULL_HANDLE);
-    }
-    { ZoneScopedN(".core.properties");
-      VkPhysicalDeviceProperties properties;
-      vkGetPhysicalDeviceProperties(it->physical_device, &it->core.properties.basic);
-
-      VkPhysicalDeviceMemoryProperties memory_properties;
-      vkGetPhysicalDeviceMemoryProperties(it->physical_device, &it->core.properties.memory);
-
-      it->core.properties.ray_tracing = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR,
-      };
-      {
-        VkPhysicalDeviceProperties2 properties2 = {
-          .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-          .pNext = &it->core.properties.ray_tracing,
-        };
-        vkGetPhysicalDeviceProperties2(it->physical_device, &properties2);
-      }
-    }
-    { ZoneScopedN(".tracy_setup_command_pool");
-      VkCommandPoolCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = it->queue_family_index,
-      };
-      auto result = vkCreateCommandPool(
-        it->core.device,
-        &create_info,
-        it->core.allocator,
-        &it->tracy_setup_command_pool
-      );
-      assert(result == VK_SUCCESS);
-    }
-    { ZoneScopedN(".multi_alloc");
-      std::vector<lib::gfx::multi_alloc::Claim> claims;
-      claims.push_back({
-        .info = {
-          .buffer = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = the_mesh.triangle_count * 3 * sizeof(mesh::VertexT05),
-            .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-          },
-        },
-        .memory_property_flags = VkMemoryPropertyFlagBits(0
-          | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-          | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        ),
-        .p_stake_buffer = &it->geometry.vertex_stake,
-      });
-      claims.push_back({
-        .info = {
-          .buffer = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = sizeof(fullscreen_quad_data),
-            .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-          },
-        },
-        .memory_property_flags = VkMemoryPropertyFlagBits(0
-          | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-          | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        ),
-        .p_stake_buffer = &it->fullscreen_quad.vertex_stake,
-      });
-      lib::gfx::multi_alloc::init(
-        &it->multi_alloc,
-        std::move(claims),
-        it->core.device,
-        it->core.allocator,
-        &it->core.properties.basic,
-        &it->core.properties.memory
-      );
-    }
-
-    // for both pipelines
-    VkShaderModule module_frag = VK_NULL_HANDLE;
-    VkShaderModule module_vert = VK_NULL_HANDLE;
-
-    { ZoneScopedN("module_vert");
-      VkShaderModuleCreateInfo info = {
-        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = embedded_gpass_vert_len,
-        .pCode = (const uint32_t*) embedded_gpass_vert,
-      };
-      auto result = vkCreateShaderModule(
-        it->core.device,
-        &info,
-        it->core.allocator,
-        &module_vert
-      );
-      assert(result == VK_SUCCESS);
-    }
-
-    { ZoneScopedN("module_frag");
-      VkShaderModuleCreateInfo info = {
-        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = embedded_gpass_frag_len,
-        .pCode = (const uint32_t*) embedded_gpass_frag,
-      };
-      auto result = vkCreateShaderModule(
-        it->core.device,
-        &info,
-        it->core.allocator,
-        &module_frag
-      );
-      assert(result == VK_SUCCESS);
-    }
-
-    init_session_gpass(
-      &it->gpass,
-      &it->core,
-      module_vert,
-      module_frag
-    );
-
-    init_session_prepass(
-      &it->prepass,
-      &it->gpass,
-      &it->core,
-      module_vert
-    );
-
-    init_session_lpass(
-      &it->lpass,
-      &it->core
-    );
-
-    init_session_finalpass(
-      &it->finalpass,
-      &it->core
-    );
-
-    vkDestroyShaderModule(
-      it->core.device,
-      module_frag,
-      it->core.allocator
-    );
-    vkDestroyShaderModule(
-      it->core.device,
-      module_vert,
-      it->core.allocator
-    );
-
-    { ZoneScopedN(".geometry");
-      it->geometry.triangle_count = the_mesh.triangle_count;
-      void * data;
-      {
-        auto result = vkMapMemory(
-          it->core.device,
-          it->geometry.vertex_stake.memory,
-          it->geometry.vertex_stake.offset,
-          it->geometry.vertex_stake.size,
-          0,
-          &data
-        );
-        assert(result == VK_SUCCESS);
-      }
-      memcpy(data, the_mesh.vertices, the_mesh.triangle_count * 3 * sizeof(mesh::VertexT05));
-      vkUnmapMemory(
-        it->core.device,
-        it->geometry.vertex_stake.memory
-      );
-    }
-    { ZoneScopedN(".fullscreen_quad");
-      it->fullscreen_quad.triangle_count = sizeof(fullscreen_quad_data) / sizeof(glm::vec2);
-      void * data;
-      {
-        auto result = vkMapMemory(
-          it->core.device,
-          it->fullscreen_quad.vertex_stake.memory,
-          it->fullscreen_quad.vertex_stake.offset,
-          it->fullscreen_quad.vertex_stake.size,
-          0,
-          &data
-        );
-        assert(result == VK_SUCCESS);
-      }
-      assert(it->fullscreen_quad.vertex_stake.size == sizeof(fullscreen_quad_data));
-      memcpy(data, fullscreen_quad_data, sizeof(fullscreen_quad_data));
-      vkUnmapMemory(
-        it->core.device,
-        it->fullscreen_quad.vertex_stake.memory
-      );
-    }
-    { ZoneScopedN(".core.tracy_context");
-      auto gpdctd = (PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT)
-        vkGetInstanceProcAddr(session->vulkan.instance, "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT");
-      auto gct = (PFN_vkGetCalibratedTimestampsEXT)
-        vkGetInstanceProcAddr(session->vulkan.instance, "vkGetCalibratedTimestampsEXT");
-      assert(gpdctd != nullptr);
-      assert(gct != nullptr);
-      VkCommandBuffer cmd;
-      {
-        auto info = VkCommandBufferAllocateInfo {
-          .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-          .commandPool = session->vulkan.tracy_setup_command_pool,
-          .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-          .commandBufferCount = 1,
-        };
-        auto result = vkAllocateCommandBuffers(session->vulkan.core.device, &info, &cmd);
-        assert(result == VK_SUCCESS);
-      }
-      session->vulkan.core.tracy_context = TracyVkContextCalibrated(
-        session->vulkan.physical_device,
-        session->vulkan.core.device,
-        session->vulkan.queue_work,
-        cmd,
-        gpdctd,
-        gct
-      );
-    }
+  {
   }
+  auto vulkan = &session->vulkan;
+  auto session_setup_data = init_vulkan(vulkan, glfw, &the_mesh);
+
   { ZoneScopedN(".gpu_signal_support");
-    session->gpu_signal_support = lib::gpu_signal::init_support(
+    auto it = &session->gpu_signal_support;
+    *it = lib::gpu_signal::init_support(
       ctx->runner,
-      session->vulkan.core.device,
-      session->vulkan.core.allocator
+      vulkan->core.device,
+      vulkan->core.allocator
     );
   }
-  session->info.worker_count = *worker_count;
-  session->state = { .debug_camera = lib::debug_camera::init() };
-  session->state.debug_camera.position = glm::vec3(0.0f, -5.0f, 0.0f);
-  // session is fully initialized at this point
+
   { ZoneScopedN("the_mesh_unload");
     mesh::deinit_t05(&the_mesh);
   }
 
+  // when the structs change, recheck that .changed_parents are still valid.
+  {
+    const auto size = sizeof(SessionData);
+    static_assert(size == 1976);
+  }
+  {
+    const auto size = sizeof(SessionData::Vulkan);
+    static_assert(size == 1840);
+  }
+
   auto task_iteration = task::create(session_iteration, yarn_end, session);
+  auto task_setup_cleanup = task::create(session_setup_cleanup, session_setup_data);
   auto task_cleanup = task::create(defer, task::create(session_cleanup, session));
   task::inject(ctx->runner, {
     task_iteration,
     task_cleanup,
   }, {
     .new_dependencies = {
+      { signal_setup_finished, task_iteration },
+      { signal_setup_finished, task_setup_cleanup },
       { yarn_end, task_cleanup }
     },
     .changed_parents = {
@@ -584,10 +934,11 @@ void session(
           &session->vulkan.core,
           &session->vulkan.queue_present,
           &session->vulkan.queue_work,
-          &session->vulkan.queue_family_index,
+          &session->vulkan.core.queue_family_index,
           &session->vulkan.tracy_setup_command_pool,
           &session->vulkan.multi_alloc,
           &session->vulkan.geometry,
+          &session->vulkan.textures,
           &session->vulkan.fullscreen_quad,
           &session->vulkan.gpass,
           &session->vulkan.lpass,

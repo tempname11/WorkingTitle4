@@ -4,10 +4,12 @@
 #include <TracyVulkan.hpp>
 #include <src/lib/gpu_signal.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
+#include <src/lib/gfx/texture.hxx>
 #include <src/lib/debug_camera.hxx>
 
 struct SessionData : lib::task::ParentResource {
   struct GLFW {
+    bool ready;
     GLFWwindow *window;
     glm::ivec2 last_window_position;
     glm::ivec2 last_window_size;
@@ -15,6 +17,7 @@ struct SessionData : lib::task::ParentResource {
   } glfw;
 
   struct Vulkan : lib::task::ParentResource {
+    bool ready;
     VkInstance instance;
     VkDebugUtilsMessengerEXT debug_messenger;
     VkSurfaceKHR window_surface;
@@ -30,11 +33,12 @@ struct SessionData : lib::task::ParentResource {
         VkPhysicalDeviceMemoryProperties memory;
         VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing;
       } properties;
+
+      uint32_t queue_family_index;
     } core;
 
     VkQueue queue_present;
     VkQueue queue_work; // graphics, compute, transfer
-    uint32_t queue_family_index;
 
     VkCommandPool tracy_setup_command_pool;
 
@@ -44,6 +48,11 @@ struct SessionData : lib::task::ParentResource {
       lib::gfx::multi_alloc::StakeBuffer vertex_stake;
       size_t triangle_count;
     } geometry;
+
+    struct Textures {
+      lib::gfx::multi_alloc::StakeImage albedo_stake;
+      VkImageView albedo_view;
+    } textures;
 
     struct FullscreenQuad {
       lib::gfx::multi_alloc::StakeBuffer vertex_stake;
@@ -81,8 +90,10 @@ struct SessionData : lib::task::ParentResource {
   } vulkan;
 
   struct ImguiContext {
-    // ImGui::* and ImGui_ImplGlfw_*
-    uint8_t padding;
+    bool ready;
+    // Dummy struct for uture-proofing and demagic-ing.
+    // ImGui::* and ImGui_ImplGlfw_* functions use a global singleton,
+    // but if they took a parameter, we'd store that here.
   } imgui_context;
 
   lib::gpu_signal::Support gpu_signal_support;
@@ -96,4 +107,11 @@ struct SessionData : lib::task::ParentResource {
     bool is_fullscreen;
     lib::debug_camera::State debug_camera;
   } state;
+};
+
+struct SessionSetupData {
+  lib::gfx::multi_alloc::Instance multi_alloc;
+  lib::gfx::multi_alloc::StakeBuffer albedo_staging_stake;
+  texture::Data<uint8_t> albedo;
+  VkCommandPool command_pool;
 };

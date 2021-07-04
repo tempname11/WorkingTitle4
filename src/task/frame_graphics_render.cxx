@@ -5,7 +5,8 @@ void record_geometry_draw_commands(
   SessionData::Vulkan::Core *core,
   DescriptorPool *descriptor_pool,
   SessionData::Vulkan::GPass* s_gpass,
-  SessionData::Vulkan::Geometry* geometry
+  SessionData::Vulkan::Geometry* geometry,
+  SessionData::Vulkan::Textures* textures
 ) {
   VkDescriptorSet descriptor_set;
   { ZoneScoped("descriptor_set");
@@ -27,7 +28,7 @@ void record_geometry_draw_commands(
 
     VkDescriptorImageInfo albedo_image_info = {
       .sampler = s_gpass->sampler_albedo,
-      .imageView = _,
+      .imageView = textures->albedo_view,
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
     VkWriteDescriptorSet writes[] = {
@@ -69,7 +70,8 @@ void record_prepass(
   RenderingData::FrameInfo *frame_info,
   SessionData::Vulkan::Prepass *s_prepass,
   SessionData::Vulkan::GPass *s_gpass,
-  SessionData::Vulkan::Geometry *geometry
+  SessionData::Vulkan::Geometry* geometry,
+  SessionData::Vulkan::Textures* textures
 ) {
   VkClearValue clear_values[] = {
     {1.0f, 0.0f},
@@ -112,7 +114,8 @@ void record_prepass(
     core,
     descriptor_pool,
     s_gpass,
-    geometry
+    geometry,
+    textures
   );
   vkCmdEndRenderPass(cmd);
 }
@@ -125,7 +128,8 @@ void record_gpass(
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::FrameInfo *frame_info,
   SessionData::Vulkan::GPass *s_gpass,
-  SessionData::Vulkan::Geometry *geometry
+  SessionData::Vulkan::Geometry *geometry,
+  SessionData::Vulkan::Textures *textures
 ) {
   VkClearValue clear_values[] = {
     {0.0f, 0.0f, 0.0f, 0.0f},
@@ -170,7 +174,8 @@ void record_gpass(
     core,
     descriptor_pool,
     s_gpass,
-    geometry
+    geometry,
+    textures
   );
   vkCmdEndRenderPass(cmd);
 }
@@ -655,6 +660,7 @@ void frame_graphics_render(
   usage::Some<SessionData::Vulkan::LPass> s_lpass,
   usage::Some<SessionData::Vulkan::Finalpass> s_finalpass,
   usage::Some<SessionData::Vulkan::Geometry> geometry,
+  usage::Some<SessionData::Vulkan::Textures> textures,
   usage::Some<SessionData::Vulkan::FullscreenQuad> fullscreen_quad,
   usage::Full<GraphicsData> data
 ) {
@@ -704,7 +710,8 @@ void frame_graphics_render(
       frame_info.ptr,
       s_prepass.ptr,
       s_gpass.ptr,
-      geometry.ptr
+      geometry.ptr,
+      textures.ptr
     );
   }
 
@@ -729,7 +736,8 @@ void frame_graphics_render(
       swapchain_description.ptr,
       frame_info.ptr,
       s_gpass.ptr,
-      geometry.ptr
+      geometry.ptr,
+      textures.ptr
     );
   }
 

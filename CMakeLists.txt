@@ -82,6 +82,7 @@ add_executable (
   engine
   WIN32
   "src/impl/global_overload.cxx"
+  "src/impl/stb_image.cxx"
   ${SRC_LIB}
   ${SRC_ENGINE}
   ${SRC_TASK}

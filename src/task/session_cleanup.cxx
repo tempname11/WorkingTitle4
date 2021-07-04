@@ -11,6 +11,7 @@ void session_cleanup(
   usage::Full<SessionData> session
 ) {
   ZoneScoped;
+
   { ZoneScopedN(".gpu_signal_support");
     lib::gpu_signal::deinit_support(
       &session->gpu_signal_support,
@@ -20,25 +21,20 @@ void session_cleanup(
   }
   { ZoneScopedN(".vulkan");
     auto it = &session->vulkan;
+    auto core = &it->core;
 
-    deinit_session_prepass(
-      &session->vulkan.prepass,
-      &session->vulkan.core
-    );
+    deinit_session_prepass(&it->prepass, core);
 
-    deinit_session_gpass(
-      &session->vulkan.gpass,
-      &session->vulkan.core
-    );
+    deinit_session_gpass(&it->gpass, core);
 
-    deinit_session_lpass(
-      &session->vulkan.lpass,
-      &session->vulkan.core
-    );
+    deinit_session_lpass(&it->lpass, core);
 
-    deinit_session_finalpass(
-      &session->vulkan.finalpass,
-      &session->vulkan.core
+    deinit_session_finalpass(&it->finalpass, core);
+
+    vkDestroyImageView(
+      core->device,
+      it->textures.albedo_view,
+      core->allocator
     );
 
     { ZoneScopedN(".multi_alloc");
