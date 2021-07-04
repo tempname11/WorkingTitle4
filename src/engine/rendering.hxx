@@ -28,6 +28,11 @@ namespace rendering {
   };
 }
 
+struct DescriptorPool {
+  std::mutex mutex;
+  VkDescriptorPool pool;
+};
+
 const VkFormat SWAPCHAIN_FORMAT = VK_FORMAT_B8G8R8A8_SRGB;
 const VkFormat ZBUFFER_FORMAT = VK_FORMAT_D32_SFLOAT;
 const VkFormat GBUFFER_CHANNEL0_FORMAT = VK_FORMAT_R16G16B16A16_SNORM;
@@ -81,6 +86,9 @@ struct RenderingData : lib::task::ParentResource {
   typedef std::vector<CommandPool2> CommandPools;
   CommandPools command_pools;
 
+  typedef std::vector<DescriptorPool> DescriptorPools;
+  DescriptorPools descriptor_pools;
+
   VkSemaphore graphics_finished_semaphore;
   VkSemaphore imgui_finished_semaphore;
   VkSemaphore frame_finished_semaphore;
@@ -129,7 +137,7 @@ struct RenderingData : lib::task::ParentResource {
     } stakes;
 
     std::vector<VkFramebuffer> framebuffers;
-    std::vector<VkDescriptorSet> descriptor_sets;
+    std::vector<VkDescriptorSet> descriptor_sets_frame;
   } gpass;
 
   struct LPass {

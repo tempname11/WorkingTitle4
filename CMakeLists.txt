@@ -38,14 +38,18 @@ file (GLOB_RECURSE SRC_TASK CONFIGURE_DEPENDS "src/task/*.cxx")
 
 add_subdirectory(submodule/fmt)
 
-include_directories (
+include_directories(
+  SYSTEM
   $ENV{CUSTOM_INCLUDE_PATH}
-  ${CMAKE_SOURCE_DIR}
   ${CMAKE_SOURCE_DIR}/submodule/imgui
   ${CMAKE_SOURCE_DIR}/submodule/glm
   ${CMAKE_SOURCE_DIR}/submodule/tracy
   ${CMAKE_SOURCE_DIR}/submodule/tinygltf
   ${CMAKE_SOURCE_DIR}/submodule/fmt/include
+)
+
+include_directories (
+  ${CMAKE_SOURCE_DIR}
 )
 
 add_executable (
@@ -101,3 +105,5 @@ target_compile_definitions(engine PUBLIC TRACY_ON_DEMAND=1)
 target_link_directories (engine PUBLIC $ENV{CUSTOM_LINK_PATH})
 target_link_libraries (engine glfw3 vulkan-1) 
 target_link_libraries(engine fmt::fmt-header-only)
+
+message(clp = $ENV{CUSTOM_LINK_PATH})

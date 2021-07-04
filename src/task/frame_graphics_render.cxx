@@ -2,8 +2,58 @@
 
 void record_geometry_draw_commands(
   VkCommandBuffer cmd,
-  SessionData::Vulkan::Geometry *geometry
+  SessionData::Vulkan::Core *core,
+  DescriptorPool *descriptor_pool,
+  SessionData::Vulkan::GPass* s_gpass,
+  SessionData::Vulkan::Geometry* geometry
 ) {
+  VkDescriptorSet descriptor_set;
+  { ZoneScoped("descriptor_set");
+    {
+      std::scoped_lock lock(descriptor_pool->mutex);
+      VkDescriptorSetAllocateInfo allocate_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = descriptor_pool->pool,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &s_gpass->descriptor_set_layout_mesh,
+      };
+      auto result = vkAllocateDescriptorSets(
+        core->device,
+        &allocate_info,
+        &descriptor_set
+      );
+      assert(result == VK_SUCCESS);
+    }
+
+    VkDescriptorImageInfo albedo_image_info = {
+      .sampler = s_gpass->sampler_albedo,
+      .imageView = _,
+      .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
+    VkWriteDescriptorSet writes[] = {
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_set,
+        .dstBinding = 0,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .pImageInfo = &albedo_image_info,
+      },
+    };
+    vkUpdateDescriptorSets(
+      core->device,
+      sizeof(writes) / sizeof(*writes),
+      writes,
+      0, nullptr
+    );
+  }
+  vkCmdBindDescriptorSets(
+    cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    s_gpass->pipeline_layout,
+    1, 1, &descriptor_set,
+    0, nullptr
+  );
   VkDeviceSize offset = 0;
   vkCmdBindVertexBuffers(cmd, 0, 1, &geometry->vertex_stake.buffer, &offset);
   vkCmdDraw(cmd, geometry->triangle_count * 3, 1, 0, 0);
@@ -11,6 +61,8 @@ void record_geometry_draw_commands(
 
 void record_prepass(
   VkCommandBuffer cmd,
+  SessionData::Vulkan::Core *core,
+  DescriptorPool *descriptor_pool,
   RenderingData::Prepass *prepass,
   RenderingData::GPass *gpass,
   RenderingData::SwapchainDescription *swapchain_description,
@@ -52,27 +104,28 @@ void record_prepass(
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
     s_gpass->pipeline_layout,
-    0, 1, &gpass->descriptor_sets[frame_info->inflight_index],
+    0, 1, &gpass->descriptor_sets_frame[frame_info->inflight_index],
     0, nullptr
   );
-  vkCmdBindDescriptorSets(
-    cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    s_gpass->pipeline_layout,
-    0, 1, &gpass->descriptor_sets[frame_info->inflight_index],
-    0, nullptr
+  record_geometry_draw_commands(
+    cmd,
+    core,
+    descriptor_pool,
+    s_gpass,
+    geometry
   );
-  record_geometry_draw_commands(cmd, geometry);
   vkCmdEndRenderPass(cmd);
 }
 
 void record_gpass(
   VkCommandBuffer cmd,
+  SessionData::Vulkan::Core *core,
+  DescriptorPool *descriptor_pool,
   RenderingData::GPass *gpass,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::FrameInfo *frame_info,
   SessionData::Vulkan::GPass *s_gpass,
   SessionData::Vulkan::Geometry *geometry
-
 ) {
   VkClearValue clear_values[] = {
     {0.0f, 0.0f, 0.0f, 0.0f},
@@ -109,10 +162,16 @@ void record_gpass(
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
     s_gpass->pipeline_layout,
-    0, 1, &gpass->descriptor_sets[frame_info->inflight_index],
+    0, 1, &gpass->descriptor_sets_frame[frame_info->inflight_index],
     0, nullptr
   );
-  record_geometry_draw_commands(cmd, geometry);
+  record_geometry_draw_commands(
+    cmd,
+    core,
+    descriptor_pool,
+    s_gpass,
+    geometry
+  );
   vkCmdEndRenderPass(cmd);
 }
 
@@ -582,6 +641,7 @@ void frame_graphics_render(
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::CommandPools> command_pools,
   usage::Some<RenderingData::FrameInfo> frame_info,
+  usage::Some<RenderingData::DescriptorPools> descriptor_pools,
   usage::Some<RenderingData::Prepass> prepass,
   usage::Some<RenderingData::GPass> gpass,
   usage::Some<RenderingData::LPass> lpass,
@@ -631,9 +691,13 @@ void frame_graphics_render(
     zbuffer.ptr
   );
 
+  auto descriptor_pool = &(*descriptor_pools)[frame_info->inflight_index];
+
   { TracyVkZone(core->tracy_context, cmd, "prepass");
     record_prepass(
       cmd,
+      core.ptr,
+      descriptor_pool,
       prepass.ptr,
       gpass.ptr,
       swapchain_description.ptr,
@@ -659,6 +723,8 @@ void frame_graphics_render(
   { TracyVkZone(core->tracy_context, cmd, "gpass");
     record_gpass(
       cmd,
+      core.ptr,
+      descriptor_pool,
       gpass.ptr,
       swapchain_description.ptr,
       frame_info.ptr,

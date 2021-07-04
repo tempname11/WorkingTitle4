@@ -6,7 +6,7 @@ layout(location = 1) in vec3 normal;
 
 layout(location = 0) out vec3 view_space_normal;
 
-layout(binding = 0) uniform Frame {
+layout(set = 0, binding = 0) uniform Frame {
   mat4 projection;
   mat4 view;
   mat4 projection_inverse;

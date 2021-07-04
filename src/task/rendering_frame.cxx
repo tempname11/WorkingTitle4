@@ -82,6 +82,7 @@ void rendering_frame(
       frame_reset_pools,
       &session->vulkan.core,
       &data->command_pools,
+      &data->descriptor_pools,
       frame_info
     ),
     task::create(

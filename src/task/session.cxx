@@ -324,20 +324,20 @@ void session(
       assert(it->queue_present != VK_NULL_HANDLE);
       assert(it->queue_work != VK_NULL_HANDLE);
     }
-    { ZoneScopedN(".properties");
+    { ZoneScopedN(".core.properties");
       VkPhysicalDeviceProperties properties;
-      vkGetPhysicalDeviceProperties(it->physical_device, &it->properties.basic);
+      vkGetPhysicalDeviceProperties(it->physical_device, &it->core.properties.basic);
 
       VkPhysicalDeviceMemoryProperties memory_properties;
-      vkGetPhysicalDeviceMemoryProperties(it->physical_device, &it->properties.memory);
+      vkGetPhysicalDeviceMemoryProperties(it->physical_device, &it->core.properties.memory);
 
-      it->properties.ray_tracing = {
+      it->core.properties.ray_tracing = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR,
       };
       {
         VkPhysicalDeviceProperties2 properties2 = {
           .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-          .pNext = &it->properties.ray_tracing,
+          .pNext = &it->core.properties.ray_tracing,
         };
         vkGetPhysicalDeviceProperties2(it->physical_device, &properties2);
       }
@@ -395,8 +395,8 @@ void session(
         std::move(claims),
         it->core.device,
         it->core.allocator,
-        &it->properties.basic,
-        &it->properties.memory
+        &it->core.properties.basic,
+        &it->core.properties.memory
       );
     }
 
@@ -582,7 +582,6 @@ void session(
           &session->vulkan.window_surface,
           &session->vulkan.physical_device,
           &session->vulkan.core,
-          &session->vulkan.properties,
           &session->vulkan.queue_present,
           &session->vulkan.queue_work,
           &session->vulkan.queue_family_index,

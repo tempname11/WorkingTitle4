@@ -8,17 +8,12 @@ void init_session_gpass(
   VkShaderModule module_frag
 ) {
   ZoneScoped;
-  VkDescriptorSetLayout descriptor_set_layout;
-  { ZoneScopedN("descriptor_set_layout");
+
+  VkDescriptorSetLayout descriptor_set_layout_frame;
+  { ZoneScopedN("descriptor_set_layout_frame");
     VkDescriptorSetLayoutBinding layout_bindings[] = {
       {
         .binding = 0,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_ALL,
-      },
-      {
-        .binding = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL,
@@ -34,17 +29,53 @@ void init_session_gpass(
         core->device,
         &create_info,
         core->allocator,
-        &descriptor_set_layout
+        &descriptor_set_layout_frame
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+
+  VkDescriptorSetLayout descriptor_set_layout_mesh;
+  { ZoneScopedN("descriptor_set_layout_mesh");
+    VkDescriptorSetLayoutBinding layout_bindings[] = {
+      {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
+      {
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
+    };
+    VkDescriptorSetLayoutCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
+      .pBindings = layout_bindings,
+    };
+    {
+      auto result = vkCreateDescriptorSetLayout(
+        core->device,
+        &create_info,
+        core->allocator,
+        &descriptor_set_layout_mesh
       );
       assert(result == VK_SUCCESS);
     }
   }
   VkPipelineLayout pipeline_layout;
   { ZoneScopedN("pipeline_layout");
+    VkDescriptorSetLayout layouts[] = {
+      descriptor_set_layout_frame,
+      descriptor_set_layout_mesh,
+    };
     VkPipelineLayoutCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 1,
-      .pSetLayouts = &descriptor_set_layout,
+      .setLayoutCount = sizeof(layouts) / sizeof(*layouts),
+      .pSetLayouts = layouts,
     };
     {
       auto result = vkCreatePipelineLayout(
@@ -299,11 +330,31 @@ void init_session_gpass(
       assert(result == VK_SUCCESS);
     }
   }
+  VkSampler sampler_albedo;
+  { ZoneScopedN("sampler_albedo");
+    VkSamplerCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+      .magFilter = VK_FILTER_LINEAR,
+      .minFilter = VK_FILTER_LINEAR,
+      .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+      .anisotropyEnable = true,
+      .maxAnisotropy = core->properties.basic.limits.maxSamplerAnisotropy,
+      .maxLod = VK_LOD_CLAMP_NONE,
+    };
+    vkCreateSampler(
+      core->device,
+      &create_info,
+      core->allocator,
+      &sampler_albedo
+    );
+  }
   *out = {
-    .descriptor_set_layout = descriptor_set_layout,
+    .descriptor_set_layout_frame = descriptor_set_layout_frame,
+    .descriptor_set_layout_mesh = descriptor_set_layout_mesh,
     .pipeline_layout = pipeline_layout,
     .render_pass = render_pass,
     .pipeline = pipeline,
+    .sampler_albedo = sampler_albedo,
   };
 }
 
@@ -312,9 +363,19 @@ void deinit_session_gpass(
   SessionData::Vulkan::Core *core
 ) {
   ZoneScoped;
+  vkDestroySampler(
+    core->device,
+    it->sampler_albedo,
+    core->allocator
+  );
   vkDestroyDescriptorSetLayout(
     core->device,
-    it->descriptor_set_layout,
+    it->descriptor_set_layout_frame,
+    core->allocator
+  );
+  vkDestroyDescriptorSetLayout(
+    core->device,
+    it->descriptor_set_layout_mesh,
     core->allocator
   );
   vkDestroyPipelineLayout(
@@ -375,12 +436,12 @@ void init_rendering_gpass(
   SessionData::Vulkan::Core *core
 ) {
   ZoneScoped;
-  std::vector<VkDescriptorSet> descriptor_sets;
-  { ZoneScopedN("descriptor_sets");
-    descriptor_sets.resize(swapchain_description->image_count);
+  std::vector<VkDescriptorSet> descriptor_sets_frame;
+  { ZoneScopedN("descriptor_sets_frame");
+    descriptor_sets_frame.resize(swapchain_description->image_count);
     std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
     for (auto &layout : layouts) {
-      layout = s_gpass->descriptor_set_layout;
+      layout = s_gpass->descriptor_set_layout_frame;
     }
     VkDescriptorSetAllocateInfo allocate_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -392,7 +453,7 @@ void init_rendering_gpass(
       auto result = vkAllocateDescriptorSets(
         core->device,
         &allocate_info,
-        descriptor_sets.data()
+        descriptor_sets_frame.data()
       );
       assert(result == VK_SUCCESS);
     }
@@ -410,7 +471,7 @@ void init_rendering_gpass(
       VkWriteDescriptorSet writes[] = {
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-          .dstSet = descriptor_sets[i],
+          .dstSet = descriptor_sets_frame[i],
           .dstBinding = 0,
           .dstArrayElement = 0,
           .descriptorCount = 1,
@@ -419,7 +480,7 @@ void init_rendering_gpass(
         },
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-          .dstSet = descriptor_sets[i],
+          .dstSet = descriptor_sets_frame[i],
           .dstBinding = 1,
           .dstArrayElement = 0,
           .descriptorCount = 1,
@@ -434,6 +495,7 @@ void init_rendering_gpass(
       );
     }
   }
+
   std::vector<VkFramebuffer> framebuffers;
   { ZoneScopedN("framebuffers");
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
@@ -465,10 +527,11 @@ void init_rendering_gpass(
       framebuffers.push_back(framebuffer);
     }
   }
+
   *out = {
     .stakes = stakes,
     .framebuffers = framebuffers,
-    .descriptor_sets = descriptor_sets,
+    .descriptor_sets_frame = descriptor_sets_frame,
   };
 }
 

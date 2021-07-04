@@ -34,11 +34,12 @@ lib::task::Task *create(
 
   // sanity check
   uint64_t current;
-  vkGetSemaphoreCounterValue(device, semaphore, &current);
+  auto result = vkGetSemaphoreCounterValue(device, semaphore, &current);
+  assert(result == VK_SUCCESS);
   assert(current < value);
 
   {
-    std::scoped_lock(it->storage->mutex);
+    std::scoped_lock lock(it->storage->mutex);
     it->storage->entries.push_back(entry);
     it->storage->new_entries_value++;
     VkSemaphoreSignalInfo signal_info = {
@@ -173,7 +174,7 @@ void deinit_support(
 ) {
   ZoneScoped;
   {
-    std::scoped_lock(it->storage->mutex);
+    std::scoped_lock lock(it->storage->mutex);
     assert(it->storage->entries.size() == 0);
     it->storage->new_entries_value++;
     VkSemaphoreSignalInfo signal_info = {

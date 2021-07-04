@@ -144,6 +144,44 @@ void session_iteration_try_rendering(
     }
   }
 
+  RenderingData::DescriptorPools descriptor_pools;
+  { ZoneScopedN("descriptor_pools");
+    descriptor_pools.resize(swapchain_image_count);
+    for (auto &pool : descriptor_pools) {
+      // "large enough"
+      const uint32_t COMMON_DESCRIPTOR_COUNT = 1024;
+      const uint32_t COMMON_DESCRIPTOR_MAX_SETS = 256;
+
+      VkDescriptorPoolSize sizes[] = {
+        { VK_DESCRIPTOR_TYPE_SAMPLER, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, COMMON_DESCRIPTOR_COUNT },
+        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, COMMON_DESCRIPTOR_COUNT },
+      };
+      VkDescriptorPoolCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, 
+        .maxSets = COMMON_DESCRIPTOR_MAX_SETS,
+        .poolSizeCount = 1,
+        .pPoolSizes = sizes,
+      };
+      auto result = vkCreateDescriptorPool(
+        session->vulkan.core.device,
+        &create_info,
+        session->vulkan.core.allocator,
+        &pool.pool
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+  rendering->descriptor_pools = descriptor_pools;
+
   { ZoneScopedN(".frame_finished_semaphore");
     VkSemaphoreTypeCreateInfo timeline_info = {
       .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
@@ -403,8 +441,8 @@ void session_iteration_try_rendering(
       std::move(claims),
       session->vulkan.core.device,
       session->vulkan.core.allocator,
-      &session->vulkan.properties.basic,
-      &session->vulkan.properties.memory
+      &session->vulkan.core.properties.basic,
+      &session->vulkan.core.properties.memory
     );
   }
 
@@ -809,6 +847,7 @@ void session_iteration_try_rendering(
       &rendering->imgui_backend,
       &rendering->latest_frame,
       &rendering->command_pools,
+      &rendering->descriptor_pools,
       &rendering->graphics_finished_semaphore,
       &rendering->imgui_finished_semaphore,
       &rendering->frame_finished_semaphore,

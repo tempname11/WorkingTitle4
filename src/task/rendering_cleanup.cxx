@@ -106,6 +106,13 @@ void rendering_cleanup(
       );
     }
   }
+  for (auto &pool : data->descriptor_pools) {
+    vkDestroyDescriptorPool(
+      vulkan->core.device,
+      pool.pool,
+      vulkan->core.allocator
+    );
+  }
   for (size_t i = 0; i < data->swapchain_description.image_count; i++) {
     vkDestroySemaphore(
       vulkan->core.device,

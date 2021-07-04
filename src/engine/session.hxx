@@ -24,13 +24,13 @@ struct SessionData : lib::task::ParentResource {
       VkDevice device;
       const VkAllocationCallbacks *allocator;
       tracy::VkCtx *tracy_context;
-    } core;
 
-    struct CoreProperties {
-      VkPhysicalDeviceProperties basic;
-      VkPhysicalDeviceMemoryProperties memory;
-      VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing;
-    } properties;
+      struct Properties {
+        VkPhysicalDeviceProperties basic;
+        VkPhysicalDeviceMemoryProperties memory;
+        VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing;
+      } properties;
+    } core;
 
     VkQueue queue_present;
     VkQueue queue_work; // graphics, compute, transfer
@@ -56,10 +56,12 @@ struct SessionData : lib::task::ParentResource {
     } prepass;
 
     struct GPass {
-      VkDescriptorSetLayout descriptor_set_layout;
+      VkDescriptorSetLayout descriptor_set_layout_frame;
+      VkDescriptorSetLayout descriptor_set_layout_mesh;
       VkPipelineLayout pipeline_layout; // shared with prepass!
       VkRenderPass render_pass;
       VkPipeline pipeline;
+      VkSampler sampler_albedo;
     } gpass;
 
     struct LPass {
