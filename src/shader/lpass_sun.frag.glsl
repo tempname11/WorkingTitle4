@@ -91,5 +91,4 @@ void main() {
   vec3 ambient = 0.03 * albedo * ao;
 
   result = ambient + radiance_outgoing;
-  result.r = depth;
 }

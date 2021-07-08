@@ -18,4 +18,10 @@ TASK_DECL {
      data->command_pool,
      core->allocator
    );
+
+   vkDestroySemaphore(
+     core->device,
+     data->semaphore_finished,
+     core->allocator
+   );
 }

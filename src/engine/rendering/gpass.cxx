@@ -40,13 +40,13 @@ void init_session_gpass(
     VkDescriptorSetLayoutBinding layout_bindings[] = {
       {
         .binding = 0,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL,
       },
       {
         .binding = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL,
       },
@@ -205,7 +205,13 @@ void init_session_gpass(
         .binding = 0,
         .format = VK_FORMAT_R32G32B32_SFLOAT,
         .offset = offsetof(mesh::VertexT05, normal),
-      }
+      },
+      {
+        .location = 2,
+        .binding = 0,
+        .format = VK_FORMAT_R32G32_SFLOAT,
+        .offset = offsetof(mesh::VertexT05, uv),
+      },
     };
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -463,11 +469,13 @@ void init_rendering_gpass(
         .offset = 0,
         .range = VK_WHOLE_SIZE,
       };
+      /*
       VkDescriptorBufferInfo ubo_material_info = {
         .buffer = stakes.ubo_material[i].buffer,
         .offset = 0,
         .range = VK_WHOLE_SIZE,
       };
+      */
       VkWriteDescriptorSet writes[] = {
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -478,6 +486,7 @@ void init_rendering_gpass(
           .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           .pBufferInfo = &ubo_frame_info,
         },
+        /*
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
           .dstSet = descriptor_sets_frame[i],
@@ -487,6 +496,7 @@ void init_rendering_gpass(
           .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           .pBufferInfo = &ubo_material_info,
         },
+        */
       };
       vkUpdateDescriptorSets(
         core->device,

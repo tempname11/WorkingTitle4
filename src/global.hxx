@@ -11,12 +11,11 @@ enum QueueIndex {
   QUEUE_COUNT
 };
 
+void _log(std::string &str);
+
 #define LOG(...) {\
   auto str = fmt::format(__VA_ARGS__);\
-  TracyMessage(str.data(), str.size());\
-  printf(str.data());\
-  printf("\n");\
-  fflush(stdout);\
+  _log(str);\
 }
 
 #define DBG LOG

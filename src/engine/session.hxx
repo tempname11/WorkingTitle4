@@ -114,4 +114,5 @@ struct SessionSetupData {
   lib::gfx::multi_alloc::StakeBuffer albedo_staging_stake;
   texture::Data<uint8_t> albedo;
   VkCommandPool command_pool;
+  VkSemaphore semaphore_finished;
 };

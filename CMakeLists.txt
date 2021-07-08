@@ -71,6 +71,7 @@ add_executable (
   taskmark
   "src/exe/taskmark.cxx"
   "src/impl/global_overload.cxx"
+  "src/impl/log.cxx"
   "src/lib/task.cxx"
   "${CMAKE_SOURCE_DIR}/submodule/tracy/TracyClient.cpp"
 )
@@ -82,6 +83,7 @@ add_executable (
   engine
   WIN32
   "src/impl/global_overload.cxx"
+  "src/impl/log.cxx"
   "src/impl/stb_image.cxx"
   ${SRC_LIB}
   ${SRC_ENGINE}

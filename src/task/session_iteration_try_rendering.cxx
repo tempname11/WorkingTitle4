@@ -129,7 +129,7 @@ void session_iteration_try_rendering(
         {
           VkCommandPoolCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            .queueFamilyIndex = session->vulkan.queue_family_index,
+            .queueFamilyIndex = session->vulkan.core.queue_family_index,
           };
           auto result = vkCreateCommandPool(
             session->vulkan.core.device,
@@ -657,7 +657,7 @@ void session_iteration_try_rendering(
     { ZoneScopedN(".setup_command_pool");
       VkCommandPoolCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .queueFamilyIndex = session->vulkan.queue_family_index,
+        .queueFamilyIndex = session->vulkan.core.queue_family_index,
       };
       auto result = vkCreateCommandPool(
         session->vulkan.core.device,
@@ -765,7 +765,7 @@ void session_iteration_try_rendering(
         .Instance = session->vulkan.instance,
         .PhysicalDevice = session->vulkan.physical_device,
         .Device = session->vulkan.core.device,
-        .QueueFamily = session->vulkan.queue_family_index,
+        .QueueFamily = session->vulkan.core.queue_family_index,
         .Queue = session->vulkan.queue_work,
         .DescriptorPool = rendering->common.descriptor_pool,
         .Subpass = 0,
