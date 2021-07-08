@@ -7,6 +7,7 @@ void frame_imgui_render(
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Full<SessionData::ImguiContext> imgui_context,
   usage::Full<RenderingData::ImguiBackend> imgui_backend,
+  usage::Full<SessionData::GLFW> glfw, // hacky way to prevent KeyMods bug.
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::CommandPools> command_pools,
   usage::Some<RenderingData::FrameInfo> frame_info,

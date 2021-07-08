@@ -136,7 +136,8 @@ void rendering_frame(
     task::create(
       frame_imgui_new_frame,
       &session->imgui_context,
-      &data->imgui_backend
+      &data->imgui_backend,
+      &session->glfw
     ),
     task::create(
       frame_imgui_populate,
@@ -148,6 +149,7 @@ void rendering_frame(
       &session->vulkan.core,
       &session->imgui_context,
       &data->imgui_backend,
+      &session->glfw,
       &data->swapchain_description,
       &data->command_pools,
       frame_info,

@@ -109,7 +109,8 @@ void frame_imgui_populate(
 void frame_imgui_new_frame(
   task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   usage::Full<SessionData::ImguiContext> imgui,
-  usage::Full<RenderingData::ImguiBackend> imgui_backend
+  usage::Full<RenderingData::ImguiBackend> imgui_backend,
+  usage::Full<SessionData::GLFW> glfw
 );
 
 void frame_imgui_render(
@@ -117,6 +118,7 @@ void frame_imgui_render(
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Full<SessionData::ImguiContext> imgui_context,
   usage::Full<RenderingData::ImguiBackend> imgui_backend,
+  usage::Full<SessionData::GLFW> glfw,
   usage::Some<RenderingData::SwapchainDescription> swapchain_description,
   usage::Some<RenderingData::CommandPools> command_pools,
   usage::Some<RenderingData::FrameInfo> frame_info,
