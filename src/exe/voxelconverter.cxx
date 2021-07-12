@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <glm/glm.hpp>
 #include <glm/gtc/color_space.hpp>
-#include <src/lib/gfx/mesh.hxx>
+#include <src/engine/common/mesh.hxx>
 
 #define X 255
 uint8_t mc_table[256][16] = {
@@ -351,7 +351,7 @@ const glm::vec3 cube_normals[] = {
 
 namespace mesh {
   struct T05_Builder {
-    std::vector<VertexT05> vertices;
+    std::vector<engine::common::mesh::VertexT05> vertices;
   };
 
   void write(const char *out_filename, T05_Builder *mesh) {
@@ -413,7 +413,7 @@ void build_cubes(IntermediateData *data, mesh::T05_Builder *mesh) {
       auto bitangent = glm::cross(normal, tangent);
       auto scale = TEXTURE_MAPPING_SCALE;
       for (size_t j = 0; j < 6; j++) { // triangle vertices
-        mesh->vertices.push_back(mesh::VertexT05 {
+        mesh->vertices.push_back(engine::common::mesh::VertexT05 {
           .position = v[j],
           .tangent = tangent,
           .normal = normal,
@@ -544,7 +544,7 @@ void build_mc(IntermediateData *data, mesh::T05_Builder *mesh) {
       auto scale = TEXTURE_MAPPING_SCALE;
 
       for (size_t j = 0; j < 3; j++) {
-        mesh->vertices.push_back(mesh::VertexT05 {
+        mesh->vertices.push_back(engine::common::mesh::VertexT05 {
           .position = v[j],
           .tangent = tangent,
           .normal = normal,

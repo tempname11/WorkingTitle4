@@ -1,4 +1,4 @@
-#include <src/lib/gfx/mesh.hxx>
+#include <src/engine/common/mesh.hxx>
 #include "gpass.hxx"
 
 void claim_rendering_common(

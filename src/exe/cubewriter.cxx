@@ -3,7 +3,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
-#include <src/lib/gfx/mesh.hxx>
+#include <src/engine/common/mesh.hxx>
 
 const glm::vec3 cube_vertices[36] = {
   // -XY
@@ -155,7 +155,7 @@ int main(int argc, char** argv) {
   fwrite(&triangle_count, 1, sizeof(triangle_count), out);
   float zero = 0.0;
   for (size_t i = 0; i < 3 * triangle_count; i++) {
-    mesh::VertexT05 v = {};
+    engine::common::mesh::VertexT05 v = {};
     v.position = cube_vertices[i];
     v.tangent = cube_tangents[i / 3];
     v.normal = cube_normals[i / 3];

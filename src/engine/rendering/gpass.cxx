@@ -1,4 +1,4 @@
-#include <src/lib/gfx/mesh.hxx>
+#include <src/engine/common/mesh.hxx>
 #include "gpass.hxx"
 
 void init_session_gpass(
@@ -46,6 +46,12 @@ void init_session_gpass(
       },
       {
         .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
+      {
+        .binding = 2,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL,
@@ -189,7 +195,7 @@ void init_session_gpass(
     VkVertexInputBindingDescription binding_descriptions[] = {
       {
         .binding = 0,
-        .stride = sizeof(mesh::VertexT05),
+        .stride = sizeof(engine::common::mesh::VertexT05),
         .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
       },
     };
@@ -198,19 +204,19 @@ void init_session_gpass(
         .location = 0,
         .binding = 0,
         .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(mesh::VertexT05, position),
+        .offset = offsetof(engine::common::mesh::VertexT05, position),
       },
       {
         .location = 1,
         .binding = 0,
         .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(mesh::VertexT05, normal),
+        .offset = offsetof(engine::common::mesh::VertexT05, normal),
       },
       {
         .location = 2,
         .binding = 0,
         .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(mesh::VertexT05, uv),
+        .offset = offsetof(engine::common::mesh::VertexT05, uv),
       },
     };
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {

@@ -33,7 +33,7 @@ void session_cleanup(
 
     vkDestroyImageView(
       core->device,
-      it->textures.albedo_view,
+      it->textures.albedo.view,
       core->allocator
     );
 

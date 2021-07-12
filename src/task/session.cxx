@@ -2,12 +2,14 @@
 #include <stb_image.h>
 #include <backends/imgui_impl_glfw.h>
 #include <src/embedded.hxx>
+#include <src/engine/mesh.hxx>
+#include <src/engine/texture.hxx>
+#include <src/engine/common/mesh.hxx>
+#include <src/engine/common/texture.hxx>
 #include <src/engine/rendering/prepass.hxx>
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
-#include <src/lib/gfx/mesh.hxx>
-#include <src/lib/gfx/texture.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include "session_setup_cleanup.hxx"
 #include "task.hxx"
@@ -37,50 +39,6 @@ glm::vec2 fullscreen_quad_data[] = { // not a quad now!
   { +3.0f, -1.0f },
 };
 
-namespace mesh {
-  T05 read_t05_file(const char *filename) {
-    auto file = fopen(filename, "rb");
-    assert(file != nullptr);
-    fseek(file, 0, SEEK_END);
-    auto size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    auto buffer = (uint8_t *) malloc(size);
-    fread((void *) buffer, 1, size, file);
-    assert(ferror(file) == 0);
-    fclose(file);
-    auto triangle_count = *((uint32_t*) buffer);
-    assert(size == sizeof(uint32_t) + sizeof(VertexT05) * 3 * triangle_count);
-    return {
-      .buffer = buffer,
-      .triangle_count = triangle_count,
-      // three vertices per triangle
-      .vertices = ((VertexT05 *) (buffer + sizeof(uint32_t))),
-    };
-  }
-
-  void deinit_t05(T05 *it) {
-    free(it->buffer);
-  }
-}
-
-const auto ALBEDO_TEXTURE_FORMAT = VK_FORMAT_R8G8B8A8_SRGB;
-const size_t ALBEDO_TEXEL_SIZE = 4;
-
-namespace texture {
-  texture::Data<uint8_t> load_rgba8(const char *filename) {
-    int width, height, _channels = 4;
-    auto data = stbi_load(filename, &width, &height, &_channels, 4);
-    assert(data != nullptr);
-    return texture::Data<uint8_t> {
-      .data = data,
-      .width = width,
-      .height = height,
-      .channels = 4,
-      .computed_mip_levels = lib::gfx::utilities::mip_levels(width, height),
-    };
-  }
-}
-
 void prepare_textures(
   SessionData::Vulkan::Textures *it,
   SessionData::Vulkan::Core *core,
@@ -88,39 +46,6 @@ void prepare_textures(
   SessionSetupData *setup_data
 ) {
   ZoneScoped;
-  { ZoneScopedN("create_command_pool");
-    VkCommandPoolCreateInfo create_info = {
-      .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-      .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-      .queueFamilyIndex = core->queue_family_index,
-    };
-    auto result = vkCreateCommandPool(
-      core->device,
-      &create_info,
-      core->allocator,
-      &setup_data->command_pool
-    );
-    assert(result == VK_SUCCESS);
-  }
-  { ZoneScopedN("copy_to_buffer");
-    void *mem = nullptr;
-    auto result = vkMapMemory(
-      core->device,
-      setup_data->albedo_staging_stake.memory,
-      setup_data->albedo_staging_stake.offset,
-      setup_data->albedo_staging_stake.size,
-      0, &mem
-    );
-    assert(result == VK_SUCCESS);
-    memcpy(
-      mem,
-      setup_data->albedo.data,
-      ALBEDO_TEXEL_SIZE
-        * setup_data->albedo.width
-        * setup_data->albedo.height
-    );
-    vkUnmapMemory(core->device, setup_data->albedo_staging_stake.memory);
-  }
 
    VkCommandBuffer cmd;
   { ZoneScopedN("allocate_command_buffer");
@@ -149,138 +74,30 @@ void prepare_textures(
     assert(result == VK_SUCCESS);
   }
 
-  { TracyVkZone(core->tracy_context, cmd, "prepare_textures");
-    { // transition before copy
-      VkImageMemoryBarrier barrier = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .srcAccessMask = 0,
-        .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .newLayout = VK_IMAGE_LAYOUT_GENERAL,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = it->albedo_stake.image,
-        .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .baseMipLevel = 0,
-          .levelCount = setup_data->albedo.computed_mip_levels,
-          .baseArrayLayer = 0,
-          .layerCount = 1,
-        },
-      };
+  engine::texture::prepare(
+    &setup_data->albedo,
+    &it->albedo,
+    &setup_data->albedo_staging_stake,
+    core,
+    cmd,
+    queue_work
+  );
 
-      vkCmdPipelineBarrier(
-        cmd, 
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        0,
-        0, nullptr,
-        0, nullptr,
-        1, &barrier
-      );
-    }
-
-    { // copy
-      VkBufferImageCopy region = {
-        .imageSubresource = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .mipLevel = 0,
-          .layerCount = 1,
-        },
-        .imageExtent = {
-          .width = uint32_t(setup_data->albedo.width),
-          .height = uint32_t(setup_data->albedo.height),
-          .depth = 1,
-        },
-      };
-
-      vkCmdCopyBufferToImage(
-        cmd,
-        setup_data->albedo_staging_stake.buffer,
-        it->albedo_stake.image,
-        VK_IMAGE_LAYOUT_GENERAL,
-        1, &region
-      );
-    }
-
-    { // generate mip levels
-      auto w = int32_t(setup_data->albedo.width);
-      auto h = int32_t(setup_data->albedo.height);
-
-      for (uint32_t m = 0; m < setup_data->albedo.computed_mip_levels - 1; m++) {
-        auto next_w = w > 1 ? w / 2 : 1;
-        auto next_h = h > 1 ? h / 2 : 1;
-        VkImageBlit blit = {
-          .srcSubresource = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .mipLevel = m,
-            .layerCount = 1,
-          },
-          .srcOffsets = {
-            {},
-            { .x = w, .y = h, .z = 1, },
-          },
-          .dstSubresource = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .mipLevel = m + 1,
-            .layerCount = 1,
-          },
-          .dstOffsets = {
-            {},
-            { .x = next_w, .y = next_h, .z = 1, },
-          },
-        };
-        vkCmdBlitImage(
-          cmd,
-          it->albedo_stake.image, VK_IMAGE_LAYOUT_GENERAL,
-          it->albedo_stake.image, VK_IMAGE_LAYOUT_GENERAL,
-          1, &blit,
-          VK_FILTER_LINEAR
-        );
-        w = next_w;
-        h = next_h;
-      }
-    }
-
-    { // transition after copy
-      VkImageMemoryBarrier barrier = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-        .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-        .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
-        .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = it->albedo_stake.image,
-        .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .baseMipLevel = 0,
-          .levelCount = setup_data->albedo.computed_mip_levels,
-          .baseArrayLayer = 0,
-          .layerCount = 1,
-        },
-      };
-
-      // VK_PIPELINE_STAGE_ALL_COMMANDS here means:
-      //  we don't know who will be using this texture.
-      vkCmdPipelineBarrier(
-        cmd, 
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        0,
-        0, nullptr,
-        0, nullptr,
-        1, &barrier
-      );
-    }
-  }
+  engine::texture::prepare(
+    &setup_data->normal,
+    &it->normal,
+    &setup_data->normal_staging_stake,
+    core,
+    cmd,
+    queue_work
+  );
 
   { // end
     auto result = vkEndCommandBuffer(cmd);
     assert(result == VK_SUCCESS);
   }
 
-  {
+  { // submit
     uint64_t one = 1;
     auto timeline_info = VkTimelineSemaphoreSubmitInfo {
       .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
@@ -308,13 +125,14 @@ void prepare_textures(
 SessionSetupData *init_vulkan(
   SessionData::Vulkan *it,
   SessionData::GLFW *glfw,
-  mesh::T05 *the_mesh
+  engine::common::mesh::T05 *the_mesh
 ) {
   ZoneScoped;
   auto core = &it->core;
 
   auto session_setup_data = new SessionSetupData {
-    .albedo = texture::load_rgba8("assets/texture/albedo.jpg"),
+    .albedo = engine::texture::load_rgba8("assets/texture/albedo.jpg"),
+    .normal = engine::texture::load_rgba8("assets/texture/normal.jpg"),
   };
 
   // don't use the allocator callbacks
@@ -560,7 +378,7 @@ SessionSetupData *init_vulkan(
       .info = {
         .buffer = {
           .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-          .size = the_mesh->triangle_count * 3 * sizeof(mesh::VertexT05),
+          .size = the_mesh->triangle_count * 3 * sizeof(engine::common::mesh::VertexT05),
           .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
           .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         },
@@ -593,7 +411,7 @@ SessionSetupData *init_vulkan(
         .image = {
           .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
           .imageType = VK_IMAGE_TYPE_2D,
-          .format = ALBEDO_TEXTURE_FORMAT,
+          .format = engine::texture::ALBEDO_TEXTURE_FORMAT,
           .extent = {
             .width = uint32_t(session_setup_data->albedo.width),
             .height = uint32_t(session_setup_data->albedo.height),
@@ -613,7 +431,34 @@ SessionSetupData *init_vulkan(
         },
       },
       .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      .p_stake_image = &it->textures.albedo_stake,
+      .p_stake_image = &it->textures.albedo.stake,
+    });
+    claims.push_back({
+      .info = {
+        .image = {
+          .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+          .imageType = VK_IMAGE_TYPE_2D,
+          .format = engine::texture::NORMAL_TEXTURE_FORMAT,
+          .extent = {
+            .width = uint32_t(session_setup_data->normal.width),
+            .height = uint32_t(session_setup_data->normal.height),
+            .depth = 1,
+          },
+          .mipLevels = session_setup_data->normal.computed_mip_levels,
+          .arrayLayers = 1,
+          .samples = VK_SAMPLE_COUNT_1_BIT,
+          .tiling = VK_IMAGE_TILING_OPTIMAL,
+          .usage = (0
+            | VK_IMAGE_USAGE_SAMPLED_BIT
+            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT // for mips
+            | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+          ),
+          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        },
+      },
+      .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      .p_stake_image = &it->textures.normal.stake,
     });
     lib::gfx::multi_alloc::init(
       &it->multi_alloc,
@@ -634,7 +479,7 @@ SessionSetupData *init_vulkan(
            .size = VkDeviceSize(
               session_setup_data->albedo.width *
               session_setup_data->albedo.height *
-              ALBEDO_TEXEL_SIZE
+              engine::texture::ALBEDO_TEXEL_SIZE
            ),
            .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
@@ -645,6 +490,25 @@ SessionSetupData *init_vulkan(
          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
        ),
        .p_stake_buffer = &session_setup_data->albedo_staging_stake,
+    });
+     claims.push_back({
+       .info = {
+         .buffer = {
+           .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+           .size = VkDeviceSize(
+              session_setup_data->normal.width *
+              session_setup_data->normal.height *
+              engine::texture::NORMAL_TEXEL_SIZE
+           ),
+           .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+           .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+         },
+       },
+       .memory_property_flags = VkMemoryPropertyFlagBits(0
+         | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+       ),
+       .p_stake_buffer = &session_setup_data->normal_staging_stake,
     });
     lib::gfx::multi_alloc::init(
       &session_setup_data->multi_alloc,
@@ -657,24 +521,45 @@ SessionSetupData *init_vulkan(
   }
 
   { ZoneScopedN("textures");
-    VkImageView image_view;
-    VkImageViewCreateInfo create_info = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-      .image = it->textures.albedo_stake.image,
-      .viewType = VK_IMAGE_VIEW_TYPE_2D,
-      .format = ALBEDO_TEXTURE_FORMAT,
-      .subresourceRange = {
-        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-        .levelCount = session_setup_data->albedo.computed_mip_levels,
-        .layerCount = 1,
-      },
-    };
     {
+      VkImageView image_view;
+      VkImageViewCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = it->textures.albedo.stake.image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = engine::texture::ALBEDO_TEXTURE_FORMAT,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .levelCount = session_setup_data->albedo.computed_mip_levels,
+          .layerCount = 1,
+        },
+      };
       auto result = vkCreateImageView(
         core->device,
         &create_info,
         core->allocator,
-        &it->textures.albedo_view
+        &it->textures.albedo.view
+      );
+      assert(result == VK_SUCCESS);
+    }
+    {
+      VkImageView image_view;
+      VkImageViewCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = it->textures.normal.stake.image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = engine::texture::NORMAL_TEXTURE_FORMAT,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .levelCount = session_setup_data->normal.computed_mip_levels,
+          .layerCount = 1,
+        },
+      };
+      auto result = vkCreateImageView(
+        core->device,
+        &create_info,
+        core->allocator,
+        &it->textures.normal.view
       );
       assert(result == VK_SUCCESS);
     }
@@ -763,7 +648,11 @@ SessionSetupData *init_vulkan(
       );
       assert(result == VK_SUCCESS);
     }
-    memcpy(data, the_mesh->vertices, the_mesh->triangle_count * 3 * sizeof(mesh::VertexT05));
+    memcpy(
+      data,
+      the_mesh->vertices,
+      the_mesh->triangle_count * 3 * sizeof(engine::common::mesh::VertexT05)
+    );
     vkUnmapMemory(
       it->core.device,
       it->geometry.vertex_stake.memory
@@ -843,7 +732,24 @@ SessionSetupData *init_vulkan(
     }
   }
 
+  VkCommandPool setup_command_pool;
+  { ZoneScopedN("setup_command_pool");
+    VkCommandPoolCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+      .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+      .queueFamilyIndex = core->queue_family_index,
+    };
+    auto result = vkCreateCommandPool(
+      core->device,
+      &create_info,
+      core->allocator,
+      &setup_command_pool
+    );
+    assert(result == VK_SUCCESS);
+  }
+
   session_setup_data->semaphore_finished = semaphore_setup_finished;
+  session_setup_data->command_pool = setup_command_pool;
 
   return session_setup_data;
 }
@@ -856,9 +762,9 @@ void session(
   auto session = new SessionData;
   auto yarn_end = task::create_yarn_signal();
 
-  mesh::T05 the_mesh;
+  engine::common::mesh::T05 the_mesh;
   { ZoneScopedN("the_mesh_load");
-    the_mesh = mesh::read_t05_file("assets/mesh.t05");
+    the_mesh = engine::mesh::read_t05_file("assets/mesh.t05");
   }
 
   { ZoneScopedN(".glfw");
@@ -948,17 +854,17 @@ void session(
   );
 
   { ZoneScopedN("the_mesh_unload");
-    mesh::deinit_t05(&the_mesh);
+    engine::mesh::deinit_t05(&the_mesh);
   }
 
   // when the structs change, recheck that .changed_parents are still valid.
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 1976);
+    static_assert(size == 2016);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 1840);
+    static_assert(size == 1880);
   }
 
   auto task_iteration = task::create(

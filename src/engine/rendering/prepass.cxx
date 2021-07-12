@@ -1,4 +1,4 @@
-#include <src/lib/gfx/mesh.hxx>
+#include <src/engine/common/mesh.hxx>
 #include "prepass.hxx"
 
 void init_session_prepass(
@@ -61,7 +61,7 @@ void init_session_prepass(
     VkVertexInputBindingDescription binding_descriptions[] = {
       {
         .binding = 0,
-        .stride = sizeof(mesh::VertexT05),
+        .stride = sizeof(engine::common::mesh::VertexT05),
         .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
       },
     };
@@ -70,19 +70,19 @@ void init_session_prepass(
         .location = 0,
         .binding = 0,
         .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(mesh::VertexT05, position),
+        .offset = offsetof(engine::common::mesh::VertexT05, position),
       },
       {
         .location = 1,
         .binding = 0,
         .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(mesh::VertexT05, normal),
+        .offset = offsetof(engine::common::mesh::VertexT05, normal),
       },
       {
         .location = 2,
         .binding = 0,
         .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(mesh::VertexT05, uv),
+        .offset = offsetof(engine::common::mesh::VertexT05, uv),
       },
     };
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {

@@ -8,6 +8,7 @@ layout(location = 1) out vec4 gchannel1;
 layout(location = 2) out vec4 gchannel2; 
 
 layout(set = 1, binding = 0) uniform sampler2D albedo_image;
+layout(set = 1, binding = 1) uniform sampler2D normal_image;
 /*
 layout(set = 1, binding = 1) uniform Material {
   // material
@@ -19,7 +20,7 @@ layout(set = 1, binding = 1) uniform Material {
 */
 
 void main() {
-  vec3 material_albedo = texture(albedo_image, uv).rgb;
+  vec3 material_albedo = texture(normal_image, uv).rgb;
   float material_metallic = 0.0;
   float material_roughness = 0.5;
   float material_ao = 1.0;

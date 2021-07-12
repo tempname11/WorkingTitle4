@@ -2,9 +2,9 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <TracyVulkan.hpp>
+#include <src/engine/common/texture.hxx>
 #include <src/lib/gpu_signal.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
-#include <src/lib/gfx/texture.hxx>
 #include <src/lib/debug_camera.hxx>
 
 struct SessionData : lib::task::ParentResource {
@@ -50,8 +50,8 @@ struct SessionData : lib::task::ParentResource {
     } geometry;
 
     struct Textures {
-      lib::gfx::multi_alloc::StakeImage albedo_stake;
-      VkImageView albedo_view;
+      engine::common::texture::GPU_Data albedo;
+      engine::common::texture::GPU_Data normal;
     } textures;
 
     struct FullscreenQuad {
@@ -91,7 +91,7 @@ struct SessionData : lib::task::ParentResource {
 
   struct ImguiContext {
     bool ready;
-    // Dummy struct for uture-proofing and demagic-ing.
+    // Dummy struct for future-proofing and demagic-ing.
     // ImGui::* and ImGui_ImplGlfw_* functions use a global singleton,
     // but if they took a parameter, we'd store that here.
   } imgui_context;
@@ -112,7 +112,9 @@ struct SessionData : lib::task::ParentResource {
 struct SessionSetupData {
   lib::gfx::multi_alloc::Instance multi_alloc;
   lib::gfx::multi_alloc::StakeBuffer albedo_staging_stake;
-  texture::Data<uint8_t> albedo;
+  lib::gfx::multi_alloc::StakeBuffer normal_staging_stake;
+  engine::common::texture::Data<uint8_t> albedo;
+  engine::common::texture::Data<uint8_t> normal;
   VkCommandPool command_pool;
   VkSemaphore semaphore_finished;
 };

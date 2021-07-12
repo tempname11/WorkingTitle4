@@ -1,7 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 
-namespace mesh {
+namespace engine::common::mesh {
   struct VertexT05 {
     glm::vec3 position; uint8_t _pad0[4];
     glm::vec3 tangent; uint8_t _pad1[4];

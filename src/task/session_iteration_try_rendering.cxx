@@ -1,12 +1,12 @@
 #include <backends/imgui_impl_vulkan.h>
 #include <src/embedded.hxx>
+#include <src/engine/common/mesh.hxx>
 #include <src/engine/rendering/common.hxx>
 #include <src/engine/rendering/prepass.hxx>
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/lib/gfx/utilities.hxx>
-#include <src/lib/gfx/mesh.hxx>
 #include "task.hxx"
 
 void session_iteration_try_rendering(

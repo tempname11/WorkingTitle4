@@ -28,7 +28,12 @@ void record_geometry_draw_commands(
 
     VkDescriptorImageInfo albedo_image_info = {
       .sampler = s_gpass->sampler_albedo,
-      .imageView = textures->albedo_view,
+      .imageView = textures->albedo.view,
+      .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
+    VkDescriptorImageInfo normal_image_info = {
+      .sampler = s_gpass->sampler_albedo, // same for now
+      .imageView = textures->normal.view,
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
     VkWriteDescriptorSet writes[] = {
@@ -40,6 +45,15 @@ void record_geometry_draw_commands(
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .pImageInfo = &albedo_image_info,
+      },
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_set,
+        .dstBinding = 1,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .pImageInfo = &normal_image_info,
       },
     };
     vkUpdateDescriptorSets(

@@ -1,5 +1,6 @@
 ### currently
-- texturing
+- normal map
+- roughness-metallic-AO map 
 
 ### refactoring
 - move engine/rendering/** -> engine/**
