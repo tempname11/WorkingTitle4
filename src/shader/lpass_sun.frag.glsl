@@ -74,9 +74,10 @@ void main() {
   float HdotV = max(0.0, dot(H, V));
 
   vec3 albedo = subpassLoad(gchannel1).rgb;
-  float metallic = subpassLoad(gchannel2).r;
-  float roughness = subpassLoad(gchannel2).g;
-  float ao = subpassLoad(gchannel2).b;
+  vec3 romeao = subpassLoad(gchannel2).rgb;
+  float roughness = romeao.r;
+  float metallic = romeao.g;
+  float ao = romeao.b;
 
   // light model
   vec3 F0 = mix(F0_dielectric, albedo, metallic);

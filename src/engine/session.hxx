@@ -52,6 +52,7 @@ struct SessionData : lib::task::ParentResource {
     struct Textures {
       engine::common::texture::GPU_Data albedo;
       engine::common::texture::GPU_Data normal;
+      engine::common::texture::GPU_Data romeao;
     } textures;
 
     struct FullscreenQuad {
@@ -113,8 +114,10 @@ struct SessionSetupData {
   lib::gfx::multi_alloc::Instance multi_alloc;
   lib::gfx::multi_alloc::StakeBuffer albedo_staging_stake;
   lib::gfx::multi_alloc::StakeBuffer normal_staging_stake;
+  lib::gfx::multi_alloc::StakeBuffer romeao_staging_stake;
   engine::common::texture::Data<uint8_t> albedo;
   engine::common::texture::Data<uint8_t> normal;
+  engine::common::texture::Data<uint8_t> romeao;
   VkCommandPool command_pool;
   VkSemaphore semaphore_finished;
 };

@@ -11,8 +11,9 @@ layout(location = 2) out vec4 gchannel2;
 
 layout(set = 1, binding = 0) uniform sampler2D albedo_image;
 layout(set = 1, binding = 1) uniform sampler2D normal_image;
+layout(set = 1, binding = 2) uniform sampler2D romeao_image;
 /*
-layout(set = 1, binding = 1) uniform Material {
+layout(set = 1, binding = 4) uniform Material {
   // material
   vec3 albedo;
   float metallic;
@@ -24,9 +25,7 @@ layout(set = 1, binding = 1) uniform Material {
 void main() {
   vec3 albedo = texture(albedo_image, uv).rgb;
   vec3 normalmap = texture(normal_image, uv).rgb;
-  float material_metallic = 0.0;
-  float material_roughness = 0.5;
-  float material_ao = 1.0;
+  vec3 romeao = texture(romeao_image, uv).rgb;
   vec3 N = normalize(0
 	+ view_space_tangent * normalmap.x
 	+ view_space_bitangent * normalmap.y
@@ -34,5 +33,5 @@ void main() {
   );
   gchannel0 = vec4(N, 0.0);
   gchannel1 = vec4(albedo, 0.0);
-  gchannel2 = vec4(material_metallic, material_roughness, material_ao, 0.0);
+  gchannel2 = vec4(romeao, 0.0);
 }

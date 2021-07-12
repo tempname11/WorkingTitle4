@@ -36,6 +36,11 @@ void record_geometry_draw_commands(
       .imageView = textures->normal.view,
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
+    VkDescriptorImageInfo romeao_image_info = {
+      .sampler = s_gpass->sampler_albedo, // same for now
+      .imageView = textures->romeao.view,
+      .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
     VkWriteDescriptorSet writes[] = {
       {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -54,6 +59,15 @@ void record_geometry_draw_commands(
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .pImageInfo = &normal_image_info,
+      },
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_set,
+        .dstBinding = 2,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .pImageInfo = &romeao_image_info,
       },
     };
     vkUpdateDescriptorSets(

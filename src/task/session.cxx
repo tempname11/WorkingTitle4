@@ -92,6 +92,15 @@ void prepare_textures(
     queue_work
   );
 
+  engine::texture::prepare(
+    &setup_data->romeao,
+    &it->romeao,
+    &setup_data->romeao_staging_stake,
+    core,
+    cmd,
+    queue_work
+  );
+
   { // end
     auto result = vkEndCommandBuffer(cmd);
     assert(result == VK_SUCCESS);
@@ -133,6 +142,7 @@ SessionSetupData *init_vulkan(
   auto session_setup_data = new SessionSetupData {
     .albedo = engine::texture::load_rgba8("assets/texture/albedo.jpg"),
     .normal = engine::texture::load_rgba8("assets/texture/normal.jpg"),
+    .romeao = engine::texture::load_rgba8("assets/texture/romeao.png"),
   };
 
   // don't use the allocator callbacks
@@ -460,6 +470,33 @@ SessionSetupData *init_vulkan(
       .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
       .p_stake_image = &it->textures.normal.stake,
     });
+    claims.push_back({
+      .info = {
+        .image = {
+          .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+          .imageType = VK_IMAGE_TYPE_2D,
+          .format = engine::texture::ROMEAO_TEXTURE_FORMAT,
+          .extent = {
+            .width = uint32_t(session_setup_data->romeao.width),
+            .height = uint32_t(session_setup_data->romeao.height),
+            .depth = 1,
+          },
+          .mipLevels = session_setup_data->romeao.computed_mip_levels,
+          .arrayLayers = 1,
+          .samples = VK_SAMPLE_COUNT_1_BIT,
+          .tiling = VK_IMAGE_TILING_OPTIMAL,
+          .usage = (0
+            | VK_IMAGE_USAGE_SAMPLED_BIT
+            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT // for mips
+            | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+          ),
+          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        },
+      },
+      .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      .p_stake_image = &it->textures.romeao.stake,
+    });
     lib::gfx::multi_alloc::init(
       &it->multi_alloc,
       std::move(claims),
@@ -472,43 +509,62 @@ SessionSetupData *init_vulkan(
 
   { ZoneScopedN("setup_multi_alloc");
     std::vector<lib::gfx::multi_alloc::Claim> claims;
-     claims.push_back({
-       .info = {
-         .buffer = {
-           .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-           .size = VkDeviceSize(
-              session_setup_data->albedo.width *
-              session_setup_data->albedo.height *
-              engine::texture::ALBEDO_TEXEL_SIZE
-           ),
-           .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-           .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-         },
-       },
-       .memory_property_flags = VkMemoryPropertyFlagBits(0
-         | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-       ),
-       .p_stake_buffer = &session_setup_data->albedo_staging_stake,
+    claims.push_back({
+      .info = {
+        .buffer = {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+          .size = VkDeviceSize(
+             session_setup_data->albedo.width *
+             session_setup_data->albedo.height *
+             engine::texture::ALBEDO_TEXEL_SIZE
+          ),
+          .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        },
+      },
+      .memory_property_flags = VkMemoryPropertyFlagBits(0
+        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+      ),
+      .p_stake_buffer = &session_setup_data->albedo_staging_stake,
     });
-     claims.push_back({
-       .info = {
-         .buffer = {
-           .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-           .size = VkDeviceSize(
-              session_setup_data->normal.width *
-              session_setup_data->normal.height *
-              engine::texture::NORMAL_TEXEL_SIZE
-           ),
-           .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-           .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-         },
-       },
-       .memory_property_flags = VkMemoryPropertyFlagBits(0
-         | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-       ),
-       .p_stake_buffer = &session_setup_data->normal_staging_stake,
+    claims.push_back({
+      .info = {
+        .buffer = {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+          .size = VkDeviceSize(
+             session_setup_data->normal.width *
+             session_setup_data->normal.height *
+             engine::texture::NORMAL_TEXEL_SIZE
+          ),
+          .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        },
+      },
+      .memory_property_flags = VkMemoryPropertyFlagBits(0
+        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+      ),
+      .p_stake_buffer = &session_setup_data->normal_staging_stake,
+    });
+    claims.push_back({
+      .info = {
+        .buffer = {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+          .size = VkDeviceSize(
+             session_setup_data->romeao.width *
+             session_setup_data->romeao.height *
+             engine::texture::ROMEAO_TEXEL_SIZE
+          ),
+          .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        },
+      },
+      .memory_property_flags = VkMemoryPropertyFlagBits(0
+        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+      ),
+      .p_stake_buffer = &session_setup_data->romeao_staging_stake,
     });
     lib::gfx::multi_alloc::init(
       &session_setup_data->multi_alloc,
@@ -560,6 +616,27 @@ SessionSetupData *init_vulkan(
         &create_info,
         core->allocator,
         &it->textures.normal.view
+      );
+      assert(result == VK_SUCCESS);
+    }
+    {
+      VkImageView image_view;
+      VkImageViewCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = it->textures.romeao.stake.image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = engine::texture::ROMEAO_TEXTURE_FORMAT,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .levelCount = session_setup_data->romeao.computed_mip_levels,
+          .layerCount = 1,
+        },
+      };
+      auto result = vkCreateImageView(
+        core->device,
+        &create_info,
+        core->allocator,
+        &it->textures.romeao.view
       );
       assert(result == VK_SUCCESS);
     }
@@ -860,11 +937,11 @@ void session(
   // when the structs change, recheck that .changed_parents are still valid.
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 2016);
+    static_assert(size == 2056);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 1880);
+    static_assert(size == 1920);
   }
 
   auto task_iteration = task::create(
