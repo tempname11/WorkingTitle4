@@ -1,7 +1,3 @@
-### currently
-- normal map
-- roughness-metallic-AO map 
-
 ### refactoring
 - move engine/rendering/** -> engine/**
 - move runtime stuff to engine/**

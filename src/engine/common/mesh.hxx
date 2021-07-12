@@ -5,8 +5,9 @@ namespace engine::common::mesh {
   struct VertexT05 {
     glm::vec3 position; uint8_t _pad0[4];
     glm::vec3 tangent; uint8_t _pad1[4];
-    glm::vec3 normal; uint8_t _pad2[4];
-    glm::vec2 uv; uint8_t _pad3[8];
+    glm::vec3 bitangent; uint8_t _pad2[4];
+    glm::vec3 normal; uint8_t _pad3[4];
+    glm::vec2 uv; uint8_t _pad4[8];
   };
   
   struct T05 {

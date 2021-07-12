@@ -76,10 +76,22 @@ void init_session_prepass(
         .location = 1,
         .binding = 0,
         .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT05, normal),
+        .offset = offsetof(engine::common::mesh::VertexT05, tangent),
       },
       {
         .location = 2,
+        .binding = 0,
+        .format = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset = offsetof(engine::common::mesh::VertexT05, bitangent),
+      },
+      {
+        .location = 3,
+        .binding = 0,
+        .format = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset = offsetof(engine::common::mesh::VertexT05, normal),
+      },
+      {
+        .location = 4,
         .binding = 0,
         .format = VK_FORMAT_R32G32_SFLOAT,
         .offset = offsetof(engine::common::mesh::VertexT05, uv),

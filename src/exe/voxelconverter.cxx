@@ -416,6 +416,7 @@ void build_cubes(IntermediateData *data, mesh::T05_Builder *mesh) {
         mesh->vertices.push_back(engine::common::mesh::VertexT05 {
           .position = v[j],
           .tangent = tangent,
+          .bitangent = bitangent,
           .normal = normal,
           .uv = scale * glm::vec2(glm::dot(v[j], tangent), glm::dot(v[j], bitangent)),
         });
@@ -547,6 +548,7 @@ void build_mc(IntermediateData *data, mesh::T05_Builder *mesh) {
         mesh->vertices.push_back(engine::common::mesh::VertexT05 {
           .position = v[j],
           .tangent = tangent,
+          .bitangent = bitangent,
           .normal = normal,
           .uv = scale * glm::vec2(glm::dot(v[j], tangent), glm::dot(v[j], bitangent)),
         });
