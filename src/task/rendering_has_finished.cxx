@@ -1,9 +1,6 @@
-#include "task.hxx"
+#include "rendering_has_finished.hxx"
 
-void rendering_has_finished(
-  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Full<task::Task> rendering_yarn_end
-) {
+TASK_DECL {
   ZoneScoped;
   lib::task::signal(ctx->runner, rendering_yarn_end.ptr);
 }

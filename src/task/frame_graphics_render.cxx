@@ -1,11 +1,11 @@
-#include "task.hxx"
+#include "frame_graphics_render.hxx"
 
 void record_geometry_draw_commands(
   VkCommandBuffer cmd,
   SessionData::Vulkan::Core *core,
   DescriptorPool *descriptor_pool,
   SessionData::Vulkan::GPass* s_gpass,
-  SessionData::Vulkan::Geometry* geometry,
+  RenderList *render_list,
   SessionData::Vulkan::Textures* textures
 ) {
   VkDescriptorSet descriptor_set;
@@ -84,8 +84,11 @@ void record_geometry_draw_commands(
     0, nullptr
   );
   VkDeviceSize offset = 0;
-  vkCmdBindVertexBuffers(cmd, 0, 1, &geometry->vertex_stake.buffer, &offset);
-  vkCmdDraw(cmd, geometry->triangle_count * 3, 1, 0, 0);
+  for (auto &item : render_list->items) {
+    // @Note: should use item.transform here!
+    vkCmdBindVertexBuffers(cmd, 0, 1, &item.mesh_buffer, &offset);
+    vkCmdDraw(cmd, item.mesh_vertex_count, 1, 0, 0);
+  }
 }
 
 void record_prepass(
@@ -98,7 +101,7 @@ void record_prepass(
   RenderingData::FrameInfo *frame_info,
   SessionData::Vulkan::Prepass *s_prepass,
   SessionData::Vulkan::GPass *s_gpass,
-  SessionData::Vulkan::Geometry* geometry,
+  RenderList *render_list,
   SessionData::Vulkan::Textures* textures
 ) {
   VkClearValue clear_values[] = {
@@ -142,7 +145,7 @@ void record_prepass(
     core,
     descriptor_pool,
     s_gpass,
-    geometry,
+    render_list,
     textures
   );
   vkCmdEndRenderPass(cmd);
@@ -156,7 +159,7 @@ void record_gpass(
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::FrameInfo *frame_info,
   SessionData::Vulkan::GPass *s_gpass,
-  SessionData::Vulkan::Geometry *geometry,
+  RenderList *render_list,
   SessionData::Vulkan::Textures *textures
 ) {
   VkClearValue clear_values[] = {
@@ -202,7 +205,7 @@ void record_gpass(
     core,
     descriptor_pool,
     s_gpass,
-    geometry,
+    render_list,
     textures
   );
   vkCmdEndRenderPass(cmd);
@@ -668,30 +671,7 @@ void record_barrier_finalpass_imgui(
   );
 }
 
-void frame_graphics_render(
-  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  usage::Some<SessionData::Vulkan::Core> core,
-  usage::Some<RenderingData::SwapchainDescription> swapchain_description,
-  usage::Some<RenderingData::CommandPools> command_pools,
-  usage::Some<RenderingData::FrameInfo> frame_info,
-  usage::Some<RenderingData::DescriptorPools> descriptor_pools,
-  usage::Some<RenderingData::Prepass> prepass,
-  usage::Some<RenderingData::GPass> gpass,
-  usage::Some<RenderingData::LPass> lpass,
-  usage::Some<RenderingData::Finalpass> finalpass,
-  usage::Some<RenderingData::ZBuffer> zbuffer,
-  usage::Some<RenderingData::GBuffer> gbuffer,
-  usage::Some<RenderingData::LBuffer> lbuffer,
-  usage::Some<RenderingData::FinalImage> final_image,
-  usage::Some<SessionData::Vulkan::Prepass> s_prepass,
-  usage::Some<SessionData::Vulkan::GPass> s_gpass,
-  usage::Some<SessionData::Vulkan::LPass> s_lpass,
-  usage::Some<SessionData::Vulkan::Finalpass> s_finalpass,
-  usage::Some<SessionData::Vulkan::Geometry> geometry,
-  usage::Some<SessionData::Vulkan::Textures> textures,
-  usage::Some<SessionData::Vulkan::FullscreenQuad> fullscreen_quad,
-  usage::Full<GraphicsData> data
-) {
+TASK_DECL {
   ZoneScoped;
   auto pool2 = &(*command_pools)[frame_info->inflight_index];
   VkCommandPool pool = command_pool_2_borrow(pool2);
@@ -738,7 +718,7 @@ void frame_graphics_render(
       frame_info.ptr,
       s_prepass.ptr,
       s_gpass.ptr,
-      geometry.ptr,
+      render_list.ptr,
       textures.ptr
     );
   }
@@ -764,7 +744,7 @@ void frame_graphics_render(
       swapchain_description.ptr,
       frame_info.ptr,
       s_gpass.ptr,
-      geometry.ptr,
+      render_list.ptr,
       textures.ptr
     );
   }

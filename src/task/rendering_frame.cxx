@@ -1,18 +1,27 @@
-#include "task.hxx"
+#include "defer.hxx"
+#include "frame_acquire.hxx"
+#include "frame_cleanup.hxx"
+#include "frame_compose_render.hxx"
+#include "frame_compose_submit.hxx"
+#include "frame_generate_render_list.hxx"
+#include "frame_graphics_render.hxx"
+#include "frame_graphics_submit.hxx"
+#include "frame_handle_window_events.hxx"
+#include "frame_imgui_new_frame.hxx"
+#include "frame_imgui_populate.hxx"
+#include "frame_imgui_render.hxx"
+#include "frame_imgui_submit.hxx"
+#include "frame_prepare_uniforms.hxx"
+#include "frame_present.hxx"
+#include "frame_reset_pools.hxx"
+#include "frame_setup_gpu_signal.hxx"
+#include "frame_update.hxx"
+#include "rendering_has_finished.hxx"
+#include "rendering_frame.hxx"
 
 // #define ENGINE_DEBUG_ARTIFICIAL_DELAY 33ms
 
-void rendering_frame(
-  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  usage::Full<task::Task> rendering_yarn_end,
-  usage::None<SessionData> session,
-  usage::None<RenderingData> data,
-  usage::Some<SessionData::GLFW> glfw,
-  usage::Some<RenderingData::PresentationFailureState> presentation_failure_state,
-  usage::Full<RenderingData::FrameInfo> latest_frame,
-  usage::Some<RenderingData::SwapchainDescription> swapchain_description,
-  usage::Some<RenderingData::InflightGPU> inflight_gpu
-) {
+TASK_DECL {
   ZoneScopedC(0xFF0000);
   FrameMark;
   #ifdef ENGINE_DEBUG_ARTIFICIAL_DELAY
@@ -57,6 +66,7 @@ void rendering_frame(
   auto graphics_data = new GraphicsData;
   auto imgui_data = new ImguiData;
   auto update_data = new UpdateData;
+  auto render_list = new RenderList;
   auto frame_tasks = new std::vector<task::Task *>({
     task::create(
       frame_handle_window_events,
@@ -103,6 +113,12 @@ void rendering_frame(
       &data->lpass
     ),
     task::create(
+      frame_generate_render_list,
+      &session->scene,
+      &session->vulkan.meshes,
+      render_list
+    ),
+    task::create(
       frame_graphics_render,
       &session->vulkan.core,
       &data->swapchain_description,
@@ -121,9 +137,9 @@ void rendering_frame(
       &session->vulkan.gpass,
       &session->vulkan.lpass,
       &session->vulkan.finalpass,
-      &session->vulkan.geometry,
       &session->vulkan.textures,
       &session->vulkan.fullscreen_quad,
+      render_list,
       graphics_data
     ),
     task::create(

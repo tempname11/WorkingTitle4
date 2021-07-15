@@ -1,8 +1,7 @@
-#include <src/engine/rendering.hxx>
-#include <src/engine/session.hxx>
-#include "task.hxx"
+#include "defer.hxx"
+#include "frame_setup_gpu_signal.hxx"
 
-void signal_cleanup(
+void signal_cleanup (
   task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   usage::Some<RenderingData::InflightGPU> inflight_gpu,
   usage::Full<uint8_t> inflight_index_saved
@@ -13,14 +12,7 @@ void signal_cleanup(
   delete inflight_index_saved.ptr;
 }
 
-void frame_setup_gpu_signal(
-  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  usage::Some<SessionData::Vulkan::Core> core,
-  usage::Some<lib::gpu_signal::Support> gpu_signal_support,
-  usage::Full<VkSemaphore> frame_rendered_semaphore,
-  usage::Full<RenderingData::InflightGPU> inflight_gpu,
-  usage::Some<RenderingData::FrameInfo> frame_info
-) {
+TASK_DECL {
   ZoneScoped;
   // don't use inflight_gpu->mutex, since out signal slot is currently unusedk
   assert(inflight_gpu->signals[frame_info->inflight_index] == nullptr);

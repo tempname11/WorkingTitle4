@@ -1,12 +1,6 @@
-#include "task.hxx"
+#include "frame_graphics_submit.hxx"
 
-void frame_graphics_submit(
-  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  usage::Full<VkQueue> queue_work,
-  usage::Some<VkSemaphore> example_finished_semaphore,
-  usage::Some<RenderingData::FrameInfo> frame_info,
-  usage::Full<GraphicsData> data
-) {
+TASK_DECL {
   ZoneScoped;
   auto timeline_info = VkTimelineSemaphoreSubmitInfo {
     .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,

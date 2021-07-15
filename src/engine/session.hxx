@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include <TracyVulkan.hpp>
 #include <src/engine/common/texture.hxx>
+#include <src/engine/common/mesh.hxx>
 #include <src/lib/gpu_signal.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
 #include <src/lib/debug_camera.hxx>
@@ -15,6 +16,15 @@ struct SessionData : lib::task::ParentResource {
     glm::ivec2 last_window_size;
     glm::vec2 last_known_mouse_cursor_position;
   } glfw;
+
+  struct Scene {
+    struct Item {
+      glm::mat4 transform;
+      size_t mesh_index;
+    };
+
+    std::vector<Item> items;
+  } scene;
 
   struct Vulkan : lib::task::ParentResource {
     bool ready;
@@ -44,10 +54,13 @@ struct SessionData : lib::task::ParentResource {
 
     lib::gfx::multi_alloc::Instance multi_alloc;
 
-    struct Geometry {
-      lib::gfx::multi_alloc::StakeBuffer vertex_stake;
-      size_t triangle_count;
-    } geometry;
+    struct Meshes {
+      struct Item {
+        engine::common::mesh::GPU_Data data;
+      };
+
+      std::vector<Item> items;
+    } meshes;
 
     struct Textures {
       engine::common::texture::GPU_Data albedo;

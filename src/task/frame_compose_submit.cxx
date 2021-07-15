@@ -1,15 +1,6 @@
-#include "task.hxx"
+#include "frame_compose_submit.hxx"
 
-void frame_compose_submit(
-  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  usage::Full<VkQueue> queue_work,
-  usage::Full<RenderingData::Presentation> presentation,
-  usage::Some<RenderingData::PresentationFailureState> presentation_failure_state,
-  usage::Some<VkSemaphore> frame_rendered_semaphore,
-  usage::Some<VkSemaphore> imgui_finished_semaphore,
-  usage::Some<RenderingData::FrameInfo> frame_info,
-  usage::Full<ComposeData> data
-) {
+TASK_DECL {
   ZoneScoped;
   {
     std::scoped_lock lock(presentation_failure_state->mutex);

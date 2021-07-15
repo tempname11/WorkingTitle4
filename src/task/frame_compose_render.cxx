@@ -1,16 +1,6 @@
-#include "task.hxx"
+#include "frame_compose_render.hxx"
 
-void frame_compose_render(
-  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  usage::Some<SessionData::Vulkan::Core> core,
-  usage::Some<RenderingData::Presentation> presentation,
-  usage::Some<RenderingData::PresentationFailureState> presentation_failure_state,
-  usage::Some<RenderingData::SwapchainDescription> swapchain_description,
-  usage::Some<RenderingData::CommandPools> command_pools,
-  usage::Some<RenderingData::FrameInfo> frame_info,
-  usage::Some<RenderingData::FinalImage> final_image,
-  usage::Full<ComposeData> data
-) {
+TASK_DECL {
   ZoneScoped;
   {
     std::scoped_lock lock(presentation_failure_state->mutex);

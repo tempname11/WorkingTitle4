@@ -1,15 +1,12 @@
 #include <imgui.h>
+#include <backends/imgui_impl_glfw.h>
 #include <src/engine/rendering/prepass.hxx>
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
-#include <backends/imgui_impl_glfw.h>
-#include "task.hxx"
+#include "session_cleanup.hxx"
 
-void session_cleanup(
-  task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
-  usage::Full<SessionData> session
-) {
+TASK_DECL {
   ZoneScoped;
 
   { ZoneScopedN(".gpu_signal_support");

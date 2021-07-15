@@ -1,10 +1,8 @@
-#include "task.hxx"
+#include "defer.hxx"
+#include "session_iteration_try_rendering.hxx"
+#include "session_iteration.hxx"
 
-void session_iteration(
-  task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
-  usage::Full<task::Task> session_yarn_end,
-  usage::Some<SessionData> data
-) {
+TASK_DECL {
   ZoneScoped;
   bool should_stop = glfwWindowShouldClose(data->glfw.window);
   if (should_stop) {

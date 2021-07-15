@@ -1,5 +1,6 @@
 #pragma once
 #include <glm/glm.hpp>
+#include <src/lib/gfx/multi_alloc.hxx>
 
 namespace engine::common::mesh {
   struct VertexT05 {
@@ -14,5 +15,12 @@ namespace engine::common::mesh {
     uint8_t *buffer;
     uint32_t triangle_count;
     VertexT05 *vertices;
+  };
+
+  struct GPU_Data {
+    // @Note: this structure is temporary, until proper mesh memory allocation is implemented.
+    lib::gfx::multi_alloc::Instance multi_alloc;
+    lib::gfx::multi_alloc::StakeBuffer vertex_stake;
+    size_t triangle_count;
   };
 }

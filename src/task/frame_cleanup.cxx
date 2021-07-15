@@ -1,9 +1,7 @@
-#include "task.hxx"
+#include "frame_cleanup.hxx"
 
-void frame_cleanup(
-  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Full<RenderingData::FrameInfo> frame_info
-) {
+TASK_DECL {
   ZoneScoped;
   delete frame_info.ptr;
+  // @Note: shouldn't there be more `delete`s here?
 }

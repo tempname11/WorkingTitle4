@@ -1,11 +1,7 @@
 #include <imgui.h>
-#include "task.hxx"
+#include "frame_imgui_populate.hxx"
 
-void frame_imgui_populate(
-  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  usage::Full<SessionData::ImguiContext> imgui,
-  usage::Some<SessionData::State> state
-) {
+TASK_DECL {
   if (state->show_imgui) {
     ImGui::ShowDemoWindow(nullptr);
   }

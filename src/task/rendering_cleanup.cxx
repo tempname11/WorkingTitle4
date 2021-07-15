@@ -1,21 +1,14 @@
 #include <vulkan/vulkan.h>
 #include <src/lib/gfx/multi_alloc.hxx>
-#include <src/engine/session.hxx>
-#include <src/engine/rendering.hxx>
 #include <src/engine/rendering/common.hxx>
 #include <src/engine/rendering/prepass.hxx>
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
 #include <backends/imgui_impl_vulkan.h>
-#include "task.hxx"
+#include "rendering_cleanup.hxx"
 
-void rendering_cleanup(
-  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Full<task::Task> session_iteration_yarn_end,
-  usage::Some<SessionData> session,
-  usage::Full<RenderingData> data
-) {
+TASK_DECL {
   ZoneScoped;
   auto vulkan = &session->vulkan;
   for (auto image_view : data->gbuffer.channel0_views) {

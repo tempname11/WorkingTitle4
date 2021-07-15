@@ -1,13 +1,6 @@
-#include "task.hxx"
+#include "frame_imgui_submit.hxx"
 
-void frame_imgui_submit(
-  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  usage::Full<VkQueue> queue_work,
-  usage::Some<VkSemaphore> graphics_finished_semaphore,
-  usage::Some<VkSemaphore> imgui_finished_semaphore,
-  usage::Some<RenderingData::FrameInfo> frame_info,
-  usage::Full<ImguiData> data
-) {
+TASK_DECL {
   ZoneScoped;
   VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
   auto timeline_info = VkTimelineSemaphoreSubmitInfo {

@@ -1,12 +1,6 @@
-#include "task.hxx"
+#include "frame_acquire.hxx"
 
-void frame_acquire(
-  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  usage::Some<SessionData::Vulkan::Core> core,
-  usage::Full<RenderingData::Presentation> presentation,
-  usage::Some<RenderingData::PresentationFailureState> presentation_failure_state,
-  usage::Some<RenderingData::FrameInfo> frame_info
-) {
+TASK_DECL {
   ZoneScoped;
   uint32_t image_index;
   auto result = vkAcquireNextImageKHR(

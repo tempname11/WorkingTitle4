@@ -1,5 +1,6 @@
 #include <imgui.h>
 #include <stb_image.h>
+#include <GLFW/glfw3.h>
 #include <backends/imgui_impl_glfw.h>
 #include <src/embedded.hxx>
 #include <src/engine/mesh.hxx>
@@ -10,9 +11,13 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/misc.hxx>
 #include <src/lib/gfx/utilities.hxx>
+#include "defer.hxx"
+#include "session_cleanup.hxx"
+#include "session_iteration.hxx"
 #include "session_setup_cleanup.hxx"
-#include "task.hxx"
+#include "session.hxx"
 
 VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_callback(
   VkDebugUtilsMessageSeverityFlagBitsEXT severity,
@@ -131,19 +136,97 @@ void prepare_textures(
   }
 }
 
+void dummy(
+  task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
+  usage::Full<SessionData::Scene> scene,
+  usage::Some<SessionData::Vulkan::Core> core,
+  usage::Full<SessionData::Vulkan::Meshes> meshes
+) {
+  ZoneScoped;
+
+  engine::common::mesh::T05 the_mesh;
+  { ZoneScopedN("the_mesh_load");
+    the_mesh = engine::mesh::read_t05_file("assets/mesh.t05");
+  }
+
+  meshes->items.push_back(SessionData::Vulkan::Meshes::Item {
+    .data = {
+      .triangle_count = the_mesh.triangle_count,
+    },
+  });
+  size_t mesh_index = meshes->items.size() - 1;
+  auto item = &meshes->items[mesh_index];
+  lib::gfx::multi_alloc::init(
+    &item->data.multi_alloc,
+    { lib::gfx::multi_alloc::Claim {
+      .info = {
+        .buffer = {
+          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+          .size = the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05),
+          .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        },
+      },
+      .memory_property_flags = VkMemoryPropertyFlagBits(0
+      | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+      | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+      ),
+      .p_stake_buffer = &item->data.vertex_stake,
+    }},
+    core->device,
+    core->allocator,
+    &core->properties.basic,
+    &core->properties.memory
+  );
+
+  void * data;
+  {
+    auto result = vkMapMemory(
+      core->device,
+      item->data.vertex_stake.memory,
+      item->data.vertex_stake.offset,
+      item->data.vertex_stake.size,
+      0,
+      &data
+    );
+    assert(result == VK_SUCCESS);
+  }
+  memcpy(
+    data,
+    the_mesh.vertices,
+    the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05)
+  );
+  vkUnmapMemory(
+    core->device,
+    item->data.vertex_stake.memory
+  );
+
+  scene->items.push_back(SessionData::Scene::Item {
+    .transform = glm::mat4(1.0f),
+    .mesh_index = mesh_index,
+  });
+
+  { ZoneScopedN("the_mesh_unload");
+    engine::mesh::deinit_t05(&the_mesh);
+  }
+}
+
 SessionSetupData *init_vulkan(
   SessionData::Vulkan *it,
-  SessionData::GLFW *glfw,
-  engine::common::mesh::T05 *the_mesh
+  SessionData::GLFW *glfw
 ) {
   ZoneScoped;
   auto core = &it->core;
 
-  auto session_setup_data = new SessionSetupData {
-    .albedo = engine::texture::load_rgba8("assets/texture/albedo.jpg"),
-    .normal = engine::texture::load_rgba8("assets/texture/normal.jpg"),
-    .romeao = engine::texture::load_rgba8("assets/texture/romeao.png"),
-  };
+  SessionSetupData *session_setup_data;
+  { ZoneScopedN("session_setup_data");
+    session_setup_data = new SessionSetupData {
+      .albedo = engine::texture::load_rgba8("assets/texture/albedo.jpg"),
+      .normal = engine::texture::load_rgba8("assets/texture/normal.jpg"),
+      .romeao = engine::texture::load_rgba8("assets/texture/romeao.png"),
+    };
+  }
 
   // don't use the allocator callbacks
   const VkAllocationCallbacks *allocator = nullptr;
@@ -384,22 +467,6 @@ SessionSetupData *init_vulkan(
 
   { ZoneScopedN(".multi_alloc");
     std::vector<lib::gfx::multi_alloc::Claim> claims;
-    claims.push_back({
-      .info = {
-        .buffer = {
-          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-          .size = the_mesh->triangle_count * 3 * sizeof(engine::common::mesh::VertexT05),
-          .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        },
-      },
-      .memory_property_flags = VkMemoryPropertyFlagBits(0
-        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-        | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-      ),
-      .p_stake_buffer = &it->geometry.vertex_stake,
-    });
     claims.push_back({
       .info = {
         .buffer = {
@@ -711,31 +778,6 @@ SessionSetupData *init_vulkan(
     it->core.allocator
   );
 
-  { ZoneScopedN(".geometry");
-    it->geometry.triangle_count = the_mesh->triangle_count;
-    void * data;
-    {
-      auto result = vkMapMemory(
-        it->core.device,
-        it->geometry.vertex_stake.memory,
-        it->geometry.vertex_stake.offset,
-        it->geometry.vertex_stake.size,
-        0,
-        &data
-      );
-      assert(result == VK_SUCCESS);
-    }
-    memcpy(
-      data,
-      the_mesh->vertices,
-      the_mesh->triangle_count * 3 * sizeof(engine::common::mesh::VertexT05)
-    );
-    vkUnmapMemory(
-      it->core.device,
-      it->geometry.vertex_stake.memory
-    );
-  }
-
   { ZoneScopedN(".fullscreen_quad");
     it->fullscreen_quad.triangle_count = sizeof(fullscreen_quad_data) / sizeof(glm::vec2);
     void * data;
@@ -831,18 +873,10 @@ SessionSetupData *init_vulkan(
   return session_setup_data;
 }
 
-void session(
-  task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
-  usage::None<size_t> worker_count
-) {
+TASK_DECL {
   ZoneScoped;
   auto session = new SessionData;
   auto yarn_end = task::create_yarn_signal();
-
-  engine::common::mesh::T05 the_mesh;
-  { ZoneScopedN("the_mesh_load");
-    the_mesh = engine::mesh::read_t05_file("assets/mesh.t05");
-  }
 
   { ZoneScopedN(".glfw");
     auto it = &session->glfw;
@@ -904,7 +938,7 @@ void session(
   }
 
   auto vulkan = &session->vulkan;
-  auto session_setup_data = init_vulkan(vulkan, glfw, &the_mesh);
+  auto session_setup_data = init_vulkan(vulkan, glfw);
 
   { ZoneScopedN(".gpu_signal_support");
     auto it = &session->gpu_signal_support;
@@ -930,19 +964,17 @@ void session(
     1
   );
 
-  { ZoneScopedN("the_mesh_unload");
-    engine::mesh::deinit_t05(&the_mesh);
-  }
-
   // when the structs change, recheck that .changed_parents are still valid.
+  #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 2056);
+    static_assert(size == 2080);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 1920);
+    static_assert(size == 1912);
   }
+  #endif
 
   auto task_iteration = task::create(
     session_iteration,
@@ -954,10 +986,20 @@ void session(
     session_setup_data,
     &session->vulkan.core
   );
-  auto task_cleanup = task::create(defer, task::create(session_cleanup, session));
+  auto task_dummy = task::create(
+    dummy,
+    &session->scene,
+    &session->vulkan.core,
+    &session->vulkan.meshes
+  );
+  auto task_cleanup = task::create(
+    defer,
+    task::create(session_cleanup, session)
+  );
   task::inject(ctx->runner, {
     task_iteration,
     task_cleanup,
+    task_dummy,
   }, {
     .new_dependencies = {
       { signal_setup_finished, task_iteration },
@@ -969,6 +1011,7 @@ void session(
         .ptr = session,
         .children = {
           &session->glfw,
+          &session->scene,
           &session->vulkan,
           &session->imgui_context,
           &session->gpu_signal_support,
@@ -989,12 +1032,12 @@ void session(
           &session->vulkan.core.queue_family_index,
           &session->vulkan.tracy_setup_command_pool,
           &session->vulkan.multi_alloc,
-          &session->vulkan.geometry,
           &session->vulkan.textures,
           &session->vulkan.fullscreen_quad,
           &session->vulkan.gpass,
           &session->vulkan.lpass,
           &session->vulkan.finalpass,
+          &session->vulkan.meshes,
         }
       },
     },

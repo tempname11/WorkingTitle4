@@ -1,11 +1,7 @@
 #include <backends/imgui_impl_vulkan.h>
-#include "task.hxx"
+#include "rendering_imgui_setup_cleanup.hxx"
 
-void rendering_imgui_setup_cleanup(
-  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Some<SessionData::Vulkan::Core> core,
-  usage::Full<RenderingData::ImguiBackend> imgui_backend
-) {
+TASK_DECL {
   ImGui_ImplVulkan_DestroyFontUploadObjects();
   vkDestroyCommandPool(
     core->device,

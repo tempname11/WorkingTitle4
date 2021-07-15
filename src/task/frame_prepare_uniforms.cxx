@@ -1,16 +1,7 @@
 #include <src/lib/gfx/utilities.hxx>
-#include "task.hxx"
+#include "frame_prepare_uniforms.hxx"
 
-void frame_prepare_uniforms(
-  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  usage::Some<SessionData::Vulkan::Core> core,
-  usage::Some<RenderingData::SwapchainDescription> swapchain_description,
-  usage::Some<RenderingData::FrameInfo> frame_info,
-  usage::Some<SessionData::State> session_state, // too broad
-  usage::Full<RenderingData::Common> common,
-  usage::Full<RenderingData::GPass> gpass,
-  usage::Full<RenderingData::LPass> lpass
-) {
+TASK_DECL {
   // @Note: this is probably the wrong place to update the buffers!
   // Need to think on what's right.
 

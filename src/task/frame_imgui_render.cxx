@@ -1,18 +1,8 @@
 #include <imgui.h>
 #include <backends/imgui_impl_vulkan.h>
-#include "task.hxx"
+#include "frame_imgui_render.hxx"
 
-void frame_imgui_render(
-  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  usage::Some<SessionData::Vulkan::Core> core,
-  usage::Full<SessionData::ImguiContext> imgui_context,
-  usage::Full<RenderingData::ImguiBackend> imgui_backend,
-  usage::Full<SessionData::GLFW> glfw, // hacky way to prevent KeyMods bug.
-  usage::Some<RenderingData::SwapchainDescription> swapchain_description,
-  usage::Some<RenderingData::CommandPools> command_pools,
-  usage::Some<RenderingData::FrameInfo> frame_info,
-  usage::Full<ImguiData> data
-) {
+TASK_DECL {
   ZoneScoped;
   ImGui::Render();
   auto pool2 = &(*command_pools)[frame_info->inflight_index];

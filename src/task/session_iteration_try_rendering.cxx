@@ -7,13 +7,13 @@
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/lib/gfx/utilities.hxx>
-#include "task.hxx"
+#include "defer.hxx"
+#include "rendering_frame.hxx"
+#include "rendering_cleanup.hxx"
+#include "rendering_imgui_setup_cleanup.hxx"
+#include "session_iteration_try_rendering.hxx"
 
-void session_iteration_try_rendering(
-  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  usage::Full<task::Task> session_iteration_yarn_end,
-  usage::Full<SessionData> session
-) {
+TASK_DECL {
   ZoneScoped;
   VkCommandBuffer cmd_imgui_setup = VK_NULL_HANDLE;
   task::Task* signal_imgui_setup_finished = nullptr;
