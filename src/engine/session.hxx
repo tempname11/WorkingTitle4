@@ -1,9 +1,12 @@
 #pragma once
+#include <mutex>
+#include <unordered_set>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <TracyVulkan.hpp>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/common/mesh.hxx>
+#include <src/lib/task.hxx>
 #include <src/lib/gpu_signal.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
 #include <src/lib/debug_camera.hxx>
@@ -16,6 +19,11 @@ struct SessionData : lib::task::ParentResource {
     glm::ivec2 last_window_size;
     glm::vec2 last_known_mouse_cursor_position;
   } glfw;
+
+  struct UnfinishedYarns {
+    std::mutex mutex;
+    std::unordered_set<lib::Task *> set;
+  } unfinished_yarns;
 
   struct Scene {
     struct Item {

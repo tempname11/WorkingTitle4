@@ -70,4 +70,8 @@ struct Task {
 
 } // namespace
 
+namespace lib {
+  typedef lib::task::Task Task;
+}
+
 #include "task.inline.hxx"

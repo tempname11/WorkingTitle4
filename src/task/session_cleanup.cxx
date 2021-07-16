@@ -28,14 +28,40 @@ TASK_DECL {
 
     deinit_session_finalpass(&it->finalpass, core);
 
-    vkDestroyImageView(
-      core->device,
-      it->textures.albedo.view,
-      core->allocator
-    );
+    { ZoneScopedN(".textures");
+      vkDestroyImageView(
+        core->device,
+        it->textures.albedo.view,
+        core->allocator
+      );
+      vkDestroyImageView(
+        core->device,
+        it->textures.normal.view,
+        core->allocator
+      );
+      vkDestroyImageView(
+        core->device,
+        it->textures.romeao.view,
+        core->allocator
+      );
+    }
+
+    { ZoneScopedN(".meshes");
+      for (auto &item : it->meshes.items) {
+        lib::gfx::multi_alloc::deinit(
+          &item.data.multi_alloc,
+          it->core.device,
+          it->core.allocator
+        );
+      }
+    }
 
     { ZoneScopedN(".multi_alloc");
-      lib::gfx::multi_alloc::deinit(&it->multi_alloc, it->core.device, it->core.allocator);
+      lib::gfx::multi_alloc::deinit(
+        &it->multi_alloc,
+        it->core.device,
+        it->core.allocator
+      );
     }
 
     { ZoneScopedN(".core.tracy_context");
