@@ -34,3 +34,7 @@ struct RenderList {
 
   std::vector<Item> items;
 };
+
+struct ImguiReactions {
+  bool reload;
+};

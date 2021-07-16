@@ -11,6 +11,7 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/loading/simple.hxx>
 #include <src/engine/misc.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include "defer.hxx"
@@ -134,160 +135,6 @@ void prepare_textures(
     );
     assert(result == VK_SUCCESS);
   }
-}
-
-struct DummyData {
-  engine::common::mesh::T05 the_mesh;
-  SessionData::Vulkan::Meshes::Item mesh_item;
-};
-
-void dummy_read_file(
-  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Full<DummyData> data 
-) {
-  ZoneScoped;
-  { ZoneScopedN("the_mesh_load");
-    data->the_mesh = engine::mesh::read_t05_file("assets/mesh.t05");
-  }
-}
-void dummy_init_buffer(
-  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Some<SessionData::Vulkan::Core> core,
-  usage::Full<DummyData> data 
-) {
-  ZoneScoped;
-
-  data->mesh_item.data.triangle_count = data->the_mesh.triangle_count;
-  lib::gfx::multi_alloc::init(
-    &data->mesh_item.data.multi_alloc,
-    { lib::gfx::multi_alloc::Claim {
-      .info = {
-        .buffer = {
-          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-          .size = data->the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05),
-          .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        },
-      },
-      .memory_property_flags = VkMemoryPropertyFlagBits(0
-      | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-      | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-      ),
-      .p_stake_buffer = &data->mesh_item.data.vertex_stake,
-    }},
-    core->device,
-    core->allocator,
-    &core->properties.basic,
-    &core->properties.memory
-  );
-
-  void *mem;
-  {
-    auto result = vkMapMemory(
-      core->device,
-      data->mesh_item.data.vertex_stake.memory,
-      data->mesh_item.data.vertex_stake.offset,
-      data->mesh_item.data.vertex_stake.size,
-      0,
-      &mem
-    );
-    assert(result == VK_SUCCESS);
-  }
-  memcpy(
-    mem,
-    data->the_mesh.vertices,
-    data->the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05)
-  );
-  vkUnmapMemory(
-    core->device,
-    data->mesh_item.data.vertex_stake.memory
-  );
-}
-
-void dummy_insert_items(
-  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Full<SessionData::Scene> scene,
-  usage::Full<SessionData::Vulkan::Meshes> meshes,
-  usage::Full<DummyData> data 
-) {
-  ZoneScoped;
-  meshes->items.push_back(data->mesh_item);
-  size_t mesh_index = meshes->items.size() - 1;
-  scene->items.push_back(SessionData::Scene::Item {
-    .transform = glm::mat4(1.0f),
-    .mesh_index = mesh_index,
-  });
-}
-
-void dummy_cleanup(
-  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Some<SessionData::UnfinishedYarns> unfinished_yarns,
-  usage::None<lib::Task> yarn,
-  usage::Full<DummyData> data 
-) {
-  ZoneScoped;
-  engine::mesh::deinit_t05(&data->the_mesh);
-  delete data.ptr;
-  {
-    std::scoped_lock lock(unfinished_yarns->mutex);
-    unfinished_yarns->set.erase(yarn.ptr);
-  }
-  task::signal(ctx->runner, yarn.ptr);
-}
-
-void dummy(
-  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::None<SessionData::UnfinishedYarns> unfinished_yarns,
-  usage::None<SessionData::Scene> scene,
-  usage::None<SessionData::Vulkan::Core> core,
-  usage::None<SessionData::Vulkan::Meshes> meshes,
-  usage::None<lib::Task> yarn
-) {
-  ZoneScoped;
-  auto data = new DummyData {};
-  auto task_read_file = task::create(
-    dummy_read_file,
-    data
-  );
-  auto task_init_buffer = task::create(
-    defer,
-    task::create(
-      dummy_init_buffer,
-      core.ptr,
-      data
-    )
-  );
-  auto task_insert_items = task::create(
-    defer,
-    task::create(
-      dummy_insert_items,
-      scene.ptr,
-      meshes.ptr,
-      data
-    )
-  );
-  auto task_cleanup = task::create(
-    defer,
-    task::create(
-      dummy_cleanup,
-      unfinished_yarns.ptr,
-      yarn.ptr,
-      data
-    )
-  );
-  task::inject(ctx->runner, {
-    task_read_file,
-    task_init_buffer,
-    task_insert_items,
-    task_cleanup
-  }, {
-    .new_dependencies = {
-      { task_read_file, task_init_buffer },
-      { task_init_buffer, task_insert_items },
-      { task_insert_items, task_cleanup },
-    },
-  });
 }
 
 void after_unfinished(
@@ -1082,16 +929,12 @@ TASK_DECL {
     &session->vulkan.core
   );
 
-  auto dummy_yarn = task::create_yarn_signal();
-  // not mutex, we own `session` right now
-  session->unfinished_yarns.set.insert(dummy_yarn);
-  auto task_dummy = task::create(
-    dummy,
+  engine::loading::simple::load(
+    ctx,
     &session->unfinished_yarns,
     &session->scene,
     &session->vulkan.core,
-    &session->vulkan.meshes,
-    dummy_yarn
+    &session->vulkan.meshes
   );
 
   auto task_cleanup = task::create(
@@ -1111,7 +954,6 @@ TASK_DECL {
   task::inject(ctx->runner, {
     task_iteration,
     task_cleanup,
-    task_dummy,
   }, {
     .new_dependencies = {
       { signal_setup_finished, task_iteration },

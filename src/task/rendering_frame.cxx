@@ -11,6 +11,7 @@
 #include "frame_imgui_populate.hxx"
 #include "frame_imgui_render.hxx"
 #include "frame_imgui_submit.hxx"
+#include "frame_loading_dynamic.hxx"
 #include "frame_prepare_uniforms.hxx"
 #include "frame_present.hxx"
 #include "frame_reset_pools.hxx"
@@ -61,12 +62,17 @@ TASK_DECL {
   latest_frame->inflight_index = (
     latest_frame->number % swapchain_description->image_count
   );
+
+  // @Improvement: should allocate all of these at once!
   auto frame_info = new RenderingData::FrameInfo(*latest_frame);
   auto compose_data = new ComposeData;
   auto graphics_data = new GraphicsData;
   auto imgui_data = new ImguiData;
   auto update_data = new UpdateData;
   auto render_list = new RenderList;
+  auto imgui_reactions = new ImguiReactions {};
+  // @Bug: these are not deleted, which should happen in frame_cleanup
+
   auto frame_tasks = new std::vector<task::Task *>({
     task::create(
       frame_handle_window_events,
@@ -158,6 +164,7 @@ TASK_DECL {
     task::create(
       frame_imgui_populate,
       &session->imgui_context,
+      imgui_reactions,
       &session->state
     ),
     task::create(
@@ -210,6 +217,15 @@ TASK_DECL {
     task::create(
       frame_cleanup,
       frame_info
+    ),
+    task::create(
+      frame_loading_dynamic,
+      &session->unfinished_yarns,
+      &session->scene,
+      &session->vulkan.core,
+      &data->inflight_gpu,
+      &session->vulkan.meshes,
+      imgui_reactions
     ),
     task::create(
       rendering_frame,
