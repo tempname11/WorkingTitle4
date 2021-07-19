@@ -5,7 +5,7 @@ void record_geometry_draw_commands(
   SessionData::Vulkan::Core *core,
   DescriptorPool *descriptor_pool,
   SessionData::Vulkan::GPass* s_gpass,
-  RenderList *render_list,
+  engine::misc::RenderList *render_list,
   SessionData::Vulkan::Textures* textures
 ) {
   VkDescriptorSet descriptor_set;
@@ -101,7 +101,7 @@ void record_prepass(
   RenderingData::FrameInfo *frame_info,
   SessionData::Vulkan::Prepass *s_prepass,
   SessionData::Vulkan::GPass *s_gpass,
-  RenderList *render_list,
+  engine::misc::RenderList *render_list,
   SessionData::Vulkan::Textures* textures
 ) {
   VkClearValue clear_values[] = {
@@ -159,7 +159,7 @@ void record_gpass(
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::FrameInfo *frame_info,
   SessionData::Vulkan::GPass *s_gpass,
-  RenderList *render_list,
+  engine::misc::RenderList *render_list,
   SessionData::Vulkan::Textures *textures
 ) {
   VkClearValue clear_values[] = {

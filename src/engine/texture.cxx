@@ -1,4 +1,5 @@
 #include <stb_image.h>
+#include <src/global.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include "texture.hxx"
 

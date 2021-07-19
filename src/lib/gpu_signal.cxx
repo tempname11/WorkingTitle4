@@ -186,6 +186,7 @@ void deinit_support(
     assert(result == VK_SUCCESS);
   }
   it->thread.join();
+  delete it->storage;
   vkDestroySemaphore(device, it->new_entries_semaphore, allocator);
 }
 

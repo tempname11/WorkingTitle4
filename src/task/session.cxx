@@ -760,14 +760,16 @@ SessionSetupData *init_vulkan(
       auto result = vkAllocateCommandBuffers(it->core.device, &info, &cmd);
       assert(result == VK_SUCCESS);
     }
-    it->core.tracy_context = TracyVkContextCalibrated(
-      it->physical_device,
-      it->core.device,
-      it->queue_work,
-      cmd,
-      gpdctd,
-      gct
-    );
+    #ifdef TRACY_ENABLE
+      it->core.tracy_context = TracyVkContextCalibrated(
+        it->physical_device,
+        it->core.device,
+        it->queue_work,
+        cmd,
+        gpdctd,
+        gct
+      );
+    #endif
   }
 
   it->ready = true;
@@ -844,7 +846,7 @@ TASK_DECL {
     }
 
     glfwSetKeyCallback(it->window, [](GLFWwindow *window, int key, int scancode, int action, int mods) {
-      auto ptr = (GlfwUserData *) glfwGetWindowUserPointer(window);
+      auto ptr = (engine::misc::GlfwUserData *) glfwGetWindowUserPointer(window);
       if (ptr == nullptr) {
         return;
       }

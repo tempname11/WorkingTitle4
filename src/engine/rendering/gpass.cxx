@@ -1,3 +1,4 @@
+#include <src/global.hxx>
 #include <src/engine/common/mesh.hxx>
 #include "gpass.hxx"
 

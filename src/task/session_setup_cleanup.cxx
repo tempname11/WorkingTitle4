@@ -24,4 +24,6 @@ TASK_DECL {
      data->semaphore_finished,
      core->allocator
    );
+
+   delete data.ptr;
 }

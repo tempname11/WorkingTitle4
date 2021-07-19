@@ -26,8 +26,8 @@
   usage::Some<SessionData::Vulkan::Finalpass> s_finalpass, \
   usage::Some<SessionData::Vulkan::Textures> textures, \
   usage::Some<SessionData::Vulkan::FullscreenQuad> fullscreen_quad, \
-  usage::Full<RenderList> render_list, \
-  usage::Full<GraphicsData> data \
+  usage::Full<engine::misc::RenderList> render_list, \
+  usage::Full<engine::misc::GraphicsData> data \
 )
 
 TASK_DECL;

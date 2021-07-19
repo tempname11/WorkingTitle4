@@ -12,7 +12,7 @@
   usage::Some<VkSemaphore> frame_rendered_semaphore, \
   usage::Some<VkSemaphore> imgui_finished_semaphore, \
   usage::Some<RenderingData::FrameInfo> frame_info, \
-  usage::Full<ComposeData> data \
+  usage::Full<engine::misc::ComposeData> data \
 )
 
 TASK_DECL;

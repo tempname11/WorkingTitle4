@@ -32,7 +32,7 @@ struct Claim {
 struct Instance {
   std::vector<VkBuffer> all_buffers;
   std::vector<VkImage> all_images;
-  std::vector<VkDeviceMemory> all_memories;
+  std::vector<std::pair<VkDeviceMemory, size_t>> all_memories;
 };
 
 void init(

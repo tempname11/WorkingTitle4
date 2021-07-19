@@ -12,7 +12,7 @@
   usage::None<SessionData::Vulkan::Core> core, \
   usage::Some<RenderingData::InflightGPU> inflight_gpu, \
   usage::Some<SessionData::Vulkan::Meshes> meshes, \
-  usage::Some<ImguiReactions> imgui_reactions \
+  usage::Some<engine::misc::ImguiReactions> imgui_reactions \
 )
 
 TASK_DECL;

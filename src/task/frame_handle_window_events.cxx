@@ -3,12 +3,13 @@
 
 TASK_DECL {
   ZoneScoped;
-  auto user_data = new GlfwUserData {
+  auto user_data = new engine::misc::GlfwUserData {
     .state = session_state.ptr,
   };
   glfwSetWindowUserPointer(glfw->window, user_data);
   glfwPollEvents();
   glfwSetWindowUserPointer(glfw->window, nullptr);
+  delete user_data;
 
   auto cursor_delta = glm::vec2(0.0);
   auto is_focused = glfwGetWindowAttrib(glfw->window, GLFW_FOCUSED);

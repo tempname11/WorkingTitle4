@@ -44,7 +44,9 @@ struct SessionData : lib::task::ParentResource {
     struct Core {
       VkDevice device;
       const VkAllocationCallbacks *allocator;
-      tracy::VkCtx *tracy_context;
+      #ifdef TRACY_ENABLE
+        tracy::VkCtx *tracy_context;
+      #endif
 
       struct Properties {
         VkPhysicalDeviceProperties basic;

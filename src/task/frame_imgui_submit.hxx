@@ -10,7 +10,7 @@
   usage::Some<VkSemaphore> graphics_finished_semaphore, \
   usage::Some<VkSemaphore> imgui_finished_semaphore, \
   usage::Some<RenderingData::FrameInfo> frame_info, \
-  usage::Full<ImguiData> data \
+  usage::Full<engine::misc::ImguiData> data \
 )
 
 TASK_DECL;

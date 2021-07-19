@@ -20,17 +20,16 @@
 #include "rendering_has_finished.hxx"
 #include "rendering_frame.hxx"
 
-// #define ENGINE_DEBUG_ARTIFICIAL_DELAY 33ms
+#define TRACY_ARTIFICIAL_DELAY 20ms
 
 TASK_DECL {
   ZoneScopedC(0xFF0000);
   FrameMark;
-  #ifdef ENGINE_DEBUG_ARTIFICIAL_DELAY
-    {
-      using namespace std::chrono_literals;
-      std::this_thread::sleep_for(ENGINE_DEBUG_ARTIFICIAL_DELAY);
-    }
-  #endif
+  if (TracyIsConnected) {
+    ZoneScopedN("artificial_delay");
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(TRACY_ARTIFICIAL_DELAY);
+  }
   bool presentation_has_failed;
   {
     std::scoped_lock lock(presentation_failure_state->mutex);
@@ -63,26 +62,20 @@ TASK_DECL {
     latest_frame->number % swapchain_description->image_count
   );
 
-  // @Improvement: should allocate all of these at once!
+  // @Improvement: should put FrameInfo inside FrameData.
   auto frame_info = new RenderingData::FrameInfo(*latest_frame);
-  auto compose_data = new ComposeData;
-  auto graphics_data = new GraphicsData;
-  auto imgui_data = new ImguiData;
-  auto update_data = new UpdateData;
-  auto render_list = new RenderList;
-  auto imgui_reactions = new ImguiReactions {};
-  // @Bug: these are not deleted, which should happen in frame_cleanup
+  auto frame_data = new engine::misc::FrameData {};
 
   auto frame_tasks = new std::vector<task::Task *>({
     task::create(
       frame_handle_window_events,
       &session->glfw,
       &session->state,
-      update_data
+      &frame_data->update_data
     ),
     task::create(
       frame_update,
-      update_data,
+      &frame_data->update_data,
       frame_info,
       &session->state
     ),
@@ -122,7 +115,7 @@ TASK_DECL {
       frame_generate_render_list,
       &session->scene,
       &session->vulkan.meshes,
-      render_list
+      &frame_data->render_list
     ),
     task::create(
       frame_graphics_render,
@@ -145,15 +138,15 @@ TASK_DECL {
       &session->vulkan.finalpass,
       &session->vulkan.textures,
       &session->vulkan.fullscreen_quad,
-      render_list,
-      graphics_data
+      &frame_data->render_list,
+      &frame_data->graphics_data
     ),
     task::create(
       frame_graphics_submit,
       &session->vulkan.queue_work,
       &data->graphics_finished_semaphore,
       frame_info,
-      graphics_data
+      &frame_data->graphics_data
     ),
     task::create(
       frame_imgui_new_frame,
@@ -164,7 +157,7 @@ TASK_DECL {
     task::create(
       frame_imgui_populate,
       &session->imgui_context,
-      imgui_reactions,
+      &frame_data->imgui_reactions,
       &session->state
     ),
     task::create(
@@ -176,7 +169,7 @@ TASK_DECL {
       &data->swapchain_description,
       &data->command_pools,
       frame_info,
-      imgui_data
+      &frame_data->imgui_data
     ),
     task::create(
       frame_imgui_submit,
@@ -184,7 +177,7 @@ TASK_DECL {
       &data->graphics_finished_semaphore,
       &data->imgui_finished_semaphore,
       frame_info,
-      imgui_data
+      &frame_data->imgui_data
     ),
     task::create(
       frame_compose_render,
@@ -195,7 +188,7 @@ TASK_DECL {
       &data->command_pools,
       frame_info,
       &data->final_image,
-      compose_data
+      &frame_data->compose_data
     ),
     task::create(
       frame_compose_submit,
@@ -205,7 +198,7 @@ TASK_DECL {
       &data->frame_finished_semaphore,
       &data->imgui_finished_semaphore,
       frame_info,
-      compose_data
+      &frame_data->compose_data
     ),
     task::create(
       frame_present,
@@ -215,17 +208,18 @@ TASK_DECL {
       &session->vulkan.queue_present
     ),
     task::create(
-      frame_cleanup,
-      frame_info
-    ),
-    task::create(
       frame_loading_dynamic,
       &session->unfinished_yarns,
       &session->scene,
       &session->vulkan.core,
       &data->inflight_gpu,
       &session->vulkan.meshes,
-      imgui_reactions
+      &frame_data->imgui_reactions
+    ),
+    task::create(
+      frame_cleanup,
+      frame_info,
+      frame_data
     ),
     task::create(
       rendering_frame,
@@ -247,6 +241,19 @@ TASK_DECL {
       task_defer,
     }, {
       .new_dependencies = { { signal, task_defer } },
+      .changed_parents = {
+        {
+          .ptr = frame_data,
+          .children = {
+            &frame_data->compose_data,
+            &frame_data->graphics_data,
+            &frame_data->imgui_data,
+            &frame_data->update_data,
+            &frame_data->render_list,
+            &frame_data->imgui_reactions,
+          },
+        },
+      },
     });
   }
 }

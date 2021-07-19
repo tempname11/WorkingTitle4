@@ -23,5 +23,4 @@ TASK_DECL {
   };
   auto result = vkQueueSubmit(*queue_work, 1, &submit_info, VK_NULL_HANDLE);
   assert(result == VK_SUCCESS);
-  delete data.ptr;
 }

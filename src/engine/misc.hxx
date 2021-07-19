@@ -2,8 +2,11 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 #include <glm/glm.hpp>
+#include <src/lib/task.hxx>
 #include <src/lib/debug_camera.hxx>
 #include "session.hxx"
+
+namespace engine::misc {
 
 struct ComposeData {
   VkCommandBuffer cmd;
@@ -38,3 +41,14 @@ struct RenderList {
 struct ImguiReactions {
   bool reload;
 };
+
+struct FrameData : lib::task::ParentResource {
+  ComposeData compose_data;
+  GraphicsData graphics_data;
+  ImguiData imgui_data;
+  UpdateData update_data;
+  RenderList render_list;
+  ImguiReactions imgui_reactions;
+};
+
+} // namespace

@@ -7,7 +7,7 @@
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx, \
   usage::Some<SessionData::Scene> scene, \
   usage::Some<SessionData::Vulkan::Meshes> meshes, \
-  usage::Full<RenderList> render_list \
+  usage::Full<engine::misc::RenderList> render_list \
 )
 
 TASK_DECL;

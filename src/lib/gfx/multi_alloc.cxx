@@ -1,4 +1,5 @@
 #include <cassert>
+#include <src/global.hxx>
 #include <Tracy.hpp>
 #include "multi_alloc.hxx"
 #include "utilities.hxx"
@@ -150,6 +151,19 @@ void _internal_on_buffer(
   it->all_buffers.push_back(buffer);
 }
 
+const char *tracy_memory_type_names[] = {
+  "GPU memory type 0",
+  "GPU memory type 1",
+  "GPU memory type 2",
+  "GPU memory type 3",
+  "GPU memory type 4",
+  "GPU memory type 5",
+  "GPU memory type 6",
+  "GPU memory type 7",
+  "GPU memory type 8",
+  "GPU memory type 9",
+};
+
 void _internal_end(
   StrategyData *data,
   Instance *it,
@@ -166,11 +180,14 @@ void _internal_end(
         .memoryTypeIndex = i,
       };
       auto result = vkAllocateMemory(device, &alloc_info, allocator, &memory);
-      TracyAllocN((void *) memory, alloc_info.allocationSize, "GPU memory usage");
+      assert(sizeof(tracy_memory_type_names) / sizeof(*tracy_memory_type_names) >= i);
+      TracyAllocN((void *) memory, alloc_info.allocationSize, tracy_memory_type_names[i]);
       assert(result == VK_SUCCESS);
     }
     allocations[i] = memory;
-    it->all_memories.push_back(memory);
+    if (memory != VK_NULL_HANDLE) {
+      it->all_memories.push_back({ memory, i });
+    }
   }
   for (auto &incomplete : data->incomplete_stakes) {
     if (incomplete.type == IncompleteStake::IncompleteBuffer) {
@@ -256,10 +273,9 @@ void deinit(
   }
 
   for (auto elem: it->all_memories) {
-    vkFreeMemory(device, elem, allocator);
-    TracyFreeN((void *) elem, "GPU memory usage");
+    TracyFreeN((void *) elem.first, tracy_memory_type_names[elem.second]);
+    vkFreeMemory(device, elem.first, allocator);
   }
 }
-
 
 } // namespace

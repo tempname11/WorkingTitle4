@@ -1,3 +1,4 @@
+#include <src/global.hxx>
 #include <src/embedded.hxx>
 #include "lpass.hxx"
 

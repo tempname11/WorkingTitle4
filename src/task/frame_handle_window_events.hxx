@@ -8,7 +8,7 @@
   task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx, \
   usage::Full<SessionData::GLFW> glfw, \
   usage::Full<SessionData::State> session_state, \
-  usage::Full<UpdateData> update \
+  usage::Full<engine::misc::UpdateData> update \
 )
 
 TASK_DECL;

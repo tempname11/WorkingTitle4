@@ -14,7 +14,7 @@
   usage::Some<RenderingData::SwapchainDescription> swapchain_description, \
   usage::Some<RenderingData::CommandPools> command_pools, \
   usage::Some<RenderingData::FrameInfo> frame_info, \
-  usage::Full<ImguiData> data \
+  usage::Full<engine::misc::ImguiData> data \
 )
 
 TASK_DECL;

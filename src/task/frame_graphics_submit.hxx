@@ -10,7 +10,7 @@
   usage::Full<VkQueue> queue_work, \
   usage::Some<VkSemaphore> example_finished_semaphore, \
   usage::Some<RenderingData::FrameInfo> frame_info, \
-  usage::Full<GraphicsData> data \
+  usage::Full<engine::misc::GraphicsData> data \
 )
 
 TASK_DECL;

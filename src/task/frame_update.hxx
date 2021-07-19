@@ -7,7 +7,7 @@
 #undef TASK_DECL
 #define TASK_DECL void frame_update( \
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx, \
-  usage::Some<UpdateData> update, \
+  usage::Some<engine::misc::UpdateData> update, \
   usage::Some<RenderingData::FrameInfo> frame_info, \
   usage::Full<SessionData::State> session_state \
 )
