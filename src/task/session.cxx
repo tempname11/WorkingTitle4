@@ -45,98 +45,6 @@ glm::vec2 fullscreen_quad_data[] = { // not a quad now!
   { +3.0f, -1.0f },
 };
 
-void prepare_textures(
-  SessionData::Vulkan::Textures *it,
-  SessionData::Vulkan::Core *core,
-  VkQueue queue_work,
-  SessionSetupData *setup_data
-) {
-  ZoneScoped;
-
-   VkCommandBuffer cmd;
-  { ZoneScopedN("allocate_command_buffer");
-    VkCommandBufferAllocateInfo alloc_info = {
-      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-      .commandPool = setup_data->command_pool,
-      .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-      .commandBufferCount = 1,
-    };
-    {
-      auto result = vkAllocateCommandBuffers(
-        core->device,
-        &alloc_info,
-        &cmd
-      );
-      assert(result == VK_SUCCESS);
-    }
-  }
-
-  { // begin
-    auto info = VkCommandBufferBeginInfo {
-      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-    auto result = vkBeginCommandBuffer(cmd, &info);
-    assert(result == VK_SUCCESS);
-  }
-
-  engine::texture::prepare(
-    &setup_data->albedo,
-    &it->albedo,
-    &setup_data->albedo_staging_stake,
-    core,
-    cmd,
-    queue_work
-  );
-
-  engine::texture::prepare(
-    &setup_data->normal,
-    &it->normal,
-    &setup_data->normal_staging_stake,
-    core,
-    cmd,
-    queue_work
-  );
-
-  engine::texture::prepare(
-    &setup_data->romeao,
-    &it->romeao,
-    &setup_data->romeao_staging_stake,
-    core,
-    cmd,
-    queue_work
-  );
-
-  { // end
-    auto result = vkEndCommandBuffer(cmd);
-    assert(result == VK_SUCCESS);
-  }
-
-  { // submit
-    uint64_t one = 1;
-    auto timeline_info = VkTimelineSemaphoreSubmitInfo {
-      .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
-      .signalSemaphoreValueCount = 1,
-      .pSignalSemaphoreValues = &one,
-    };
-    VkSubmitInfo submit_info = {
-      .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-      .pNext = &timeline_info,
-      .commandBufferCount = 1,
-      .pCommandBuffers = &cmd,
-      .signalSemaphoreCount = 1,
-      .pSignalSemaphores = &setup_data->semaphore_finished,
-    };
-    auto result = vkQueueSubmit(
-      queue_work,
-      1,
-      &submit_info,
-      VK_NULL_HANDLE
-    );
-    assert(result == VK_SUCCESS);
-  }
-}
-
 void after_unfinished(
   task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
   usage::Some<SessionData::UnfinishedYarns> unfinished_yarns,
@@ -154,21 +62,19 @@ void after_unfinished(
   task::inject(ctx->runner, { task.ptr }, { .new_dependencies = dependencies });
 }
 
-SessionSetupData *init_vulkan(
+void init_vulkan(
   SessionData::Vulkan *it,
   SessionData::GLFW *glfw
 ) {
   ZoneScoped;
   auto core = &it->core;
 
+  /*
   SessionSetupData *session_setup_data;
   { ZoneScopedN("session_setup_data");
-    session_setup_data = new SessionSetupData {
-      .albedo = engine::texture::load_rgba8("assets/texture/albedo.jpg"),
-      .normal = engine::texture::load_rgba8("assets/texture/normal.jpg"),
-      .romeao = engine::texture::load_rgba8("assets/texture/romeao.png"),
-    };
+    session_setup_data = new SessionSetupData {};
   }
+  */
 
   // don't use the allocator callbacks
   const VkAllocationCallbacks *allocator = nullptr;
@@ -221,7 +127,7 @@ SessionSetupData *init_vulkan(
       .messageType = (0
         | VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
         | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
-        | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
+        // | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
       ),
       .pfnUserCallback = vulkan_debug_callback,
     };
@@ -425,87 +331,7 @@ SessionSetupData *init_vulkan(
       ),
       .p_stake_buffer = &it->fullscreen_quad.vertex_stake,
     });
-    claims.push_back({
-      .info = {
-        .image = {
-          .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-          .imageType = VK_IMAGE_TYPE_2D,
-          .format = engine::texture::ALBEDO_TEXTURE_FORMAT,
-          .extent = {
-            .width = uint32_t(session_setup_data->albedo.width),
-            .height = uint32_t(session_setup_data->albedo.height),
-            .depth = 1,
-          },
-          .mipLevels = session_setup_data->albedo.computed_mip_levels,
-          .arrayLayers = 1,
-          .samples = VK_SAMPLE_COUNT_1_BIT,
-          .tiling = VK_IMAGE_TILING_OPTIMAL,
-          .usage = (0
-            | VK_IMAGE_USAGE_SAMPLED_BIT
-            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT // for mips
-            | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-          ),
-          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        },
-      },
-      .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      .p_stake_image = &it->textures.albedo.stake,
-    });
-    claims.push_back({
-      .info = {
-        .image = {
-          .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-          .imageType = VK_IMAGE_TYPE_2D,
-          .format = engine::texture::NORMAL_TEXTURE_FORMAT,
-          .extent = {
-            .width = uint32_t(session_setup_data->normal.width),
-            .height = uint32_t(session_setup_data->normal.height),
-            .depth = 1,
-          },
-          .mipLevels = session_setup_data->normal.computed_mip_levels,
-          .arrayLayers = 1,
-          .samples = VK_SAMPLE_COUNT_1_BIT,
-          .tiling = VK_IMAGE_TILING_OPTIMAL,
-          .usage = (0
-            | VK_IMAGE_USAGE_SAMPLED_BIT
-            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT // for mips
-            | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-          ),
-          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        },
-      },
-      .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      .p_stake_image = &it->textures.normal.stake,
-    });
-    claims.push_back({
-      .info = {
-        .image = {
-          .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-          .imageType = VK_IMAGE_TYPE_2D,
-          .format = engine::texture::ROMEAO_TEXTURE_FORMAT,
-          .extent = {
-            .width = uint32_t(session_setup_data->romeao.width),
-            .height = uint32_t(session_setup_data->romeao.height),
-            .depth = 1,
-          },
-          .mipLevels = session_setup_data->romeao.computed_mip_levels,
-          .arrayLayers = 1,
-          .samples = VK_SAMPLE_COUNT_1_BIT,
-          .tiling = VK_IMAGE_TILING_OPTIMAL,
-          .usage = (0
-            | VK_IMAGE_USAGE_SAMPLED_BIT
-            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT // for mips
-            | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-          ),
-          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        },
-      },
-      .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      .p_stake_image = &it->textures.romeao.stake,
-    });
+
     lib::gfx::multi_alloc::init(
       &it->multi_alloc,
       std::move(claims),
@@ -514,141 +340,6 @@ SessionSetupData *init_vulkan(
       &it->core.properties.basic,
       &it->core.properties.memory
     );
-  }
-
-  { ZoneScopedN("setup_multi_alloc");
-    std::vector<lib::gfx::multi_alloc::Claim> claims;
-    claims.push_back({
-      .info = {
-        .buffer = {
-          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-          .size = VkDeviceSize(
-             session_setup_data->albedo.width *
-             session_setup_data->albedo.height *
-             engine::texture::ALBEDO_TEXEL_SIZE
-          ),
-          .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        },
-      },
-      .memory_property_flags = VkMemoryPropertyFlagBits(0
-        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-      ),
-      .p_stake_buffer = &session_setup_data->albedo_staging_stake,
-    });
-    claims.push_back({
-      .info = {
-        .buffer = {
-          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-          .size = VkDeviceSize(
-             session_setup_data->normal.width *
-             session_setup_data->normal.height *
-             engine::texture::NORMAL_TEXEL_SIZE
-          ),
-          .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        },
-      },
-      .memory_property_flags = VkMemoryPropertyFlagBits(0
-        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-      ),
-      .p_stake_buffer = &session_setup_data->normal_staging_stake,
-    });
-    claims.push_back({
-      .info = {
-        .buffer = {
-          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-          .size = VkDeviceSize(
-             session_setup_data->romeao.width *
-             session_setup_data->romeao.height *
-             engine::texture::ROMEAO_TEXEL_SIZE
-          ),
-          .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        },
-      },
-      .memory_property_flags = VkMemoryPropertyFlagBits(0
-        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-      ),
-      .p_stake_buffer = &session_setup_data->romeao_staging_stake,
-    });
-    lib::gfx::multi_alloc::init(
-      &session_setup_data->multi_alloc,
-      std::move(claims),
-      it->core.device,
-      it->core.allocator,
-      &it->core.properties.basic,
-      &it->core.properties.memory
-    );
-  }
-
-  { ZoneScopedN("textures");
-    {
-      VkImageView image_view;
-      VkImageViewCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = it->textures.albedo.stake.image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = engine::texture::ALBEDO_TEXTURE_FORMAT,
-        .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .levelCount = session_setup_data->albedo.computed_mip_levels,
-          .layerCount = 1,
-        },
-      };
-      auto result = vkCreateImageView(
-        core->device,
-        &create_info,
-        core->allocator,
-        &it->textures.albedo.view
-      );
-      assert(result == VK_SUCCESS);
-    }
-    {
-      VkImageView image_view;
-      VkImageViewCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = it->textures.normal.stake.image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = engine::texture::NORMAL_TEXTURE_FORMAT,
-        .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .levelCount = session_setup_data->normal.computed_mip_levels,
-          .layerCount = 1,
-        },
-      };
-      auto result = vkCreateImageView(
-        core->device,
-        &create_info,
-        core->allocator,
-        &it->textures.normal.view
-      );
-      assert(result == VK_SUCCESS);
-    }
-    {
-      VkImageView image_view;
-      VkImageViewCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = it->textures.romeao.stake.image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = engine::texture::ROMEAO_TEXTURE_FORMAT,
-        .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .levelCount = session_setup_data->romeao.computed_mip_levels,
-          .layerCount = 1,
-        },
-      };
-      auto result = vkCreateImageView(
-        core->device,
-        &create_info,
-        core->allocator,
-        &it->textures.romeao.view
-      );
-      assert(result == VK_SUCCESS);
-    }
   }
 
   // for both pipelines
@@ -774,6 +465,7 @@ SessionSetupData *init_vulkan(
 
   it->ready = true;
 
+  /*
   VkSemaphore semaphore_setup_finished;
   { ZoneScopedN("semaphore_setup_finished");
     VkSemaphoreTypeCreateInfo timeline_info = {
@@ -815,6 +507,7 @@ SessionSetupData *init_vulkan(
   session_setup_data->command_pool = setup_command_pool;
 
   return session_setup_data;
+  */
 }
 
 TASK_DECL {
@@ -882,7 +575,7 @@ TASK_DECL {
   }
 
   auto vulkan = &session->vulkan;
-  auto session_setup_data = init_vulkan(vulkan, glfw);
+  init_vulkan(vulkan, glfw);
 
   { ZoneScopedN(".gpu_signal_support");
     auto it = &session->gpu_signal_support;
@@ -901,22 +594,24 @@ TASK_DECL {
     .debug_camera = lib::debug_camera::init(),
   };
 
+  /*
   task::Task* signal_setup_finished = lib::gpu_signal::create(
     &session->gpu_signal_support,
     vulkan->core.device,
     session_setup_data->semaphore_finished,
     1
   );
+  */
 
   // when the structs change, recheck that .changed_parents are still valid.
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 2240);
+    static_assert(size == 2152);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 1912);
+    static_assert(size == 1824);
   }
   #endif
 
@@ -925,18 +620,24 @@ TASK_DECL {
     yarn_end,
     session
   );
+
+  /*
   auto task_setup_cleanup = task::create(
     session_setup_cleanup,
     session_setup_data,
     &session->vulkan.core
   );
+  */
 
   engine::loading::simple::load(
     ctx,
     &session->unfinished_yarns,
     &session->scene,
     &session->vulkan.core,
-    &session->vulkan.meshes
+    &session->gpu_signal_support,
+    &session->vulkan.queue_work,
+    &session->vulkan.meshes,
+    &session->vulkan.textures
   );
 
   auto task_cleanup = task::create(
@@ -958,8 +659,10 @@ TASK_DECL {
     task_cleanup,
   }, {
     .new_dependencies = {
+      /*
       { signal_setup_finished, task_iteration },
       { signal_setup_finished, task_setup_cleanup },
+      */
       { yarn_end, task_cleanup }
     },
     .changed_parents = {
@@ -999,11 +702,4 @@ TASK_DECL {
       },
     },
   });
-
-  prepare_textures(
-    &session->vulkan.textures,
-    &session->vulkan.core,
-    session->vulkan.queue_work,
-    session_setup_data
-  );
 }

@@ -29,6 +29,9 @@ struct SessionData : lib::task::ParentResource {
     struct Item {
       glm::mat4 transform;
       size_t mesh_index;
+      size_t texture_albedo_index;
+      size_t texture_normal_index;
+      size_t texture_romeao_index;
     };
 
     std::vector<Item> items;
@@ -73,9 +76,11 @@ struct SessionData : lib::task::ParentResource {
     } meshes;
 
     struct Textures {
-      engine::common::texture::GPU_Data albedo;
-      engine::common::texture::GPU_Data normal;
-      engine::common::texture::GPU_Data romeao;
+      struct Item {
+        engine::common::texture::GPU_Data data;
+      };
+
+      std::vector<Item> items;
     } textures;
 
     struct FullscreenQuad {
@@ -134,13 +139,7 @@ struct SessionData : lib::task::ParentResource {
 };
 
 struct SessionSetupData {
-  lib::gfx::multi_alloc::Instance multi_alloc;
-  lib::gfx::multi_alloc::StakeBuffer albedo_staging_stake;
-  lib::gfx::multi_alloc::StakeBuffer normal_staging_stake;
-  lib::gfx::multi_alloc::StakeBuffer romeao_staging_stake;
-  engine::common::texture::Data<uint8_t> albedo;
-  engine::common::texture::Data<uint8_t> normal;
-  engine::common::texture::Data<uint8_t> romeao;
+  // Note: this is not used anymore, but in the future in likely will.
   VkCommandPool command_pool;
   VkSemaphore semaphore_finished;
 };

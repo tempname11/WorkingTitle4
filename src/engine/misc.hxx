@@ -33,6 +33,9 @@ struct RenderList {
     glm::mat4 transform;
     VkBuffer mesh_buffer;
     uint32_t mesh_vertex_count;
+    VkImageView texture_albedo_view;
+    VkImageView texture_normal_view;
+    VkImageView texture_romeao_view;
   };
 
   std::vector<Item> items;

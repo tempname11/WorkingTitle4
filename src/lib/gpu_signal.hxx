@@ -16,8 +16,16 @@ struct Support {
 // note: the returned pointer will be valid only until the semaphore is signaled.
 // so the caller needs to guarantee all operations with it are done before the
 // semaphore is signalled
-lib::task::Task *create(
+lib::Task *create(
   Support *it,
+  VkDevice device,
+  VkSemaphore semaphore,
+  uint64_t value
+);
+
+void associate(
+  Support *it,
+  lib::Task *external_signal,
   VkDevice device,
   VkSemaphore semaphore,
   uint64_t value

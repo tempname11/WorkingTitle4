@@ -6,7 +6,7 @@ TASK_DECL {
     ImGui::ShowDemoWindow(nullptr);
 
     ImGui::Begin("Tools");
-    imgui_reactions->reload = ImGui::Button("Reload meshes");
+    imgui_reactions->reload = ImGui::Button("Reload mesh & textures");
     ImGui::End();
   }
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include <src/lib/task.hxx>
+#include <src/lib/gpu_signal.hxx>
 #include <src/engine/session.hxx>
 #include <src/engine/rendering.hxx>
 
@@ -10,7 +11,10 @@ void load(
   SessionData::UnfinishedYarns *unfinished_yarns,
   SessionData::Scene *scene,
   SessionData::Vulkan::Core *core,
-  SessionData::Vulkan::Meshes *meshes
+  lib::gpu_signal::Support *gpu_signal_support,
+  VkQueue *queue_work,
+  SessionData::Vulkan::Meshes *meshes,
+  SessionData::Vulkan::Textures *textures
 );
 
 void unload(
@@ -19,7 +23,8 @@ void unload(
   SessionData::Scene *scene,
   SessionData::Vulkan::Core *core,
   RenderingData::InflightGPU *inflight_gpu,
-  SessionData::Vulkan::Meshes *meshes
+  SessionData::Vulkan::Meshes *meshes,
+  SessionData::Vulkan::Textures *textures
 );
 
 } // namespace

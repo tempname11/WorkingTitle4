@@ -1,29 +1,19 @@
-#include <stb_image.h>
 #include "session_setup_cleanup.hxx"
 
 TASK_DECL {
   ZoneScoped;
 
-  // @Note: we can do this earlier, after copy to buffer
-  stbi_image_free(data->albedo.data);
+  vkDestroyCommandPool(
+   core->device,
+   data->command_pool,
+   core->allocator
+  );
 
-  lib::gfx::multi_alloc::deinit(
-    &data->multi_alloc,
-    core->device,
-    core->allocator
-   );
+  vkDestroySemaphore(
+   core->device,
+   data->semaphore_finished,
+   core->allocator
+  );
 
-   vkDestroyCommandPool(
-     core->device,
-     data->command_pool,
-     core->allocator
-   );
-
-   vkDestroySemaphore(
-     core->device,
-     data->semaphore_finished,
-     core->allocator
-   );
-
-   delete data.ptr;
+  delete data.ptr;
 }

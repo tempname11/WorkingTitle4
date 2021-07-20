@@ -115,6 +115,7 @@ TASK_DECL {
       frame_generate_render_list,
       &session->scene,
       &session->vulkan.meshes,
+      &session->vulkan.textures,
       &frame_data->render_list
     ),
     task::create(
@@ -212,8 +213,11 @@ TASK_DECL {
       &session->unfinished_yarns,
       &session->scene,
       &session->vulkan.core,
+      &session->gpu_signal_support,
+      &session->vulkan.queue_work,
       &data->inflight_gpu,
       &session->vulkan.meshes,
+      &session->vulkan.textures,
       &frame_data->imgui_reactions
     ),
     task::create(

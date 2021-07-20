@@ -13,6 +13,8 @@ namespace engine::common::texture {
   };
 
   struct GPU_Data {
+    // @Note: this structure is temporary, until proper mesh memory allocation is implemented.
+    lib::gfx::multi_alloc::Instance multi_alloc;
     lib::gfx::multi_alloc::StakeImage stake;
     VkImageView view;
   };

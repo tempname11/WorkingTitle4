@@ -29,21 +29,19 @@ TASK_DECL {
     deinit_session_finalpass(&it->finalpass, core);
 
     { ZoneScopedN(".textures");
-      vkDestroyImageView(
-        core->device,
-        it->textures.albedo.view,
-        core->allocator
-      );
-      vkDestroyImageView(
-        core->device,
-        it->textures.normal.view,
-        core->allocator
-      );
-      vkDestroyImageView(
-        core->device,
-        it->textures.romeao.view,
-        core->allocator
-      );
+      for (auto &item : it->textures.items) {
+        vkDestroyImageView(
+          core->device,
+          item.data.view,
+          core->allocator
+        );
+
+        lib::gfx::multi_alloc::deinit(
+          &item.data.multi_alloc,
+          it->core.device,
+          it->core.allocator
+        );
+      }
     }
 
     { ZoneScopedN(".meshes");

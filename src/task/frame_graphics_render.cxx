@@ -8,8 +8,12 @@ void record_geometry_draw_commands(
   engine::misc::RenderList *render_list,
   SessionData::Vulkan::Textures* textures
 ) {
-  VkDescriptorSet descriptor_set;
-  { ZoneScoped("descriptor_set");
+  if (render_list->items.size() == 0) {
+    return;
+  }
+
+  std::vector<VkDescriptorSet> descriptor_sets(render_list->items.size());
+  { ZoneScoped("descriptor_sets");
     {
       std::scoped_lock lock(descriptor_pool->mutex);
       VkDescriptorSetAllocateInfo allocate_info = {
@@ -21,24 +25,29 @@ void record_geometry_draw_commands(
       auto result = vkAllocateDescriptorSets(
         core->device,
         &allocate_info,
-        &descriptor_set
+        descriptor_sets.data()
       );
       assert(result == VK_SUCCESS);
     }
+  }
 
+  VkDeviceSize zero = 0;
+  for (size_t i = 0; i < render_list->items.size(); i++) {
+    auto &item = render_list->items[i];
+    auto descriptor_set = descriptor_sets[i];
     VkDescriptorImageInfo albedo_image_info = {
       .sampler = s_gpass->sampler_albedo,
-      .imageView = textures->albedo.view,
+      .imageView = item.texture_albedo_view,
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
     VkDescriptorImageInfo normal_image_info = {
       .sampler = s_gpass->sampler_albedo, // same for now
-      .imageView = textures->normal.view,
+      .imageView = item.texture_normal_view,
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
     VkDescriptorImageInfo romeao_image_info = {
       .sampler = s_gpass->sampler_albedo, // same for now
-      .imageView = textures->romeao.view,
+      .imageView = item.texture_romeao_view,
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
     VkWriteDescriptorSet writes[] = {
@@ -76,17 +85,14 @@ void record_geometry_draw_commands(
       writes,
       0, nullptr
     );
-  }
-  vkCmdBindDescriptorSets(
-    cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    s_gpass->pipeline_layout,
-    1, 1, &descriptor_set,
-    0, nullptr
-  );
-  VkDeviceSize offset = 0;
-  for (auto &item : render_list->items) {
+    vkCmdBindDescriptorSets(
+      cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+      s_gpass->pipeline_layout,
+      1, 1, &descriptor_set,
+      0, nullptr
+    );
     // @Note: should use item.transform here!
-    vkCmdBindVertexBuffers(cmd, 0, 1, &item.mesh_buffer, &offset);
+    vkCmdBindVertexBuffers(cmd, 0, 1, &item.mesh_buffer, &zero);
     vkCmdDraw(cmd, item.mesh_vertex_count, 1, 0, 0);
   }
 }
@@ -441,7 +447,7 @@ void record_barrier_gpass_lpass(
   RenderingData::GBuffer *gbuffer
 ) {
   ZoneScoped;
-  VkImageMemoryBarrier barriers[] = {
+  VkImageMemoryBarrier barriers_g[] = {
     {
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
       .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -493,9 +499,12 @@ void record_barrier_gpass_lpass(
         .layerCount = 1,
       },
     },
+  };
+
+  VkImageMemoryBarrier barriers_z[] = {
     {
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-      .srcAccessMask = 0,
+      .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
       .dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT,
       .oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
       .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -518,8 +527,19 @@ void record_barrier_gpass_lpass(
     0,
     0, nullptr,
     0, nullptr,
-    sizeof(barriers) / sizeof(*barriers),
-    barriers
+    sizeof(barriers_g) / sizeof(*barriers_g),
+    barriers_g
+  );
+
+  vkCmdPipelineBarrier(
+    cmd,
+    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+    0,
+    0, nullptr,
+    0, nullptr,
+    sizeof(barriers_z) / sizeof(*barriers_z),
+    barriers_z
   );
 }
 

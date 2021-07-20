@@ -12,7 +12,8 @@ TASK_DECL {
         scene.ptr,
         core.ptr,
         inflight_gpu.ptr,
-        meshes.ptr
+        meshes.ptr,
+        textures.ptr
       );
       // @Note: the order of calla matters here, the first call injects an unload task immediately,
       // so tasks that use same resources in the second one are sure to be called later.
@@ -22,7 +23,10 @@ TASK_DECL {
         unfinished_yarns.ptr,
         scene.ptr,
         core.ptr,
-        meshes.ptr
+        gpu_signal_support.ptr,
+        queue_work.ptr,
+        meshes.ptr,
+        textures.ptr
       );
     }
   }

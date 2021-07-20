@@ -9,7 +9,7 @@ namespace lib::gpu_signal {
 struct Entry {
   VkSemaphore semaphore;
   uint64_t value;
-  lib::task::Task *signal;
+  lib::Task *signal;
 };
 
 struct Storage {
@@ -18,18 +18,35 @@ struct Storage {
   uint64_t new_entries_value;
 };
 
-lib::task::Task *create(
+lib::Task *create(
   Support *it,
   VkDevice device,
   VkSemaphore semaphore,
   uint64_t value
 ) {
-  ZoneScoped;
   auto signal = lib::task::create_external_signal();
+  associate(
+    it,
+    signal,
+    device,
+    semaphore,
+    value
+  );
+  return signal;
+}
+
+void associate(
+  Support *it,
+  lib::Task *external_signal,
+  VkDevice device,
+  VkSemaphore semaphore,
+  uint64_t value
+) {
+  ZoneScoped;
   auto entry = Entry {
     .semaphore = semaphore,
     .value = value,
-    .signal = signal,
+    .signal = external_signal,
   };
 
   // sanity check
@@ -52,8 +69,6 @@ lib::task::Task *create(
       assert(result == VK_SUCCESS);
     }
   }
-
-  return signal;
 }
 
 void waiting_thread(
