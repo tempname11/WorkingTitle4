@@ -1,1 +1,2 @@
-- speed up texture loading
+- loading: performance
+- basic scene editor capabilities
