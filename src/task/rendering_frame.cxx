@@ -159,6 +159,7 @@ TASK_DECL {
       frame_imgui_populate,
       &session->imgui_context,
       &frame_data->imgui_reactions,
+      &session->groups,
       &session->state
     ),
     task::create(
@@ -210,14 +211,10 @@ TASK_DECL {
     ),
     task::create(
       frame_loading_dynamic,
+      session.ptr,
       &session->unfinished_yarns,
-      &session->scene,
-      &session->vulkan.core,
-      &session->gpu_signal_support,
-      &session->vulkan.queue_work,
+      &session->groups,
       &data->inflight_gpu,
-      &session->vulkan.meshes,
-      &session->vulkan.textures,
       &frame_data->imgui_reactions
     ),
     task::create(

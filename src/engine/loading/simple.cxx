@@ -1,5 +1,7 @@
+#include <cassert>
 #include <stb_image.h>
 #include <src/global.hxx>
+#include <src/lib/guid.hxx>
 #include <src/task/defer.hxx>
 #include <src/engine/mesh.hxx>
 #include <src/engine/texture.hxx>
@@ -11,6 +13,7 @@ namespace task = lib::task;
 namespace usage = lib::usage;
 
 struct Data {
+  lib::GUID group_id;
   engine::common::mesh::T05 the_mesh;
   engine::common::texture::Data<uint8_t> the_albedo;
   engine::common::texture::Data<uint8_t> the_normal;
@@ -500,6 +503,7 @@ void _insert_items(
   size_t mesh_index = meshes->items.size() - 1;
   size_t texture_index = textures->items.size() - 3;
   scene->items.push_back(SessionData::Scene::Item {
+    .group_id = data->group_id,
     .transform = glm::mat4(1.0f),
     .mesh_index = mesh_index,
     .texture_albedo_index = texture_index,
@@ -551,20 +555,36 @@ void _cleanup_textures(
 void _finish(
   task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   usage::Some<SessionData::UnfinishedYarns> unfinished_yarns,
+  usage::Full<SessionData::Groups> groups,
   usage::None<lib::Task> yarn,
   usage::Full<Data> data 
 ) {
   ZoneScoped;
-  delete data.ptr;
+
+  for (size_t i = 0; i < groups->items.size(); i++) {
+    if (groups->items[i].group_id == data->group_id) {
+      assert(groups->items[i].status == SessionData::Groups::Status::Loading);
+      groups->items[i].status = SessionData::Groups::Status::Ready;
+    }
+  }
+
   {
     std::scoped_lock lock(unfinished_yarns->mutex);
     unfinished_yarns->set.erase(yarn.ptr);
   }
+
   task::signal(ctx->runner, yarn.ptr);
+
+  delete data.ptr;
 }
+
+struct UnloadData {
+  lib::GUID group_id;
+};
 
 void _unload(
   task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  usage::Full<UnloadData> unload_data,
   usage::Some<SessionData::UnfinishedYarns> unfinished_yarns,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Full<SessionData::Scene> scene,
@@ -599,26 +619,30 @@ void _unload(
 
   textures->items.clear();
   meshes->items.clear();
-  scene->items.clear();
+
+  for (size_t i = 0; i < scene->items.size(); i++) {
+    auto *item = &scene->items[i];
+    if (item->group_id == unload_data->group_id) {
+      *item = scene->items.back();
+      scene->items.pop_back();
+      i--;
+    }
+  }
+
   {
     std::scoped_lock lock(unfinished_yarns->mutex);
     unfinished_yarns->set.erase(yarn.ptr);
   }
   task::signal(ctx->runner, yarn.ptr);
+
+  free(unload_data.ptr);
 }
 
-// @Note: we pass these as pointers, but usage information gets lost,
-// and so callers need to see what this does to adapt their own usage.
-// Seems brittle.
 void load(
   lib::task::ContextBase *ctx,
-  SessionData::UnfinishedYarns *unfinished_yarns,
-  SessionData::Scene *scene,
-  SessionData::Vulkan::Core *core,
-  lib::gpu_signal::Support *gpu_signal_support,
-  VkQueue *queue_work,
-  SessionData::Vulkan::Meshes *meshes,
-  SessionData::Vulkan::Textures *textures
+  lib::GUID group_id,
+  Ref<SessionData> session,
+  Use<SessionData::UnfinishedYarns> unfinished_yarns
 ) {
   ZoneScoped;
   auto yarn = task::create_yarn_signal();
@@ -626,7 +650,9 @@ void load(
     std::scoped_lock lock(unfinished_yarns->mutex);
     unfinished_yarns->set.insert(yarn);
   }
-  auto data = new Data {};
+  auto data = new Data {
+    .group_id = group_id,
+  };
   // @Note: we need to get rid of Data dependency in each task.
   // need to go finer-grained
   auto signal_init_texture_images = task::create_external_signal();
@@ -642,7 +668,7 @@ void load(
     defer,
     task::create(
       _init_mesh_buffer,
-      core,
+      &session->vulkan.core,
       data
     )
   );
@@ -650,9 +676,9 @@ void load(
     defer,
     task::create(
       _init_texture_images,
-      core,
-      gpu_signal_support,
-      queue_work,
+      &session->vulkan.core,
+      &session->gpu_signal_support,
+      &session->vulkan.queue_work,
       signal_init_texture_images,
       data
     )
@@ -661,9 +687,9 @@ void load(
     defer,
     task::create(
       _insert_items,
-      scene,
-      meshes,
-      textures,
+      &session->scene,
+      &session->vulkan.meshes,
+      &session->vulkan.textures,
       data
     )
   );
@@ -678,7 +704,7 @@ void load(
     defer,
     task::create(
       _cleanup_textures,
-      core,
+      &session->vulkan.core,
       data
     )
   );
@@ -686,7 +712,8 @@ void load(
     defer,
     task::create(
       _finish,
-      unfinished_yarns,
+      unfinished_yarns.ptr,
+      &session->groups,
       yarn,
       data
     )
@@ -719,32 +746,36 @@ void load(
 
 void unload(
   lib::task::ContextBase *ctx,
-  SessionData::UnfinishedYarns *unfinished_yarns,
-  SessionData::Scene *scene,
-  SessionData::Vulkan::Core *core,
-  RenderingData::InflightGPU *inflight_gpu,
-  SessionData::Vulkan::Meshes *meshes,
-  SessionData::Vulkan::Textures *textures
+  lib::GUID group_id,
+  Ref<SessionData> session,
+  Use<SessionData::UnfinishedYarns> unfinished_yarns,
+  Use<RenderingData::InflightGPU> inflight_gpu
 ) {
   auto yarn = task::create_yarn_signal();
   {
     std::scoped_lock lock(unfinished_yarns->mutex);
     unfinished_yarns->set.insert(yarn);
   }
+  auto data = new UnloadData {
+    .group_id = group_id,
+  };
   auto task_unload = task::create(
     _unload,
-    unfinished_yarns,
-    core,
-    scene,
-    meshes,
-    textures,
+    data,
+    unfinished_yarns.ptr,
+    &session->vulkan.core,
+    &session->scene,
+    &session->vulkan.meshes,
+    &session->vulkan.textures,
     yarn
   );
   {
     std::scoped_lock lock(inflight_gpu->mutex);
     std::vector<std::pair<lib::Task *, lib::Task *>> dependencies;
-    for (auto signal : inflight_gpu->signals) {
-      dependencies.push_back({ signal, task_unload });
+    if (inflight_gpu.ptr != nullptr) {
+      for (auto signal : inflight_gpu->signals) {
+        dependencies.push_back({ signal, task_unload });
+      }
     }
     task::inject(ctx->runner, {
       task_unload
@@ -752,6 +783,32 @@ void unload(
       .new_dependencies = dependencies,
     });
   }
+}
+
+void reload(
+  lib::task::ContextBase *ctx,
+  lib::GUID group_id,
+  Ref<SessionData> session,
+  Use<SessionData::UnfinishedYarns> unfinished_yarns,
+  Use<RenderingData::InflightGPU> inflight_gpu
+) {
+  unload(
+    ctx,
+    group_id,
+    session,
+    unfinished_yarns,
+    inflight_gpu
+  );
+
+  // @Hack: `unload` just injects one task, and it's use of resources
+  // guarantees that loading will happen afterwards and not conflict.
+
+  load(
+    ctx,
+    group_id,
+    session,
+    unfinished_yarns
+  );
 }
 
 } // namespace

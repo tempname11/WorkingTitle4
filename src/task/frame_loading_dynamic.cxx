@@ -3,30 +3,23 @@
 
 TASK_DECL {
   ZoneScoped;
-  if (imgui_reactions->reload) {
-    // @Note: the check is ridiculous and need to be rethought later.
-    if (meshes->items.size() > 0) {
-      engine::loading::simple::unload(
+  if (imgui_reactions->reload_group_id != 0) {
+    auto id = imgui_reactions->reload_group_id;
+    SessionData::Groups::Item *group = nullptr;
+    for (size_t i = 0; i < groups->items.size(); i++) {
+      if (groups->items[i].group_id == id) {
+        group = &groups->items[i];
+        break;
+      }
+    }
+    if (group != nullptr && group->status == SessionData::Groups::Status::Ready) {
+      group->status = SessionData::Groups::Status::Loading;
+      engine::loading::simple::reload(
         ctx,
+        id,
+        session,
         unfinished_yarns.ptr,
-        scene.ptr,
-        core.ptr,
-        inflight_gpu.ptr,
-        meshes.ptr,
-        textures.ptr
-      );
-      // @Note: the order of calla matters here, the first call injects an unload task immediately,
-      // so tasks that use same resources in the second one are sure to be called later.
-
-      engine::loading::simple::load(
-        ctx,
-        unfinished_yarns.ptr,
-        scene.ptr,
-        core.ptr,
-        gpu_signal_support.ptr,
-        queue_work.ptr,
-        meshes.ptr,
-        textures.ptr
+        inflight_gpu.ptr
       );
     }
   }

@@ -1,5 +1,6 @@
 #pragma once
 #include <mutex>
+#include <string>
 #include <unordered_set>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -7,6 +8,7 @@
 #include <src/engine/common/texture.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/lib/task.hxx>
+#include <src/lib/guid.hxx>
 #include <src/lib/gpu_signal.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
 #include <src/lib/debug_camera.hxx>
@@ -20,13 +22,31 @@ struct SessionData : lib::task::ParentResource {
     glm::vec2 last_known_mouse_cursor_position;
   } glfw;
 
+  lib::guid::Counter guid_counter;
+
   struct UnfinishedYarns {
     std::mutex mutex;
     std::unordered_set<lib::Task *> set;
   } unfinished_yarns;
 
+  struct Groups {
+    enum struct Status {
+      Loading,
+      Ready
+    };
+     
+    struct Item {
+      lib::GUID group_id;
+      Status status;
+      std::string name;
+    };
+
+    std::vector<Item> items;
+  } groups;
+
   struct Scene {
     struct Item {
+      lib::GUID group_id;
       glm::mat4 transform;
       size_t mesh_index;
       size_t texture_albedo_index;

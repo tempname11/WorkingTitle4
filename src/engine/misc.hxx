@@ -2,6 +2,7 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 #include <glm/glm.hpp>
+#include <src/lib/guid.hxx>
 #include <src/lib/task.hxx>
 #include <src/lib/debug_camera.hxx>
 #include "session.hxx"
@@ -42,7 +43,7 @@ struct RenderList {
 };
 
 struct ImguiReactions {
-  bool reload;
+  lib::GUID reload_group_id;
 };
 
 struct FrameData : lib::task::ParentResource {

@@ -607,7 +607,7 @@ TASK_DECL {
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 2152);
+    static_assert(size == 2192);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
@@ -629,15 +629,19 @@ TASK_DECL {
   );
   */
 
+  lib::GUID static_group_id = lib::guid::next(&session->guid_counter);
+  
+  session->groups.items.push_back(SessionData::Groups::Item {
+    .group_id = static_group_id,
+    .status = SessionData::Groups::Status::Loading,
+    .name = "Example Static Group",
+  });
+
   engine::loading::simple::load(
     ctx,
-    &session->unfinished_yarns,
-    &session->scene,
-    &session->vulkan.core,
-    &session->gpu_signal_support,
-    &session->vulkan.queue_work,
-    &session->vulkan.meshes,
-    &session->vulkan.textures
+    static_group_id,
+    session,
+    &session->unfinished_yarns
   );
 
   auto task_cleanup = task::create(
@@ -670,6 +674,7 @@ TASK_DECL {
         .ptr = session,
         .children = {
           &session->glfw,
+          &session->guid_counter,
           &session->unfinished_yarns,
           &session->scene,
           &session->vulkan,

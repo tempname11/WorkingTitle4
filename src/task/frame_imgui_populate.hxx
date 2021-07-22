@@ -8,6 +8,7 @@
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx, \
   usage::Full<SessionData::ImguiContext> imgui, \
   usage::Full<engine::misc::ImguiReactions> imgui_reactions, \
+  usage::Some<SessionData::Groups> groups, \
   usage::Some<SessionData::State> state \
 )
 

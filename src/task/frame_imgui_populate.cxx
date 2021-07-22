@@ -5,8 +5,17 @@ TASK_DECL {
   if (state->show_imgui) {
     ImGui::ShowDemoWindow(nullptr);
 
-    ImGui::Begin("Tools");
-    imgui_reactions->reload = ImGui::Button("Reload mesh & textures");
+    ImGui::Begin("Groups");
+    for (auto &item : groups->items) {
+      ImGui::TextUnformatted(
+        item.name.c_str(),
+        item.name.c_str() + item.name.size()
+      );
+      ImGui::SameLine();
+      if (ImGui::Button("Reload")) {
+        imgui_reactions->reload_group_id = item.group_id;
+      }
+    }
     ImGui::End();
   }
 }
