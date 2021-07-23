@@ -522,6 +522,7 @@ void _unload(
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Full<SessionData::Scene> scene,
   usage::Full<SessionData::Vulkan::Meshes> meshes,
+  usage::Full<SessionData::MetaMeshes> meta_meshes,
   usage::Full<SessionData::Vulkan::Textures> textures,
   usage::None<lib::Task> yarn
 ) {
@@ -533,7 +534,8 @@ void _unload(
       engine::loading::mesh::deref(
         item->mesh_id,
         core,
-        meshes
+        meshes,
+        meta_meshes
       );
 
       *item = scene->items.back();
@@ -589,8 +591,10 @@ void load(
    
   lib::GUID mesh_id = lib::guid::invalid;
   auto signal_mesh_loaded = engine::loading::mesh::load(
+    "assets/mesh.t05",
     ctx,
     session,
+    &session->meta_meshes,
     &session->guid_counter,
     &mesh_id
   );
@@ -684,6 +688,7 @@ void unload(
     &session->vulkan.core,
     &session->scene,
     &session->vulkan.meshes,
+    &session->meta_meshes,
     &session->vulkan.textures,
     yarn
   );

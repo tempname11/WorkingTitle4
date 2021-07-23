@@ -59,6 +59,24 @@ struct SessionData : lib::task::ParentResource {
     std::vector<Item> items;
   } scene;
 
+  struct MetaMeshes {
+    std::unordered_map<std::string, lib::GUID> by_path;
+
+    struct Item {
+      enum struct Status {
+        Loading,
+        Ready
+      };
+
+      size_t ref_count;
+      Status status;
+      lib::Task *signal_loaded;
+      std::string path;
+    } item;
+
+    std::unordered_map<lib::GUID, Item> items;
+  } meta_meshes;
+
   struct Vulkan : lib::task::ParentResource {
     bool ready;
     VkInstance instance;
@@ -92,7 +110,7 @@ struct SessionData : lib::task::ParentResource {
 
     struct Meshes {
       struct Item {
-        size_t ref_count;
+        // we can get rid of the struct, maybe?
         engine::common::mesh::GPU_Data data;
       };
 

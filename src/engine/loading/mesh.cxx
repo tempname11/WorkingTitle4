@@ -5,8 +5,9 @@
 namespace engine::loading::mesh {
 
 struct LoadData {
-  engine::common::mesh::T05 the_mesh;
   lib::GUID mesh_id;
+  const char *path;
+  engine::common::mesh::T05 the_mesh;
   SessionData::Vulkan::Meshes::Item mesh_item;
 };
 
@@ -15,7 +16,7 @@ void _read_file(
   Own<LoadData> data 
 ) {
   ZoneScoped;
-  data->the_mesh = engine::mesh::read_t05_file("assets/mesh.t05");
+  data->the_mesh = engine::mesh::read_t05_file(data->path);
 }
 
 void _init_buffer(
@@ -86,40 +87,71 @@ void _load_finish(
   Own<SessionData::Vulkan::Meshes> meshes,
   Own<LoadData> data
 ) {
-  data->mesh_item.ref_count = 1;
   meshes->items.insert({ data->mesh_id, data->mesh_item });
 }
 
 void deref(
   lib::GUID mesh_id,
   Use<SessionData::Vulkan::Core> core,
-  Own<SessionData::Vulkan::Meshes> meshes
+  Own<SessionData::Vulkan::Meshes> meshes,
+  Own<SessionData::MetaMeshes> meta_meshes
 ) {
-  auto mesh = &meshes->items.at(mesh_id);
-  assert(mesh->ref_count > 0);
-  mesh->ref_count--;
-  if (mesh->ref_count == 0) {
+  auto meta = &meta_meshes->items.at(mesh_id);
+  assert(meta->ref_count > 0);
+  meta->ref_count--;
+  if (meta->ref_count == 0) {
+    auto mesh = &meshes->items.at(mesh_id);
     lib::gfx::multi_alloc::deinit(
       &mesh->data.multi_alloc,
       core->device,
       core->allocator
     );
 
+    meta_meshes->by_path.erase(meta->path);
+    meta_meshes->items.erase(mesh_id);
     meshes->items.erase(mesh_id);
   }
 }
 
 lib::Task* load(
+  std::string path,
   lib::task::ContextBase* ctx,
   Ref<SessionData> session,
+  Own<SessionData::MetaMeshes> meta_meshes,
   Use<SessionData::GuidCounter> guid_counter,
   lib::GUID *out_mesh_id
 ) {
+  auto it = meta_meshes->by_path.find(path);
+  if (it != meta_meshes->by_path.end()) {
+    auto mesh_id = it->second;
+    *out_mesh_id = mesh_id;
+
+    auto meta = &meta_meshes->items.at(mesh_id);
+    meta->ref_count++;
+
+    if (meta->status == SessionData::MetaMeshes::Item::Status::Loading) {
+      assert(meta->signal_loaded != nullptr);
+      return meta->signal_loaded;
+    }
+
+    return nullptr;
+  }
+
   auto mesh_id = lib::guid::next(guid_counter.ptr);
   *out_mesh_id = mesh_id;
 
+  SessionData::MetaMeshes::Item meta = {
+    .ref_count = 1, 
+    .status = SessionData::MetaMeshes::Item::Status::Loading,
+    .path = path,
+  };
+  meta_meshes->items.insert({ mesh_id, meta });
+  
   auto data = new LoadData {
     .mesh_id = mesh_id,
+    .path = meta_meshes->items.at(mesh_id).path.c_str(),
+    // ^ this pointer will be valid for the tasks,
+    // no need to copy the string
   };
 
   auto task_read_file = lib::task::create(
