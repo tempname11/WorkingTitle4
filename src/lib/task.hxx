@@ -25,6 +25,8 @@ struct Auxiliary {
 struct ContextBase {
   Runner *runner;
   std::vector<Task *> subtasks;
+  std::vector<Task *> new_tasks;
+  std::vector<std::pair<Task *, Task *>> new_dependencies;
   std::vector<Auxiliary::ParentInfo> changed_parents;
 };
 

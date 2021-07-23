@@ -30,14 +30,15 @@ TASK_DECL {
 
     { ZoneScopedN(".textures");
       for (auto &item : it->textures.items) {
+        // @Note: see loading/simple's `_unload`.
         vkDestroyImageView(
           core->device,
-          item.data.view,
+          item.second.data.view,
           core->allocator
         );
 
         lib::gfx::multi_alloc::deinit(
-          &item.data.multi_alloc,
+          &item.second.data.multi_alloc,
           it->core.device,
           it->core.allocator
         );
@@ -47,7 +48,7 @@ TASK_DECL {
     { ZoneScopedN(".meshes");
       for (auto &item : it->meshes.items) {
         lib::gfx::multi_alloc::deinit(
-          &item.data.multi_alloc,
+          &item.second.data.multi_alloc,
           it->core.device,
           it->core.allocator
         );

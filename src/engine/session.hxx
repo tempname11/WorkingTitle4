@@ -2,6 +2,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_set>
+#include <unordered_map>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <TracyVulkan.hpp>
@@ -22,7 +23,8 @@ struct SessionData : lib::task::ParentResource {
     glm::vec2 last_known_mouse_cursor_position;
   } glfw;
 
-  lib::guid::Counter guid_counter;
+  using GuidCounter = lib::guid::Counter;
+  GuidCounter guid_counter;
 
   struct UnfinishedYarns {
     std::mutex mutex;
@@ -48,10 +50,10 @@ struct SessionData : lib::task::ParentResource {
     struct Item {
       lib::GUID group_id;
       glm::mat4 transform;
-      size_t mesh_index;
-      size_t texture_albedo_index;
-      size_t texture_normal_index;
-      size_t texture_romeao_index;
+      lib::GUID mesh_id;
+      lib::GUID texture_albedo_id;
+      lib::GUID texture_normal_id;
+      lib::GUID texture_romeao_id;
     };
 
     std::vector<Item> items;
@@ -85,14 +87,16 @@ struct SessionData : lib::task::ParentResource {
 
     VkCommandPool tracy_setup_command_pool;
 
-    lib::gfx::multi_alloc::Instance multi_alloc;
+    using MultiAlloc = lib::gfx::multi_alloc::Instance;
+    MultiAlloc multi_alloc;
 
     struct Meshes {
       struct Item {
+        size_t ref_count;
         engine::common::mesh::GPU_Data data;
       };
 
-      std::vector<Item> items;
+      std::unordered_map<lib::GUID, Item> items;
     } meshes;
 
     struct Textures {
@@ -100,7 +104,7 @@ struct SessionData : lib::task::ParentResource {
         engine::common::texture::GPU_Data data;
       };
 
-      std::vector<Item> items;
+      std::unordered_map<lib::GUID, Item> items;
     } textures;
 
     struct FullscreenQuad {
@@ -145,7 +149,8 @@ struct SessionData : lib::task::ParentResource {
     // but if they took a parameter, we'd store that here.
   } imgui_context;
 
-  lib::gpu_signal::Support gpu_signal_support;
+  using GPU_SignalSupport = lib::gpu_signal::Support;
+  GPU_SignalSupport gpu_signal_support;
 
   struct Info {
     size_t worker_count;

@@ -5,6 +5,7 @@
 #include <src/task/defer.hxx>
 #include <src/engine/mesh.hxx>
 #include <src/engine/texture.hxx>
+#include "mesh.hxx"
 #include "simple.hxx"
 
 namespace engine::loading::simple {
@@ -14,11 +15,13 @@ namespace usage = lib::usage;
 
 struct Data {
   lib::GUID group_id;
-  engine::common::mesh::T05 the_mesh;
+
+  lib::GUID mesh_id;
+
+  // texture stuff
   engine::common::texture::Data<uint8_t> the_albedo;
   engine::common::texture::Data<uint8_t> the_normal;
   engine::common::texture::Data<uint8_t> the_romeao;
-  SessionData::Vulkan::Meshes::Item mesh_item;
   SessionData::Vulkan::Textures::Item texture_albedo_item;
   SessionData::Vulkan::Textures::Item texture_normal_item;
   SessionData::Vulkan::Textures::Item texture_romeao_item;
@@ -123,14 +126,6 @@ void prepare_textures(
   }
 }
 
-void _read_mesh_file(
-  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Full<Data> data 
-) {
-  ZoneScoped;
-  data->the_mesh = engine::mesh::read_t05_file("assets/mesh.t05");
-}
-
 void _read_texture_files(
   task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   usage::Full<Data> data 
@@ -139,61 +134,6 @@ void _read_texture_files(
   data->the_albedo = engine::texture::load_rgba8("assets/texture/albedo.jpg");
   data->the_normal = engine::texture::load_rgba8("assets/texture/normal.jpg");
   data->the_romeao = engine::texture::load_rgba8("assets/texture/romeao.png");
-}
-
-void _init_mesh_buffer(
-  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Some<SessionData::Vulkan::Core> core,
-  usage::Full<Data> data 
-) {
-  ZoneScoped;
-
-  data->mesh_item.data.triangle_count = data->the_mesh.triangle_count;
-  lib::gfx::multi_alloc::init(
-    &data->mesh_item.data.multi_alloc,
-    { lib::gfx::multi_alloc::Claim {
-      .info = {
-        .buffer = {
-          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-          .size = data->the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05),
-          .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        },
-      },
-      .memory_property_flags = VkMemoryPropertyFlagBits(0
-      | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-      | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-      ),
-      .p_stake_buffer = &data->mesh_item.data.vertex_stake,
-    }},
-    core->device,
-    core->allocator,
-    &core->properties.basic,
-    &core->properties.memory
-  );
-
-  void *mem;
-  {
-    auto result = vkMapMemory(
-      core->device,
-      data->mesh_item.data.vertex_stake.memory,
-      data->mesh_item.data.vertex_stake.offset,
-      data->mesh_item.data.vertex_stake.size,
-      0,
-      &mem
-    );
-    assert(result == VK_SUCCESS);
-  }
-  memcpy(
-    mem,
-    data->the_mesh.vertices,
-    data->the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05)
-  );
-  vkUnmapMemory(
-    core->device,
-    data->mesh_item.data.vertex_stake.memory
-  );
 }
 
 void _init_texture_images(
@@ -490,34 +430,27 @@ void _init_texture_images(
 
 void _insert_items(
   task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  usage::Some<SessionData::GuidCounter> guid_counter,
   usage::Full<SessionData::Scene> scene,
   usage::Full<SessionData::Vulkan::Meshes> meshes,
   usage::Full<SessionData::Vulkan::Textures> textures,
   usage::Full<Data> data 
 ) {
   ZoneScoped;
-  textures->items.push_back(data->texture_albedo_item);
-  textures->items.push_back(data->texture_normal_item);
-  textures->items.push_back(data->texture_romeao_item);
-  meshes->items.push_back(data->mesh_item);
-  size_t mesh_index = meshes->items.size() - 1;
-  size_t texture_index = textures->items.size() - 3;
+  auto albedo_id = lib::guid::next(guid_counter.ptr);
+  auto normal_id = lib::guid::next(guid_counter.ptr);
+  auto romeao_id = lib::guid::next(guid_counter.ptr);
+  textures->items.insert({ albedo_id, data->texture_albedo_item });
+  textures->items.insert({ normal_id, data->texture_normal_item });
+  textures->items.insert({ romeao_id, data->texture_romeao_item });
   scene->items.push_back(SessionData::Scene::Item {
     .group_id = data->group_id,
     .transform = glm::mat4(1.0f),
-    .mesh_index = mesh_index,
-    .texture_albedo_index = texture_index,
-    .texture_normal_index = texture_index + 1,
-    .texture_romeao_index = texture_index + 2,
+    .mesh_id = data->mesh_id,
+    .texture_albedo_id = albedo_id,
+    .texture_normal_id = normal_id,
+    .texture_romeao_id = romeao_id,
   });
-}
-
-void _cleanup_mesh(
-  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Full<Data> data 
-) {
-  ZoneScoped;
-  engine::mesh::deinit_t05(&data->the_mesh);
 }
 
 void _cleanup_textures(
@@ -594,40 +527,39 @@ void _unload(
 ) {
   ZoneScoped;
 
-  // @Note: this duplicates code in session_cleanup (.textures, .meshes)
-  for (auto &item : textures->items) {
-    vkDestroyImageView(
-      core->device,
-      item.data.view,
-      core->allocator
-    );
-
-    lib::gfx::multi_alloc::deinit(
-      &item.data.multi_alloc,
-      core->device,
-      core->allocator
-    );
-  }
-
-  for (auto &item : meshes->items) {
-    lib::gfx::multi_alloc::deinit(
-      &item.data.multi_alloc,
-      core->device,
-      core->allocator
-    );
-  }
-
-  textures->items.clear();
-  meshes->items.clear();
-
   for (size_t i = 0; i < scene->items.size(); i++) {
     auto *item = &scene->items[i];
     if (item->group_id == unload_data->group_id) {
+      engine::loading::mesh::deref(
+        item->mesh_id,
+        core,
+        meshes
+      );
+
       *item = scene->items.back();
       scene->items.pop_back();
       i--;
     }
   }
+
+  // XXX wrong iteration
+  // @Note: this duplicates code in session_cleanup (.textures, .meshes)
+  for (auto &item : textures->items) {
+    vkDestroyImageView(
+      core->device,
+      item.second.data.view,
+      core->allocator
+    );
+
+    lib::gfx::multi_alloc::deinit(
+      &item.second.data.multi_alloc,
+      core->device,
+      core->allocator
+    );
+  }
+
+  // XXX wrong clear
+  textures->items.clear();
 
   {
     std::scoped_lock lock(unfinished_yarns->mutex);
@@ -650,27 +582,28 @@ void load(
     std::scoped_lock lock(unfinished_yarns->mutex);
     unfinished_yarns->set.insert(yarn);
   }
-  auto data = new Data {
-    .group_id = group_id,
-  };
+
   // @Note: we need to get rid of Data dependency in each task.
   // need to go finer-grained
-  auto signal_init_texture_images = task::create_external_signal();
-  auto task_read_mesh_file = task::create(
-    _read_mesh_file,
-    data
+
+   
+  lib::GUID mesh_id = lib::guid::invalid;
+  auto signal_mesh_loaded = engine::loading::mesh::load(
+    ctx,
+    session,
+    &session->guid_counter,
+    &mesh_id
   );
+
+  auto data = new Data {
+    .group_id = group_id,
+    .mesh_id = mesh_id,
+  };
+
+  auto signal_init_texture_images = task::create_external_signal();
   auto task_read_texture_files = task::create(
     _read_texture_files,
     data
-  );
-  auto task_init_mesh_buffer = task::create(
-    defer,
-    task::create(
-      _init_mesh_buffer,
-      &session->vulkan.core,
-      data
-    )
   );
   auto task_init_texture_images = task::create(
     defer,
@@ -687,16 +620,10 @@ void load(
     defer,
     task::create(
       _insert_items,
+      &session->guid_counter,
       &session->scene,
       &session->vulkan.meshes,
       &session->vulkan.textures,
-      data
-    )
-  );
-  auto task_cleanup_mesh = task::create(
-    defer,
-    task::create(
-      _cleanup_mesh,
       data
     )
   );
@@ -718,29 +645,20 @@ void load(
       data
     )
   );
-  task::inject(ctx->runner, {
-    task_read_mesh_file,
+  ctx->new_tasks.insert(ctx->new_tasks.end(), {
     task_read_texture_files,
-    task_init_mesh_buffer,
     task_init_texture_images,
     task_insert_items,
-    task_cleanup_mesh,
     task_cleanup_textures,
     task_finish,
-  }, {
-    .new_dependencies = {
-      { task_read_mesh_file, task_init_mesh_buffer },
-      { task_init_mesh_buffer, task_cleanup_mesh },
-      { task_cleanup_mesh, task_finish },
-
-      { task_read_texture_files, task_init_texture_images },
-      { signal_init_texture_images, task_cleanup_textures },
-      { task_cleanup_textures, task_finish },
-
-      { task_init_mesh_buffer, task_insert_items },
-      { signal_init_texture_images, task_insert_items },
-      { task_insert_items, task_finish },
-    },
+  });
+  ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
+    { task_read_texture_files, task_init_texture_images },
+    { signal_init_texture_images, task_cleanup_textures },
+    { task_cleanup_textures, task_finish },
+    { signal_mesh_loaded, task_insert_items },
+    { signal_init_texture_images, task_insert_items },
+    { task_insert_items, task_finish },
   });
 }
 

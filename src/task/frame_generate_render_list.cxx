@@ -3,10 +3,10 @@
 TASK_DECL {
   ZoneScoped;
   for (auto &item : scene->items) {
-    auto &mesh = meshes->items[item.mesh_index];
-    auto &albedo = textures->items[item.texture_albedo_index];
-    auto &normal = textures->items[item.texture_normal_index];
-    auto &romeao = textures->items[item.texture_romeao_index];
+    auto &mesh = meshes->items.at(item.mesh_id);
+    auto &albedo = textures->items.at(item.texture_albedo_id);
+    auto &normal = textures->items.at(item.texture_normal_id);
+    auto &romeao = textures->items.at(item.texture_romeao_id);
     render_list->items.push_back(engine::misc::RenderList::Item {
       .transform = item.transform,
       .mesh_buffer = mesh.data.vertex_stake.buffer,

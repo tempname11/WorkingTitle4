@@ -295,7 +295,7 @@ void _internal_infer_resource_dependencies(
   }
 }
 
-void _internal_inject(Runner *r, std::vector<Task *> &tasks, Task *super) {
+void _internal_infer_dependencies(Runner *r, std::vector<Task *> &tasks, Task *super) {
   // r_lock is assumed!
   if (tasks.size() == 0) {
     return;
@@ -361,6 +361,43 @@ void _internal_inject(Runner *r, std::vector<Task *> &tasks, Task *super) {
   }
 }
 
+void _internal_new_dependencies(
+  Runner *r,
+  std::vector<std::pair<Task *, Task *>> &&new_dependencies
+) {
+  // r_lock is assumed!
+  for (auto &d : new_dependencies) {
+    if (d.first == nullptr) {
+      continue;
+    }
+    assert(d.first != d.second);
+    assert(d.second != nullptr);
+    assert(d.second->queue_index != QUEUE_INDEX_EXTERNAL_SIGNAL_ONLY);
+    assert(d.second->queue_index != QUEUE_INDEX_YARN_SIGNAL_ONLY);
+    if (d.first->queue_index == QUEUE_INDEX_EXTERNAL_SIGNAL_ONLY) {
+      r->unresolved_dependency_external_signals.insert(d.first);
+    }
+    bool skipped = false;
+    if (r->dependants.contains(d.first)) {
+      auto &list = r->dependants[d.first];
+      // check in case it's already in the list
+      if (std::find(list.begin(), list.end(), d.second) == list.end()) {
+        r->dependants[d.first].push_back(d.second);
+      } else {
+        skipped = true;
+      }
+    } else {
+      r->dependants[d.first] = { d.second };
+    }
+    if (!skipped) {
+      if (r->dependencies_left.contains(d.second)) {
+        r->dependencies_left[d.second] += 1;
+      } else {
+        r->dependencies_left[d.second] = 1;
+      }
+    }
+  }
+}
 
 const char* worker_names[16] = {
   "Worker 00",
@@ -423,7 +460,11 @@ void run_task_worker(Runner *r, int worker_index, uint64_t queue_access_bits) {
       t->fn(&ctx);
       r_lock.lock();
       _internal_changed_parents(r, std::move(ctx.changed_parents), t);
-      _internal_inject(r, ctx.subtasks, t);
+      _internal_infer_dependencies(r, ctx.subtasks, t);
+      _internal_new_dependencies(r, std::move(ctx.new_dependencies));
+      for (auto t : ctx.new_tasks) {
+        _internal_add_new_task(r, t);
+      }
       for (auto t : ctx.subtasks) {
         // note: we should insert tasks in front of the queue,
         // but we don't, right now. should not matter for correctness,
@@ -528,38 +569,8 @@ void inject(Runner *r, std::vector<Task *> && tasks, Auxiliary && aux) {
   ZoneScoped;
   std::unique_lock r_lock(r->mutex);
   _internal_changed_parents(r, std::move(aux.changed_parents), nullptr);
-  _internal_inject(r, tasks, nullptr);
-  for (auto &d : aux.new_dependencies) {
-    if (d.first == nullptr) {
-      continue;
-    }
-    assert(d.first != d.second);
-    assert(d.second != nullptr);
-    assert(d.second->queue_index != QUEUE_INDEX_EXTERNAL_SIGNAL_ONLY);
-    assert(d.second->queue_index != QUEUE_INDEX_YARN_SIGNAL_ONLY);
-    if (d.first->queue_index == QUEUE_INDEX_EXTERNAL_SIGNAL_ONLY) {
-      r->unresolved_dependency_external_signals.insert(d.first);
-    }
-    bool skipped = false;
-    if (r->dependants.contains(d.first)) {
-      auto &list = r->dependants[d.first];
-      // check in case it's already in the list
-      if (std::find(list.begin(), list.end(), d.second) == list.end()) {
-        r->dependants[d.first].push_back(d.second);
-      } else {
-        skipped = true;
-      }
-    } else {
-      r->dependants[d.first] = { d.second };
-    }
-    if (!skipped) {
-      if (r->dependencies_left.contains(d.second)) {
-        r->dependencies_left[d.second] += 1;
-      } else {
-        r->dependencies_left[d.second] = 1;
-      }
-    }
-  }
+  _internal_infer_dependencies(r, tasks, nullptr);
+  _internal_new_dependencies(r, std::move(aux.new_dependencies));
   for (auto t : tasks) {
     _internal_add_new_task(r, t);
   }
