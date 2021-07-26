@@ -19,6 +19,7 @@ engine::common::texture::Data<uint8_t> load_rgba8(const char *filename) {
 }
 
 void prepare(
+  size_t texel_size,
   engine::common::texture::Data<uint8_t> *data,
   engine::common::texture::GPU_Data *gpu_data,
   lib::gfx::multi_alloc::StakeBuffer *staging_stake,
@@ -40,7 +41,7 @@ void prepare(
     memcpy(
       mem,
       data->data,
-      ALBEDO_TEXEL_SIZE
+      texel_size
         * data->width
         * data->height
     );

@@ -7,7 +7,9 @@
 - task::inject seems net harmful, should deprecate it.
 - resource aliasing seems net harmful. 
 - lib::task, avoid so many allocations
+- unfinished yarns could be just an atomic counter with last-will-signal.
 - semaphores are used unnecessarily to separate work <-> imgui <-> compose
+- texture mip levels are generated at runtime
 
 ### minor issues
 - memory usage seems to increase over time,

@@ -4,17 +4,13 @@
 
 namespace engine::texture {
   const auto ALBEDO_TEXTURE_FORMAT = VK_FORMAT_R8G8B8A8_SRGB;
-  const size_t ALBEDO_TEXEL_SIZE = 4;
-
-  const auto NORMAL_TEXTURE_FORMAT = VK_FORMAT_R8G8B8A8_UNORM; // why does SNORM look weird?
-  const size_t NORMAL_TEXEL_SIZE = 4;
-
+  const auto NORMAL_TEXTURE_FORMAT = VK_FORMAT_R8G8B8A8_UNORM; // SNORM doesn't work right, for some reason.
   const auto ROMEAO_TEXTURE_FORMAT = VK_FORMAT_R8G8B8A8_UNORM;
-  const size_t ROMEAO_TEXEL_SIZE = 4;
 
   engine::common::texture::Data<uint8_t> load_rgba8(const char *filename);
 
   void prepare(
+    size_t texel_size,
     engine::common::texture::Data<uint8_t> *data,
     engine::common::texture::GPU_Data *gpu_data,
     lib::gfx::multi_alloc::StakeBuffer *staging_stake,

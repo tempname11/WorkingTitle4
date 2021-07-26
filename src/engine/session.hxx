@@ -14,6 +14,27 @@
 #include <src/lib/gfx/multi_alloc.hxx>
 #include <src/lib/debug_camera.hxx>
 
+struct MetaTexturesKey {
+  std::string path;
+  VkFormat format;
+
+  bool operator==(const MetaTexturesKey& other) const {
+    return (true
+      && path == other.path
+      && format == other.format
+    );
+  }
+};
+
+namespace std {
+  template <>
+  struct hash<MetaTexturesKey> {
+    size_t operator()(const MetaTexturesKey& key) const {
+      return hash<std::string>()(key.path) ^ hash<VkFormat>()(key.format);
+    }
+  };
+}
+
 struct SessionData : lib::task::ParentResource {
   struct GLFW {
     bool ready;
@@ -70,12 +91,32 @@ struct SessionData : lib::task::ParentResource {
 
       size_t ref_count;
       Status status;
-      lib::Task *signal_loaded;
+      lib::Task *will_have_loaded;
       std::string path;
     } item;
 
     std::unordered_map<lib::GUID, Item> items;
   } meta_meshes;
+
+  struct MetaTextures {
+      
+    std::unordered_map<MetaTexturesKey, lib::GUID> by_key;
+
+    struct Item {
+      enum struct Status {
+        Loading,
+        Ready
+      };
+
+      size_t ref_count;
+      Status status;
+      lib::Task *will_have_loaded;
+      std::string path;
+      VkFormat format;
+    } item;
+
+    std::unordered_map<lib::GUID, Item> items;
+  } meta_textures;
 
   struct Vulkan : lib::task::ParentResource {
     bool ready;
@@ -110,7 +151,7 @@ struct SessionData : lib::task::ParentResource {
 
     struct Meshes {
       struct Item {
-        // we can get rid of the struct, maybe?
+        // we can get rid of the struct wrapper
         engine::common::mesh::GPU_Data data;
       };
 
@@ -119,6 +160,7 @@ struct SessionData : lib::task::ParentResource {
 
     struct Textures {
       struct Item {
+        // we can get rid of the struct wrapper
         engine::common::texture::GPU_Data data;
       };
 

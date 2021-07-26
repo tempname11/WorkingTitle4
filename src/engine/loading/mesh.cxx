@@ -80,14 +80,19 @@ void _load_cleanup(
 ) {
   ZoneScoped;
   engine::mesh::deinit_t05(&data->the_mesh);
+  delete data.ptr;
 }
 
 void _load_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Own<SessionData::Vulkan::Meshes> meshes,
+  Own<SessionData::MetaMeshes> meta_meshes,
   Own<LoadData> data
 ) {
   meshes->items.insert({ data->mesh_id, data->mesh_item });
+  auto meta = &meta_meshes->items.at(data->mesh_id);
+  meta->status = SessionData::MetaMeshes::Item::Status::Ready;
+  meta->will_have_loaded = nullptr;
 }
 
 void deref(
@@ -130,11 +135,15 @@ lib::Task* load(
     meta->ref_count++;
 
     if (meta->status == SessionData::MetaMeshes::Item::Status::Loading) {
-      assert(meta->signal_loaded != nullptr);
-      return meta->signal_loaded;
+      assert(meta->will_have_loaded != nullptr);
+      return meta->will_have_loaded;
     }
 
-    return nullptr;
+    if (meta->status == SessionData::MetaMeshes::Item::Status::Ready) {
+      return nullptr;
+    }
+
+    assert(false);
   }
 
   auto mesh_id = lib::guid::next(guid_counter.ptr);
@@ -178,6 +187,7 @@ lib::Task* load(
     lib::task::create(
       _load_finish,
       &session->vulkan.meshes,
+      &session->meta_meshes,
       data
     )
   );

@@ -607,7 +607,7 @@ TASK_DECL {
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 2512);
+    static_assert(size == 2744);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
@@ -678,6 +678,7 @@ TASK_DECL {
           &session->unfinished_yarns,
           &session->scene,
           &session->meta_meshes,
+          &session->meta_textures,
           &session->vulkan,
           &session->imgui_context,
           &session->gpu_signal_support,
@@ -698,12 +699,12 @@ TASK_DECL {
           &session->vulkan.core.queue_family_index,
           &session->vulkan.tracy_setup_command_pool,
           &session->vulkan.multi_alloc,
-          &session->vulkan.textures,
           &session->vulkan.fullscreen_quad,
           &session->vulkan.gpass,
           &session->vulkan.lpass,
           &session->vulkan.finalpass,
           &session->vulkan.meshes,
+          &session->vulkan.textures,
         }
       },
     },
