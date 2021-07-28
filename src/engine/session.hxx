@@ -83,14 +83,15 @@ struct SessionData : lib::task::ParentResource {
   struct MetaMeshes {
     std::unordered_map<std::string, lib::GUID> by_path;
 
-    struct Item {
-      enum struct Status {
-        Loading,
-        Ready
-      };
+    enum struct Status {
+      Loading,
+      Ready
+    };
 
+    struct Item {
       size_t ref_count;
       Status status;
+      bool reload_in_progress;
       lib::Task *will_have_loaded;
       std::string path;
     } item;
@@ -99,15 +100,14 @@ struct SessionData : lib::task::ParentResource {
   } meta_meshes;
 
   struct MetaTextures {
-      
     std::unordered_map<MetaTexturesKey, lib::GUID> by_key;
 
-    struct Item {
-      enum struct Status {
-        Loading,
-        Ready
-      };
+    enum struct Status {
+      Loading,
+      Ready
+    };
 
+    struct Item {
       size_t ref_count;
       Status status;
       lib::Task *will_have_loaded;
@@ -150,20 +150,12 @@ struct SessionData : lib::task::ParentResource {
     MultiAlloc multi_alloc;
 
     struct Meshes {
-      struct Item {
-        // we can get rid of the struct wrapper
-        engine::common::mesh::GPU_Data data;
-      };
-
+      using Item = engine::common::mesh::GPU_Data;
       std::unordered_map<lib::GUID, Item> items;
     } meshes;
 
     struct Textures {
-      struct Item {
-        // we can get rid of the struct wrapper
-        engine::common::texture::GPU_Data data;
-      };
-
+      using Item = engine::common::texture::GPU_Data;
       std::unordered_map<lib::GUID, Item> items;
     } textures;
 
@@ -218,6 +210,9 @@ struct SessionData : lib::task::ParentResource {
 
   struct State {
     bool show_imgui;
+    bool show_imgui_window_demo;
+    bool show_imgui_window_groups;
+    bool show_imgui_window_meshes;
     bool is_fullscreen;
     lib::debug_camera::State debug_camera;
   } state;

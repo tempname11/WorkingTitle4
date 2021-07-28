@@ -160,6 +160,7 @@ TASK_DECL {
       &session->imgui_context,
       &frame_data->imgui_reactions,
       &session->groups,
+      &session->meta_meshes,
       &session->state
     ),
     task::create(
@@ -213,9 +214,9 @@ TASK_DECL {
       frame_loading_dynamic,
       session.ptr,
       &session->unfinished_yarns,
-      &session->groups,
-      &data->inflight_gpu,
-      &frame_data->imgui_reactions
+      &session->meta_meshes,
+      &frame_data->imgui_reactions,
+      &data->inflight_gpu
     ),
     task::create(
       frame_cleanup,

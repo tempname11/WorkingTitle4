@@ -9,9 +9,9 @@
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx, \
   usage::None<SessionData> session, \
   usage::Some<SessionData::UnfinishedYarns> unfinished_yarns, \
-  usage::Full<SessionData::Groups> groups, \
-  usage::Some<RenderingData::InflightGPU> inflight_gpu, \
-  usage::Some<engine::misc::ImguiReactions> imgui_reactions \
+  usage::Full<SessionData::MetaMeshes> meta_meshes, \
+  usage::Some<engine::misc::ImguiReactions> imgui_reactions, \
+  usage::None<RenderingData::InflightGPU> inflight_gpu \
 )
 
 TASK_DECL;

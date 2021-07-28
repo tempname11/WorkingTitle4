@@ -58,8 +58,8 @@ void after_unfinished(
       dependencies.push_back({ yarn, task.ptr });
     }
     unfinished_yarns->set.clear();
+    task::inject(ctx->runner, { task.ptr }, { .new_dependencies = dependencies });
   }
-  task::inject(ctx->runner, { task.ptr }, { .new_dependencies = dependencies });
 }
 
 void init_vulkan(
@@ -607,7 +607,7 @@ TASK_DECL {
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 2744);
+    static_assert(size == 2752);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
@@ -637,7 +637,15 @@ TASK_DECL {
     .name = "Example Static Group",
   });
 
-  engine::loading::simple::load(
+  std::string path_mesh = "assets/mesh.t05";
+  std::string path_albedo = "assets/texture/albedo.jpg";
+  std::string path_normal = "assets/texture/normal.jpg";
+  std::string path_romeao = "assets/texture/romeao.png";
+  engine::loading::simple::load_scene_item(
+    path_mesh,
+    path_albedo,
+    path_normal,
+    path_romeao,
     ctx,
     static_group_id,
     session,

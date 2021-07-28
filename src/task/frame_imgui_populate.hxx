@@ -9,7 +9,8 @@
   usage::Full<SessionData::ImguiContext> imgui, \
   usage::Full<engine::misc::ImguiReactions> imgui_reactions, \
   usage::Some<SessionData::Groups> groups, \
-  usage::Some<SessionData::State> state \
+  usage::Some<SessionData::MetaMeshes> meta_meshes, \
+  usage::Full<SessionData::State> state \
 )
 
 TASK_DECL;

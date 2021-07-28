@@ -7,27 +7,23 @@
 
 namespace engine::loading::simple {
 
-void load(
+void load_scene_item(
+  std::string &mesh_path,
+  std::string &texture_albedo_path,
+  std::string &texture_normal_path,
+  std::string &texture_romeao_path,
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
   Ref<SessionData> session,
   Use<SessionData::UnfinishedYarns> unfinished_yarns
 );
 
-void unload(
+void unload_all(
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
   Ref<SessionData> session,
   Use<SessionData::UnfinishedYarns> unfinished_yarns,
-  Use<RenderingData::InflightGPU> inflight_gpu
-);
-
-void reload(
-  lib::task::ContextBase *ctx,
-  lib::GUID group_id,
-  Ref<SessionData> session,
-  Use<SessionData::UnfinishedYarns> unfinished_yarns,
-  Use<RenderingData::InflightGPU> inflight_gpu
+  Ref<RenderingData::InflightGPU> inflight_gpu
 );
 
 } // namespace

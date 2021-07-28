@@ -13,7 +13,7 @@ void deref(
 );
 
 lib::Task *load(
-  std::string path,
+  std::string &path,
   VkFormat format,
   lib::task::ContextBase* ctx,
   Ref<SessionData> session,

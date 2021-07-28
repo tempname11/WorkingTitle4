@@ -149,7 +149,7 @@ void _load_init_image(
   );
 
   lib::gfx::multi_alloc::init(
-    &data->texture_item.data.multi_alloc,
+    &data->texture_item.multi_alloc,
     { lib::gfx::multi_alloc::Claim {
       .info = {
         .image = {
@@ -175,7 +175,7 @@ void _load_init_image(
         },
       },
       .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      .p_stake_image = &data->texture_item.data.stake,
+      .p_stake_image = &data->texture_item.stake,
     }},
     core->device,
     core->allocator,
@@ -258,7 +258,7 @@ void _load_init_image(
   {
     VkImageViewCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-      .image = data->texture_item.data.stake.image,
+      .image = data->texture_item.stake.image,
       .viewType = VK_IMAGE_VIEW_TYPE_2D,
       .format = data->texture_format, // engine::texture::ALBEDO_TEXTURE_FORMAT,
       .subresourceRange = {
@@ -271,7 +271,7 @@ void _load_init_image(
       core->device,
       &create_info,
       core->allocator,
-      &data->texture_item.data.view
+      &data->texture_item.view
     );
     assert(result == VK_SUCCESS);
   }
@@ -348,7 +348,7 @@ void _load_init_image(
   engine::texture::prepare(
     data->texel_size,
     &data->the_texture,
-    &data->texture_item.data,
+    &data->texture_item,
     &data->staging_buffer,
     core.ptr,
     cmd,
@@ -442,7 +442,7 @@ void _load_finish(
 ) {
   textures->items.insert({ data->texture_id, data->texture_item });
   auto meta = &meta_textures->items.at(data->texture_id);
-  meta->status = SessionData::MetaTextures::Item::Status::Ready;
+  meta->status = SessionData::MetaTextures::Status::Ready;
   meta->will_have_loaded = nullptr;
 
   delete data.ptr;
@@ -463,7 +463,7 @@ size_t get_texel_size(VkFormat format) {
 }
 
 lib::Task *load(
-  std::string path,
+  std::string &path,
   VkFormat format,
   lib::task::ContextBase* ctx,
   Ref<SessionData> session,
@@ -479,12 +479,12 @@ lib::Task *load(
     auto meta = &meta_textures->items.at(texture_id);
     meta->ref_count++;
 
-    if (meta->status == SessionData::MetaTextures::Item::Status::Loading) {
+    if (meta->status == SessionData::MetaTextures::Status::Loading) {
       assert(meta->will_have_loaded != nullptr);
       return meta->will_have_loaded;
     }
 
-    if (meta->status == SessionData::MetaTextures::Item::Status::Ready) {
+    if (meta->status == SessionData::MetaTextures::Status::Ready) {
       return nullptr;
     }
 
@@ -496,7 +496,7 @@ lib::Task *load(
 
   SessionData::MetaTextures::Item meta = {
     .ref_count = 1, 
-    .status = SessionData::MetaTextures::Item::Status::Loading,
+    .status = SessionData::MetaTextures::Status::Loading,
     .path = path,
   };
   meta_textures->items.insert({ texture_id, meta });
@@ -574,14 +574,14 @@ void deref(
   if (meta->ref_count == 0) {
     auto texture = &textures->items.at(texture_id);
     lib::gfx::multi_alloc::deinit(
-      &texture->data.multi_alloc,
+      &texture->multi_alloc,
       core->device,
       core->allocator
     );
 
     vkDestroyImageView(
       core->device,
-      texture->data.view,
+      texture->view,
       core->allocator
     );
 

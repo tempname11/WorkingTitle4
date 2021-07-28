@@ -7,7 +7,11 @@
 void _log(std::string &str) {
   TracyMessage(str.data(), str.size());
   #ifdef WINDOWS
-    OutputDebugStringA(str.data());
+    OutputDebugString(str.data());
+
+    OutputDebugString("\n");
+    // quick fix for missing newline.
+    // would be better to do it in one call.
   #else
     printf(str.data());
     printf("\n");

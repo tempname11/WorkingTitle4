@@ -7,8 +7,6 @@ namespace lib {
 }
 
 namespace lib::guid {
-  const GUID invalid = (GUID) 0;
-
   struct Counter {
     std::atomic_uint64_t next;
   };

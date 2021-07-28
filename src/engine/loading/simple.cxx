@@ -74,6 +74,7 @@ struct UnloadData {
 void _unload(
   task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   usage::Full<UnloadData> unload_data,
+  usage::None<SessionData> session,
   usage::Some<SessionData::UnfinishedYarns> unfinished_yarns,
   usage::Some<SessionData::Vulkan::Core> core,
   usage::Full<SessionData::Scene> scene,
@@ -81,6 +82,7 @@ void _unload(
   usage::Full<SessionData::MetaMeshes> meta_meshes,
   usage::Full<SessionData::Vulkan::Textures> textures,
   usage::Full<SessionData::MetaTextures> meta_textures,
+  usage::None<RenderingData::InflightGPU> inflight_gpu,
   usage::None<lib::Task> yarn
 ) {
   ZoneScoped;
@@ -90,9 +92,10 @@ void _unload(
     if (item->group_id == unload_data->group_id) {
       engine::loading::mesh::deref(
         item->mesh_id,
-        core,
-        meshes,
-        meta_meshes
+        ctx,
+        session,
+        unfinished_yarns,
+        inflight_gpu
       );
 
       engine::loading::texture::deref(
@@ -131,7 +134,11 @@ void _unload(
   free(unload_data.ptr);
 }
 
-void load(
+void load_scene_item(
+  std::string &mesh_path,
+  std::string &texture_albedo_path,
+  std::string &texture_normal_path,
+  std::string &texture_romeao_path,
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
   Ref<SessionData> session,
@@ -146,11 +153,10 @@ void load(
 
   // @Note: we need to get rid of Data dependency in each task.
   // need to go finer-grained
-
    
-  lib::GUID mesh_id = lib::guid::invalid;
+  lib::GUID mesh_id = 0;
   auto signal_mesh_loaded = engine::loading::mesh::load(
-    "assets/mesh.t05",
+    mesh_path,
     ctx,
     session,
     &session->meta_meshes,
@@ -158,11 +164,11 @@ void load(
     &mesh_id
   );
 
-  lib::GUID albedo_id = lib::guid::invalid;
-  lib::GUID normal_id = lib::guid::invalid;
-  lib::GUID romeao_id = lib::guid::invalid;
+  lib::GUID albedo_id = 0;
+  lib::GUID normal_id = 0;
+  lib::GUID romeao_id = 0;
   auto signal_albedo_loaded = engine::loading::texture::load(
-    "assets/texture/albedo.jpg",
+    texture_albedo_path,
     engine::texture::ALBEDO_TEXTURE_FORMAT,
     ctx,
     session,
@@ -171,7 +177,7 @@ void load(
     &albedo_id
   );
   auto signal_normal_loaded = engine::loading::texture::load(
-    "assets/texture/normal.jpg",
+    texture_normal_path,
     engine::texture::NORMAL_TEXTURE_FORMAT,
     ctx,
     session,
@@ -180,7 +186,7 @@ void load(
     &normal_id
   );
   auto signal_romeao_loaded = engine::loading::texture::load(
-    "assets/texture/romeao.png",
+    texture_romeao_path,
     engine::texture::ROMEAO_TEXTURE_FORMAT,
     ctx,
     session,
@@ -231,12 +237,12 @@ void load(
   });
 }
 
-void unload(
+void unload_all(
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
   Ref<SessionData> session,
   Use<SessionData::UnfinishedYarns> unfinished_yarns,
-  Use<RenderingData::InflightGPU> inflight_gpu
+  Ref<RenderingData::InflightGPU> inflight_gpu
 ) {
   auto yarn = task::create_yarn_signal();
   {
@@ -249,6 +255,7 @@ void unload(
   auto task_unload = task::create(
     _unload,
     data,
+    session.ptr,
     unfinished_yarns.ptr,
     &session->vulkan.core,
     &session->scene,
@@ -256,6 +263,7 @@ void unload(
     &session->meta_meshes,
     &session->vulkan.textures,
     &session->meta_textures,
+    inflight_gpu.ptr,
     yarn
   );
   {
@@ -272,32 +280,6 @@ void unload(
       .new_dependencies = dependencies,
     });
   }
-}
-
-void reload(
-  lib::task::ContextBase *ctx,
-  lib::GUID group_id,
-  Ref<SessionData> session,
-  Use<SessionData::UnfinishedYarns> unfinished_yarns,
-  Use<RenderingData::InflightGPU> inflight_gpu
-) {
-  unload(
-    ctx,
-    group_id,
-    session,
-    unfinished_yarns,
-    inflight_gpu
-  );
-
-  // @Hack: `unload` just injects one task, and it's use of resources
-  // guarantees that loading will happen afterwards and not conflict.
-
-  load(
-    ctx,
-    group_id,
-    session,
-    unfinished_yarns
-  );
 }
 
 } // namespace

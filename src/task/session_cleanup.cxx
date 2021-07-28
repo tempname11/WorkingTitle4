@@ -33,12 +33,12 @@ TASK_DECL {
         // @Incomplete: duplicates loading/texture's `_unload`.
         vkDestroyImageView(
           core->device,
-          item.second.data.view,
+          item.second.view,
           core->allocator
         );
 
         lib::gfx::multi_alloc::deinit(
-          &item.second.data.multi_alloc,
+          &item.second.multi_alloc,
           it->core.device,
           it->core.allocator
         );
@@ -49,7 +49,7 @@ TASK_DECL {
         // @Incomplete: duplicates loading/mesh's `_unload`.
       for (auto &item : it->meshes.items) {
         lib::gfx::multi_alloc::deinit(
-          &item.second.data.multi_alloc,
+          &item.second.multi_alloc,
           it->core.device,
           it->core.allocator
         );

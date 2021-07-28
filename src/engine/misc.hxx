@@ -43,7 +43,8 @@ struct RenderList {
 };
 
 struct ImguiReactions {
-  lib::GUID reload_group_id;
+  lib::GUID reload_mesh_id;
+  lib::GUID reload_texture_id;
 };
 
 struct FrameData : lib::task::ParentResource {
