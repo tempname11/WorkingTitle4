@@ -79,42 +79,48 @@ TASK_DECL {
     *it = {};
     if (!session_state->show_imgui) {
       it->cursor_position_delta = cursor_delta;
-    }
-    if (0
-      || (glfwGetKey(glfw->window, GLFW_KEY_W) == GLFW_PRESS)
-      || (glfwGetKey(glfw->window, GLFW_KEY_UP) == GLFW_PRESS)
-    ) {
-      it->y_pos = true;
-    }
-    if (0
-      || (glfwGetKey(glfw->window, GLFW_KEY_S) == GLFW_PRESS)
-      || (glfwGetKey(glfw->window, GLFW_KEY_DOWN) == GLFW_PRESS)
-    ) {
-      it->y_neg = true;
-    }
-    if (0
-      || (glfwGetKey(glfw->window, GLFW_KEY_D) == GLFW_PRESS)
-      || (glfwGetKey(glfw->window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-    ) {
-      it->x_pos = true;
-    }
-    if (0
-      || (glfwGetKey(glfw->window, GLFW_KEY_A) == GLFW_PRESS)
-      || (glfwGetKey(glfw->window, GLFW_KEY_LEFT) == GLFW_PRESS)
-    ) {
-      it->x_neg = true;
-    }
-    if (0
-      || (glfwGetKey(glfw->window, GLFW_KEY_E) == GLFW_PRESS)
-      || (glfwGetKey(glfw->window, GLFW_KEY_PAGE_UP) == GLFW_PRESS)
-    ) {
-      it->z_pos = true;
-    }
-    if (0
-      || (glfwGetKey(glfw->window, GLFW_KEY_Q) == GLFW_PRESS)
-      || (glfwGetKey(glfw->window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS)
-    ) {
-      it->z_neg = true;
+
+      if (0
+        || (glfwGetKey(glfw->window, GLFW_KEY_W) == GLFW_PRESS)
+        || (glfwGetKey(glfw->window, GLFW_KEY_UP) == GLFW_PRESS)
+      ) {
+        it->y_pos = true;
+      }
+
+      if (0
+        || (glfwGetKey(glfw->window, GLFW_KEY_S) == GLFW_PRESS)
+        || (glfwGetKey(glfw->window, GLFW_KEY_DOWN) == GLFW_PRESS)
+      ) {
+        it->y_neg = true;
+      }
+
+      if (0
+        || (glfwGetKey(glfw->window, GLFW_KEY_D) == GLFW_PRESS)
+        || (glfwGetKey(glfw->window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+      ) {
+        it->x_pos = true;
+      }
+
+      if (0
+        || (glfwGetKey(glfw->window, GLFW_KEY_A) == GLFW_PRESS)
+        || (glfwGetKey(glfw->window, GLFW_KEY_LEFT) == GLFW_PRESS)
+      ) {
+        it->x_neg = true;
+      }
+
+      if (0
+        || (glfwGetKey(glfw->window, GLFW_KEY_E) == GLFW_PRESS)
+        || (glfwGetKey(glfw->window, GLFW_KEY_PAGE_UP) == GLFW_PRESS)
+      ) {
+        it->z_pos = true;
+      }
+
+      if (0
+        || (glfwGetKey(glfw->window, GLFW_KEY_Q) == GLFW_PRESS)
+        || (glfwGetKey(glfw->window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS)
+      ) {
+        it->z_neg = true;
+      }
     }
   }
 }

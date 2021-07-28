@@ -1,5 +1,4 @@
 ### known bugs
-- debug camera should not move when imgui is shown
 - artifacts on top and left edge of viewport
 - specular highlights seem to be "biased"
     as if only on one side of object, when it should be even.
