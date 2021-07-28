@@ -562,6 +562,39 @@ TASK_DECL {
       ) {
         ptr->state->is_fullscreen = !ptr->state->is_fullscreen;
       }
+      if (true
+        && ptr->state->show_imgui
+        && action == GLFW_PRESS
+        && key == GLFW_KEY_G
+        && (false
+          || glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS
+          || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS
+        )
+      ) {
+        ptr->state->show_imgui_window_groups = !ptr->state->show_imgui_window_groups;
+      }
+      if (true
+        && ptr->state->show_imgui
+        && action == GLFW_PRESS
+        && key == GLFW_KEY_M
+        && (false
+          || glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS
+          || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS
+        )
+      ) {
+        ptr->state->show_imgui_window_meshes = !ptr->state->show_imgui_window_meshes;
+      }
+      if (true
+        && ptr->state->show_imgui
+        && action == GLFW_PRESS
+        && key == GLFW_KEY_D
+        && (false
+          || glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS
+          || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS
+        )
+      ) {
+        ptr->state->show_imgui_window_demo = !ptr->state->show_imgui_window_demo;
+      }
     });
     it->ready = true;
   }
