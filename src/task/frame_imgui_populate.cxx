@@ -1,4 +1,6 @@
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
+#include <src/engine/loading/group.hxx>
 #include "frame_imgui_populate.hxx"
 
 TASK_DECL {
@@ -38,6 +40,36 @@ TASK_DECL {
         }
       }
       ImGui::EndTable();
+      if (ImGui::Button("New...")) {
+        ImGui::OpenPopup("popup_new");
+      }
+      if (ImGui::BeginPopupModal("popup_new", NULL, 0)) {
+        static engine::loading::group::SimpleItemDescription desc = {
+          .name = "Example Static Group",
+          .path_mesh = "assets/mesh.t05",
+          .path_albedo = "assets/texture/albedo.jpg",
+          .path_normal = "assets/texture/normal.jpg",
+          .path_romeao = "assets/texture/romeao.png",
+        };
+        ImGui::Text("Hello, world!");
+        ImGui::InputText("Group name", &desc.name);
+        ImGui::InputText("Path to mesh", &desc.path_mesh);
+        ImGui::InputText("Path to `albedo` texture", &desc.path_albedo);
+        ImGui::InputText("Path to `normal` texture", &desc.path_normal);
+        ImGui::InputText("Path to `romeao` texture", &desc.path_romeao);
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+          ImGui::CloseCurrentPopup();
+          imgui_reactions->load_group_description = new engine::loading::group::SimpleItemDescription(desc);
+          desc = {};
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+          ImGui::CloseCurrentPopup();
+          desc = {};
+        }
+
+        ImGui::EndPopup();
+      }
       ImGui::End();
     }
 

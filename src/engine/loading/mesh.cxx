@@ -316,6 +316,7 @@ lib::Task* load(
 
   auto mesh_id = lib::guid::next(guid_counter.ptr);
   *out_mesh_id = mesh_id;
+  meta_meshes->by_path.insert({ path, mesh_id });
 
   SessionData::MetaMeshes::Item meta = {
     .ref_count = 1, 

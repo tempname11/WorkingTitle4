@@ -1,4 +1,5 @@
 #include <src/engine/loading/mesh.hxx>
+#include <src/engine/loading/group.hxx>
 #include "frame_loading_dynamic.hxx"
 
 TASK_DECL {
@@ -16,5 +17,17 @@ TASK_DECL {
         inflight_gpu
       );
     }
+  }
+  if (imgui_reactions->load_group_description != nullptr) {
+    engine::loading::group::add_simple(
+      ctx,
+      groups,
+      guid_counter,
+      unfinished_yarns,
+      session,
+      imgui_reactions->load_group_description
+    );
+
+    delete imgui_reactions->load_group_description;
   }
 }

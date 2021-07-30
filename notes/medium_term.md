@@ -4,12 +4,14 @@
     as if only on one side of object, when it should be even.
 
 ### architectural problems
+- Ref/Use/Own is moot for mutex-protected data, so should use Ref everywhere
+- memory suballocation for mesh/texture
+- resource loading should be batched
 - unfinished yarns could be just an atomic counter with last-will-signal.
 - task::inject seems net harmful, should deprecate it.
 - resource aliasing seems net harmful. 
 - lib::task, avoid so many allocations
 - semaphores are used unnecessarily to separate work <-> imgui <-> compose
-- texture mip levels are generated at runtime
 
 ### minor issues
 - memory usage seems to increase over time,
@@ -20,6 +22,8 @@
     need to enable their presence by default, and also fix the actual errors.
 
 - fullscreen toggle: weird visual jump
+
+- texture mip levels are generated at runtime
 
 ### refactoring
 - InflightGPU would be easier to use inside SessionData

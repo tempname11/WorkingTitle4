@@ -2,7 +2,7 @@
 
 void defer(
   task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
-  usage::Full<task::Task> task // use None instead?
+  usage::None<task::Task> task
 ) {
   ZoneScoped;
   task::inject(ctx->runner, { task.ptr });

@@ -5,7 +5,7 @@
 #include <src/lib/guid.hxx>
 #include <src/lib/task.hxx>
 #include <src/lib/debug_camera.hxx>
-#include "session.hxx"
+#include "loading/group.hxx"
 
 namespace engine::misc {
 
@@ -45,6 +45,7 @@ struct RenderList {
 struct ImguiReactions {
   lib::GUID reload_mesh_id;
   lib::GUID reload_texture_id;
+  engine::loading::group::SimpleItemDescription *load_group_description;
 };
 
 struct FrameData : lib::task::ParentResource {

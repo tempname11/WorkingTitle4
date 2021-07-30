@@ -13,14 +13,18 @@ void record_geometry_draw_commands(
   }
 
   std::vector<VkDescriptorSet> descriptor_sets(render_list->items.size());
+  std::vector<VkDescriptorSetLayout> descriptor_set_layouts(render_list->items.size());
+  for (size_t i = 0; i < render_list->items.size(); i++) {
+    descriptor_set_layouts[i] = s_gpass->descriptor_set_layout_mesh;
+  }
   { ZoneScoped("descriptor_sets");
     {
       std::scoped_lock lock(descriptor_pool->mutex);
       VkDescriptorSetAllocateInfo allocate_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .descriptorPool = descriptor_pool->pool,
-        .descriptorSetCount = 1,
-        .pSetLayouts = &s_gpass->descriptor_set_layout_mesh,
+        .descriptorSetCount = checked_integer_cast<uint32_t>(render_list->items.size()),
+        .pSetLayouts = descriptor_set_layouts.data(),
       };
       auto result = vkAllocateDescriptorSets(
         core->device,

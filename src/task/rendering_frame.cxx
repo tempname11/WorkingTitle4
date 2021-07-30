@@ -214,6 +214,8 @@ TASK_DECL {
       frame_loading_dynamic,
       session.ptr,
       &session->unfinished_yarns,
+      &session->guid_counter,
+      &session->groups,
       &session->meta_meshes,
       &frame_data->imgui_reactions,
       &data->inflight_gpu

@@ -1,4 +1,5 @@
 #pragma once
+#include <src/global.hxx>
 #include <src/engine/session.hxx>
 #include <src/engine/rendering.hxx>
 #include <src/engine/misc.hxx>

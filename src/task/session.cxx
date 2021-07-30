@@ -12,6 +12,7 @@
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/engine/loading/simple.hxx>
+#include <src/engine/loading/group.hxx>
 #include <src/engine/misc.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include "defer.hxx"
@@ -662,27 +663,21 @@ TASK_DECL {
   );
   */
 
-  lib::GUID static_group_id = lib::guid::next(&session->guid_counter);
-  
-  session->groups.items.push_back(SessionData::Groups::Item {
-    .group_id = static_group_id,
-    .status = SessionData::Groups::Status::Loading,
+  auto simple_item_desc = engine::loading::group::SimpleItemDescription {
     .name = "Example Static Group",
-  });
+    .path_mesh = "assets/mesh.t05",
+    .path_albedo = "assets/texture/albedo.jpg",
+    .path_normal = "assets/texture/normal.jpg",
+    .path_romeao = "assets/texture/romeao.png",
+  };
 
-  std::string path_mesh = "assets/mesh.t05";
-  std::string path_albedo = "assets/texture/albedo.jpg";
-  std::string path_normal = "assets/texture/normal.jpg";
-  std::string path_romeao = "assets/texture/romeao.png";
-  engine::loading::simple::load_scene_item(
-    path_mesh,
-    path_albedo,
-    path_normal,
-    path_romeao,
+  engine::loading::group::add_simple(
     ctx,
-    static_group_id,
+    &session->groups,
+    &session->guid_counter,
+    &session->unfinished_yarns,
     session,
-    &session->unfinished_yarns
+    &simple_item_desc
   );
 
   auto task_cleanup = task::create(
@@ -699,55 +694,57 @@ TASK_DECL {
       )
     )
   );
-  task::inject(ctx->runner, {
+
+  ctx->changed_parents.insert(ctx->changed_parents.end(), {
+    {
+      .ptr = session,
+      .children = {
+        &session->glfw,
+        &session->guid_counter,
+        &session->unfinished_yarns,
+        &session->scene,
+        &session->meta_meshes,
+        &session->meta_textures,
+        &session->vulkan,
+        &session->imgui_context,
+        &session->gpu_signal_support,
+        &session->info,
+        &session->state,
+      },
+    },
+    {
+      .ptr = &session->vulkan,
+      .children = {
+        &session->vulkan.instance,
+        &session->vulkan.debug_messenger,
+        &session->vulkan.window_surface,
+        &session->vulkan.physical_device,
+        &session->vulkan.core,
+        &session->vulkan.queue_present,
+        &session->vulkan.queue_work,
+        &session->vulkan.core.queue_family_index,
+        &session->vulkan.tracy_setup_command_pool,
+        &session->vulkan.multi_alloc,
+        &session->vulkan.fullscreen_quad,
+        &session->vulkan.gpass,
+        &session->vulkan.lpass,
+        &session->vulkan.finalpass,
+        &session->vulkan.meshes,
+        &session->vulkan.textures,
+      },
+    },
+  });
+
+  ctx->new_tasks.insert(ctx->new_tasks.end(), {
     task_iteration,
     task_cleanup,
-  }, {
-    .new_dependencies = {
-      /*
-      { signal_setup_finished, task_iteration },
-      { signal_setup_finished, task_setup_cleanup },
-      */
-      { yarn_end, task_cleanup }
-    },
-    .changed_parents = {
-      {
-        .ptr = session,
-        .children = {
-          &session->glfw,
-          &session->guid_counter,
-          &session->unfinished_yarns,
-          &session->scene,
-          &session->meta_meshes,
-          &session->meta_textures,
-          &session->vulkan,
-          &session->imgui_context,
-          &session->gpu_signal_support,
-          &session->info,
-          &session->state,
-        }
-      },
-      {
-        .ptr = &session->vulkan,
-        .children = {
-          &session->vulkan.instance,
-          &session->vulkan.debug_messenger,
-          &session->vulkan.window_surface,
-          &session->vulkan.physical_device,
-          &session->vulkan.core,
-          &session->vulkan.queue_present,
-          &session->vulkan.queue_work,
-          &session->vulkan.core.queue_family_index,
-          &session->vulkan.tracy_setup_command_pool,
-          &session->vulkan.multi_alloc,
-          &session->vulkan.fullscreen_quad,
-          &session->vulkan.gpass,
-          &session->vulkan.lpass,
-          &session->vulkan.finalpass,
-          &session->vulkan.meshes,
-          &session->vulkan.textures,
-        }
-      },
-    },
+  });
+
+  ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
+    /*
+    { signal_setup_finished, task_iteration },
+    { signal_setup_finished, task_setup_cleanup },
+    */
+    { yarn_end, task_cleanup }
   });
 }

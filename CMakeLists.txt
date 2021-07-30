@@ -97,6 +97,7 @@ add_executable (
   "${CMAKE_SOURCE_DIR}/submodule/imgui/imgui_demo.cpp"
   "${CMAKE_SOURCE_DIR}/submodule/imgui/backends/imgui_impl_glfw.cpp"
   "${CMAKE_SOURCE_DIR}/submodule/imgui/backends/imgui_impl_vulkan.cpp"
+  "${CMAKE_SOURCE_DIR}/submodule/imgui/misc/cpp/imgui_stdlib.cpp"
 )
 target_compile_definitions(engine PUBLIC -DWINDOWS)
 # target_compile_definitions(engine PUBLIC -DWIN32_LEAN_AND_MEAN)
