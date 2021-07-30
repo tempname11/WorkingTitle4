@@ -30,7 +30,7 @@ TASK_DECL {
 
     { ZoneScopedN(".textures");
       for (auto &item : it->textures.items) {
-        // @Incomplete: duplicates loading/texture's `_unload`.
+        // @Duplicate: see loading/texture's `_unload`.
         vkDestroyImageView(
           core->device,
           item.second.view,
@@ -46,7 +46,7 @@ TASK_DECL {
     }
 
     { ZoneScopedN(".meshes");
-        // @Incomplete: duplicates loading/mesh's `_unload`.
+        // @Duplicate: see loading/mesh's `_unload`.
       for (auto &item : it->meshes.items) {
         lib::gfx::multi_alloc::deinit(
           &item.second.multi_alloc,

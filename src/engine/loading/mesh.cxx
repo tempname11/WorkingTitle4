@@ -235,7 +235,10 @@ void reload(
 
   auto meta = &meta_meshes->items.at(mesh_id);
   assert(meta->ref_count > 0);
+
+  // @Incomplete
   assert(meta->status == SessionData::MetaMeshes::Status::Ready);
+
   assert(!meta->reload_in_progress);
   meta->reload_in_progress = true;
 

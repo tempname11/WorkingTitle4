@@ -22,6 +22,7 @@
     need to enable their presence by default, and also fix the actual errors.
 
 - fullscreen toggle: weird visual jump
+- fullscreen toggle: always primary monitor (want the one which the window "belongs" to)
 
 - texture mip levels are generated at runtime
 

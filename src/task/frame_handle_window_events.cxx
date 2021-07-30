@@ -32,7 +32,6 @@ TASK_DECL {
     }
   }
   { ZoneScopedN("fullscreen");
-    // @Incomplete
     auto monitor = glfwGetWindowMonitor(glfw->window);
     if (monitor == nullptr && session_state->is_fullscreen) {
       // save last position
