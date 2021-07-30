@@ -71,7 +71,7 @@ void _load_init_image(
     assert(result == VK_SUCCESS);
   }
 
-   lib::gpu_signal::associate(
+  lib::gpu_signal::associate(
     gpu_signal_support.ptr,
     signal.ptr,
     core->device,
@@ -183,79 +183,7 @@ void _load_init_image(
     &core->properties.memory
   );
 
-  /*
-  lib::gfx::multi_alloc::init(
-    &data->texture_normal_item.data.multi_alloc,
-    { lib::gfx::multi_alloc::Claim {
-      .info = {
-        .image = {
-          .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-          .imageType = VK_IMAGE_TYPE_2D,
-          .format = engine::texture::NORMAL_TEXTURE_FORMAT,
-          .extent = {
-            .width = uint32_t(data->the_normal.width),
-            .height = uint32_t(data->the_normal.height),
-            .depth = 1,
-          },
-          .mipLevels = data->the_normal.computed_mip_levels,
-          .arrayLayers = 1,
-          .samples = VK_SAMPLE_COUNT_1_BIT,
-          .tiling = VK_IMAGE_TILING_OPTIMAL,
-          .usage = (0
-            | VK_IMAGE_USAGE_SAMPLED_BIT
-            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT // for mips
-            | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-          ),
-          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        },
-      },
-      .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      .p_stake_image = &data->texture_normal_item.data.stake,
-    }},
-    core->device,
-    core->allocator,
-    &core->properties.basic,
-    &core->properties.memory
-  );
-
-  lib::gfx::multi_alloc::init(
-    &data->texture_romeao_item.data.multi_alloc,
-    { lib::gfx::multi_alloc::Claim {
-      .info = {
-        .image = {
-          .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-          .imageType = VK_IMAGE_TYPE_2D,
-          .format = engine::texture::ROMEAO_TEXTURE_FORMAT,
-          .extent = {
-            .width = uint32_t(data->the_romeao.width),
-            .height = uint32_t(data->the_romeao.height),
-            .depth = 1,
-          },
-          .mipLevels = data->the_romeao.computed_mip_levels,
-          .arrayLayers = 1,
-          .samples = VK_SAMPLE_COUNT_1_BIT,
-          .tiling = VK_IMAGE_TILING_OPTIMAL,
-          .usage = (0
-            | VK_IMAGE_USAGE_SAMPLED_BIT
-            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT // for mips
-            | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-          ),
-          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        },
-      },
-      .memory_property_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      .p_stake_image = &data->texture_romeao_item.data.stake,
-    }},
-    core->device,
-    core->allocator,
-    &core->properties.basic,
-    &core->properties.memory
-  );
-  */
-
-  {
+  { // image view
     VkImageViewCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
       .image = data->texture_item.stake.image,
@@ -275,48 +203,6 @@ void _load_init_image(
     );
     assert(result == VK_SUCCESS);
   }
-  /*
-  {
-    VkImageViewCreateInfo create_info = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-      .image = data->texture_normal_item.data.stake.image,
-      .viewType = VK_IMAGE_VIEW_TYPE_2D,
-      .format = engine::texture::NORMAL_TEXTURE_FORMAT,
-      .subresourceRange = {
-        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-        .levelCount = data->the_normal.computed_mip_levels,
-        .layerCount = 1,
-      },
-    };
-    auto result = vkCreateImageView(
-      core->device,
-      &create_info,
-      core->allocator,
-      &data->texture_normal_item.data.view
-    );
-    assert(result == VK_SUCCESS);
-  }
-  {
-    VkImageViewCreateInfo create_info = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-      .image = data->texture_romeao_item.data.stake.image,
-      .viewType = VK_IMAGE_VIEW_TYPE_2D,
-      .format = engine::texture::ROMEAO_TEXTURE_FORMAT,
-      .subresourceRange = {
-        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-        .levelCount = data->the_romeao.computed_mip_levels,
-        .layerCount = 1,
-      },
-    };
-    auto result = vkCreateImageView(
-      core->device,
-      &create_info,
-      core->allocator,
-      &data->texture_romeao_item.data.view
-    );
-    assert(result == VK_SUCCESS);
-  }
-  */
 
   VkCommandBuffer cmd;
   { ZoneScopedN("allocate_command_buffer");

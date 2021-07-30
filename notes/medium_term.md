@@ -3,6 +3,9 @@
 - specular highlights seem to be "biased"
     as if only on one side of object, when it should be even.
 
+### nasty intermittent bugs
+- 21.07.30 mesh reload crash, the buffer seems to be freed and then used.
+   
 ### architectural problems
 - Ref/Use/Own is moot for mutex-protected data, so should use Ref everywhere
 - memory suballocation for mesh/texture

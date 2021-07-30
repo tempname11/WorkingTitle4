@@ -7,7 +7,7 @@ namespace engine::loading::mesh {
 
 struct LoadData {
   lib::GUID mesh_id;
-  const char *path;
+  std::string path;
   engine::common::mesh::T05 the_mesh;
   SessionData::Vulkan::Meshes::Item mesh_item;
 };
@@ -17,7 +17,7 @@ void _load_read_file(
   Own<LoadData> data 
 ) {
   ZoneScoped;
-  data->the_mesh = engine::mesh::read_t05_file(data->path);
+  data->the_mesh = engine::mesh::read_t05_file(data->path.c_str());
 }
 
 void _load_init_buffer(
@@ -188,7 +188,7 @@ void deref(
   lib::GUID mesh_id,
   lib::task::ContextBase* ctx,
   Ref<SessionData> session,
-  Use<SessionData::UnfinishedYarns> unfinished_yarns,
+  Ref<SessionData::UnfinishedYarns> unfinished_yarns,
   Ref<RenderingData::InflightGPU> inflight_gpu
 ) {
   ZoneScoped;
@@ -244,9 +244,7 @@ void reload(
 
   auto data = new LoadData {
     .mesh_id = mesh_id,
-    .path = meta->path.c_str(),
-    // ^ this pointer will be valid for the tasks,
-    // no need to copy the string
+    .path = meta->path,
   };
 
   auto task_read_file = lib::task::create(
@@ -330,9 +328,7 @@ lib::Task* load(
   
   auto data = new LoadData {
     .mesh_id = mesh_id,
-    .path = meta_meshes->items.at(mesh_id).path.c_str(),
-    // ^ this pointer will be valid for the tasks,
-    // no need to copy the string
+    .path = meta_meshes->items.at(mesh_id).path,
   };
 
   auto task_read_file = lib::task::create(

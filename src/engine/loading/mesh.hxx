@@ -9,7 +9,7 @@ void deref(
   lib::GUID mesh_id,
   lib::task::ContextBase* ctx,
   Ref<SessionData> session,
-  Use<SessionData::UnfinishedYarns> unfinished_yarns,
+  Ref<SessionData::UnfinishedYarns> unfinished_yarns,
   Ref<RenderingData::InflightGPU> inflight_gpu
 );
 
