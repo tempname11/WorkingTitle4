@@ -3,6 +3,14 @@
 #include <src/engine/loading/group.hxx>
 #include "frame_imgui_populate.hxx"
 
+engine::loading::group::SimpleItemDescription default_group = {
+  .name = "Example Static Group",
+  .path_mesh = "assets/mesh.t05",
+  .path_albedo = "assets/texture/albedo.jpg",
+  .path_normal = "assets/texture/normal.jpg",
+  .path_romeao = "assets/texture/romeao.png",
+};
+
 TASK_DECL {
   if (state->show_imgui) {
     ImGui::BeginMainMenuBar();
@@ -28,6 +36,7 @@ TASK_DECL {
       for (auto &pair : groups->items) {
         auto group_id = pair.first;
         auto &item = pair.second;
+        ImGui::PushID(group_id);
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
         ImGui::TextUnformatted(
@@ -45,19 +54,14 @@ TASK_DECL {
         if (ImGui::Button("Remove")) {
           imgui_reactions->removed_group_id = group_id;
         }
+        ImGui::PopID();
       }
       ImGui::EndTable();
       if (ImGui::Button("New...")) {
         ImGui::OpenPopup("popup_new");
       }
       if (ImGui::BeginPopupModal("popup_new", NULL, 0)) {
-        static engine::loading::group::SimpleItemDescription desc = {
-          .name = "Example Static Group",
-          .path_mesh = "assets/mesh.t05",
-          .path_albedo = "assets/texture/albedo.jpg",
-          .path_normal = "assets/texture/normal.jpg",
-          .path_romeao = "assets/texture/romeao.png",
-        };
+        static engine::loading::group::SimpleItemDescription desc = {};
         ImGui::Text("Hello, world!");
         ImGui::InputText("Group name", &desc.name);
         ImGui::InputText("Path to mesh", &desc.path_mesh);
@@ -74,6 +78,9 @@ TASK_DECL {
           ImGui::CloseCurrentPopup();
           desc = {};
         }
+        if (ImGui::Button("Reset to default")) {
+          desc = default_group;
+        }
 
         ImGui::EndPopup();
       }
@@ -87,24 +94,28 @@ TASK_DECL {
       ImGui::TableSetupColumn("Status");
       ImGui::TableSetupColumn("Actions");
       ImGui::TableHeadersRow();
-      for (auto &item : meta_meshes->items) {
+      for (auto &pair : meta_meshes->items) {
+        auto item = &pair.second;
+        auto mesh_id = pair.first;
+        ImGui::PushID(mesh_id);
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
         ImGui::TextUnformatted(
-          item.second.path.c_str(),
-          item.second.path.c_str() + item.second.path.size()
+          item->path.c_str(),
+          item->path.c_str() + item->path.size()
         );
         ImGui::TableNextColumn();
-        if (item.second.status == SessionData::MetaMeshes::Status::Loading) {
+        if (item->status == SessionData::MetaMeshes::Status::Loading) {
           ImGui::Text("[loading]");
         }
-        if (item.second.status == SessionData::MetaMeshes::Status::Ready) {
+        if (item->status == SessionData::MetaMeshes::Status::Ready) {
           ImGui::Text("[ready]");
         }
         ImGui::TableNextColumn();
         if (ImGui::Button("Reload")) {
-          imgui_reactions->reload_mesh_id = item.first;
+          imgui_reactions->reload_mesh_id = mesh_id;
         }
+        ImGui::PopID();
       }
       ImGui::EndTable();
       ImGui::End();
