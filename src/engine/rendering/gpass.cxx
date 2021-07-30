@@ -87,10 +87,20 @@ void init_session_gpass(
       descriptor_set_layout_frame,
       descriptor_set_layout_mesh,
     };
+    VkPushConstantRange push_constant_ranges[] = {
+      {
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .offset = 0,
+        .size = sizeof(engine::rendering::gpass::VertexPushConstants),
+        // remove namespaces above after moving this proc into them.
+      },
+    };
     VkPipelineLayoutCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
       .setLayoutCount = sizeof(layouts) / sizeof(*layouts),
       .pSetLayouts = layouts,
+      .pushConstantRangeCount = sizeof(push_constant_ranges) / sizeof(*push_constant_ranges),
+      .pPushConstantRanges = push_constant_ranges,
     };
     {
       auto result = vkCreatePipelineLayout(

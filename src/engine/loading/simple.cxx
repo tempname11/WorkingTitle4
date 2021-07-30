@@ -33,7 +33,12 @@ void _insert_items(
   ZoneScoped;
   scene->items.push_back(SessionData::Scene::Item {
     .group_id = data->group_id,
-    .transform = glm::mat4(1.0f),
+    .transform = glm::translate(glm::mat4(1.0f), glm::vec3(
+      // @Temporary
+      float(rand()) / RAND_MAX * 10.0f,
+      float(rand()) / RAND_MAX * 10.0f,
+      float(rand()) / RAND_MAX * 10.0f
+    )),
     .mesh_id = data->mesh_id,
     .texture_albedo_id = data->albedo_id,
     .texture_normal_id = data->normal_id,

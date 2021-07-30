@@ -12,6 +12,10 @@ layout(location = 1) out vec3 view_space_bitangent;
 layout(location = 2) out vec3 view_space_normal;
 layout(location = 3) out vec2 out_uv;
 
+layout(push_constant) uniform VertexPushConstants {
+  mat4 model;
+} constants;
+
 layout(set = 0, binding = 0) uniform Frame {
   mat4 projection;
   mat4 view;
@@ -20,7 +24,7 @@ layout(set = 0, binding = 0) uniform Frame {
 } frame;
 
 void main() {
-  gl_Position = frame.projection * frame.view * vec4(position, 1.0);
+  gl_Position = frame.projection * frame.view * constants.model * vec4(position, 1.0);
   view_space_tangent = (frame.view * vec4(tangent, 0.0)).xyz;
   view_space_bitangent = (frame.view * vec4(bitangent, 0.0)).xyz;
   view_space_normal = (frame.view * vec4(normal, 0.0)).xyz;

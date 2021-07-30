@@ -3,6 +3,12 @@
 #include "../rendering.hxx"
 #include "../session.hxx"
 
+namespace engine::rendering::gpass {
+  struct VertexPushConstants {
+    glm::mat4 transform;
+  };
+}
+
 void init_session_gpass(
   SessionData::Vulkan::GPass *out,
   SessionData::Vulkan::Core *core,

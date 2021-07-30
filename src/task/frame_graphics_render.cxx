@@ -95,8 +95,15 @@ void record_geometry_draw_commands(
       1, 1, &descriptor_set,
       0, nullptr
     );
-    // @Note: should use item.transform here!
     vkCmdBindVertexBuffers(cmd, 0, 1, &item.mesh_buffer, &zero);
+    vkCmdPushConstants(
+      cmd,
+      s_gpass->pipeline_layout,
+      VK_SHADER_STAGE_VERTEX_BIT,
+      0,
+      sizeof(glm::mat4),
+      &item.transform
+    );
     vkCmdDraw(cmd, item.mesh_vertex_count, 1, 0, 0);
   }
 }
