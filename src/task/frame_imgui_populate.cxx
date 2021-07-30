@@ -58,11 +58,10 @@ TASK_DECL {
       }
       ImGui::EndTable();
       if (ImGui::Button("New...")) {
-        ImGui::OpenPopup("popup_new");
+        ImGui::OpenPopup("Create a new group");
       }
-      if (ImGui::BeginPopupModal("popup_new", NULL, 0)) {
+      if (ImGui::BeginPopupModal("Create a new group", NULL, 0)) {
         static engine::loading::group::SimpleItemDescription desc = {};
-        ImGui::Text("Hello, world!");
         ImGui::InputText("Group name", &desc.name);
         ImGui::InputText("Path to mesh", &desc.path_mesh);
         ImGui::InputText("Path to `albedo` texture", &desc.path_albedo);
@@ -78,6 +77,7 @@ TASK_DECL {
           ImGui::CloseCurrentPopup();
           desc = {};
         }
+        ImGui::SameLine();
         if (ImGui::Button("Reset to default")) {
           desc = default_group;
         }
@@ -112,8 +112,19 @@ TASK_DECL {
           ImGui::Text("[ready]");
         }
         ImGui::TableNextColumn();
-        if (ImGui::Button("Reload")) {
-          imgui_reactions->reload_mesh_id = mesh_id;
+        item->reload_in_progress;
+
+        { // reload button
+          auto disabled = item->reload_in_progress;
+          if (disabled) {
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+          }
+          if (ImGui::Button("Reload") && !disabled) {
+            imgui_reactions->reload_mesh_id = mesh_id;
+          }
+          if (disabled) {
+            ImGui::PopStyleVar();
+          }
         }
         ImGui::PopID();
       }
