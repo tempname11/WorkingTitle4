@@ -46,6 +46,7 @@ struct ImguiReactions {
   lib::GUID reload_mesh_id;
   lib::GUID reload_texture_id;
   engine::loading::group::SimpleItemDescription *load_group_description;
+  lib::GUID removed_group_id;
 };
 
 struct FrameData : lib::task::ParentResource {

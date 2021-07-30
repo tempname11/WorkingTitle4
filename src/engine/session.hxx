@@ -59,12 +59,11 @@ struct SessionData : lib::task::ParentResource {
     };
      
     struct Item {
-      lib::GUID group_id;
       Status status;
       std::string name;
     };
 
-    std::vector<Item> items;
+    std::unordered_map<lib::GUID, Item> items;
   } groups;
 
   struct Scene {

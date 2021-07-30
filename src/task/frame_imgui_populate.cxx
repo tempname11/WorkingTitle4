@@ -20,11 +20,14 @@ TASK_DECL {
 
     if (state->show_imgui_window_groups) {
       ImGui::Begin("Groups", &state->show_imgui_window_groups);
-      ImGui::BeginTable("table_groups", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+      ImGui::BeginTable("table_groups", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
       ImGui::TableSetupColumn("Name");
       ImGui::TableSetupColumn("Status");
+      ImGui::TableSetupColumn("Actions");
       ImGui::TableHeadersRow();
-      for (auto &item : groups->items) {
+      for (auto &pair : groups->items) {
+        auto group_id = pair.first;
+        auto &item = pair.second;
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
         ImGui::TextUnformatted(
@@ -37,6 +40,10 @@ TASK_DECL {
         }
         if (item.status == SessionData::Groups::Status::Ready) {
           ImGui::Text("[ready]");
+        }
+        ImGui::TableNextColumn();
+        if (ImGui::Button("Remove")) {
+          imgui_reactions->removed_group_id = group_id;
         }
       }
       ImGui::EndTable();

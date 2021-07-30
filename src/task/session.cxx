@@ -11,7 +11,6 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
-#include <src/engine/loading/simple.hxx>
 #include <src/engine/loading/group.hxx>
 #include <src/engine/misc.hxx>
 #include <src/lib/gfx/utilities.hxx>
@@ -641,7 +640,7 @@ TASK_DECL {
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 2752);
+    static_assert(size == 2800);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);

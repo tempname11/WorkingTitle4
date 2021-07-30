@@ -30,4 +30,14 @@ TASK_DECL {
 
     delete imgui_reactions->load_group_description;
   }
+  if (imgui_reactions->removed_group_id != 0) {
+    engine::loading::group::remove(
+      ctx,
+      imgui_reactions->removed_group_id,
+      session,
+      groups,
+      unfinished_yarns,
+      inflight_gpu
+    );
+  }
 }

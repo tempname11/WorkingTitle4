@@ -2,6 +2,7 @@
 #include <src/global.hxx>
 #include <src/lib/task.hxx>
 #include <src/engine/session.hxx>
+#include <src/engine/rendering.hxx>
 
 namespace engine::loading::group {
   struct SimpleItemDescription {
@@ -19,5 +20,14 @@ namespace engine::loading::group {
     Use<SessionData::UnfinishedYarns> unfinished_yarns,
     Ref<SessionData> session,
     SimpleItemDescription *desc
+  );
+
+  void remove(
+    lib::task::ContextBase *ctx,
+    lib::GUID group_id,
+    Ref<SessionData> session,
+    Own<SessionData::Groups> groups,
+    Use<SessionData::UnfinishedYarns> unfinished_yarns,
+    Ref<RenderingData::InflightGPU> inflight_gpu
   );
 }
