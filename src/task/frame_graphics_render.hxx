@@ -25,7 +25,6 @@
   usage::Some<SessionData::Vulkan::GPass> s_gpass, \
   usage::Some<SessionData::Vulkan::LPass> s_lpass, \
   usage::Some<SessionData::Vulkan::Finalpass> s_finalpass, \
-  usage::Some<SessionData::Vulkan::Textures> textures, \
   usage::Some<SessionData::Vulkan::FullscreenQuad> fullscreen_quad, \
   usage::Full<engine::misc::RenderList> render_list, \
   usage::Full<engine::misc::GraphicsData> data \

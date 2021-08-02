@@ -115,10 +115,9 @@ TASK_DECL {
         ImGui::TableNextColumn();
         ImGui::Text("%zu", item->ref_count);
         ImGui::TableNextColumn();
-        item->reload_in_progress;
 
         { // reload button
-          auto disabled = item->reload_in_progress;
+          auto disabled = item->will_have_reloaded != nullptr;
           if (disabled) {
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
           }

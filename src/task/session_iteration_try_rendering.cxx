@@ -816,26 +816,30 @@ TASK_DECL {
     &rendering->swapchain_description,
     &rendering->inflight_gpu
   );
-  auto task_cleanup = task::create(defer, task::create(
-    rendering_cleanup,
-    session_iteration_yarn_end.ptr,
-    session.ptr,
-    rendering
-  ));
-  auto task_imgui_setup_cleanup = task::create(defer, task::create(
-    rendering_imgui_setup_cleanup,
-    &session->vulkan.core,
-    &rendering->imgui_backend
-  ));
+  auto task_cleanup = defer(
+    task::create(
+      rendering_cleanup,
+      session_iteration_yarn_end.ptr,
+      session.ptr,
+      rendering
+    )
+  );
+  auto task_imgui_setup_cleanup = defer(
+    task::create(
+      rendering_imgui_setup_cleanup,
+      &session->vulkan.core,
+      &rendering->imgui_backend
+    )
+  );
   task::inject(ctx->runner, {
     task_frame,
-    task_imgui_setup_cleanup,
-    task_cleanup,
+    task_imgui_setup_cleanup.first,
+    task_cleanup.first,
   }, {
     .new_dependencies = {
       { signal_imgui_setup_finished, task_frame },
-      { signal_imgui_setup_finished, task_imgui_setup_cleanup },
-      { rendering_yarn_end, task_cleanup }
+      { signal_imgui_setup_finished, task_imgui_setup_cleanup.first },
+      { rendering_yarn_end, task_cleanup.first }
     },
     .changed_parents = { { .ptr = rendering, .children = {
       &rendering->presentation,

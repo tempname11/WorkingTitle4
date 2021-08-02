@@ -66,6 +66,18 @@ TASK_DECL {
   auto frame_info = new RenderingData::FrameInfo(*latest_frame);
   auto frame_data = new engine::misc::FrameData {};
 
+  DBG("frame {}, rlist {}", frame_info->number, (void*)&frame_data->render_list);
+
+  auto task_setup_gpu_signal = defer(
+    task::create(
+      frame_setup_gpu_signal,
+      &session->vulkan.core,
+      &session->gpu_signal_support,
+      &data->frame_finished_semaphore,
+      &data->inflight_gpu,
+      frame_info
+    )
+  );
   auto frame_tasks = new std::vector<task::Task *>({
     task::create(
       frame_handle_window_events,
@@ -78,14 +90,6 @@ TASK_DECL {
       &frame_data->update_data,
       frame_info,
       &session->state
-    ),
-    task::create(
-      frame_setup_gpu_signal,
-      &session->vulkan.core,
-      &session->gpu_signal_support,
-      &data->frame_finished_semaphore,
-      &data->inflight_gpu,
-      frame_info
     ),
     task::create(
       frame_reset_pools,
@@ -137,7 +141,6 @@ TASK_DECL {
       &session->vulkan.gpass,
       &session->vulkan.lpass,
       &session->vulkan.finalpass,
-      &session->vulkan.textures,
       &session->vulkan.fullscreen_quad,
       &frame_data->render_list,
       &frame_data->graphics_data
@@ -237,14 +240,18 @@ TASK_DECL {
       inflight_gpu.ptr
     ),
   });
-  auto task_defer = task::create(defer_many, frame_tasks);
+  auto task_many = defer_many(frame_tasks);
   { // inject under inflight mutex
     std::scoped_lock lock(inflight_gpu->mutex);
     auto signal = inflight_gpu->signals[latest_frame->inflight_index];
     task::inject(ctx->runner, {
-      task_defer,
+      task_setup_gpu_signal.first,
+      task_many.first,
     }, {
-      .new_dependencies = { { signal, task_defer } },
+      .new_dependencies = {
+        { signal, task_setup_gpu_signal.first },
+        { task_setup_gpu_signal.second, task_many.first },
+      },
       .changed_parents = {
         {
           .ptr = frame_data,

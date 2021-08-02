@@ -10,7 +10,8 @@ void deref(
   lib::task::ContextBase* ctx,
   Ref<SessionData> session,
   Ref<SessionData::UnfinishedYarns> unfinished_yarns,
-  Ref<RenderingData::InflightGPU> inflight_gpu
+  Ref<RenderingData::InflightGPU> inflight_gpu,
+  Use<SessionData::MetaMeshes> meta_meshes
 );
 
 void reload(

@@ -5,8 +5,7 @@ void record_geometry_draw_commands(
   SessionData::Vulkan::Core *core,
   DescriptorPool *descriptor_pool,
   SessionData::Vulkan::GPass* s_gpass,
-  engine::misc::RenderList *render_list,
-  SessionData::Vulkan::Textures* textures
+  engine::misc::RenderList *render_list
 ) {
   if (render_list->items.size() == 0) {
     return;
@@ -95,6 +94,7 @@ void record_geometry_draw_commands(
       1, 1, &descriptor_set,
       0, nullptr
     );
+    DBG("bind {}", (void*)item.mesh_buffer);
     vkCmdBindVertexBuffers(cmd, 0, 1, &item.mesh_buffer, &zero);
     vkCmdPushConstants(
       cmd,
@@ -118,8 +118,7 @@ void record_prepass(
   RenderingData::FrameInfo *frame_info,
   SessionData::Vulkan::Prepass *s_prepass,
   SessionData::Vulkan::GPass *s_gpass,
-  engine::misc::RenderList *render_list,
-  SessionData::Vulkan::Textures* textures
+  engine::misc::RenderList *render_list
 ) {
   VkClearValue clear_values[] = {
     {1.0f, 0.0f},
@@ -162,8 +161,7 @@ void record_prepass(
     core,
     descriptor_pool,
     s_gpass,
-    render_list,
-    textures
+    render_list
   );
   vkCmdEndRenderPass(cmd);
 }
@@ -176,8 +174,7 @@ void record_gpass(
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::FrameInfo *frame_info,
   SessionData::Vulkan::GPass *s_gpass,
-  engine::misc::RenderList *render_list,
-  SessionData::Vulkan::Textures *textures
+  engine::misc::RenderList *render_list
 ) {
   VkClearValue clear_values[] = {
     {0.0f, 0.0f, 0.0f, 0.0f},
@@ -222,8 +219,7 @@ void record_gpass(
     core,
     descriptor_pool,
     s_gpass,
-    render_list,
-    textures
+    render_list
   );
   vkCmdEndRenderPass(cmd);
 }
@@ -704,6 +700,7 @@ void record_barrier_finalpass_imgui(
 
 TASK_DECL {
   ZoneScoped;
+  DBG("render! frame {} for rlist {}", frame_info->number, (void*)render_list.ptr);
   auto pool2 = &(*command_pools)[frame_info->inflight_index];
   VkCommandPool pool = command_pool_2_borrow(pool2);
   VkCommandBuffer cmd;
@@ -749,8 +746,7 @@ TASK_DECL {
       frame_info.ptr,
       s_prepass.ptr,
       s_gpass.ptr,
-      render_list.ptr,
-      textures.ptr
+      render_list.ptr
     );
   }
 
@@ -775,8 +771,7 @@ TASK_DECL {
       swapchain_description.ptr,
       frame_info.ptr,
       s_gpass.ptr,
-      render_list.ptr,
-      textures.ptr
+      render_list.ptr
     );
   }
 

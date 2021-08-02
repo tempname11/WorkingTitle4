@@ -1,13 +1,6 @@
 #pragma once
 #include <vector>
-#include "task.hxx"
+#include <src/lib/task.hxx>
 
-void defer(
-  task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
-  usage::None<task::Task> task
-);
-
-void defer_many(
-  task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
-  usage::Full<std::vector<task::Task *>> tasks
-);
+std::pair<lib::Task *, lib::Task *> defer(lib::Task *task);
+std::pair<lib::Task *, nullptr_t> defer_many(std::vector<lib::Task *> *tasks);

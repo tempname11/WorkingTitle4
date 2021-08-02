@@ -154,6 +154,7 @@ void init_vulkan(
     // find the first discrete GPU physical device
     // in future, this should be more nuanced.
     {
+      VkPhysicalDevice physical_device = nullptr;
       uint32_t device_count = 0;
       vkEnumeratePhysicalDevices(it->instance, &device_count, nullptr);
       std::vector<VkPhysicalDevice> devices(device_count);
@@ -162,11 +163,12 @@ void init_vulkan(
         VkPhysicalDeviceProperties properties;
         vkGetPhysicalDeviceProperties(device, &properties);
         if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-          it->physical_device = device;
+          physical_device = device;
           break;
         }
       }
-      assert(it->physical_device != VK_NULL_HANDLE);
+      assert(physical_device != VK_NULL_HANDLE);
+      it->physical_device = physical_device;
     }
   }
 
@@ -640,7 +642,7 @@ TASK_DECL {
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 2800);
+    static_assert(size == 2808);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
@@ -679,18 +681,16 @@ TASK_DECL {
     &simple_item_desc
   );
 
-  auto task_cleanup = task::create(
-    defer,
-    task::create(
+  auto task_cleanup = defer(
+    lib::task::create(
       after_unfinished,
       &session->unfinished_yarns,
-      task::create(
-        defer,
-        task::create(
+      defer(
+        lib::task::create(
           session_cleanup,
           session
         )
-      )
+      ).first
     )
   );
 
@@ -736,7 +736,7 @@ TASK_DECL {
 
   ctx->new_tasks.insert(ctx->new_tasks.end(), {
     task_iteration,
-    task_cleanup,
+    task_cleanup.first,
   });
 
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
@@ -744,6 +744,6 @@ TASK_DECL {
     { signal_setup_finished, task_iteration },
     { signal_setup_finished, task_setup_cleanup },
     */
-    { yarn_end, task_cleanup }
+    { yarn_end, task_cleanup.first }
   });
 }

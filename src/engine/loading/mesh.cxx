@@ -115,17 +115,19 @@ void _reload_finish(
 ) {
   ZoneScoped;
 
-  assert(meshes->items.contains(data->mesh_id));
   auto item = &meshes->items.at(data->mesh_id);
+  DBG("unload: new before {}", (void*)item->vertex_stake.buffer);
   auto old_item = *item; // copy old data
   *item = data->mesh_item; // replace the data
 
+  DBG("unload: old {}", (void*)old_item.vertex_stake.buffer);
+  DBG("unload: new {}", (void*)item->vertex_stake.buffer);
   _unload_item(
     &old_item,
     core
   );
 
-  meta_meshes->items.at(data->mesh_id).reload_in_progress = false;
+  meta_meshes->items.at(data->mesh_id).will_have_reloaded = nullptr;
 
   {
     std::scoped_lock lock(unfinished_yarns->mutex);
@@ -156,11 +158,11 @@ void _deref(
   auto meta = &meta_meshes->items.at(data->mesh_id);
   assert(meta->ref_count > 0);
 
-  // we also need to support deref while loading...
+  // we must have waited for the initial load to finish.
   assert(meta->status == SessionData::MetaMeshes::Status::Ready);
-  // ...or reloading
-  assert(!meta->reload_in_progress);
-  // watch out for c_str() below when doing this.
+
+  // we must have waited for reload to finish.
+  assert(meta->will_have_reloaded == nullptr);
 
   meta->ref_count--;
   if (meta->ref_count == 0) {
@@ -189,9 +191,13 @@ void deref(
   lib::task::ContextBase* ctx,
   Ref<SessionData> session,
   Ref<SessionData::UnfinishedYarns> unfinished_yarns,
-  Ref<RenderingData::InflightGPU> inflight_gpu
+  Ref<RenderingData::InflightGPU> inflight_gpu,
+  Use<SessionData::MetaMeshes> meta_meshes
 ) {
   ZoneScoped;
+
+  auto meta = &meta_meshes->items.at(mesh_id);
+
   auto yarn = task::create_yarn_signal();
   {
     std::scoped_lock lock(unfinished_yarns->mutex);
@@ -202,21 +208,32 @@ void deref(
     .mesh_id = mesh_id,
   };
 
-  ctx->new_tasks.insert(ctx->new_tasks.end(), {
+  auto task_deref = lib::task::create(
+    after_inflight,
+    inflight_gpu.ptr,
     lib::task::create(
-      after_inflight,
-      inflight_gpu.ptr,
-      lib::task::create(
-        _deref,
-        &session->vulkan.core,
-        &session->vulkan.meshes,
-        &session->meta_meshes,
-        &session->unfinished_yarns,
-        data,
-        yarn
-      )
-    ),
+      _deref,
+      &session->vulkan.core,
+      &session->vulkan.meshes,
+      &session->meta_meshes,
+      &session->unfinished_yarns,
+      data,
+      yarn
+    )
+  );
+  ctx->new_tasks.insert(ctx->new_tasks.end(), {
+    task_deref,
   });
+  if (meta->will_have_loaded != nullptr) {
+    ctx->new_dependencies.insert(ctx->new_dependencies.end(),
+      { meta->will_have_loaded, task_deref }
+    );
+  }
+  if (meta->will_have_reloaded != nullptr) {
+    ctx->new_dependencies.insert(ctx->new_dependencies.end(),
+      { meta->will_have_reloaded, task_deref }
+    );
+  }
 }
 
 void reload(
@@ -239,9 +256,6 @@ void reload(
   // @Incomplete
   assert(meta->status == SessionData::MetaMeshes::Status::Ready);
 
-  assert(!meta->reload_in_progress);
-  meta->reload_in_progress = true;
-
   auto data = new LoadData {
     .mesh_id = mesh_id,
     .path = meta->path,
@@ -251,8 +265,7 @@ void reload(
     _load_read_file,
     data
   );
-  auto task_init_buffer = lib::task::create(
-    defer,
+  auto task_init_buffer = defer(
     lib::task::create(
       _load_init_buffer,
       &session->vulkan.core,
@@ -273,15 +286,18 @@ void reload(
     )
   );
 
+  assert(!meta->will_have_reloaded);
+  meta->will_have_reloaded = task_finish;
+
   ctx->new_tasks.insert(ctx->new_tasks.end(), {
     task_read_file,
-    task_init_buffer,
+    task_init_buffer.first,
     task_finish,
   });
 
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-    { task_read_file, task_init_buffer },
-    { task_init_buffer, task_finish },
+    { task_read_file, task_init_buffer.first },
+    { task_init_buffer.second, task_finish },
   });
 }
 
@@ -335,16 +351,14 @@ lib::Task* load(
     _load_read_file,
     data
   );
-  auto task_init_buffer = lib::task::create(
-    defer,
+  auto task_init_buffer = defer(
     lib::task::create(
       _load_init_buffer,
       &session->vulkan.core,
       data
     )
   );
-  auto task_finish = lib::task::create(
-    defer,
+  auto task_finish = defer(
     lib::task::create(
       _load_finish,
       &session->vulkan.meshes,
@@ -355,16 +369,16 @@ lib::Task* load(
   
   ctx->new_tasks.insert(ctx->new_tasks.end(), {
     task_read_file,
-    task_init_buffer,
-    task_finish,
+    task_init_buffer.first,
+    task_finish.first,
   });
 
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-    { task_read_file, task_init_buffer },
-    { task_init_buffer, task_finish },
+    { task_read_file, task_init_buffer.first },
+    { task_init_buffer.second, task_finish.first },
   });
 
-  return task_finish;
+  return task_finish.second;
 }
 
 } // namespace

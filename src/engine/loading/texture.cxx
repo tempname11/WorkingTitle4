@@ -401,9 +401,8 @@ lib::Task *load(
     _load_read_file,
     data
   );
-  auto task_init_image = lib::task::create(
-    defer,
-    task::create(
+  auto task_init_image = defer(
+    lib::task::create(
       _load_init_image,
       &session->vulkan.core,
       &session->gpu_signal_support,
@@ -412,16 +411,14 @@ lib::Task *load(
       data
     )
   );
-  auto task_cleanup = lib::task::create(
-    defer,
-    task::create(
+  auto task_cleanup = defer(
+    lib::task::create(
       _load_cleanup,
       &session->vulkan.core,
       data
     )
   );
-  auto task_finish = lib::task::create(
-    defer,
+  auto task_finish = defer(
     lib::task::create(
       _load_finish,
       &session->vulkan.textures,
@@ -432,20 +429,20 @@ lib::Task *load(
 
   ctx->new_tasks.insert(ctx->new_tasks.end(), {
     task_read_file,
-    task_init_image,
-    task_cleanup,
-    task_finish,
+    task_init_image.first,
+    task_cleanup.first,
+    task_finish.first,
   });
 
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-    { task_read_file, task_init_image },
-    { signal_init_image, task_cleanup },
-    { task_cleanup, task_finish },
+    { task_read_file, task_init_image.first },
+    { signal_init_image, task_cleanup.first },
+    { task_cleanup.second, task_finish.first },
     // @Note: we don't strictly need cleanup to finish, but otherwise
     // we need an extra unfinished yarn for cleanup, which seems a bit rich.
   });
 
-  return task_finish;
+  return task_finish.second;
 }
 
 void deref(

@@ -20,12 +20,12 @@ struct Data {
 };
 
 void _insert_items(
-  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Some<SessionData::GuidCounter> guid_counter,
-  usage::Full<SessionData::Scene> scene,
-  usage::Full<SessionData::Vulkan::Meshes> meshes,
-  usage::Full<SessionData::Vulkan::Textures> textures,
-  usage::Full<Data> data 
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Use<SessionData::GuidCounter> guid_counter,
+  Own<SessionData::Scene> scene,
+  Own<SessionData::Vulkan::Meshes> meshes,
+  Own<SessionData::Vulkan::Textures> textures,
+  Own<Data> data 
 ) {
   ZoneScoped;
   scene->items.push_back(SessionData::Scene::Item {
@@ -44,11 +44,11 @@ void _insert_items(
 }
 
 void _finish(
-  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Some<SessionData::UnfinishedYarns> unfinished_yarns,
-  usage::Full<SessionData::Groups> groups,
-  usage::None<lib::Task> yarn,
-  usage::Full<Data> data 
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Use<SessionData::UnfinishedYarns> unfinished_yarns,
+  Own<SessionData::Groups> groups,
+  Ref<lib::Task> yarn,
+  Own<Data> data 
 ) {
   ZoneScoped;
 
@@ -63,7 +63,7 @@ void _finish(
     unfinished_yarns->set.erase(yarn.ptr);
   }
 
-  task::signal(ctx->runner, yarn.ptr);
+  lib::task::signal(ctx->runner, yarn.ptr);
 
   delete data.ptr;
 }
@@ -73,16 +73,17 @@ struct UnloadData {
 };
 
 void _unload(
-  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Full<UnloadData> unload_data,
-  usage::None<SessionData> session,
-  usage::None<SessionData::UnfinishedYarns> unfinished_yarns,
-  usage::Some<SessionData::Vulkan::Core> core,
-  usage::Full<SessionData::Scene> scene,
-  usage::Full<SessionData::Vulkan::Textures> textures,
-  usage::Full<SessionData::MetaTextures> meta_textures,
-  usage::None<RenderingData::InflightGPU> inflight_gpu,
-  usage::None<lib::Task> yarn
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Own<UnloadData> unload_data,
+  Ref<SessionData> session,
+  Ref<SessionData::UnfinishedYarns> unfinished_yarns,
+  Use<SessionData::Vulkan::Core> core,
+  Own<SessionData::Scene> scene,
+  Use<SessionData::MetaMeshes> meta_meshes,
+  Own<SessionData::Vulkan::Textures> textures,
+  Own<SessionData::MetaTextures> meta_textures,
+  Ref<RenderingData::InflightGPU> inflight_gpu,
+  Ref<lib::Task> yarn
 ) {
   ZoneScoped;
 
@@ -94,7 +95,8 @@ void _unload(
         ctx,
         session,
         unfinished_yarns,
-        inflight_gpu
+        inflight_gpu,
+        meta_meshes
       );
 
       engine::loading::texture::deref(
@@ -128,7 +130,7 @@ void _unload(
     std::scoped_lock lock(unfinished_yarns->mutex);
     unfinished_yarns->set.erase(yarn.ptr);
   }
-  task::signal(ctx->runner, yarn.ptr);
+  lib::task::signal(ctx->runner, yarn.ptr);
 
   free(unload_data.ptr);
 }
@@ -144,7 +146,7 @@ void _load_scene_item(
   Use<SessionData::UnfinishedYarns> unfinished_yarns
 ) {
   ZoneScoped;
-  auto yarn = task::create_yarn_signal();
+  auto yarn = lib::task::create_yarn_signal();
   {
     std::scoped_lock lock(unfinished_yarns->mutex);
     unfinished_yarns->set.insert(yarn);
@@ -202,9 +204,8 @@ void _load_scene_item(
     .romeao_id = romeao_id,
   };
 
-  auto task_insert_items = task::create(
-    defer,
-    task::create(
+  auto task_insert_items = defer(
+    lib::task::create(
       _insert_items,
       &session->guid_counter,
       &session->scene,
@@ -213,9 +214,8 @@ void _load_scene_item(
       data
     )
   );
-  auto task_finish = task::create(
-    defer,
-    task::create(
+  auto task_finish = defer(
+    lib::task::create(
       _finish,
       unfinished_yarns.ptr,
       &session->groups,
@@ -224,15 +224,15 @@ void _load_scene_item(
     )
   );
   ctx->new_tasks.insert(ctx->new_tasks.end(), {
-    task_insert_items,
-    task_finish,
+    task_insert_items.first,
+    task_finish.first,
   });
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-    { signal_mesh_loaded, task_insert_items },
-    { signal_albedo_loaded, task_insert_items },
-    { signal_normal_loaded, task_insert_items },
-    { signal_romeao_loaded, task_insert_items },
-    { task_insert_items, task_finish },
+    { signal_mesh_loaded, task_insert_items.first },
+    { signal_albedo_loaded, task_insert_items.first },
+    { signal_normal_loaded, task_insert_items.first },
+    { signal_romeao_loaded, task_insert_items.first },
+    { task_insert_items.second, task_finish.first },
   });
 }
 
@@ -249,7 +249,7 @@ void remove(
 
   groups->items.erase(group_id);
 
-  auto yarn = task::create_yarn_signal();
+  auto yarn = lib::task::create_yarn_signal();
   {
     std::scoped_lock lock(unfinished_yarns->mutex);
     unfinished_yarns->set.insert(yarn);
@@ -257,13 +257,14 @@ void remove(
   auto data = new UnloadData {
     .group_id = group_id,
   };
-  auto task_unload = task::create(
+  auto task_unload = lib::task::create(
     _unload,
     data,
     session.ptr,
     unfinished_yarns.ptr,
     &session->vulkan.core,
     &session->scene,
+    &session->meta_meshes,
     &session->vulkan.textures,
     &session->meta_textures,
     inflight_gpu.ptr,
@@ -277,7 +278,7 @@ void remove(
         dependencies.push_back({ signal, task_unload });
       }
     }
-    task::inject(ctx->runner, {
+    lib::task::inject(ctx->runner, {
       task_unload
     }, {
       .new_dependencies = dependencies,

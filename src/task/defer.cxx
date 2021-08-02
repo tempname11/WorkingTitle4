@@ -1,18 +1,29 @@
+#include <src/global.hxx>
 #include "defer.hxx"
 
-void defer(
-  task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
-  usage::None<task::Task> task
+void _defer(
+  lib::task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
+  Ref<lib::Task> task
 ) {
   ZoneScoped;
-  task::inject(ctx->runner, { task.ptr });
+  lib::task::inject(ctx->runner, { task.ptr });
 }
 
-void defer_many(
-  task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
-  usage::Full<std::vector<task::Task *>> tasks // use None instead?
+void _defer_many(
+  lib::task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
+  Own<std::vector<lib::Task *>> tasks
 ) {
   ZoneScoped;
-  task::inject(ctx->runner, std::move(*tasks));
+  lib::task::inject(ctx->runner, std::move(*tasks));
   delete tasks.ptr;
+}
+
+std::pair<lib::Task *, lib::Task *> defer(lib::Task *task) {
+  auto task_defer = lib::task::create(_defer, task);
+  return { task_defer, task };
+}
+
+std::pair<lib::Task *, nullptr_t> defer_many(std::vector<lib::Task *> *tasks) {
+  auto task_defer = lib::task::create(_defer_many, tasks);
+  return { task_defer, nullptr };
 }

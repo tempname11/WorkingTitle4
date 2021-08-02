@@ -16,16 +16,18 @@ TASK_DECL {
       session_iteration_yarn_end,
       data.ptr
     );
-    auto task_repeat = task::create(defer, task::create(
+    auto task_repeat = defer(task::create(
       session_iteration,
       session_yarn_end.ptr,
       data.ptr
     ));
     task::inject(ctx->runner, {
       task_try_rendering,
-      task_repeat
+      task_repeat.first
     }, {
-      .new_dependencies = { { session_iteration_yarn_end, task_repeat } },
+      .new_dependencies = {
+        { session_iteration_yarn_end, task_repeat.first }
+      },
     });
   }
 }
