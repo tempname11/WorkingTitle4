@@ -2,6 +2,9 @@ cmake_minimum_required (VERSION 3.18)
 set (CMAKE_CXX_STANDARD 20)
 project ("WorkingTitle4")
 
+message(CUSTOM_LINK_PATH = $ENV{CUSTOM_LINK_PATH})
+message(CUSTOM_INCLUDE_PATH = $ENV{CUSTOM_INCLUDE_PATH})
+
 file (GLOB SRC_SHADER_COMMON CONFIGURE_DEPENDS "src/shader/*common.glsl") # hacky glob, instead of include analysis
 file (GLOB SRC_SHADER_PROG CONFIGURE_DEPENDS "src/shader/*.*.glsl")
 
@@ -109,5 +112,3 @@ target_compile_definitions(engine PUBLIC TRACY_ENABLE=1)
 target_link_directories (engine PUBLIC $ENV{CUSTOM_LINK_PATH})
 target_link_libraries (engine glfw3 vulkan-1) 
 target_link_libraries(engine fmt::fmt-header-only)
-
-message(clp = $ENV{CUSTOM_LINK_PATH})
