@@ -1,3 +1,8 @@
+### horizon
+- loading: performance
+- loading: memory allocation
+- basic scene editor capabilities
+
 ### known bugs
 - artifacts on top and left edge of viewport
 - specular highlights seem to be "biased"
@@ -5,12 +10,12 @@
 
 ### nasty intermittent bugs
 - 21.07.30 mesh reload crash, the buffer seems to be freed and then used.
+  (probably not relevant anymore)
    
 ### architectural problems
 - Ref/Use/Own is moot for mutex-protected data, so should use Ref everywhere
 - memory suballocation for mesh/texture
 - resource loading should be batched
-- unfinished yarns could be just an atomic counter with last-will-signal.
 - task::inject seems net harmful, should deprecate it.
 - resource aliasing seems net harmful. 
 - lib::task, avoid so many allocations

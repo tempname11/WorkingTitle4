@@ -241,26 +241,6 @@ void _load_init_image(
     *queue_work
   );
 
-  /*
-  engine::texture::prepare(
-    &data->the_normal,
-    &data->texture_normal_item.data,
-    &data->texture_staging_normal,
-    core,
-    cmd,
-    queue_work
-  );
-
-  engine::texture::prepare(
-    &data->the_romeao,
-    &data->texture_romeao_item.data,
-    &data->texture_staging_romeao,
-    core,
-    cmd,
-    queue_work
-  );
-  */
-
   { // end
     auto result = vkEndCommandBuffer(cmd);
     assert(result == VK_SUCCESS);

@@ -1,2 +1,0 @@
-- loading: performance
-- basic scene editor capabilities
