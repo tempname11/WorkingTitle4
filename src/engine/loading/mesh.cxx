@@ -116,12 +116,9 @@ void _reload_finish(
   ZoneScoped;
 
   auto item = &meshes->items.at(data->mesh_id);
-  DBG("unload: new before {}", (void*)item->vertex_stake.buffer);
   auto old_item = *item; // copy old data
   *item = data->mesh_item; // replace the data
 
-  DBG("unload: old {}", (void*)old_item.vertex_stake.buffer);
-  DBG("unload: new {}", (void*)item->vertex_stake.buffer);
   _unload_item(
     &old_item,
     core

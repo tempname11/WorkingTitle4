@@ -66,8 +66,6 @@ TASK_DECL {
   auto frame_info = new RenderingData::FrameInfo(*latest_frame);
   auto frame_data = new engine::misc::FrameData {};
 
-  DBG("frame {}, rlist {}", frame_info->number, (void*)&frame_data->render_list);
-
   auto task_setup_gpu_signal = defer(
     task::create(
       frame_setup_gpu_signal,

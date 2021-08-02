@@ -8,7 +8,6 @@ void signal_cleanup (
 ) {
   std::scoped_lock lock(inflight_gpu->mutex);
   assert(inflight_gpu->signals[*inflight_index_saved] != nullptr);
-  DBG("signal_cleanup {}", (void*)inflight_gpu->signals[*inflight_index_saved]);
   inflight_gpu->signals[*inflight_index_saved] = nullptr;
   delete inflight_index_saved.ptr;
 }
@@ -35,7 +34,6 @@ TASK_DECL {
     std::scoped_lock lock(inflight_gpu->mutex);
     inflight_gpu->signals[frame_info->inflight_index] = task_cleanup.second; // not the signal itself, on purpose
   }
-  DBG("setup_signal {} for frame {}", (void*)task_cleanup.second, frame_info->number);
   lib::task::inject(ctx->runner, {
     task_cleanup.first
   }, {

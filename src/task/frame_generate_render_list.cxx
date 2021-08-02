@@ -7,7 +7,6 @@ TASK_DECL {
     auto &albedo = textures->items.at(item.texture_albedo_id);
     auto &normal = textures->items.at(item.texture_normal_id);
     auto &romeao = textures->items.at(item.texture_romeao_id);
-     DBG("push {} for rlist {}", (void *) mesh.vertex_stake.buffer, (void*) render_list.ptr);
     render_list->items.push_back(engine::misc::RenderList::Item {
       .transform = item.transform,
       .mesh_buffer = mesh.vertex_stake.buffer,

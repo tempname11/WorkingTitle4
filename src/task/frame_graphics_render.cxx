@@ -94,7 +94,6 @@ void record_geometry_draw_commands(
       1, 1, &descriptor_set,
       0, nullptr
     );
-    DBG("bind {}", (void*)item.mesh_buffer);
     vkCmdBindVertexBuffers(cmd, 0, 1, &item.mesh_buffer, &zero);
     vkCmdPushConstants(
       cmd,
@@ -700,7 +699,6 @@ void record_barrier_finalpass_imgui(
 
 TASK_DECL {
   ZoneScoped;
-  DBG("render! frame {} for rlist {}", frame_info->number, (void*)render_list.ptr);
   auto pool2 = &(*command_pools)[frame_info->inflight_index];
   VkCommandPool pool = command_pool_2_borrow(pool2);
   VkCommandBuffer cmd;
