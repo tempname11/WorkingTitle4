@@ -176,7 +176,9 @@ void _reload_finish(
     core
   );
 
-  meta_meshes->items.at(data->mesh_id).will_have_reloaded = nullptr;
+  auto meta = &meta_meshes->items.at(data->mesh_id);
+  meta->invalid = item->triangle_count == 0;
+  meta->will_have_reloaded = nullptr;
 
   {
     std::scoped_lock lock(unfinished_yarns->mutex);
