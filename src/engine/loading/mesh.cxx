@@ -250,7 +250,9 @@ void reload(
   auto meta = &meta_meshes->items.at(mesh_id);
   assert(meta->ref_count > 0);
 
-  // @Incomplete
+  // Reloading will likely only ever be manual, and right now the user
+  // would simply have to wait to reload something that's already reloading.
+  // We have to ensure the status is right before calling this.
   assert(meta->status == SessionData::MetaMeshes::Status::Ready);
 
   auto data = new LoadData {

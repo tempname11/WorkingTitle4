@@ -244,7 +244,7 @@ void remove(
   Use<SessionData::UnfinishedYarns> unfinished_yarns,
   Ref<RenderingData::InflightGPU> inflight_gpu
 ) {
-  // @Incomplete
+  // @Incomplete (textures aren't ready for this yet)
   assert(groups->items.at(group_id).status == SessionData::Groups::Status::Ready);
 
   groups->items.erase(group_id);
