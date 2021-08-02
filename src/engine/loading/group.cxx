@@ -2,7 +2,6 @@
 #include <src/global.hxx>
 #include <src/lib/guid.hxx>
 #include <src/task/defer.hxx>
-#include <src/engine/mesh.hxx>
 #include <src/engine/texture.hxx>
 #include "mesh.hxx"
 #include "texture.hxx"

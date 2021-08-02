@@ -89,7 +89,7 @@ TASK_DECL {
 
     if (state->show_imgui_window_meshes) {
       ImGui::Begin("Meshes", &state->show_imgui_window_meshes);
-      ImGui::BeginTable("table_meshes", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+      ImGui::BeginTable("table_meshes", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
       ImGui::TableSetupColumn("Name");
       ImGui::TableSetupColumn("Status");
       ImGui::TableSetupColumn("Refcount");
@@ -110,7 +110,11 @@ TASK_DECL {
           ImGui::Text("[loading]");
         }
         if (item->status == SessionData::MetaMeshes::Status::Ready) {
-          ImGui::Text("[ready]");
+          if (item->invalid) {
+            ImGui::Text("<invalid>");
+          } else {
+            ImGui::Text("[ready]");
+          }
         }
         ImGui::TableNextColumn();
         ImGui::Text("%zu", item->ref_count);

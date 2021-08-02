@@ -1,9 +1,57 @@
-#include <src/engine/mesh.hxx>
 #include <src/task/after_inflight.hxx>
 #include <src/task/defer.hxx>
 #include "mesh.hxx"
 
 namespace engine::loading::mesh {
+
+engine::common::mesh::T05 zero_t05 = {};
+
+engine::common::mesh::T05 read_t05_file(const char *filename) {
+  ZoneScoped;
+  auto file = fopen(filename, "rb");
+
+  // assert(file != nullptr);
+  if (file == nullptr) {
+    return zero_t05;
+  }
+
+  fseek(file, 0, SEEK_END);
+  auto size = ftell(file);
+  fseek(file, 0, SEEK_SET);
+  auto buffer = (uint8_t *) malloc(size);
+  fread((void *) buffer, 1, size, file);
+
+  // assert(ferror(file) == 0);
+  if (ferror(file) != 0) {
+    fclose(file);
+    free(buffer);
+    return zero_t05;
+  }
+
+  fclose(file);
+
+  auto triangle_count = *((uint32_t*) buffer);
+
+  // assert(size == sizeof(uint32_t) + sizeof(engine::common::mesh::VertexT05) * 3 * triangle_count);
+  if (size != sizeof(uint32_t) + sizeof(engine::common::mesh::VertexT05) * 3 * triangle_count) {
+    free(buffer);
+    return zero_t05;
+  }
+
+  return {
+    .buffer = buffer,
+    .triangle_count = triangle_count,
+    // three vertices per triangle
+    .vertices = ((engine::common::mesh::VertexT05 *) (buffer + sizeof(uint32_t))),
+  };
+}
+
+void deinit_t05(engine::common::mesh::T05 *it) {
+  ZoneScoped;
+  if (it->buffer != nullptr) {
+    free(it->buffer);
+  }
+}
 
 struct LoadData {
   lib::GUID mesh_id;
@@ -17,7 +65,7 @@ void _load_read_file(
   Own<LoadData> data 
 ) {
   ZoneScoped;
-  data->the_mesh = engine::mesh::read_t05_file(data->path.c_str());
+  data->the_mesh = read_t05_file(data->path.c_str());
 }
 
 void _load_init_buffer(
@@ -34,7 +82,10 @@ void _load_init_buffer(
       .info = {
         .buffer = {
           .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-          .size = data->the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05),
+          .size = std::max(
+            size_t(1), // for zero buffer
+            data->the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05)
+          ),
           .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
           .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         },
@@ -87,8 +138,9 @@ void _load_finish(
   auto meta = &meta_meshes->items.at(data->mesh_id);
   meta->status = SessionData::MetaMeshes::Status::Ready;
   meta->will_have_loaded = nullptr;
+  meta->invalid = data->mesh_item.triangle_count == 0;
 
-  engine::mesh::deinit_t05(&data->the_mesh);
+  deinit_t05(&data->the_mesh);
 
   delete data.ptr;
 }
@@ -132,7 +184,7 @@ void _reload_finish(
   }
   task::signal(ctx->runner, yarn.ptr);
 
-  engine::mesh::deinit_t05(&data->the_mesh);
+  deinit_t05(&data->the_mesh);
 
   delete data.ptr;
 }

@@ -90,6 +90,7 @@ struct SessionData : lib::task::ParentResource {
     struct Item {
       size_t ref_count;
       Status status;
+      bool invalid;
       lib::Task *will_have_loaded;
       lib::Task *will_have_reloaded;
       std::string path;

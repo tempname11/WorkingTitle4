@@ -105,6 +105,8 @@ void _internal_on_buffer(
   VkDevice device,
   const VkAllocationCallbacks *allocator
 ) {
+  assert(claim->info.buffer.size > 0);
+
   VkBuffer buffer;
   {
     auto result = vkCreateBuffer(
