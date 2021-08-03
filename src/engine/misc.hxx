@@ -43,9 +43,11 @@ struct RenderList {
 };
 
 struct ImguiReactions {
-  lib::GUID reload_mesh_id;
-  lib::GUID reload_texture_id;
-  engine::loading::group::SimpleItemDescription *load_group_description;
+  lib::GUID reloaded_mesh_id;
+  lib::GUID reloaded_texture_id;
+  engine::loading::group::GroupDescription *created_group_description;
+  lib::GUID added_item_to_group_id;
+  engine::loading::group::ItemDescription *added_item_to_group_description;
   lib::GUID removed_group_id;
 };
 

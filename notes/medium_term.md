@@ -21,7 +21,12 @@
 - lib::task, avoid so many allocations
 - semaphores are used unnecessarily to separate work <-> imgui <-> compose
 
+### good to have
+- tools should be migrated inside engine!
+
 ### minor issues
+- rand() is not thread-safe, need to use something different.
+
 - memory usage seems to increase over time,
     but Tracy profiling shows everything is great.
     maybe these are external (DLL?) allocations and we don't track them.
@@ -31,7 +36,6 @@
 
 - fullscreen toggle: weird visual jump
 - fullscreen toggle: always primary monitor (want the one which the window "belongs" to)
-
 - texture mip levels are generated at runtime
 
 ### refactoring

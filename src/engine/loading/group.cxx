@@ -45,17 +45,10 @@ void _insert_items(
 void _finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Use<SessionData::UnfinishedYarns> unfinished_yarns,
-  Own<SessionData::Groups> groups,
   Ref<lib::Task> yarn,
   Own<Data> data 
 ) {
   ZoneScoped;
-
-  {
-    auto item = &groups->items.at(data->group_id);
-    assert(item->status == SessionData::Groups::Status::Loading);
-    item->status = SessionData::Groups::Status::Ready;
-  }
 
   {
     std::scoped_lock lock(unfinished_yarns->mutex);
@@ -134,107 +127,6 @@ void _unload(
   free(unload_data.ptr);
 }
 
-void _load_scene_item(
-  std::string &mesh_path,
-  std::string &texture_albedo_path,
-  std::string &texture_normal_path,
-  std::string &texture_romeao_path,
-  lib::task::ContextBase *ctx,
-  lib::GUID group_id,
-  Ref<SessionData> session,
-  Use<SessionData::UnfinishedYarns> unfinished_yarns
-) {
-  ZoneScoped;
-  auto yarn = lib::task::create_yarn_signal();
-  {
-    std::scoped_lock lock(unfinished_yarns->mutex);
-    unfinished_yarns->set.insert(yarn);
-  }
-
-  // @Note: we need to get rid of Data dependency in each task.
-  // need to go finer-grained
-   
-  lib::GUID mesh_id = 0;
-  auto signal_mesh_loaded = engine::loading::mesh::load(
-    mesh_path,
-    ctx,
-    session,
-    &session->meta_meshes,
-    &session->guid_counter,
-    &mesh_id
-  );
-
-  lib::GUID albedo_id = 0;
-  lib::GUID normal_id = 0;
-  lib::GUID romeao_id = 0;
-  auto signal_albedo_loaded = engine::loading::texture::load(
-    texture_albedo_path,
-    engine::texture::ALBEDO_TEXTURE_FORMAT,
-    ctx,
-    session,
-    &session->meta_textures,
-    &session->guid_counter,
-    &albedo_id
-  );
-  auto signal_normal_loaded = engine::loading::texture::load(
-    texture_normal_path,
-    engine::texture::NORMAL_TEXTURE_FORMAT,
-    ctx,
-    session,
-    &session->meta_textures,
-    &session->guid_counter,
-    &normal_id
-  );
-  auto signal_romeao_loaded = engine::loading::texture::load(
-    texture_romeao_path,
-    engine::texture::ROMEAO_TEXTURE_FORMAT,
-    ctx,
-    session,
-    &session->meta_textures,
-    &session->guid_counter,
-    &romeao_id
-  );
-
-  auto data = new Data {
-    .group_id = group_id,
-    .mesh_id = mesh_id,
-    .albedo_id = albedo_id,
-    .normal_id = normal_id,
-    .romeao_id = romeao_id,
-  };
-
-  auto task_insert_items = defer(
-    lib::task::create(
-      _insert_items,
-      &session->guid_counter,
-      &session->scene,
-      &session->vulkan.meshes,
-      &session->vulkan.textures,
-      data
-    )
-  );
-  auto task_finish = defer(
-    lib::task::create(
-      _finish,
-      unfinished_yarns.ptr,
-      &session->groups,
-      yarn,
-      data
-    )
-  );
-  ctx->new_tasks.insert(ctx->new_tasks.end(), {
-    task_insert_items.first,
-    task_finish.first,
-  });
-  ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-    { signal_mesh_loaded, task_insert_items.first },
-    { signal_albedo_loaded, task_insert_items.first },
-    { signal_normal_loaded, task_insert_items.first },
-    { signal_romeao_loaded, task_insert_items.first },
-    { task_insert_items.second, task_finish.first },
-  });
-}
-
 void remove(
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
@@ -243,9 +135,6 @@ void remove(
   Use<SessionData::UnfinishedYarns> unfinished_yarns,
   Ref<RenderingData::InflightGPU> inflight_gpu
 ) {
-  // @Incomplete (textures aren't ready for this yet)
-  assert(groups->items.at(group_id).status == SessionData::Groups::Status::Ready);
-
   groups->items.erase(group_id);
 
   auto yarn = lib::task::create_yarn_signal();
@@ -285,31 +174,114 @@ void remove(
   }
 }
 
-void add_simple(
+void create(
   lib::task::ContextBase *ctx,
   Own<SessionData::Groups> groups,
   Use<SessionData::GuidCounter> guid_counter,
-  Use<SessionData::UnfinishedYarns> unfinished_yarns,
-  Ref<SessionData> session,
-  SimpleItemDescription *desc
+  GroupDescription *desc
 ) {
   lib::GUID group_id = lib::guid::next(guid_counter.ptr);
   
   groups->items.insert({ group_id, SessionData::Groups::Item {
-    .status = SessionData::Groups::Status::Loading,
     .name = desc->name,
   }});
+}
 
-  _load_scene_item(
+void add_item(
+  lib::task::ContextBase *ctx,
+  lib::GUID group_id,
+  ItemDescription *desc,
+  Ref<SessionData> session,
+  Use<SessionData::UnfinishedYarns> unfinished_yarns
+) {
+  ZoneScoped;
+  auto yarn = lib::task::create_yarn_signal();
+  {
+    std::scoped_lock lock(unfinished_yarns->mutex);
+    unfinished_yarns->set.insert(yarn);
+  }
+
+  // @Note: we need to get rid of Data dependency in each task.
+  // need to go finer-grained
+   
+  lib::GUID mesh_id = 0;
+  auto signal_mesh_loaded = engine::loading::mesh::load(
     desc->path_mesh,
-    desc->path_albedo,
-    desc->path_normal,
-    desc->path_romeao,
     ctx,
-    group_id,
     session,
-    unfinished_yarns
+    &session->meta_meshes,
+    &session->guid_counter,
+    &mesh_id
   );
+
+  lib::GUID albedo_id = 0;
+  lib::GUID normal_id = 0;
+  lib::GUID romeao_id = 0;
+  auto signal_albedo_loaded = engine::loading::texture::load(
+    desc->path_albedo,
+    engine::texture::ALBEDO_TEXTURE_FORMAT,
+    ctx,
+    session,
+    &session->meta_textures,
+    &session->guid_counter,
+    &albedo_id
+  );
+  auto signal_normal_loaded = engine::loading::texture::load(
+    desc->path_normal,
+    engine::texture::NORMAL_TEXTURE_FORMAT,
+    ctx,
+    session,
+    &session->meta_textures,
+    &session->guid_counter,
+    &normal_id
+  );
+  auto signal_romeao_loaded = engine::loading::texture::load(
+    desc->path_romeao,
+    engine::texture::ROMEAO_TEXTURE_FORMAT,
+    ctx,
+    session,
+    &session->meta_textures,
+    &session->guid_counter,
+    &romeao_id
+  );
+
+  auto data = new Data {
+    .group_id = group_id,
+    .mesh_id = mesh_id,
+    .albedo_id = albedo_id,
+    .normal_id = normal_id,
+    .romeao_id = romeao_id,
+  };
+
+  auto task_insert_items = defer(
+    lib::task::create(
+      _insert_items,
+      &session->guid_counter,
+      &session->scene,
+      &session->vulkan.meshes,
+      &session->vulkan.textures,
+      data
+    )
+  );
+  auto task_finish = defer(
+    lib::task::create(
+      _finish,
+      unfinished_yarns.ptr,
+      yarn,
+      data
+    )
+  );
+  ctx->new_tasks.insert(ctx->new_tasks.end(), {
+    task_insert_items.first,
+    task_finish.first,
+  });
+  ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
+    { signal_mesh_loaded, task_insert_items.first },
+    { signal_albedo_loaded, task_insert_items.first },
+    { signal_normal_loaded, task_insert_items.first },
+    { signal_romeao_loaded, task_insert_items.first },
+    { task_insert_items.second, task_finish.first },
+  });
 }
 
 } // namespace

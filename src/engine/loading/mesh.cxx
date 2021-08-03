@@ -202,7 +202,7 @@ void _deref(
   Own<SessionData::MetaMeshes> meta_meshes,
   Own<SessionData::UnfinishedYarns> unfinished_yarns,
   Own<DerefData> data,
-  Own<lib::Task> yarn
+  Ref<lib::Task> yarn
 ) {
   ZoneScoped;
 

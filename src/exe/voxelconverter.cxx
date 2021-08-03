@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <chrono>
 #include <string>
 #include <vector>
 #include <unordered_set>
@@ -9,6 +10,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/color_space.hpp>
 #include <src/engine/common/mesh.hxx>
+
+#define FLAG_RANDOMIZE
 
 #define X 255
 uint8_t mc_table[256][16] = {
@@ -671,6 +674,32 @@ int main(int argc, char** argv) {
   read_chunk(&cursor, &bytes_left, &data);
   free(vox_buffer);
   printf("VOXEL COUNT: %d\n", (int)data.voxels.size());
+
+  #ifdef FLAG_RANDOMIZE
+    srand(
+      std::chrono::high_resolution_clock::now().time_since_epoch()
+        / std::chrono::nanoseconds(1)
+    );
+    int16_t x = 0;
+    int16_t y = 0;
+    int16_t z = 0;
+    for (size_t i = 0; i < 64; i++) {
+      auto c = rand() % 6;
+      if (c < 2) {
+        x += (c % 2) * 2 - 1;
+      } else if (c < 4) {
+        y += (c % 2) * 2 - 1;
+      } else if (c < 6) {
+        z += (c % 2) * 2 - 1;
+      }
+      XYZ coord = { .xyz = {
+        .x = x,
+        .y = y,
+        .z = z,
+      } };
+      data.voxels.insert({ coord.value, 0 });
+    }
+  #endif
   
   mesh::T05_Builder mesh = {};
   if (0 == strcmp("CUBE", argv[1])) {

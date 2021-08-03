@@ -663,6 +663,7 @@ TASK_DECL {
   );
   */
 
+  /*
   auto simple_item_desc = engine::loading::group::SimpleItemDescription {
     .name = "Example Static Group",
     .path_mesh = "assets/mesh.t05",
@@ -679,6 +680,7 @@ TASK_DECL {
     session,
     &simple_item_desc
   );
+  */
 
   auto task_cleanup = defer(
     lib::task::create(

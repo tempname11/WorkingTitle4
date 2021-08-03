@@ -433,6 +433,7 @@ void deref(
 ) {
   auto meta = &meta_textures->items.at(texture_id);
   assert(meta->ref_count > 0);
+  assert(meta->status == SessionData::MetaTextures::Status::Ready); // @Incomplete
   meta->ref_count--;
   if (meta->ref_count == 0) {
     auto texture = &textures->items.at(texture_id);

@@ -3,8 +3,11 @@
 #include <src/engine/loading/group.hxx>
 #include "frame_imgui_populate.hxx"
 
-engine::loading::group::SimpleItemDescription default_group = {
-  .name = "Example Static Group",
+engine::loading::group::GroupDescription default_group = {
+  .name = "New group",
+};
+
+engine::loading::group::ItemDescription default_group_item = {
   .path_mesh = "assets/mesh.t05",
   .path_albedo = "assets/texture/albedo.jpg",
   .path_normal = "assets/texture/normal.jpg",
@@ -30,7 +33,6 @@ TASK_DECL {
       ImGui::Begin("Groups", &state->show_imgui_window_groups);
       ImGui::BeginTable("table_groups", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
       ImGui::TableSetupColumn("Name");
-      ImGui::TableSetupColumn("Status");
       ImGui::TableSetupColumn("Actions");
       ImGui::TableHeadersRow();
       for (auto &pair : groups->items) {
@@ -44,15 +46,35 @@ TASK_DECL {
           item.name.c_str() + item.name.size()
         );
         ImGui::TableNextColumn();
-        if (item.status == SessionData::Groups::Status::Loading) {
-          ImGui::Text("[loading]");
-        }
-        if (item.status == SessionData::Groups::Status::Ready) {
-          ImGui::Text("[ready]");
-        }
-        ImGui::TableNextColumn();
         if (ImGui::Button("Remove")) {
           imgui_reactions->removed_group_id = group_id;
+        }
+        if (ImGui::Button("Add item")) {
+          ImGui::OpenPopup("Add an item to the group");
+        }
+        if (ImGui::BeginPopupModal("Add an item to the group", NULL, 0)) {
+          static engine::loading::group::ItemDescription desc = {};
+          ImGui::InputText("Path to mesh", &desc.path_mesh);
+          ImGui::InputText("Path to `albedo` texture", &desc.path_albedo);
+          ImGui::InputText("Path to `normal` texture", &desc.path_normal);
+          ImGui::InputText("Path to `romeao` texture", &desc.path_romeao);
+          if (ImGui::Button("OK", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+            imgui_reactions->added_item_to_group_id = group_id;
+            imgui_reactions->added_item_to_group_description = new engine::loading::group::ItemDescription(desc);
+            desc = {};
+          }
+          ImGui::SameLine();
+          if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+            desc = {};
+          }
+          ImGui::SameLine();
+          if (ImGui::Button("Reset to default")) {
+            desc = default_group_item;
+          }
+
+          ImGui::EndPopup();
         }
         ImGui::PopID();
       }
@@ -61,15 +83,11 @@ TASK_DECL {
         ImGui::OpenPopup("Create a new group");
       }
       if (ImGui::BeginPopupModal("Create a new group", NULL, 0)) {
-        static engine::loading::group::SimpleItemDescription desc = {};
+        static engine::loading::group::GroupDescription desc = {};
         ImGui::InputText("Group name", &desc.name);
-        ImGui::InputText("Path to mesh", &desc.path_mesh);
-        ImGui::InputText("Path to `albedo` texture", &desc.path_albedo);
-        ImGui::InputText("Path to `normal` texture", &desc.path_normal);
-        ImGui::InputText("Path to `romeao` texture", &desc.path_romeao);
         if (ImGui::Button("OK", ImVec2(120, 0))) {
           ImGui::CloseCurrentPopup();
-          imgui_reactions->load_group_description = new engine::loading::group::SimpleItemDescription(desc);
+          imgui_reactions->created_group_description = new engine::loading::group::GroupDescription(desc);
           desc = {};
         }
         ImGui::SameLine();
@@ -126,7 +144,7 @@ TASK_DECL {
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
           }
           if (ImGui::Button("Reload") && !disabled) {
-            imgui_reactions->reload_mesh_id = mesh_id;
+            imgui_reactions->reloaded_mesh_id = mesh_id;
           }
           if (disabled) {
             ImGui::PopStyleVar();

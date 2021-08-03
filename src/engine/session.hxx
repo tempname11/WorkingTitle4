@@ -53,13 +53,7 @@ struct SessionData : lib::task::ParentResource {
   } unfinished_yarns;
 
   struct Groups {
-    enum struct Status {
-      Loading,
-      Ready
-    };
-     
     struct Item {
-      Status status;
       std::string name;
     };
 
