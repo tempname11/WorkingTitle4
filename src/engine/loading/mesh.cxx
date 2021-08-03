@@ -128,6 +128,7 @@ void _load_init_buffer(
 
 void _load_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<SessionData> session,
   Own<SessionData::Vulkan::Meshes> meshes,
   Own<SessionData::MetaMeshes> meta_meshes,
   Own<LoadData> data
@@ -139,6 +140,8 @@ void _load_finish(
   meta->status = SessionData::MetaMeshes::Status::Ready;
   meta->will_have_loaded = nullptr;
   meta->invalid = data->mesh_item.triangle_count == 0;
+
+  lib::lifetime::deref(&session->lifetime, ctx->runner);
 
   deinit_t05(&data->the_mesh);
 
@@ -158,12 +161,11 @@ void _unload_item(
 
 void _reload_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<SessionData> session,
   Use<SessionData::Vulkan::Core> core,
   Own<SessionData::Vulkan::Meshes> meshes,
   Own<SessionData::MetaMeshes> meta_meshes,
-  Use<SessionData::UnfinishedYarns> unfinished_yarns,
-  Own<LoadData> data,
-  Own<lib::Task> yarn
+  Own<LoadData> data
 ) {
   ZoneScoped;
 
@@ -180,11 +182,7 @@ void _reload_finish(
   meta->invalid = item->triangle_count == 0;
   meta->will_have_reloaded = nullptr;
 
-  {
-    std::scoped_lock lock(unfinished_yarns->mutex);
-    unfinished_yarns->set.erase(yarn.ptr);
-  }
-  task::signal(ctx->runner, yarn.ptr);
+  lib::lifetime::deref(&session->lifetime, ctx->runner);
 
   deinit_t05(&data->the_mesh);
 
@@ -197,12 +195,11 @@ struct DerefData {
 
 void _deref(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<SessionData> session,
   Use<SessionData::Vulkan::Core> core,
   Own<SessionData::Vulkan::Meshes> meshes,
   Own<SessionData::MetaMeshes> meta_meshes,
-  Own<SessionData::UnfinishedYarns> unfinished_yarns,
-  Own<DerefData> data,
-  Ref<lib::Task> yarn
+  Own<DerefData> data
 ) {
   ZoneScoped;
 
@@ -228,11 +225,7 @@ void _deref(
     meshes->items.erase(data->mesh_id);
   }
 
-  {
-    std::scoped_lock lock(unfinished_yarns->mutex);
-    unfinished_yarns->set.erase(yarn.ptr);
-  }
-  task::signal(ctx->runner, yarn.ptr);
+  lib::lifetime::deref(&session->lifetime, ctx->runner);
 
   delete data.ptr;
 }
@@ -241,35 +234,27 @@ void deref(
   lib::GUID mesh_id,
   lib::task::ContextBase* ctx,
   Ref<SessionData> session,
-  Ref<SessionData::UnfinishedYarns> unfinished_yarns,
   Ref<RenderingData::InflightGPU> inflight_gpu,
   Use<SessionData::MetaMeshes> meta_meshes
 ) {
   ZoneScoped;
 
+  lib::lifetime::ref(&session->lifetime);
+
   auto meta = &meta_meshes->items.at(mesh_id);
-
-  auto yarn = task::create_yarn_signal();
-  {
-    std::scoped_lock lock(unfinished_yarns->mutex);
-    unfinished_yarns->set.insert(yarn);
-  }
-
   auto data = new DerefData {
     .mesh_id = mesh_id,
   };
-
   auto task_deref = lib::task::create(
     after_inflight,
     inflight_gpu.ptr,
     lib::task::create(
       _deref,
+      session.ptr,
       &session->vulkan.core,
       &session->vulkan.meshes,
       &session->meta_meshes,
-      &session->unfinished_yarns,
-      data,
-      yarn
+      data
     )
   );
   ctx->new_tasks.insert(ctx->new_tasks.end(), {
@@ -291,15 +276,12 @@ void reload(
   lib::GUID mesh_id,
   lib::task::ContextBase* ctx,
   Ref<SessionData> session,
-  Use<SessionData::UnfinishedYarns> unfinished_yarns,
   Own<SessionData::MetaMeshes> meta_meshes,
   Ref<RenderingData::InflightGPU> inflight_gpu
 ) {
-  auto yarn = task::create_yarn_signal();
-  {
-    std::scoped_lock lock(unfinished_yarns->mutex);
-    unfinished_yarns->set.insert(yarn);
-  }
+  ZoneScoped;
+
+  lib::lifetime::ref(&session->lifetime);
 
   auto meta = &meta_meshes->items.at(mesh_id);
   assert(meta->ref_count > 0);
@@ -330,12 +312,11 @@ void reload(
     inflight_gpu.ptr,
     lib::task::create(
       _reload_finish,
+      session.ptr,
       &session->vulkan.core,
       &session->vulkan.meshes,
       &session->meta_meshes,
-      &session->unfinished_yarns,
-      data,
-      yarn
+      data
     )
   );
 
@@ -362,7 +343,9 @@ lib::Task* load(
   Use<SessionData::GuidCounter> guid_counter,
   lib::GUID *out_mesh_id
 ) {
-  // should we use an unfinished yarn here, and not rely on caller doing it?
+  ZoneScoped;
+
+  lib::lifetime::ref(&session->lifetime);
 
   auto it = meta_meshes->by_path.find(path);
   if (it != meta_meshes->by_path.end()) {
@@ -414,6 +397,7 @@ lib::Task* load(
   auto task_finish = defer(
     lib::task::create(
       _load_finish,
+      session.ptr,
       &session->vulkan.meshes,
       &session->meta_meshes,
       data

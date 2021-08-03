@@ -9,6 +9,7 @@
 #include <src/engine/common/texture.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/lib/task.hxx>
+#include <src/lib/lifetime.hxx>
 #include <src/lib/guid.hxx>
 #include <src/lib/gpu_signal.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
@@ -47,10 +48,7 @@ struct SessionData : lib::task::ParentResource {
   using GuidCounter = lib::guid::Counter;
   GuidCounter guid_counter;
 
-  struct UnfinishedYarns {
-    std::mutex mutex;
-    std::unordered_set<lib::Task *> set;
-  } unfinished_yarns;
+  lib::Lifetime lifetime;
 
   struct Groups {
     struct Item {

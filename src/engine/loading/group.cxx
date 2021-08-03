@@ -44,19 +44,11 @@ void _insert_items(
 
 void _finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Use<SessionData::UnfinishedYarns> unfinished_yarns,
-  Ref<lib::Task> yarn,
+  Ref<SessionData> session,
   Own<Data> data 
 ) {
   ZoneScoped;
-
-  {
-    std::scoped_lock lock(unfinished_yarns->mutex);
-    unfinished_yarns->set.erase(yarn.ptr);
-  }
-
-  lib::task::signal(ctx->runner, yarn.ptr);
-
+  lib::lifetime::deref(&session->lifetime, ctx->runner);
   delete data.ptr;
 }
 
@@ -68,14 +60,12 @@ void _unload(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Own<UnloadData> unload_data,
   Ref<SessionData> session,
-  Ref<SessionData::UnfinishedYarns> unfinished_yarns,
   Use<SessionData::Vulkan::Core> core,
   Own<SessionData::Scene> scene,
   Use<SessionData::MetaMeshes> meta_meshes,
   Own<SessionData::Vulkan::Textures> textures,
   Own<SessionData::MetaTextures> meta_textures,
-  Ref<RenderingData::InflightGPU> inflight_gpu,
-  Ref<lib::Task> yarn
+  Ref<RenderingData::InflightGPU> inflight_gpu
 ) {
   ZoneScoped;
 
@@ -86,7 +76,6 @@ void _unload(
         item->mesh_id,
         ctx,
         session,
-        unfinished_yarns,
         inflight_gpu,
         meta_meshes
       );
@@ -118,11 +107,7 @@ void _unload(
     }
   }
 
-  {
-    std::scoped_lock lock(unfinished_yarns->mutex);
-    unfinished_yarns->set.erase(yarn.ptr);
-  }
-  lib::task::signal(ctx->runner, yarn.ptr);
+  lib::lifetime::deref(&session->lifetime, ctx->runner);
 
   free(unload_data.ptr);
 }
@@ -132,16 +117,12 @@ void remove(
   lib::GUID group_id,
   Ref<SessionData> session,
   Own<SessionData::Groups> groups,
-  Use<SessionData::UnfinishedYarns> unfinished_yarns,
   Ref<RenderingData::InflightGPU> inflight_gpu
 ) {
+  lib::lifetime::ref(&session->lifetime);
+
   groups->items.erase(group_id);
 
-  auto yarn = lib::task::create_yarn_signal();
-  {
-    std::scoped_lock lock(unfinished_yarns->mutex);
-    unfinished_yarns->set.insert(yarn);
-  }
   auto data = new UnloadData {
     .group_id = group_id,
   };
@@ -149,14 +130,12 @@ void remove(
     _unload,
     data,
     session.ptr,
-    unfinished_yarns.ptr,
     &session->vulkan.core,
     &session->scene,
     &session->meta_meshes,
     &session->vulkan.textures,
     &session->meta_textures,
-    inflight_gpu.ptr,
-    yarn
+    inflight_gpu.ptr
   );
   {
     std::scoped_lock lock(inflight_gpu->mutex);
@@ -191,15 +170,10 @@ void add_item(
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
   ItemDescription *desc,
-  Ref<SessionData> session,
-  Use<SessionData::UnfinishedYarns> unfinished_yarns
+  Ref<SessionData> session
 ) {
   ZoneScoped;
-  auto yarn = lib::task::create_yarn_signal();
-  {
-    std::scoped_lock lock(unfinished_yarns->mutex);
-    unfinished_yarns->set.insert(yarn);
-  }
+  lib::lifetime::ref(&session->lifetime);
 
   // @Note: we need to get rid of Data dependency in each task.
   // need to go finer-grained
@@ -266,8 +240,7 @@ void add_item(
   auto task_finish = defer(
     lib::task::create(
       _finish,
-      unfinished_yarns.ptr,
-      yarn,
+      session.ptr,
       data
     )
   );

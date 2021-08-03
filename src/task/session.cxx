@@ -44,23 +44,6 @@ glm::vec2 fullscreen_quad_data[] = { // not a quad now!
   { +3.0f, -1.0f },
 };
 
-void after_unfinished(
-  task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
-  usage::Some<SessionData::UnfinishedYarns> unfinished_yarns,
-  usage::None<task::Task> task
-) {
-  ZoneScoped;
-  std::vector<std::pair<lib::Task *, lib::Task *>> dependencies;
-  {
-    std::scoped_lock lock(unfinished_yarns->mutex);
-    for (auto yarn : unfinished_yarns->set) {
-      dependencies.push_back({ yarn, task.ptr });
-    }
-    unfinished_yarns->set.clear();
-    task::inject(ctx->runner, { task.ptr }, { .new_dependencies = dependencies });
-  }
-}
-
 void init_vulkan(
   SessionData::Vulkan *it,
   SessionData::GLFW *glfw
@@ -513,8 +496,8 @@ void init_vulkan(
 
 TASK_DECL {
   ZoneScoped;
-  auto session = new SessionData;
-  auto yarn_end = task::create_yarn_signal();
+  auto session = new SessionData {};
+  lib::lifetime::init(&session->lifetime);
 
   { ZoneScopedN(".glfw");
     auto it = &session->glfw;
@@ -641,7 +624,7 @@ TASK_DECL {
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 2808);
+    static_assert(size == 2664);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
@@ -651,7 +634,6 @@ TASK_DECL {
 
   auto task_iteration = task::create(
     session_iteration,
-    yarn_end,
     session
   );
 
@@ -663,35 +645,10 @@ TASK_DECL {
   );
   */
 
-  /*
-  auto simple_item_desc = engine::loading::group::SimpleItemDescription {
-    .name = "Example Static Group",
-    .path_mesh = "assets/mesh.t05",
-    .path_albedo = "assets/texture/albedo.jpg",
-    .path_normal = "assets/texture/normal.jpg",
-    .path_romeao = "assets/texture/romeao.png",
-  };
-
-  engine::loading::group::add_simple(
-    ctx,
-    &session->groups,
-    &session->guid_counter,
-    &session->unfinished_yarns,
-    session,
-    &simple_item_desc
-  );
-  */
-
   auto task_cleanup = defer(
     lib::task::create(
-      after_unfinished,
-      &session->unfinished_yarns,
-      defer(
-        lib::task::create(
-          session_cleanup,
-          session
-        )
-      ).first
+      session_cleanup,
+      session
     )
   );
 
@@ -701,7 +658,7 @@ TASK_DECL {
       .children = {
         &session->glfw,
         &session->guid_counter,
-        &session->unfinished_yarns,
+        &session->lifetime,
         &session->scene,
         &session->meta_meshes,
         &session->meta_textures,
@@ -745,6 +702,6 @@ TASK_DECL {
     { signal_setup_finished, task_iteration },
     { signal_setup_finished, task_setup_cleanup },
     */
-    { yarn_end, task_cleanup.first }
+    { session->lifetime.yarn, task_cleanup.first }
   });
 }

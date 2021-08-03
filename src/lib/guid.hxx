@@ -12,4 +12,4 @@ namespace lib::guid {
   };
 
   GUID next(Counter *it);
-} // namespace
+}

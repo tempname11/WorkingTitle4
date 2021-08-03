@@ -4,9 +4,9 @@
 
 TASK_DECL {
   ZoneScoped;
-  bool should_stop = glfwWindowShouldClose(data->glfw.window);
+  bool should_stop = glfwWindowShouldClose(session->glfw.window);
   if (should_stop) {
-    task::signal(ctx->runner, session_yarn_end.ptr);
+    lib::lifetime::deref(&session->lifetime, ctx->runner);
     return;
   } else {
     glfwWaitEvents();
@@ -14,12 +14,11 @@ TASK_DECL {
     auto task_try_rendering = task::create(
       session_iteration_try_rendering,
       session_iteration_yarn_end,
-      data.ptr
+      session.ptr
     );
     auto task_repeat = defer(task::create(
       session_iteration,
-      session_yarn_end.ptr,
-      data.ptr
+      session.ptr
     ));
     task::inject(ctx->runner, {
       task_try_rendering,

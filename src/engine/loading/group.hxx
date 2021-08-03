@@ -28,8 +28,7 @@ void add_item(
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
   ItemDescription *desc,
-  Ref<SessionData> session,
-  Use<SessionData::UnfinishedYarns> unfinished_yarns
+  Ref<SessionData> session
 );
 
 void remove(
@@ -37,7 +36,6 @@ void remove(
   lib::GUID group_id,
   Ref<SessionData> session,
   Own<SessionData::Groups> groups,
-  Use<SessionData::UnfinishedYarns> unfinished_yarns,
   Ref<RenderingData::InflightGPU> inflight_gpu
 );
 

@@ -12,7 +12,6 @@ TASK_DECL {
         id,
         ctx,
         session,
-        unfinished_yarns,
         meta_meshes,
         inflight_gpu
       );
@@ -34,8 +33,7 @@ TASK_DECL {
       ctx,
       imgui_reactions->added_item_to_group_id,
       imgui_reactions->added_item_to_group_description,
-      session,
-      unfinished_yarns
+      session
     );
     delete imgui_reactions->added_item_to_group_description;
   }
@@ -46,7 +44,6 @@ TASK_DECL {
       imgui_reactions->removed_group_id,
       session,
       groups,
-      unfinished_yarns,
       inflight_gpu
     );
   }
