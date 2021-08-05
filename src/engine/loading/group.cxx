@@ -9,7 +9,7 @@
 
 namespace engine::loading::group {
 
-struct Data {
+struct AddItemData {
   lib::GUID group_id;
 
   lib::GUID mesh_id;
@@ -18,13 +18,11 @@ struct Data {
   lib::GUID romeao_id;
 };
 
-void _insert_items(
+void _add_item_insert(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Use<SessionData::GuidCounter> guid_counter,
+  Ref<SessionData> session,
   Own<SessionData::Scene> scene,
-  Own<SessionData::Vulkan::Meshes> meshes,
-  Own<SessionData::Vulkan::Textures> textures,
-  Own<Data> data 
+  Own<AddItemData> data 
 ) {
   ZoneScoped;
   scene->items.push_back(SessionData::Scene::Item {
@@ -40,14 +38,7 @@ void _insert_items(
     .texture_normal_id = data->normal_id,
     .texture_romeao_id = data->romeao_id,
   });
-}
 
-void _finish(
-  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<SessionData> session,
-  Own<Data> data 
-) {
-  ZoneScoped;
   lib::lifetime::deref(&session->lifetime, ctx->runner);
   delete data.ptr;
 }
@@ -153,30 +144,65 @@ void remove(
   }
 }
 
-void create(
-  lib::task::ContextBase *ctx,
+struct CreateData {
+  lib::GUID group_id;
+  GroupDescription desc;
+};
+
+void _create(
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<SessionData> session,
   Own<SessionData::Groups> groups,
-  Use<SessionData::GuidCounter> guid_counter,
-  GroupDescription *desc
+  Own<CreateData> data
 ) {
-  lib::GUID group_id = lib::guid::next(guid_counter.ptr);
-  
-  groups->items.insert({ group_id, SessionData::Groups::Item {
-    .name = desc->name,
+  groups->items.insert({ data->group_id, SessionData::Groups::Item {
+    .name = data->desc.name,
   }});
+
+  delete data.ptr;
+
+  lib::lifetime::deref(&session->lifetime, ctx->runner);
+}
+
+lib::Task *create(
+  lib::task::ContextBase *ctx,
+  Ref<SessionData> session,
+  GroupDescription *desc,
+  lib::GUID *out_group_id
+) {
+  ZoneScoped;
+  lib::lifetime::ref(&session->lifetime);
+
+  lib::GUID group_id = lib::guid::next(&session->guid_counter);
+
+  auto data = new CreateData {
+    .group_id = group_id,
+    .desc = *desc,
+  };
+  
+  auto task_create = lib::task::create(
+    _create,
+    session.ptr,
+    &session->groups,
+    data
+  );
+  ctx->new_tasks.insert(ctx->new_tasks.end(), {
+    task_create,
+  });
+
+   *out_group_id = group_id;
+  return task_create;
 }
 
 void add_item(
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
+  lib::Task *wait_for_group,
   ItemDescription *desc,
   Ref<SessionData> session
 ) {
   ZoneScoped;
   lib::lifetime::ref(&session->lifetime);
-
-  // @Note: we need to get rid of Data dependency in each task.
-  // need to go finer-grained
    
   lib::GUID mesh_id = 0;
   auto signal_mesh_loaded = engine::loading::mesh::load(
@@ -219,7 +245,7 @@ void add_item(
     &romeao_id
   );
 
-  auto data = new Data {
+  auto data = new AddItemData {
     .group_id = group_id,
     .mesh_id = mesh_id,
     .albedo_id = albedo_id,
@@ -229,44 +255,64 @@ void add_item(
 
   auto task_insert_items = defer(
     lib::task::create(
-      _insert_items,
-      &session->guid_counter,
-      &session->scene,
-      &session->vulkan.meshes,
-      &session->vulkan.textures,
-      data
-    )
-  );
-  auto task_finish = defer(
-    lib::task::create(
-      _finish,
+      _add_item_insert,
       session.ptr,
+      &session->scene,
       data
     )
   );
   ctx->new_tasks.insert(ctx->new_tasks.end(), {
     task_insert_items.first,
-    task_finish.first,
   });
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
+    { wait_for_group, task_insert_items.first },
     { signal_mesh_loaded, task_insert_items.first },
     { signal_albedo_loaded, task_insert_items.first },
     { signal_normal_loaded, task_insert_items.first },
     { signal_romeao_loaded, task_insert_items.first },
-    { task_insert_items.second, task_finish.first },
   });
 }
 
 namespace io {
+  bool is_eof(FILE *file) {
+    auto pos0 = ftell(file);
+    fseek(file, 0, SEEK_END);
+    auto pos1 = ftell(file);
+    fseek(file, pos0, SEEK_SET);
+    return pos0 == pos1;
+  }
+
+  namespace magic {
+    void write(FILE *file, char const *str) {
+      fwrite(str, 1, strlen(str), file);
+    }
+
+    bool check(FILE *file, char const *str) {
+      auto len = strlen(str);
+      char buf[16];
+      assert(len < 16);
+      buf[len] = 0;
+      fread(buf, 1, len, file);
+      return 0 == strcmp(str, buf);
+    }
+  }
   namespace string {
     void write(FILE *file, std::string *str) {
       uint32_t size = str->size();
       fwrite(&size, 1, sizeof(size), file);
       fwrite(str->c_str(), 1, size, file); 
     }
+
+    void read(FILE *file, std::string *str) {
+      uint32_t size = 0;
+      fread(&size, 1, sizeof(size), file);
+      str->resize(size);
+      fread(str->data(), 1, size, file);
+    }
   }
 }
 
+const uint8_t GRUP_VERSION = 0;
 struct SaveData {
   lib::GUID group_id;
   std::string path;
@@ -283,15 +329,14 @@ void _save(
 ) {
   auto file = fopen(data->path.c_str(), "wb");
   assert(file != nullptr);
-  fwrite("GRUP", 1, 4, file);
-  uint32_t version = 0;
-  fwrite(&version, 1, sizeof(version), file);
+  io::magic::write(file, "GRUP");
+  fwrite(&GRUP_VERSION, 1, sizeof(GRUP_VERSION), file);
 
   auto item = &groups->items.at(data->group_id);
   io::string::write(file, &item->name);
      
   auto item_count_pos = ftell(file);
-  uint32_t item_count = 0; // initialize and re-written later
+  uint32_t item_count = 0; // modifier and re-written later
   fwrite(&item_count, 1, sizeof(item_count), file);
 
   for (auto &item : scene->items) {
@@ -339,6 +384,102 @@ void save(
       &session->meta_textures,
       data
     )
+  });
+}
+
+struct LoadData {
+  std::string path;
+};
+
+void _load(
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<SessionData> session,
+  Own<LoadData> data
+) {
+  // @Incomplete: should not assert on bad input!
+
+  GroupDescription group_desc;
+  std::vector<ItemDescription> items_desc;
+
+  FILE *file = fopen(data->path.c_str(), "rb");
+  if (file == nullptr) {
+    assert(false);
+  }
+
+  if (!io::magic::check(file, "GRUP")) {
+    assert(false);
+  }
+
+  uint8_t version = (uint8_t) -1;
+  fread(&version, 1, sizeof(version), file);
+  if (version != GRUP_VERSION) {
+    assert(false);
+  }
+
+  io::string::read(file, &group_desc.name);
+
+  uint32_t item_count = 0;
+  fread(&item_count, 1, sizeof(item_count), file);
+
+  items_desc.resize(item_count);
+  for (size_t i = 0; i < item_count; i++) {
+    auto item = &items_desc[i];
+    io::string::read(file, &item->path_mesh);
+    io::string::read(file, &item->path_albedo);
+    io::string::read(file, &item->path_normal);
+    io::string::read(file, &item->path_romeao);
+  }
+
+  if (ferror(file) != 0) {
+    assert(false);
+  }
+
+  if (!io::is_eof(file)) {
+    assert(false);
+  }
+
+  fclose(file);
+
+  lib::GUID group_id;
+  auto task_create = create(
+    ctx,
+    session.ptr,
+    &group_desc,
+    &group_id
+  );
+
+  for (auto &item : items_desc) {
+    add_item(
+      ctx,
+      group_id,
+      task_create,
+      &item,
+      session
+    );
+  }
+
+  delete data.ptr;
+  lib::lifetime::deref(&session->lifetime, ctx->runner);
+}
+
+void load(
+  lib::task::ContextBase *ctx,
+  std::string *path,
+  Ref<SessionData> session
+) {
+  ZoneScoped;
+  lib::lifetime::ref(&session->lifetime);
+
+  auto data = new LoadData {
+    .path = *path,
+  };
+
+  ctx->new_tasks.insert(ctx->new_tasks.end(), {
+    lib::task::create(
+      _load,
+      session.ptr,
+      data
+    ),
   });
 }
 

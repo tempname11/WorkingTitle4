@@ -1,7 +1,7 @@
 ### horizon
 - loading: performance
 - loading: memory allocation
-- basic scene editor capabilities
+- basic scene editor capabilities?
 
 ### known bugs
 - artifacts on top and left edge of viewport
@@ -11,14 +11,19 @@
 ### nasty intermittent bugs
 - 21.07.30 mesh reload crash, the buffer seems to be freed and then used.
   (probably not relevant anymore)
+- 21.08.05 session not deinitialized, some dependency (yarn?) was stuck
    
 ### architectural problems
-- Ref/Use/Own is moot for mutex-protected data, so should use Ref everywhere
+- error handing for file reads is hairy
+- custom allocators (frame, "short-term")
 - memory suballocation for mesh/texture
-- task::inject seems net harmful, should deprecate it.
 - resource aliasing seems net harmful. 
 - lib::task, avoid so many allocations
 - semaphores are used unnecessarily to separate work <-> imgui <-> compose
+
+### deprecations
+- Ref/Use/Own is moot for mutex-protected data, so should use Ref everywhere
+- task::inject seems net harmful, should deprecate it.
 
 ### good to have
 - tools should be migrated inside engine!

@@ -8,10 +8,16 @@ engine::loading::group::GroupDescription default_group = {
 };
 
 engine::loading::group::ItemDescription default_group_item = {
+  /*
   .path_mesh = "assets/mesh.t05",
   .path_albedo = "assets/texture/albedo.jpg",
   .path_normal = "assets/texture/normal.jpg",
   .path_romeao = "assets/texture/romeao.png",
+  */
+  .path_mesh = "assets/r0.t05",
+  .path_albedo = "assets/texture-1px/albedo.png",
+  .path_normal = "assets/texture-1px/normal.png",
+  .path_romeao = "assets/texture-1px/romeao.png",
 };
 
 TASK_DECL {
@@ -118,6 +124,9 @@ TASK_DECL {
       if (ImGui::Button("New...")) {
         ImGui::OpenPopup("Create a new group");
       }
+      if (ImGui::Button("Load...")) {
+        ImGui::OpenPopup("Load group");
+      }
       if (ImGui::BeginPopupModal("Create a new group", NULL, 0)) {
         static engine::loading::group::GroupDescription desc = {};
         ImGui::InputText("Group name", &desc.name);
@@ -136,6 +145,25 @@ TASK_DECL {
           desc = default_group;
         }
 
+        ImGui::EndPopup();
+      }
+      if (ImGui::BeginPopupModal("Load group", NULL, 0)) {
+        static std::string path;
+        ImGui::InputText("Path", &path);
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+          ImGui::CloseCurrentPopup();
+          engine::loading::group::load(
+            ctx,
+            &path,
+            session
+          );
+          path = {};
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+          ImGui::CloseCurrentPopup();
+          path = {};
+        }
         ImGui::EndPopup();
       }
       ImGui::End();

@@ -17,16 +17,17 @@ struct ItemDescription {
   std::string path_romeao;
 };
 
-void create(
+lib::Task *create(
   lib::task::ContextBase *ctx,
-  Own<SessionData::Groups> groups,
-  Use<SessionData::GuidCounter> guid_counter,
-  GroupDescription *desc
+  Ref<SessionData> session,
+  GroupDescription *desc,
+  lib::GUID *out_group_id
 );
 
 void add_item(
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
+  lib::Task *wait_for_group,
   ItemDescription *desc,
   Ref<SessionData> session
 );
@@ -43,6 +44,12 @@ void save(
   lib::task::ContextBase *ctx,
   std::string *path,
   lib::GUID group_id,
+  Ref<SessionData> session
+);
+
+void load(
+  lib::task::ContextBase *ctx,
+  std::string *path,
   Ref<SessionData> session
 );
 

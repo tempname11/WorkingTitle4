@@ -8,7 +8,7 @@ namespace lib {
 
 namespace lib::guid {
   struct Counter {
-    std::atomic_uint64_t next;
+    std::atomic<uint64_t> next;
   };
 
   GUID next(Counter *it);

@@ -19,11 +19,12 @@ TASK_DECL {
   }
 
   if (imgui_reactions->created_group_description != nullptr) {
+    lib::GUID group_id;
     engine::loading::group::create(
       ctx,
-      groups,
-      guid_counter,
-      imgui_reactions->created_group_description
+      session,
+      imgui_reactions->created_group_description,
+      &group_id
     );
     delete imgui_reactions->created_group_description;
   }
@@ -32,6 +33,7 @@ TASK_DECL {
     engine::loading::group::add_item(
       ctx,
       imgui_reactions->added_item_to_group_id,
+      nullptr,
       imgui_reactions->added_item_to_group_description,
       session
     );
