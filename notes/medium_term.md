@@ -9,9 +9,10 @@
     as if only on one side of object, when it should be even.
 
 ### nasty intermittent bugs
-- 21.07.30 mesh reload crash, the buffer seems to be freed and then used.
+- x3 [last 21.07.30] mesh reload crash, the buffer seems to be freed and then used.
   (probably not relevant anymore)
-- 21.08.05 session not deinitialized, some dependency (yarn?) was stuck
+
+- x2 [last 21.08.05] session not deinitialized, some dependency (yarn?) was stuck
    
 ### architectural problems
 - error handing for file reads is hairy

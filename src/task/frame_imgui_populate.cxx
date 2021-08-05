@@ -1,5 +1,10 @@
 #include <imgui.h>
 #include <nfd.h>
+#ifdef WINDOWS
+  #define NOMINMAX
+  #include <windows.h>
+  #undef NOMINMAX
+#endif
 #include <misc/cpp/imgui_stdlib.h>
 #include <src/engine/loading/group.hxx>
 #include "frame_imgui_populate.hxx"
@@ -7,6 +12,67 @@
 engine::loading::group::GroupDescription default_group = {
   .name = "New group",
 };
+
+namespace ImGuiX {
+  enum class DialogType {
+    Open,
+    Save,
+  };
+
+  void InputPath(std::string *path, char const *label, DialogType type = DialogType::Open) {
+    ImGui::PushID(label);
+    ImGui::InputText("", path);
+    ImGui::SameLine();
+    if (ImGui::Button("...")) {
+      nfdchar_t *npath = nullptr;
+      auto result = (type == DialogType::Save
+        ? NFD_SaveDialog(nullptr, nullptr, &npath)
+        : NFD_OpenDialog(nullptr, nullptr, &npath)
+      );
+      if (result == NFD_OKAY) {
+        // @Note: this is a bit hairy, for relative path extraction
+        #ifdef WINDOWS
+          char cwd[1024];
+          auto result = GetCurrentDirectory(1024, cwd);
+          assert(result != 0);
+          assert(result < 1024);
+        #endif
+        assert(cwd != nullptr);
+        char const *ptr_npath = npath;
+        char const *ptr_cwd = cwd;
+        while (true
+          && *ptr_npath == *ptr_cwd
+          && *ptr_npath != 0
+          && *ptr_cwd != 0
+        ) {
+          ptr_npath++;
+          ptr_cwd++;
+        }
+        bool can_use_relative_path = (true
+          && *ptr_cwd == 0
+          && (false
+            || *ptr_npath == '/'
+            || *ptr_npath == '\\'
+          )
+        );
+        if (can_use_relative_path) {
+          ptr_npath++;
+        } else {
+          ptr_npath = npath;
+        }
+
+        path->resize(strlen(ptr_npath));
+        strcpy(path->data(), ptr_npath);
+        free(npath);
+      } else {
+        assert(result == NFD_CANCEL);
+      }
+    }
+    ImGui::SameLine();
+    ImGui::TextUnformatted(label);
+    ImGui::PopID();
+  }
+}
 
 engine::loading::group::ItemDescription default_group_item = {
   /*
@@ -78,10 +144,10 @@ TASK_DECL {
         }
         if (ImGui::BeginPopupModal("Add an item to the group", NULL, 0)) {
           static engine::loading::group::ItemDescription desc = {};
-          ImGui::InputText("Path to mesh", &desc.path_mesh);
-          ImGui::InputText("Path to `albedo` texture", &desc.path_albedo);
-          ImGui::InputText("Path to `normal` texture", &desc.path_normal);
-          ImGui::InputText("Path to `romeao` texture", &desc.path_romeao);
+          ImGuiX::InputPath(&desc.path_mesh, "Path to mesh");
+          ImGuiX::InputPath(&desc.path_albedo, "Path to `albedo` texture");
+          ImGuiX::InputPath(&desc.path_normal, "Path to `normal` texture");
+          ImGuiX::InputPath(&desc.path_romeao, "Path to `romeao` texture");
           if (ImGui::Button("OK", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
             imgui_reactions->added_item_to_group_id = group_id;
@@ -101,7 +167,7 @@ TASK_DECL {
         }
         if (ImGui::BeginPopupModal("Save group", NULL, 0)) {
           static std::string path;
-          ImGui::InputText("Path", &path);
+          ImGuiX::InputPath(&path, "Path", ImGuiX::DialogType::Save);
           if (ImGui::Button("OK", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
             engine::loading::group::save(
@@ -151,21 +217,7 @@ TASK_DECL {
       }
       if (ImGui::BeginPopupModal("Load group", NULL, 0)) {
         static std::string path;
-        ImGui::InputText("", &path);
-        ImGui::SameLine();
-        if (ImGui::Button("...")) {
-          nfdchar_t *npath = nullptr;
-          auto result = NFD_OpenDialog(nullptr, nullptr, &npath);
-          if (result == NFD_OKAY) {
-            path.resize(strlen(npath));
-            strcpy(path.data(), npath);
-            free(npath);
-          } else {
-            assert(result == NFD_CANCEL);
-          }
-        }
-        ImGui::SameLine();
-        ImGui::TextUnformatted("Path");
+        ImGuiX::InputPath(&path, "Path");
         if (ImGui::Button("OK", ImVec2(120, 0))) {
           ImGui::CloseCurrentPopup();
           engine::loading::group::load(
