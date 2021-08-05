@@ -15,7 +15,6 @@
 ### architectural problems
 - Ref/Use/Own is moot for mutex-protected data, so should use Ref everywhere
 - memory suballocation for mesh/texture
-- resource loading should be batched
 - task::inject seems net harmful, should deprecate it.
 - resource aliasing seems net harmful. 
 - lib::task, avoid so many allocations

@@ -39,4 +39,11 @@ void remove(
   Ref<RenderingData::InflightGPU> inflight_gpu
 );
 
+void save(
+  lib::task::ContextBase *ctx,
+  std::string *path,
+  lib::GUID group_id,
+  Ref<SessionData> session
+);
+
 } // namespace

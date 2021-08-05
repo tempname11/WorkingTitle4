@@ -31,7 +31,7 @@ TASK_DECL {
 
     if (state->show_imgui_window_groups) {
       ImGui::Begin("Groups", &state->show_imgui_window_groups);
-      ImGui::BeginTable("table_groups", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+      ImGui::BeginTable("table_groups", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
       ImGui::TableSetupColumn("Name");
       ImGui::TableSetupColumn("Actions");
       ImGui::TableHeadersRow();
@@ -46,11 +46,28 @@ TASK_DECL {
           item.name.c_str() + item.name.size()
         );
         ImGui::TableNextColumn();
-        if (ImGui::Button("Remove")) {
-          imgui_reactions->removed_group_id = group_id;
+        if (ImGui::Button("...")) {
+          ImGui::OpenPopup("Group actions");
         }
-        if (ImGui::Button("Add item")) {
+        bool clicked_add_item = false;
+        bool clicked_save = false;
+        if (ImGui::BeginPopup("Group actions")) {
+          if (ImGui::Selectable("Remove")) {
+            imgui_reactions->removed_group_id = group_id;
+          }
+          if (ImGui::Selectable("Add item...")) {
+            clicked_add_item = true;
+          }
+          if (ImGui::Selectable("Save...")) {
+            clicked_save = true;
+          }
+          ImGui::EndPopup();
+        }
+        if (clicked_add_item) {
           ImGui::OpenPopup("Add an item to the group");
+        }
+        if (clicked_save) {
+          ImGui::OpenPopup("Save group");
         }
         if (ImGui::BeginPopupModal("Add an item to the group", NULL, 0)) {
           static engine::loading::group::ItemDescription desc = {};
@@ -73,7 +90,26 @@ TASK_DECL {
           if (ImGui::Button("Reset to default")) {
             desc = default_group_item;
           }
-
+          ImGui::EndPopup();
+        }
+        if (ImGui::BeginPopupModal("Save group", NULL, 0)) {
+          static std::string path;
+          ImGui::InputText("Path", &path);
+          if (ImGui::Button("OK", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+            engine::loading::group::save(
+              ctx,
+              &path,
+              group_id,
+              session
+            );
+            path = {};
+          }
+          ImGui::SameLine();
+          if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+            path = {};
+          }
           ImGui::EndPopup();
         }
         ImGui::PopID();

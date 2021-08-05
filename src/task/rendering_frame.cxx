@@ -158,6 +158,7 @@ TASK_DECL {
     ),
     task::create(
       frame_imgui_populate,
+      session.ptr,
       &session->imgui_context,
       &frame_data->imgui_reactions,
       &session->groups,
