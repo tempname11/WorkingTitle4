@@ -1,6 +1,4 @@
 ### milestone: dynamic loading
-- file dialog!
-- group: split file up!
 - group: potential bug with simultaneous item-add & remove
 
 - mesh load batching, with:
