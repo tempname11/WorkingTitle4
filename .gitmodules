@@ -13,3 +13,9 @@
 [submodule "submodule/stb"]
 	path = submodule/stb
 	url = https://github.com/nothings/stb
+[submodule "submodule/tinygltf"]
+	path = submodule/tinygltf
+	url = https://github.com/syoyo/tinygltf
+[submodule "submodule/nativefiledialog"]
+	path = submodule/nativefiledialog
+	url = https://github.com/mlabbe/nativefiledialog

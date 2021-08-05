@@ -1,8 +1,7 @@
 ### milestone: dynamic loading
-- group: load from file...
-- group: potential bug with simultaneous item-add & remove
-- group: split file up!
 - file dialog!
+- group: split file up!
+- group: potential bug with simultaneous item-add & remove
 
 - mesh load batching, with:
   - chunked allocation of GPU mem

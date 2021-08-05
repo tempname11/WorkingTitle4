@@ -49,6 +49,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/submodule/tracy
   ${CMAKE_SOURCE_DIR}/submodule/tinygltf
   ${CMAKE_SOURCE_DIR}/submodule/fmt/include
+  ${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/src/include
 )
 
 include_directories (
@@ -110,5 +111,7 @@ target_compile_definitions(engine PUBLIC TRACY_ENABLE=1)
 # target_compile_definitions(engine PUBLIC TRACY_ON_DEMAND=1)
 # target_compile_definitions(engine PUBLIC TRACY_NO_EXIT=1)
 target_link_directories (engine PUBLIC $ENV{CUSTOM_LINK_PATH})
+target_link_directories (engine PUBLIC "${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/build/lib/Release/x64")
+target_link_libraries (engine nfd) 
 target_link_libraries (engine glfw3 vulkan-1) 
 target_link_libraries(engine fmt::fmt-header-only)

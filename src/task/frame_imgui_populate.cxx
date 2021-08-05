@@ -1,4 +1,5 @@
 #include <imgui.h>
+#include <nfd.h>
 #include <misc/cpp/imgui_stdlib.h>
 #include <src/engine/loading/group.hxx>
 #include "frame_imgui_populate.hxx"
@@ -124,6 +125,7 @@ TASK_DECL {
       if (ImGui::Button("New...")) {
         ImGui::OpenPopup("Create a new group");
       }
+      ImGui::SameLine();
       if (ImGui::Button("Load...")) {
         ImGui::OpenPopup("Load group");
       }
@@ -149,7 +151,21 @@ TASK_DECL {
       }
       if (ImGui::BeginPopupModal("Load group", NULL, 0)) {
         static std::string path;
-        ImGui::InputText("Path", &path);
+        ImGui::InputText("", &path);
+        ImGui::SameLine();
+        if (ImGui::Button("...")) {
+          nfdchar_t *npath = nullptr;
+          auto result = NFD_OpenDialog(nullptr, nullptr, &npath);
+          if (result == NFD_OKAY) {
+            path.resize(strlen(npath));
+            strcpy(path.data(), npath);
+            free(npath);
+          } else {
+            assert(result == NFD_CANCEL);
+          }
+        }
+        ImGui::SameLine();
+        ImGui::TextUnformatted("Path");
         if (ImGui::Button("OK", ImVec2(120, 0))) {
           ImGui::CloseCurrentPopup();
           engine::loading::group::load(
