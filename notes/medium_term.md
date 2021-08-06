@@ -9,10 +9,11 @@
     as if only on one side of object, when it should be even.
 
 ### nasty intermittent bugs
-- x3 [last 21.07.30] mesh reload crash, the buffer seems to be freed and then used.
-  (probably not relevant anymore)
+- x3 [last 2021-08-06] session not deinitialized, some dependency (yarn?) was stuck
 
-- x2 [last 21.08.05] session not deinitialized, some dependency (yarn?) was stuck
+- x3 [last 2021-07-30] mesh reload crash, the buffer seems to be freed and then used.
+  (likely not relevant anymore)
+
    
 ### architectural problems
 - error handing for file reads is hairy
@@ -44,6 +45,6 @@
 - texture mip levels are generated at runtime
 
 ### refactoring
-- InflightGPU would be easier to use inside SessionData
-- engine/** file naming is a bit of a mess
+- InflightGPU would be much easier to use inside SessionData
 - subtasks don't seem useful, remove them?
+- engine/** file naming is a bit of a mess

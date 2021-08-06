@@ -1,6 +1,4 @@
 ### milestone: dynamic loading
-- group: potential bug with simultaneous item-add & remove
-
 - mesh load batching, with:
   - chunked allocation of GPU mem
   - at most N meshes loaded at once
@@ -10,7 +8,9 @@
   - ...
 
 - mesh code review
+  - should be split into files
+  - lib::lifetime instead of will_have_ ?
 
-- textures: get up to speed with meshes
+- textures: get them up to speed with meshes
 
 - overall loading performance review
