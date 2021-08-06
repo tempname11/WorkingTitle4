@@ -103,20 +103,24 @@ TASK_DECL {
     }
 
     if (state->show_imgui_window_groups) {
+      std::shared_lock lock(session->groups.rw_mutex);
       ImGui::Begin("Groups", &state->show_imgui_window_groups);
       ImGui::BeginTable("table_groups", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
       ImGui::TableSetupColumn("Name");
       ImGui::TableSetupColumn("Actions");
       ImGui::TableHeadersRow();
-      for (auto &pair : groups->items) {
+      for (auto &pair : session->groups.items) {
         auto group_id = pair.first;
-        auto &item = pair.second;
+        auto item = &pair.second;
+        if (item->lifetime.ref_count == 0) {
+          continue;
+        }
         ImGui::PushID(group_id);
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
         ImGui::TextUnformatted(
-          item.name.c_str(),
-          item.name.c_str() + item.name.size()
+          item->name.c_str(),
+          item->name.c_str() + item->name.size()
         );
         ImGui::TableNextColumn();
         if (ImGui::Button("...")) {
@@ -223,7 +227,8 @@ TASK_DECL {
           engine::loading::group::load(
             ctx,
             &path,
-            session
+            session,
+            inflight_gpu
           );
           path = {};
         }

@@ -2,6 +2,19 @@
 #include <src/global.hxx>
 #include "lifetime.hxx"
 
+namespace lib {
+  Lifetime::Lifetime() {
+    ref_count = 0;
+    yarn = nullptr;
+  }
+
+  Lifetime::Lifetime(const Lifetime &other) {
+    assert(other.ref_count == 0);
+    ref_count = 0;
+    yarn = nullptr;
+  }
+}
+
 namespace lib::lifetime {
 
 void ref(Lifetime *lifetime) {
@@ -10,6 +23,7 @@ void ref(Lifetime *lifetime) {
 
 void deref(Lifetime *lifetime, lib::task::Runner *runner) {
   auto fetched = lifetime->ref_count.fetch_sub(1);
+  assert(fetched != 0);
   if (fetched == 1) {
     lib::task::signal(runner, lifetime->yarn);
   }

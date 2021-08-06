@@ -17,27 +17,24 @@ struct ItemDescription {
   std::string path_romeao;
 };
 
-lib::Task *create(
+lib::GUID create(
   lib::task::ContextBase *ctx,
   Ref<SessionData> session,
-  GroupDescription *desc,
-  lib::GUID *out_group_id
+  Ref<RenderingData::InflightGPU> inflight_gpu,
+  GroupDescription *desc
 );
 
 void add_item(
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
-  lib::Task *wait_for_group,
   ItemDescription *desc,
   Ref<SessionData> session
 );
 
-void remove(
+void deref(
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
-  Ref<SessionData> session,
-  Own<SessionData::Groups> groups,
-  Ref<RenderingData::InflightGPU> inflight_gpu
+  Ref<SessionData> session
 );
 
 void save(
@@ -50,7 +47,8 @@ void save(
 void load(
   lib::task::ContextBase *ctx,
   std::string *path,
-  Ref<SessionData> session
+  Ref<SessionData> session,
+  Ref<RenderingData::InflightGPU> inflight_gpu
 );
 
 } // namespace

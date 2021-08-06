@@ -624,7 +624,7 @@ TASK_DECL {
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 2664);
+    static_assert(size == 2672);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);

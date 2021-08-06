@@ -14,6 +14,7 @@ struct LoadData {
 void _load(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<SessionData> session,
+  Ref<RenderingData::InflightGPU> inflight_gpu,
   Own<LoadData> data
 ) {
   // @Incomplete: should not assert on bad input!
@@ -60,19 +61,20 @@ void _load(
 
   fclose(file);
 
-  lib::GUID group_id;
-  auto task_create = create(
+  // @Note: this might be better done manually,
+  // without calls to `create` and `add_item`.
+
+  auto group_id = create(
     ctx,
     session.ptr,
-    &group_desc,
-    &group_id
+    inflight_gpu.ptr,
+    &group_desc
   );
 
   for (auto &item : items_desc) {
     add_item(
       ctx,
       group_id,
-      task_create,
       &item,
       session
     );
@@ -85,7 +87,8 @@ void _load(
 void load(
   lib::task::ContextBase *ctx,
   std::string *path,
-  Ref<SessionData> session
+  Ref<SessionData> session,
+  Ref<RenderingData::InflightGPU> inflight_gpu
 ) {
   ZoneScoped;
   lib::lifetime::ref(&session->lifetime);
@@ -98,6 +101,7 @@ void load(
     lib::task::create(
       _load,
       session.ptr,
+      inflight_gpu.ptr,
       data
     ),
   });

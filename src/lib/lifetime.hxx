@@ -7,6 +7,11 @@ namespace lib {
   struct Lifetime {
     std::atomic<size_t> ref_count;
     lib::Task *yarn;
+
+    // C++ doesn't allow copying atomics by default,
+    // so we need explicit zero constructors
+    Lifetime();
+    Lifetime(const Lifetime &other);
   };
 }
 

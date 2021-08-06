@@ -52,10 +52,12 @@ struct SessionData : lib::task::ParentResource {
 
   struct Groups {
     struct Item {
+      lib::Lifetime lifetime;
       std::string name;
     };
 
     std::unordered_map<lib::GUID, Item> items;
+    std::shared_mutex rw_mutex;
   } groups;
 
   struct Scene {

@@ -25,6 +25,7 @@ void _add_item_insert(
   Own<AddItemData> data 
 ) {
   ZoneScoped;
+
   scene->items.push_back(SessionData::Scene::Item {
     .group_id = data->group_id,
     .transform = glm::translate(glm::mat4(1.0f), glm::vec3(
@@ -40,19 +41,28 @@ void _add_item_insert(
   });
 
   lib::lifetime::deref(&session->lifetime, ctx->runner);
+  {
+    std::shared_lock lock(session->groups.rw_mutex);
+    auto item = &session->groups.items.at(data->group_id);
+    lib::lifetime::deref(&item->lifetime, ctx->runner);
+  }
   delete data.ptr;
 }
 
 void add_item(
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
-  lib::Task *wait_for_group,
   ItemDescription *desc,
   Ref<SessionData> session
 ) {
   ZoneScoped;
   lib::lifetime::ref(&session->lifetime);
-   
+  {
+    std::shared_lock lock(session->groups.rw_mutex);
+    auto item = &session->groups.items.at(group_id);
+    lib::lifetime::ref(&item->lifetime);
+  }
+
   lib::GUID mesh_id = 0;
   auto signal_mesh_loaded = engine::loading::mesh::load(
     desc->path_mesh,
@@ -114,7 +124,6 @@ void add_item(
     task_insert_items.first,
   });
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-    { wait_for_group, task_insert_items.first },
     { signal_mesh_loaded, task_insert_items.first },
     { signal_albedo_loaded, task_insert_items.first },
     { signal_normal_loaded, task_insert_items.first },

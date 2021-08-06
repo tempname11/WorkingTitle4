@@ -15,19 +15,23 @@ struct SaveData {
 void _save(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<SessionData> session,
-  Use<SessionData::Groups> groups,
   Use<SessionData::Scene> scene,
   Use<SessionData::MetaMeshes> meta_meshes,
   Use<SessionData::MetaTextures> meta_textures,
   Own<SaveData> data
 ) {
+  ZoneScoped;
+
   auto file = fopen(data->path.c_str(), "wb");
   assert(file != nullptr);
   lib::io::magic::write(file, "GRUP");
   fwrite(&GRUP_VERSION, 1, sizeof(GRUP_VERSION), file);
-
-  auto item = &groups->items.at(data->group_id);
-  lib::io::string::write(file, &item->name);
+  
+  {
+    std::shared_lock lock(session->groups.rw_mutex);
+    auto item = &session->groups.items.at(data->group_id);
+    lib::io::string::write(file, &item->name);
+  }
      
   auto item_count_pos = ftell(file);
   uint32_t item_count = 0; // modifier and re-written later
@@ -52,7 +56,11 @@ void _save(
   fclose(file);
 
   lib::lifetime::deref(&session->lifetime, ctx->runner);
-
+  {
+    std::shared_lock lock(session->groups.rw_mutex);
+    auto item = &session->groups.items.at(data->group_id);
+    lib::lifetime::deref(&item->lifetime, ctx->runner);
+  }
   delete data.ptr;
 }
 
@@ -64,15 +72,21 @@ void save(
 ) {
   ZoneScoped;
   lib::lifetime::ref(&session->lifetime);
+  {
+    std::shared_lock lock(session->groups.rw_mutex);
+    auto item = &session->groups.items.at(group_id);
+    lib::lifetime::ref(&item->lifetime);
+  }
+
   auto data = new SaveData {
     .group_id = group_id,
     .path = *path,
   };
+
   ctx->new_tasks.insert(ctx->new_tasks.end(), {
     lib::task::create(
       _save,
       session.ptr,
-      &session->groups,
       &session->scene,
       &session->meta_meshes,
       &session->meta_textures,
