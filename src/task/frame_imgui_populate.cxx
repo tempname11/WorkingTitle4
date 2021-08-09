@@ -227,8 +227,7 @@ TASK_DECL {
           engine::loading::group::load(
             ctx,
             &path,
-            session,
-            inflight_gpu
+            session
           );
           path = {};
         }

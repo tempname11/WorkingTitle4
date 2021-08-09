@@ -17,6 +17,6 @@ namespace lib {
 
 namespace lib::lifetime {
   void ref(Lifetime *lifetime);
-  void deref(Lifetime *lifetime, lib::task::Runner *runner);
+  bool deref(Lifetime *lifetime, lib::task::Runner *runner);
   void init(Lifetime *lifetime);
 }

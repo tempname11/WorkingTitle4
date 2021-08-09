@@ -20,7 +20,6 @@ void _remove_scene_items(
   Use<SessionData::MetaMeshes> meta_meshes,
   Own<SessionData::Vulkan::Textures> textures,
   Own<SessionData::MetaTextures> meta_textures,
-  Ref<RenderingData::InflightGPU> inflight_gpu,
   Own<DestroyData> data
 ) {
   ZoneScoped;
@@ -32,7 +31,6 @@ void _remove_scene_items(
         item->mesh_id,
         ctx,
         session,
-        inflight_gpu,
         meta_meshes
       );
 
@@ -71,7 +69,6 @@ void _remove_scene_items(
 void _destroy(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<SessionData> session,
-  Ref<RenderingData::InflightGPU> inflight_gpu,
   Own<DestroyData> data
 ) {
   ZoneScoped;
@@ -87,16 +84,13 @@ void _destroy(
     &session->meta_meshes,
     &session->vulkan.textures,
     &session->meta_textures,
-    inflight_gpu.ptr,
     data.ptr
   );
   {
-    std::scoped_lock lock(inflight_gpu->mutex);
+    std::scoped_lock lock(session->inflight_gpu.mutex);
     std::vector<std::pair<lib::Task *, lib::Task *>> dependencies;
-    if (inflight_gpu.ptr != nullptr) {
-      for (auto signal : inflight_gpu->signals) {
-        dependencies.push_back({ signal, task_remove_scene_items });
-      }
+    for (auto signal : session->inflight_gpu.signals) {
+      dependencies.push_back({ signal, task_remove_scene_items });
     }
     lib::task::inject(ctx->runner, {
       task_remove_scene_items
@@ -109,13 +103,11 @@ void _destroy(
 lib::GUID create(
   lib::task::ContextBase *ctx,
   Ref<SessionData> session,
-  Ref<RenderingData::InflightGPU> inflight_gpu,
   GroupDescription *desc
 ) {
   ZoneScoped;
 
   lib::GUID group_id = lib::guid::next(&session->guid_counter);
-  lib::lifetime::ref(&session->lifetime);
   lib::Task *yarn = nullptr;
   {
     std::unique_lock lock(session->groups.rw_mutex);
@@ -134,7 +126,6 @@ lib::GUID create(
   auto task_destroy = lib::task::create(
     _destroy,
     session.ptr,
-    inflight_gpu.ptr,
     data
   );
 

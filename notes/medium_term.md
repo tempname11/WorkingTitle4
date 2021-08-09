@@ -17,6 +17,9 @@
    
 ### architectural problems
 - error handing for file reads is hairy
+  consider a set of read helpers that provide zero output on error and go on
+  the error is then checked once at the end.
+
 - custom allocators (frame, "short-term")
 - memory suballocation for mesh/texture
 - resource aliasing seems net harmful. 
@@ -26,6 +29,7 @@
 ### deprecations
 - Ref/Use/Own is moot for mutex-protected data, so should use Ref everywhere
 - task::inject seems net harmful, should deprecate it.
+  (grep "Some<SessionData>" and the like)
 
 ### good to have
 - tools should be migrated inside engine!
@@ -45,6 +49,5 @@
 - texture mip levels are generated at runtime
 
 ### refactoring
-- InflightGPU would be much easier to use inside SessionData
 - subtasks don't seem useful, remove them?
 - engine/** file naming is a bit of a mess

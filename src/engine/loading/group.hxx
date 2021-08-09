@@ -20,7 +20,6 @@ struct ItemDescription {
 lib::GUID create(
   lib::task::ContextBase *ctx,
   Ref<SessionData> session,
-  Ref<RenderingData::InflightGPU> inflight_gpu,
   GroupDescription *desc
 );
 
@@ -47,8 +46,7 @@ void save(
 void load(
   lib::task::ContextBase *ctx,
   std::string *path,
-  Ref<SessionData> session,
-  Ref<RenderingData::InflightGPU> inflight_gpu
+  Ref<SessionData> session
 );
 
 } // namespace

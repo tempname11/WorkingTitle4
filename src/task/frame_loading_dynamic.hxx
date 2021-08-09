@@ -10,8 +10,7 @@
   usage::None<SessionData> session, \
   usage::Some<SessionData::GuidCounter> guid_counter, \
   usage::Full<SessionData::MetaMeshes> meta_meshes, \
-  usage::Some<engine::misc::ImguiReactions> imgui_reactions, \
-  usage::None<RenderingData::InflightGPU> inflight_gpu \
+  usage::Some<engine::misc::ImguiReactions> imgui_reactions \
 )
 
 TASK_DECL;

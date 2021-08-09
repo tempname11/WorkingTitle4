@@ -28,34 +28,6 @@ TASK_DECL {
 
     deinit_session_finalpass(&it->finalpass, core);
 
-    { ZoneScopedN(".textures");
-      for (auto &item : it->textures.items) {
-        // @Duplicate: see loading/texture's `_unload`.
-        vkDestroyImageView(
-          core->device,
-          item.second.view,
-          core->allocator
-        );
-
-        lib::gfx::multi_alloc::deinit(
-          &item.second.multi_alloc,
-          it->core.device,
-          it->core.allocator
-        );
-      }
-    }
-
-    { ZoneScopedN(".meshes");
-        // @Duplicate: see loading/mesh's `_unload`.
-      for (auto &item : it->meshes.items) {
-        lib::gfx::multi_alloc::deinit(
-          &item.second.multi_alloc,
-          it->core.device,
-          it->core.allocator
-        );
-      }
-    }
-
     { ZoneScopedN(".multi_alloc");
       lib::gfx::multi_alloc::deinit(
         &it->multi_alloc,

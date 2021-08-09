@@ -6,11 +6,11 @@
 #undef TASK_DECL
 #define TASK_DECL void frame_setup_gpu_signal( \
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx, \
-  usage::Some<SessionData::Vulkan::Core> core, \
-  usage::Some<lib::gpu_signal::Support> gpu_signal_support, \
-  usage::Full<VkSemaphore> frame_rendered_semaphore, \
-  usage::Full<RenderingData::InflightGPU> inflight_gpu, \
-  usage::Some<RenderingData::FrameInfo> frame_info \
+  Ref<SessionData> session, \
+  Use<SessionData::Vulkan::Core> core, \
+  Use<lib::gpu_signal::Support> gpu_signal_support, \
+  Own<VkSemaphore> frame_rendered_semaphore, \
+  Use<RenderingData::FrameInfo> frame_info \
 )
 
 TASK_DECL;

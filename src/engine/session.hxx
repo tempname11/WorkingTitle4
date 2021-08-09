@@ -45,6 +45,12 @@ struct SessionData : lib::task::ParentResource {
     glm::vec2 last_known_mouse_cursor_position;
   } glfw;
 
+  struct InflightGPU {
+    static const size_t MAX_COUNT = 4;
+    std::mutex mutex;
+    lib::task::Task *signals[MAX_COUNT];
+  } inflight_gpu;
+
   using GuidCounter = lib::guid::Counter;
   GuidCounter guid_counter;
 

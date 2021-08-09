@@ -21,12 +21,18 @@ void ref(Lifetime *lifetime) {
   /*auto fetched =*/ lifetime->ref_count.fetch_add(1);
 }
 
-void deref(Lifetime *lifetime, lib::task::Runner *runner) {
+bool deref(Lifetime *lifetime, lib::task::Runner *runner) {
   auto fetched = lifetime->ref_count.fetch_sub(1);
   assert(fetched != 0);
-  if (fetched == 1) {
-    lib::task::signal(runner, lifetime->yarn);
+  auto final = fetched == 1;
+  if (final) {
+    // since the caller is the only owner, it's safe to write to memory here.
+    auto yarn = lifetime->yarn;
+    lifetime->yarn = nullptr;
+
+    lib::task::signal(runner, yarn);
   }
+  return final;
 }
 
 void init(Lifetime *lifetime) {

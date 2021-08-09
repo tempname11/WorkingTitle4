@@ -12,8 +12,7 @@
   usage::Some<SessionData::GLFW> glfw, \
   usage::Some<RenderingData::PresentationFailureState> presentation_failure_state, \
   usage::Full<RenderingData::FrameInfo> latest_frame, \
-  usage::Some<RenderingData::SwapchainDescription> swapchain_description, \
-  usage::Some<RenderingData::InflightGPU> inflight_gpu \
+  usage::Some<RenderingData::SwapchainDescription> swapchain_description \
 )
 
 TASK_DECL;

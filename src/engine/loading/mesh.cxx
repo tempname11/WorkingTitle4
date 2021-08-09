@@ -234,7 +234,6 @@ void deref(
   lib::GUID mesh_id,
   lib::task::ContextBase* ctx,
   Ref<SessionData> session,
-  Ref<RenderingData::InflightGPU> inflight_gpu,
   Use<SessionData::MetaMeshes> meta_meshes
 ) {
   ZoneScoped;
@@ -247,7 +246,7 @@ void deref(
   };
   auto task_deref = lib::task::create(
     after_inflight,
-    inflight_gpu.ptr,
+    session.ptr,
     lib::task::create(
       _deref,
       session.ptr,
@@ -276,8 +275,7 @@ void reload(
   lib::GUID mesh_id,
   lib::task::ContextBase* ctx,
   Ref<SessionData> session,
-  Own<SessionData::MetaMeshes> meta_meshes,
-  Ref<RenderingData::InflightGPU> inflight_gpu
+  Own<SessionData::MetaMeshes> meta_meshes
 ) {
   ZoneScoped;
 
@@ -309,7 +307,7 @@ void reload(
   );
   auto task_finish = lib::task::create(
     after_inflight,
-    inflight_gpu.ptr,
+    session.ptr,
     lib::task::create(
       _reload_finish,
       session.ptr,

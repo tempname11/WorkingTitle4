@@ -6,6 +6,12 @@ TASK_DECL {
   ZoneScoped;
   bool should_stop = glfwWindowShouldClose(session->glfw.window);
   if (should_stop) {
+    for (auto &item : session->groups.items) {
+      // see group::deref
+      lib::lifetime::ref(&session->lifetime);
+      auto final = lib::lifetime::deref(&item.second.lifetime, ctx->runner);
+      assert(final);
+    }
     lib::lifetime::deref(&session->lifetime, ctx->runner);
     return;
   } else {

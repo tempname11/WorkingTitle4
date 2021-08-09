@@ -61,11 +61,6 @@ struct RenderingData : lib::task::ParentResource {
     VkFormat image_format;
   } swapchain_description;
 
-  struct InflightGPU {
-    std::mutex mutex;
-    std::vector<lib::task::Task *> signals;
-  } inflight_gpu;
-
   struct ImguiBackend {
     // ImGui_ImplVulkan_*
     VkRenderPass render_pass;

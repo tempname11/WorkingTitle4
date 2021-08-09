@@ -37,10 +37,10 @@ TASK_DECL {
   }
   bool should_stop = glfwWindowShouldClose(glfw->window);
   if (should_stop || presentation_has_failed) {
-    std::scoped_lock lock(inflight_gpu->mutex);
+    std::scoped_lock lock(session->inflight_gpu.mutex);
     auto task_has_finished = task::create(rendering_has_finished, rendering_yarn_end.ptr);
     task::Auxiliary aux;
-    for (auto signal : inflight_gpu->signals) {
+    for (auto signal : session->inflight_gpu.signals) {
       aux.new_dependencies.push_back({ signal, task_has_finished });
     }
     task::inject(ctx->runner, { task_has_finished }, std::move(aux));
@@ -69,10 +69,10 @@ TASK_DECL {
   auto task_setup_gpu_signal = defer(
     task::create(
       frame_setup_gpu_signal,
+      session.ptr,
       &session->vulkan.core,
       &session->gpu_signal_support,
       &data->frame_finished_semaphore,
-      &data->inflight_gpu,
       frame_info
     )
   );
@@ -159,7 +159,6 @@ TASK_DECL {
     task::create(
       frame_imgui_populate,
       session.ptr,
-      &data->inflight_gpu,
       &session->imgui_context,
       &frame_data->imgui_reactions,
       &session->meta_meshes,
@@ -217,8 +216,7 @@ TASK_DECL {
       session.ptr,
       &session->guid_counter,
       &session->meta_meshes,
-      &frame_data->imgui_reactions,
-      &data->inflight_gpu
+      &frame_data->imgui_reactions
     ),
     task::create(
       frame_cleanup,
@@ -233,14 +231,13 @@ TASK_DECL {
       glfw.ptr,
       presentation_failure_state.ptr,
       latest_frame.ptr,
-      swapchain_description.ptr,
-      inflight_gpu.ptr
+      swapchain_description.ptr
     ),
   });
   auto task_many = defer_many(frame_tasks);
   { // inject under inflight mutex
-    std::scoped_lock lock(inflight_gpu->mutex);
-    auto signal = inflight_gpu->signals[latest_frame->inflight_index];
+    std::scoped_lock lock(session->inflight_gpu.mutex);
+    auto signal = session->inflight_gpu.signals[latest_frame->inflight_index];
     task::inject(ctx->runner, {
       task_setup_gpu_signal.first,
       task_many.first,

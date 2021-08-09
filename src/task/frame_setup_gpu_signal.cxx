@@ -3,8 +3,8 @@
 
 void signal_cleanup (
   task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  usage::Some<RenderingData::InflightGPU> inflight_gpu,
-  usage::Full<uint8_t> inflight_index_saved
+  Ref<SessionData::InflightGPU> inflight_gpu,
+  Own<uint8_t> inflight_index_saved
 ) {
   std::scoped_lock lock(inflight_gpu->mutex);
   assert(inflight_gpu->signals[*inflight_index_saved] != nullptr);
@@ -15,7 +15,7 @@ void signal_cleanup (
 TASK_DECL {
   ZoneScoped;
   // don't use inflight_gpu->mutex, since out signal slot is currently unused
-  assert(inflight_gpu->signals[frame_info->inflight_index] == nullptr);
+  assert(session->inflight_gpu.signals[frame_info->inflight_index] == nullptr);
   auto signal = lib::gpu_signal::create(
     gpu_signal_support.ptr,
     core->device,
@@ -26,13 +26,14 @@ TASK_DECL {
   auto task_cleanup = defer(
     task::create(
       signal_cleanup,
-      inflight_gpu.ptr,
+      &session->inflight_gpu,
       inflight_index_saved
     )
   );
   {
-    std::scoped_lock lock(inflight_gpu->mutex);
-    inflight_gpu->signals[frame_info->inflight_index] = task_cleanup.second; // not the signal itself, on purpose
+    std::scoped_lock lock(session->inflight_gpu.mutex);
+    session->inflight_gpu.signals[frame_info->inflight_index] = task_cleanup.second;
+    // not the signal itself, on purpose
   }
   lib::task::inject(ctx->runner, {
     task_cleanup.first

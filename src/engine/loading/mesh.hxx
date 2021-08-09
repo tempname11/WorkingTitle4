@@ -9,7 +9,6 @@ void deref(
   lib::GUID mesh_id,
   lib::task::ContextBase* ctx,
   Ref<SessionData> session,
-  Ref<RenderingData::InflightGPU> inflight_gpu,
   Use<SessionData::MetaMeshes> meta_meshes
 );
 
@@ -17,8 +16,7 @@ void reload(
   lib::GUID mesh_id,
   lib::task::ContextBase* ctx,
   Ref<SessionData> session,
-  Own<SessionData::MetaMeshes> meta_meshes,
-  Ref<RenderingData::InflightGPU> inflight_gpu
+  Own<SessionData::MetaMeshes> meta_meshes
 );
 
 lib::Task *load(

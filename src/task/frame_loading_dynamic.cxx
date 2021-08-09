@@ -12,8 +12,7 @@ TASK_DECL {
         id,
         ctx,
         session,
-        meta_meshes,
-        inflight_gpu
+        meta_meshes
       );
     }
   }
@@ -22,7 +21,6 @@ TASK_DECL {
     engine::loading::group::create(
       ctx,
       session,
-      inflight_gpu,
       imgui_reactions->created_group_description
     );
     delete imgui_reactions->created_group_description;

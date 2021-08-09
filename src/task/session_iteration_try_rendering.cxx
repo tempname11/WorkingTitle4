@@ -114,11 +114,11 @@ TASK_DECL {
   rendering->swapchain_description.image_count = checked_integer_cast<uint8_t>(swapchain_image_count);
   rendering->swapchain_description.image_extent = surface_capabilities.currentExtent;
   rendering->swapchain_description.image_format = SWAPCHAIN_FORMAT;
-  rendering->inflight_gpu.signals.resize(swapchain_image_count, nullptr);
   rendering->latest_frame.timestamp_ns = 0;
   rendering->latest_frame.elapsed_ns = 0;
   rendering->latest_frame.number = uint64_t(-1);
   rendering->latest_frame.inflight_index = uint8_t(-1);
+  assert(SessionData::InflightGPU::MAX_COUNT >= swapchain_image_count);
 
   { ZoneScopedN(".command_pools");
     rendering->command_pools = std::vector<CommandPool2>(swapchain_image_count);
@@ -813,8 +813,7 @@ TASK_DECL {
     &session->glfw,
     &rendering->presentation_failure_state,
     &rendering->latest_frame,
-    &rendering->swapchain_description,
-    &rendering->inflight_gpu
+    &rendering->swapchain_description
   );
   auto task_cleanup = defer(
     task::create(
@@ -845,7 +844,6 @@ TASK_DECL {
       &rendering->presentation,
       &rendering->presentation_failure_state,
       &rendering->swapchain_description,
-      &rendering->inflight_gpu,
       &rendering->imgui_backend,
       &rendering->latest_frame,
       &rendering->command_pools,

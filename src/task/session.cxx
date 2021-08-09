@@ -624,7 +624,7 @@ TASK_DECL {
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 2672);
+    static_assert(size == 2784);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
@@ -658,6 +658,7 @@ TASK_DECL {
       .children = {
         &session->glfw,
         &session->guid_counter,
+        &session->inflight_gpu,
         &session->lifetime,
         &session->scene,
         &session->meta_meshes,
