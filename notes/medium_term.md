@@ -10,6 +10,7 @@
 
 ### nasty intermittent bugs
 - x3 [last 2021-08-06] session not deinitialized, some dependency (yarn?) was stuck
+  (probably fixed, in mesh::load)
 
 - x3 [last 2021-07-30] mesh reload crash, the buffer seems to be freed and then used.
   (likely not relevant anymore)

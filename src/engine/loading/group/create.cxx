@@ -107,6 +107,8 @@ lib::GUID create(
 ) {
   ZoneScoped;
 
+  lib::lifetime::ref(&session->lifetime);
+
   lib::GUID group_id = lib::guid::next(&session->guid_counter);
   lib::Task *yarn = nullptr;
   {

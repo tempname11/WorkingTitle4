@@ -343,8 +343,6 @@ lib::Task* load(
 ) {
   ZoneScoped;
 
-  lib::lifetime::ref(&session->lifetime);
-
   auto it = meta_meshes->by_path.find(path);
   if (it != meta_meshes->by_path.end()) {
     auto mesh_id = it->second;
@@ -365,20 +363,15 @@ lib::Task* load(
     assert(false);
   }
 
+  lib::lifetime::ref(&session->lifetime);
+
   auto mesh_id = lib::guid::next(guid_counter.ptr);
   *out_mesh_id = mesh_id;
   meta_meshes->by_path.insert({ path, mesh_id });
-
-  SessionData::MetaMeshes::Item meta = {
-    .ref_count = 1, 
-    .status = SessionData::MetaMeshes::Status::Loading,
-    .path = path,
-  };
-  meta_meshes->items.insert({ mesh_id, meta });
   
   auto data = new LoadData {
     .mesh_id = mesh_id,
-    .path = meta_meshes->items.at(mesh_id).path,
+    .path = path,
   };
 
   auto task_read_file = lib::task::create(
@@ -412,6 +405,14 @@ lib::Task* load(
     { task_read_file, task_init_buffer.first },
     { task_init_buffer.second, task_finish.first },
   });
+
+  SessionData::MetaMeshes::Item meta = {
+    .ref_count = 1, 
+    .status = SessionData::MetaMeshes::Status::Loading,
+    .will_have_loaded = task_finish.second,
+    .path = path,
+  };
+  meta_meshes->items.insert({ mesh_id, meta });
 
   return task_finish.second;
 }
