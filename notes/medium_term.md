@@ -31,6 +31,7 @@
 - Ref/Use/Own is moot for mutex-protected data, so should use Ref everywhere
 - task::inject seems net harmful, should deprecate it.
   (grep "Some<SessionData>" and the like)
+- multi_alloc?
 
 ### good to have
 - tools should be migrated inside engine!

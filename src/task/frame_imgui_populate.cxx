@@ -1,3 +1,4 @@
+#include <cinttypes>
 #include <imgui.h>
 #include <nfd.h>
 #ifdef WINDOWS
@@ -94,6 +95,7 @@ TASK_DECL {
       ImGui::MenuItem("Demo", "CTRL-D", &state->show_imgui_window_demo);
       ImGui::MenuItem("Groups", "CTRL-G", &state->show_imgui_window_groups);
       ImGui::MenuItem("Meshes", "CTRL-M", &state->show_imgui_window_meshes);
+      ImGui::MenuItem("GPU Memory", "CTRL-Q", &state->show_imgui_window_gpu_memory);
       ImGui::EndMenu();
     }
     ImGui::EndMainMenuBar();
@@ -289,6 +291,56 @@ TASK_DECL {
         ImGui::PopID();
       }
       ImGui::EndTable();
+      ImGui::End();
+    }
+
+    if (state->show_imgui_window_gpu_memory) {
+      ImGui::Begin("GPU memory", &state->show_imgui_window_gpu_memory);
+      if (ImGui::TreeNode("GPU_LOCAL")) {
+        auto it = &session->vulkan.allocator_gpu_local;
+        std::shared_lock lock(it->rw_mutex);
+
+        if (
+          ImGui::TreeNode(
+            &it->dedicated_allocations,
+            "Dedicated: %zu allocations",
+            it->dedicated_allocations.size()
+          )
+         ) {
+          for (auto &item : it->dedicated_allocations) {
+            ImGui::Text("ID = " PRIi64 ", size = %zu", item.id, item.size);
+          }
+          ImGui::TreePop();
+        }
+
+        if (
+          ImGui::TreeNode(
+            &it->regions,
+            "Shared: %zu regions",
+            it->regions.size()
+          )
+         ) {
+          for (auto &item : it->regions) {
+            if (
+              ImGui::TreeNode(
+                &item,
+                "%zu active suballocations, occupied = %zu / %zu",
+                item.total_active_suballocations,
+                item.size_occupied,
+                it->size_region
+              )
+            ) {
+              for (auto &item : item.suballocations) {
+                ImGui::Text("ID = %" PRIi64 ", offset = %zu, size = %zu", item.id, item.offset, item.size);
+              }
+              ImGui::TreePop();
+            }
+          }
+          ImGui::TreePop();
+        }
+
+        ImGui::TreePop();
+      }
       ImGui::End();
     }
   }

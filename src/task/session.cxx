@@ -19,6 +19,11 @@
 #include "session_setup_cleanup.hxx"
 #include "session.hxx"
 
+// @Incomplete: we may need to calculate this depending on
+// the available GPU memory, the number of memory types we need,
+// and the `maxMemoryAllocationCount` limit.
+const size_t ALLOCATOR_GPU_LOCAL_REGION_SIZE = 1024 * 1024 * 32;
+
 VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_callback(
   VkDebugUtilsMessageSeverityFlagBitsEXT severity,
   VkDebugUtilsMessageTypeFlagsEXT type,
@@ -326,6 +331,16 @@ void init_vulkan(
     );
   }
 
+  { ZoneScopedN(".allocator_gpu_local");
+    lib::gfx::allocator::init(
+      &it->allocator_gpu_local,
+      &it->core.properties.memory,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      ALLOCATOR_GPU_LOCAL_REGION_SIZE,
+      "allocator_gpu_local"
+    );
+  }
+
   // for both pipelines
   VkShaderModule module_frag = VK_NULL_HANDLE;
   VkShaderModule module_vert = VK_NULL_HANDLE;
@@ -579,6 +594,17 @@ TASK_DECL {
       ) {
         ptr->state->show_imgui_window_demo = !ptr->state->show_imgui_window_demo;
       }
+      if (true
+        && ptr->state->show_imgui
+        && action == GLFW_PRESS
+        && key == GLFW_KEY_Q
+        && (false
+          || glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS
+          || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS
+        )
+      ) {
+        ptr->state->show_imgui_window_gpu_memory = !ptr->state->show_imgui_window_gpu_memory;
+      }
     });
     it->ready = true;
   }
@@ -624,11 +650,11 @@ TASK_DECL {
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 2784);
+    static_assert(size == 2904);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 1920);
+    static_assert(size == 2040);
   }
   #endif
 
@@ -683,6 +709,7 @@ TASK_DECL {
         &session->vulkan.core.queue_family_index,
         &session->vulkan.tracy_setup_command_pool,
         &session->vulkan.multi_alloc,
+        &session->vulkan.allocator_gpu_local,
         &session->vulkan.fullscreen_quad,
         &session->vulkan.gpass,
         &session->vulkan.lpass,

@@ -9,7 +9,7 @@ TASK_DECL {
     auto &romeao = textures->items.at(item.texture_romeao_id);
     render_list->items.push_back(engine::misc::RenderList::Item {
       .transform = item.transform,
-      .mesh_buffer = mesh.vertex_stake.buffer,
+      .mesh_buffer = mesh.buffer.buffer,
       .mesh_vertex_count = uint32_t(mesh.triangle_count * 3),
       .texture_albedo_view = albedo.view,
       .texture_normal_view = normal.view,

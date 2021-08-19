@@ -1,3 +1,4 @@
+#include <src/lib/gfx/allocator.hxx>
 #include <src/task/after_inflight.hxx>
 #include <src/task/defer.hxx>
 #include "mesh.hxx"
@@ -70,59 +71,39 @@ void _load_read_file(
 
 void _load_init_buffer(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<SessionData> session,
   Use<SessionData::Vulkan::Core> core,
   Own<LoadData> data 
 ) {
   ZoneScoped;
 
   data->mesh_item.triangle_count = data->the_mesh.triangle_count;
-  lib::gfx::multi_alloc::init(
-    &data->mesh_item.multi_alloc,
-    { lib::gfx::multi_alloc::Claim {
-      .info = {
-        .buffer = {
-          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-          .size = std::max(
-            size_t(1), // for zero buffer
-            data->the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05)
-          ),
-          .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        },
-      },
-      .memory_property_flags = VkMemoryPropertyFlagBits(0
-      | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-      | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-      ),
-      .p_stake_buffer = &data->mesh_item.vertex_stake,
-    }},
+  VkBufferCreateInfo create_info = {
+    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+    .size = std::max(
+      size_t(1), // for zero buffer
+      data->the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05)
+    ),
+    .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+  };
+  data->mesh_item.buffer = lib::gfx::allocator::create_buffer(
+    &session->vulkan.allocator_gpu_local,
     core->device,
     core->allocator,
     &core->properties.basic,
-    &core->properties.memory
+    &create_info
   );
-
-  void *mem;
-  {
-    auto result = vkMapMemory(
-      core->device,
-      data->mesh_item.vertex_stake.memory,
-      data->mesh_item.vertex_stake.offset,
-      data->mesh_item.vertex_stake.size,
-      0,
-      &mem
-    );
-    assert(result == VK_SUCCESS);
-  }
+  auto mapping = lib::gfx::allocator::get_host_mapping(
+    &session->vulkan.allocator_gpu_local,
+    data->mesh_item.buffer.id
+  );
+  auto size = data->the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05);
+  assert(size <= mapping.size);
   memcpy(
-    mem,
+    mapping.mem,
     data->the_mesh.vertices,
-    data->the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05)
-  );
-  vkUnmapMemory(
-    core->device,
-    data->mesh_item.vertex_stake.memory
+    size
   );
 }
 
@@ -150,12 +131,14 @@ void _load_finish(
 
 void _unload_item(
   SessionData::Vulkan::Meshes::Item *item,
+  Ref<SessionData> session,
   Use<SessionData::Vulkan::Core> core
 ) {
-  lib::gfx::multi_alloc::deinit(
-    &item->multi_alloc,
+  lib::gfx::allocator::destroy_buffer(
+    &session->vulkan.allocator_gpu_local,
     core->device,
-    core->allocator
+    core->allocator,
+    item->buffer
   );
 }
 
@@ -175,6 +158,7 @@ void _reload_finish(
 
   _unload_item(
     &old_item,
+    session,
     core
   );
 
@@ -217,6 +201,7 @@ void _deref(
     auto mesh = &meshes->items.at(data->mesh_id);
     _unload_item(
       mesh,
+      session,
       core
     );
 
@@ -301,6 +286,7 @@ void reload(
   auto task_init_buffer = defer(
     lib::task::create(
       _load_init_buffer,
+      session.ptr,
       &session->vulkan.core,
       data
     )
@@ -381,6 +367,7 @@ lib::Task* load(
   auto task_init_buffer = defer(
     lib::task::create(
       _load_init_buffer,
+      session.ptr,
       &session->vulkan.core,
       data
     )

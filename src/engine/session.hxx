@@ -13,6 +13,7 @@
 #include <src/lib/guid.hxx>
 #include <src/lib/gpu_signal.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
+#include <src/lib/gfx/allocator.hxx>
 #include <src/lib/debug_camera.hxx>
 
 struct MetaTexturesKey {
@@ -149,6 +150,9 @@ struct SessionData : lib::task::ParentResource {
     using MultiAlloc = lib::gfx::multi_alloc::Instance;
     MultiAlloc multi_alloc;
 
+    using Allocator_GPU_Local = lib::gfx::Allocator;
+    Allocator_GPU_Local allocator_gpu_local;
+
     struct Meshes {
       using Item = engine::common::mesh::GPU_Data;
       std::unordered_map<lib::GUID, Item> items;
@@ -213,6 +217,7 @@ struct SessionData : lib::task::ParentResource {
     bool show_imgui_window_demo;
     bool show_imgui_window_groups;
     bool show_imgui_window_meshes;
+    bool show_imgui_window_gpu_memory;
     bool is_fullscreen;
     lib::debug_camera::State debug_camera;
   } state;

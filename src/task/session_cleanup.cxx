@@ -36,6 +36,14 @@ TASK_DECL {
       );
     }
 
+    { ZoneScopedN(".allocator_gpu_local");
+      lib::gfx::allocator::deinit(
+        &it->allocator_gpu_local,
+        it->core.device,
+        it->core.allocator
+      );
+    }
+
     { ZoneScopedN(".core.tracy_context");
       TracyVkDestroy(it->core.tracy_context);
     }
