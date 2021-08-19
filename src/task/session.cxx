@@ -335,7 +335,13 @@ void init_vulkan(
     lib::gfx::allocator::init(
       &it->allocator_gpu_local,
       &it->core.properties.memory,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      // @Temporary
+      // VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      VkMemoryPropertyFlagBits(0
+        | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+      ),
       ALLOCATOR_GPU_LOCAL_REGION_SIZE,
       "allocator_gpu_local"
     );

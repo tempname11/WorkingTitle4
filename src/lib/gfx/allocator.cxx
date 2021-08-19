@@ -170,7 +170,7 @@ _Allocation _allocate(
       }
 
       void *mem = nullptr;
-      if (it->memory_property_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT != 0) {
+      if ((it->memory_property_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0) {
         auto result = vkMapMemory(
           device,
           memory,
