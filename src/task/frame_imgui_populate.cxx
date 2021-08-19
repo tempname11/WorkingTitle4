@@ -308,7 +308,7 @@ TASK_DECL {
           )
          ) {
           for (auto &item : it->dedicated_allocations) {
-            ImGui::Text("ID = " PRIi64 ", size = %zu", item.id, item.size);
+            ImGui::Text("ID = %" PRIi64 ", size = %zu", item.id, item.size);
           }
           ImGui::TreePop();
         }

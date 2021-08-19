@@ -1,6 +1,7 @@
 ### milestone: dynamic loading
 
 - implement simple compactor
+- implement uploader
 
 - mesh code review
   - should be split into files

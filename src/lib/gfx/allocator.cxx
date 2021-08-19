@@ -80,7 +80,7 @@ _Allocation _allocate(
   std::unique_lock lock(it->rw_mutex);
 
   if (requirements->size >= it->min_size_dedicated) {
-    assert(it->total_dedicated_allocations + INT64_MIN < 0);
+    assert(it->total_suballocations < INT64_MAX);
     it->total_dedicated_allocations++;
 
     auto id = ID(-it->total_dedicated_allocations);
@@ -345,7 +345,7 @@ HostMapping get_host_mapping(
     for (auto &item : region->suballocations) {
       if (item.id == id) {
         return {
-          .mem = region->mem,
+          .mem = (uint8_t *) region->mem + item.offset,
           .size = item.size,
         };
       }
