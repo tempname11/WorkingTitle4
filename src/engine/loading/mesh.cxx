@@ -1,4 +1,4 @@
-#include <src/lib/gfx/allocator.hxx>
+#include <src/engine/uploader.hxx>
 #include <src/task/after_inflight.hxx>
 #include <src/task/defer.hxx>
 #include "mesh.hxx"
@@ -73,11 +73,13 @@ void _load_init_buffer(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<SessionData> session,
   Use<SessionData::Vulkan::Core> core,
+  Own<VkQueue> queue_work,
+  Ref<lib::Task> signal,
   Own<LoadData> data 
 ) {
   ZoneScoped;
 
-  data->mesh_item.triangle_count = data->the_mesh.triangle_count;
+  data->mesh_item.vertex_count = data->the_mesh.triangle_count * 3;
   VkBufferCreateInfo create_info = {
     .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
     .size = std::max(
@@ -87,23 +89,32 @@ void _load_init_buffer(
     .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
-  data->mesh_item.buffer = lib::gfx::allocator::create_buffer(
-    &session->vulkan.allocator_gpu_local,
+  auto result = engine::uploader::prepare_buffer(
+    &session->vulkan.uploader,
     core->device,
     core->allocator,
     &core->properties.basic,
     &create_info
   );
-  auto mapping = lib::gfx::allocator::get_host_mapping(
-    &session->vulkan.allocator_gpu_local,
-    data->mesh_item.buffer.id
-  );
+
+  data->mesh_item.id = result.id;
   auto size = data->the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05);
-  assert(size <= mapping.size);
+  assert(size <= result.mem_size);
   memcpy(
-    mapping.mem,
+    result.mem,
     data->the_mesh.vertices,
     size
+  );
+
+  engine::uploader::upload(
+    ctx,
+    signal.ptr,
+    &session->vulkan.uploader,
+    session.ptr,
+    &session->vulkan.core,
+    &session->gpu_signal_support,
+    queue_work,
+    result.id
   );
 }
 
@@ -120,7 +131,7 @@ void _load_finish(
   auto meta = &meta_meshes->items.at(data->mesh_id);
   meta->status = SessionData::MetaMeshes::Status::Ready;
   meta->will_have_loaded = nullptr;
-  meta->invalid = data->mesh_item.triangle_count == 0;
+  meta->invalid = data->mesh_item.vertex_count == 0;
 
   lib::lifetime::deref(&session->lifetime, ctx->runner);
 
@@ -134,11 +145,10 @@ void _unload_item(
   Ref<SessionData> session,
   Use<SessionData::Vulkan::Core> core
 ) {
-  lib::gfx::allocator::destroy_buffer(
-    &session->vulkan.allocator_gpu_local,
-    core->device,
-    core->allocator,
-    item->buffer
+  engine::uploader::destroy_buffer(
+    &session->vulkan.uploader,
+    core.ptr,
+    item->id
   );
 }
 
@@ -163,7 +173,7 @@ void _reload_finish(
   );
 
   auto meta = &meta_meshes->items.at(data->mesh_id);
-  meta->invalid = item->triangle_count == 0;
+  meta->invalid = item->vertex_count == 0;
   meta->will_have_reloaded = nullptr;
 
   lib::lifetime::deref(&session->lifetime, ctx->runner);
@@ -283,11 +293,14 @@ void reload(
     _load_read_file,
     data
   );
+  auto signal_init_buffer = lib::task::create_external_signal();
   auto task_init_buffer = defer(
     lib::task::create(
       _load_init_buffer,
       session.ptr,
       &session->vulkan.core,
+      &session->vulkan.queue_work,
+      signal_init_buffer,
       data
     )
   );
@@ -315,7 +328,7 @@ void reload(
 
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
     { task_read_file, task_init_buffer.first },
-    { task_init_buffer.second, task_finish },
+    { signal_init_buffer, task_finish },
   });
 }
 
@@ -364,11 +377,14 @@ lib::Task* load(
     _load_read_file,
     data
   );
+  auto signal_init_buffer = lib::task::create_external_signal();
   auto task_init_buffer = defer(
     lib::task::create(
       _load_init_buffer,
       session.ptr,
       &session->vulkan.core,
+      &session->vulkan.queue_work,
+      signal_init_buffer,
       data
     )
   );
@@ -390,7 +406,7 @@ lib::Task* load(
 
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
     { task_read_file, task_init_buffer.first },
-    { task_init_buffer.second, task_finish.first },
+    { signal_init_buffer, task_finish.first },
   });
 
   SessionData::MetaMeshes::Item meta = {

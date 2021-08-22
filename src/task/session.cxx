@@ -4,6 +4,7 @@
 #include <backends/imgui_impl_glfw.h>
 #include <src/embedded.hxx>
 #include <src/engine/texture.hxx>
+#include <src/engine/uploader.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/rendering/prepass.hxx>
@@ -331,19 +332,14 @@ void init_vulkan(
     );
   }
 
-  { ZoneScopedN(".allocator_gpu_local");
-    lib::gfx::allocator::init(
-      &it->allocator_gpu_local,
+  { ZoneScopedN(".uploader");
+    engine::uploader::init(
+      &it->uploader,
+      it->core.device,
+      it->core.allocator,
       &it->core.properties.memory,
-      // @Temporary
-      // VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-      VkMemoryPropertyFlagBits(0
-        | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-      ),
-      ALLOCATOR_GPU_LOCAL_REGION_SIZE,
-      "allocator_gpu_local"
+      it->core.queue_family_index,
+      ALLOCATOR_GPU_LOCAL_REGION_SIZE
     );
   }
 
@@ -656,11 +652,11 @@ TASK_DECL {
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 2904);
+    static_assert(size == 3128);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 2040);
+    static_assert(size == 2264);
   }
   #endif
 
@@ -715,7 +711,7 @@ TASK_DECL {
         &session->vulkan.core.queue_family_index,
         &session->vulkan.tracy_setup_command_pool,
         &session->vulkan.multi_alloc,
-        &session->vulkan.allocator_gpu_local,
+        &session->vulkan.uploader,
         &session->vulkan.fullscreen_quad,
         &session->vulkan.gpass,
         &session->vulkan.lpass,

@@ -101,46 +101,6 @@ void _load_init_image(
         ),
         .p_stake_buffer = &data->staging_buffer,
       },
-      /*
-      lib::gfx::multi_alloc::Claim {
-        .info = {
-          .buffer = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = VkDeviceSize(
-               data->the_normal.width *
-               data->the_normal.height *
-               engine::texture::NORMAL_TEXEL_SIZE
-            ),
-            .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-          },
-        },
-        .memory_property_flags = VkMemoryPropertyFlagBits(0
-          | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-        ),
-        .p_stake_buffer = &data->texture_staging_normal,
-      },
-      lib::gfx::multi_alloc::Claim {
-        .info = {
-          .buffer = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = VkDeviceSize(
-               data->the_romeao.width *
-               data->the_romeao.height *
-               engine::texture::ROMEAO_TEXEL_SIZE
-            ),
-            .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-          },
-        },
-        .memory_property_flags = VkMemoryPropertyFlagBits(0
-          | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-        ),
-        .p_stake_buffer = &data->texture_staging_romeao,
-      }
-      */
     },
     core->device,
     core->allocator,

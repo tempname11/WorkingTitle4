@@ -88,6 +88,52 @@ engine::loading::group::ItemDescription default_group_item = {
   .path_romeao = "assets/texture-1px/romeao.png",
 };
 
+void imgui_allocator(
+  Ref<lib::gfx::Allocator> it
+) {
+  ZoneScoped;
+  std::shared_lock lock(it->rw_mutex);
+
+  if (
+    ImGui::TreeNode(
+      &it->dedicated_allocations,
+      "Dedicated: %zu allocations",
+      it->dedicated_allocations.size()
+    )
+   ) {
+    for (auto &item : it->dedicated_allocations) {
+      ImGui::Text("ID = %" PRIi64 ", size = %zu", item.id, item.size);
+    }
+    ImGui::TreePop();
+  }
+
+  if (
+    ImGui::TreeNode(
+      &it->regions,
+      "Shared: %zu regions",
+      it->regions.size()
+    )
+   ) {
+    for (auto &item : it->regions) {
+      if (
+        ImGui::TreeNode(
+          &item,
+          "%zu active suballocations, occupied = %zu / %zu",
+          item.total_active_suballocations,
+          item.size_occupied,
+          it->size_region
+        )
+      ) {
+        for (auto &item : item.suballocations) {
+          ImGui::Text("ID = %" PRIi64 ", offset = %zu, size = %zu", item.id, item.offset, item.size);
+        }
+        ImGui::TreePop();
+      }
+    }
+    ImGui::TreePop();
+  }
+}
+
 TASK_DECL {
   if (state->show_imgui) {
     ImGui::BeginMainMenuBar();
@@ -296,49 +342,12 @@ TASK_DECL {
 
     if (state->show_imgui_window_gpu_memory) {
       ImGui::Begin("GPU memory", &state->show_imgui_window_gpu_memory);
-      if (ImGui::TreeNode("GPU_LOCAL")) {
-        auto it = &session->vulkan.allocator_gpu_local;
-        std::shared_lock lock(it->rw_mutex);
-
-        if (
-          ImGui::TreeNode(
-            &it->dedicated_allocations,
-            "Dedicated: %zu allocations",
-            it->dedicated_allocations.size()
-          )
-         ) {
-          for (auto &item : it->dedicated_allocations) {
-            ImGui::Text("ID = %" PRIi64 ", size = %zu", item.id, item.size);
-          }
-          ImGui::TreePop();
-        }
-
-        if (
-          ImGui::TreeNode(
-            &it->regions,
-            "Shared: %zu regions",
-            it->regions.size()
-          )
-         ) {
-          for (auto &item : it->regions) {
-            if (
-              ImGui::TreeNode(
-                &item,
-                "%zu active suballocations, occupied = %zu / %zu",
-                item.total_active_suballocations,
-                item.size_occupied,
-                it->size_region
-              )
-            ) {
-              for (auto &item : item.suballocations) {
-                ImGui::Text("ID = %" PRIi64 ", offset = %zu, size = %zu", item.id, item.offset, item.size);
-              }
-              ImGui::TreePop();
-            }
-          }
-          ImGui::TreePop();
-        }
-
+      if (ImGui::TreeNode("DEVICE")) {
+        imgui_allocator(&session->vulkan.uploader.allocator_device);
+        ImGui::TreePop();
+      }
+      if (ImGui::TreeNode("HOST")) {
+        imgui_allocator(&session->vulkan.uploader.allocator_host);
         ImGui::TreePop();
       }
       ImGui::End();

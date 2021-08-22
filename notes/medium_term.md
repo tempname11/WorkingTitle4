@@ -17,6 +17,8 @@
 
    
 ### architectural problems
+- uploader seems rushed
+- need automatic compacting for the custom allocator...
 - error handing for file reads is hairy
   consider a set of read helpers that provide zero output on error and go on
   the error is then checked once at the end.

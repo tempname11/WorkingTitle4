@@ -115,6 +115,7 @@ TASK_DECL {
     ),
     task::create(
       frame_generate_render_list,
+      session.ptr,
       &session->scene,
       &session->vulkan.meshes,
       &session->vulkan.textures,

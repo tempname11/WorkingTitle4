@@ -14,6 +14,8 @@ void init(
   size_t size_region,
   char const *debug_name
 ) {
+  ZoneScoped;
+
   uint32_t memory_type_index = (uint32_t) -1;
   for (uint32_t i = 0; i < properties->memoryTypeCount; i++) {
     if ((properties->memoryTypes[i].propertyFlags & memory_property_flags) == memory_property_flags) {
@@ -223,6 +225,8 @@ Buffer create_buffer(
   VkPhysicalDeviceProperties *properties,
   VkBufferCreateInfo *info
 ) {
+  ZoneScoped;
+
   VkBuffer buffer;
   {
     auto result = vkCreateBuffer(
@@ -271,6 +275,8 @@ Image create_image(
   VkPhysicalDeviceProperties *properties,
   VkImageCreateInfo *info
 ) {
+  ZoneScoped;
+
   VkImage image;
   {
     auto result = vkCreateImage(
@@ -319,6 +325,8 @@ HostMapping get_host_mapping(
   Ref<Allocator> it,
   ID id
 ) {
+  ZoneScoped;
+
   assert(id != 0);
   std::shared_lock lock(it->rw_mutex);
   if (id < 0) {
@@ -360,6 +368,8 @@ void _deallocate(
   const VkAllocationCallbacks *allocator,
   ID id
 ) {
+  ZoneScoped;
+
   assert(id != 0);
   std::unique_lock lock(it->rw_mutex);
   if (id < 0) {
@@ -408,6 +418,8 @@ void destroy_buffer(
   const VkAllocationCallbacks *allocator,
   Buffer buffer
 ) {
+  ZoneScoped;
+
   vkDestroyBuffer(device, buffer.buffer, allocator);
   _deallocate(it, device, allocator, buffer.id);
 }
@@ -418,6 +430,8 @@ void destroy_image(
   const VkAllocationCallbacks *allocator,
   Image image
 ) {
+  ZoneScoped;
+
   vkDestroyImage(device, image.image, allocator);
   _deallocate(it, device, allocator, image.id);
 }

@@ -1,5 +1,6 @@
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
+#include <src/engine/uploader.hxx>
 #include <src/engine/rendering/prepass.hxx>
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
@@ -36,6 +37,15 @@ TASK_DECL {
       );
     }
 
+    { ZoneScopedN(".uploader");
+      engine::uploader::deinit(
+        &it->uploader,
+        it->core.device,
+        it->core.allocator
+      );
+    }
+
+    /*
     { ZoneScopedN(".allocator_gpu_local");
       lib::gfx::allocator::deinit(
         &it->allocator_gpu_local,
@@ -43,6 +53,7 @@ TASK_DECL {
         it->core.allocator
       );
     }
+    */
 
     { ZoneScopedN(".core.tracy_context");
       TracyVkDestroy(it->core.tracy_context);

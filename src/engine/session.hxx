@@ -8,12 +8,12 @@
 #include <TracyVulkan.hpp>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/common/mesh.hxx>
+#include <src/engine/uploader.data.hxx>
 #include <src/lib/task.hxx>
 #include <src/lib/lifetime.hxx>
 #include <src/lib/guid.hxx>
 #include <src/lib/gpu_signal.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
-#include <src/lib/gfx/allocator.hxx>
 #include <src/lib/debug_camera.hxx>
 
 struct MetaTexturesKey {
@@ -150,11 +150,14 @@ struct SessionData : lib::task::ParentResource {
     using MultiAlloc = lib::gfx::multi_alloc::Instance;
     MultiAlloc multi_alloc;
 
-    using Allocator_GPU_Local = lib::gfx::Allocator;
-    Allocator_GPU_Local allocator_gpu_local;
+    using Uploader = engine::Uploader;
+    Uploader uploader;
 
     struct Meshes {
-      using Item = engine::common::mesh::GPU_Data;
+      struct Item {
+        engine::uploader::ID id;
+        uint32_t vertex_count;
+      };
       std::unordered_map<lib::GUID, Item> items;
     } meshes;
 
