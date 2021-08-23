@@ -460,6 +460,7 @@ void run_task_worker(Runner *r, int worker_index, uint64_t queue_access_bits) {
       t->fn(&ctx);
       r_lock.lock();
       _internal_changed_parents(r, std::move(ctx.changed_parents), t);
+      _internal_infer_dependencies(r, ctx.new_tasks, nullptr);
       _internal_infer_dependencies(r, ctx.subtasks, t);
       _internal_new_dependencies(r, std::move(ctx.new_dependencies));
       for (auto t : ctx.new_tasks) {
