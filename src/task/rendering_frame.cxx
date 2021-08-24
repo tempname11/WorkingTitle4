@@ -218,6 +218,7 @@ TASK_DECL {
       session.ptr,
       &session->guid_counter,
       &session->meta_meshes,
+      &session->meta_textures,
       &frame_data->imgui_reactions
     ),
     task::create(

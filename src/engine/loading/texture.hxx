@@ -12,6 +12,13 @@ void deref(
   Use<SessionData::MetaTextures> meta_textures
 );
 
+void reload(
+  lib::GUID texture_id,
+  lib::task::ContextBase* ctx,
+  Ref<SessionData> session,
+  Own<SessionData::MetaTextures> meta_textures
+);
+
 lib::Task *load(
   std::string &path,
   VkFormat format,

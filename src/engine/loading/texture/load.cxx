@@ -2,6 +2,7 @@
 #include <src/global.hxx>
 #include <src/task/defer.hxx>
 #include <src/lib/gfx/utilities.hxx>
+#include <src/engine/session.hxx>
 #include <src/engine/uploader.hxx>
 #include <src/engine/common/texture.hxx>
 #include "../texture.hxx"
@@ -217,6 +218,7 @@ lib::Task *load(
     .status = SessionData::MetaTextures::Status::Loading,
     .will_have_loaded = task_finish.second,
     .path = path,
+    .format = format,
   };
   meta_textures->items.insert({ texture_id, meta });
 

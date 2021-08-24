@@ -755,6 +755,7 @@ void destroy_image(
 ) {
   ZoneScoped;
 
+  VkImageView image_view;
   lib::gfx::allocator::Image image_device;
 
   {
@@ -763,10 +764,17 @@ void destroy_image(
     assert(image_data->status == Uploader::ImageData::Status::Ready);
     // @Incomplete should wait for Uploaded...
 
+    image_view = image_data->image_view;
     image_device = image_data->image_device;
     assert(image_data->buffer_host.id == 0);
     it->images.erase(id);
   }
+
+  vkDestroyImageView(
+    core->device,
+    image_view,
+    core->allocator
+  );
 
   lib::gfx::allocator::destroy_image(
     &it->allocator_device,

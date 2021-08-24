@@ -338,6 +338,7 @@ TASK_DECL {
             ImGui::PopStyleVar();
           }
         }
+
         ImGui::PopID();
       }
       ImGui::EndTable();
@@ -346,11 +347,11 @@ TASK_DECL {
 
     if (state->show_imgui_window_textures) {
       ImGui::Begin("Textures", &state->show_imgui_window_textures);
-      ImGui::BeginTable("table_textures", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+      ImGui::BeginTable("table_textures", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
       ImGui::TableSetupColumn("Path");
       ImGui::TableSetupColumn("Status");
       ImGui::TableSetupColumn("Refcount");
-      //ImGui::TableSetupColumn("Actions");
+      ImGui::TableSetupColumn("Actions");
       ImGui::TableHeadersRow();
       for (auto &pair : meta_textures->items) {
         auto item = &pair.second;
@@ -378,6 +379,20 @@ TASK_DECL {
 
         ImGui::TableNextColumn();
         ImGui::Text("%zu", item->ref_count);
+
+        ImGui::TableNextColumn();
+        { // reload button
+          auto disabled = item->will_have_reloaded != nullptr;
+          if (disabled) {
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+          }
+          if (ImGui::Button("Reload") && !disabled) {
+            imgui_reactions->reloaded_texture_id = texture_id;
+          }
+          if (disabled) {
+            ImGui::PopStyleVar();
+          }
+        }
 
         ImGui::PopID();
       }

@@ -7,10 +7,11 @@
 #undef TASK_DECL
 #define TASK_DECL void frame_loading_dynamic( \
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx, \
-  usage::None<SessionData> session, \
-  usage::Some<SessionData::GuidCounter> guid_counter, \
-  usage::Full<SessionData::MetaMeshes> meta_meshes, \
-  usage::Some<engine::misc::ImguiReactions> imgui_reactions \
+  Ref<SessionData> session, \
+  Use<SessionData::GuidCounter> guid_counter, \
+  Own<SessionData::MetaMeshes> meta_meshes, \
+  Own<SessionData::MetaTextures> meta_textures, \
+  Use<engine::misc::ImguiReactions> imgui_reactions \
 )
 
 TASK_DECL;

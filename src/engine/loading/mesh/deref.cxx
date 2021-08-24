@@ -1,13 +1,8 @@
 #include <src/task/after_inflight.hxx>
 #include "../mesh.hxx"
+#include "common.hxx"
 
 namespace engine::loading::mesh {
-
-void _unload_item(
-  SessionData::Vulkan::Meshes::Item *item,
-  Ref<SessionData> session,
-  Use<SessionData::Vulkan::Core> core
-);
 
 struct DerefData {
   lib::GUID mesh_id;

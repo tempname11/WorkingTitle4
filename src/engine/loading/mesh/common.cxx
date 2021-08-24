@@ -55,9 +55,10 @@ void _unload_item(
   Ref<SessionData> session,
   Use<SessionData::Vulkan::Core> core
 ) {
+  // @Minor: this does not need to be a procedure
   engine::uploader::destroy_buffer(
     &session->vulkan.uploader,
-    core.ptr,
+    core,
     item->id
   );
 }

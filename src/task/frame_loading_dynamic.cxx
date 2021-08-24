@@ -1,3 +1,4 @@
+#include <src/engine/loading/texture.hxx>
 #include <src/engine/loading/mesh.hxx>
 #include <src/engine/loading/group.hxx>
 #include "frame_loading_dynamic.hxx"
@@ -13,6 +14,19 @@ TASK_DECL {
         ctx,
         session,
         meta_meshes
+      );
+    }
+  }
+
+  if (imgui_reactions->reloaded_texture_id != 0) {
+    auto id = imgui_reactions->reloaded_texture_id;
+    auto group = &meta_textures->items.at(id);
+    if (group->status == SessionData::MetaTextures::Status::Ready) {
+      engine::loading::texture::reload(
+        id,
+        ctx,
+        session,
+        meta_textures
       );
     }
   }
