@@ -16,9 +16,4 @@ namespace engine::common::mesh {
     uint32_t triangle_count;
     VertexT05 *vertices;
   };
-
-  struct GPU_Data {
-    lib::gfx::allocator::Buffer buffer;
-    size_t triangle_count;
-  };
 }

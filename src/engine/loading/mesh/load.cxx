@@ -43,15 +43,13 @@ void _load_init_buffer(
   );
 
   data->mesh_item.id = result.id;
-  auto size = data->the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05);
-  assert(size <= result.mem_size);
   memcpy(
     result.mem,
     data->the_mesh.vertices,
-    size
+    result.data_size
   );
 
-  engine::uploader::upload(
+  engine::uploader::upload_buffer(
     ctx,
     signal.ptr,
     &session->vulkan.uploader,

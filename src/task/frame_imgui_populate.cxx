@@ -141,6 +141,7 @@ TASK_DECL {
       ImGui::MenuItem("Demo", "CTRL-D", &state->show_imgui_window_demo);
       ImGui::MenuItem("Groups", "CTRL-G", &state->show_imgui_window_groups);
       ImGui::MenuItem("Meshes", "CTRL-M", &state->show_imgui_window_meshes);
+      ImGui::MenuItem("Textures", "CTRL-T", &state->show_imgui_window_textures);
       ImGui::MenuItem("GPU Memory", "CTRL-Q", &state->show_imgui_window_gpu_memory);
       ImGui::EndMenu();
     }
@@ -291,8 +292,8 @@ TASK_DECL {
 
     if (state->show_imgui_window_meshes) {
       ImGui::Begin("Meshes", &state->show_imgui_window_meshes);
-      ImGui::BeginTable("table_meshes", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
-      ImGui::TableSetupColumn("Name");
+      ImGui::BeginTable("table_meshes", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+      ImGui::TableSetupColumn("Path");
       ImGui::TableSetupColumn("Status");
       ImGui::TableSetupColumn("Refcount");
       ImGui::TableSetupColumn("Actions");
@@ -302,11 +303,13 @@ TASK_DECL {
         auto mesh_id = pair.first;
         ImGui::PushID(mesh_id);
         ImGui::TableNextRow();
+
         ImGui::TableNextColumn();
         ImGui::TextUnformatted(
           item->path.c_str(),
           item->path.c_str() + item->path.size()
         );
+
         ImGui::TableNextColumn();
         if (item->status == SessionData::MetaMeshes::Status::Loading) {
           ImGui::Text("[loading]");
@@ -318,10 +321,11 @@ TASK_DECL {
             ImGui::Text("[ready]");
           }
         }
+
         ImGui::TableNextColumn();
         ImGui::Text("%zu", item->ref_count);
-        ImGui::TableNextColumn();
 
+        ImGui::TableNextColumn();
         { // reload button
           auto disabled = item->will_have_reloaded != nullptr;
           if (disabled) {
@@ -334,6 +338,43 @@ TASK_DECL {
             ImGui::PopStyleVar();
           }
         }
+        ImGui::PopID();
+      }
+      ImGui::EndTable();
+      ImGui::End();
+    }
+
+    if (state->show_imgui_window_textures) {
+      ImGui::Begin("Textures", &state->show_imgui_window_textures);
+      ImGui::BeginTable("table_textures", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+      ImGui::TableSetupColumn("Path");
+      ImGui::TableSetupColumn("Status");
+      ImGui::TableSetupColumn("Refcount");
+      //ImGui::TableSetupColumn("Actions");
+      ImGui::TableHeadersRow();
+      for (auto &pair : meta_textures->items) {
+        auto item = &pair.second;
+        auto texture_id = pair.first;
+        ImGui::PushID(texture_id);
+        ImGui::TableNextRow();
+
+        ImGui::TableNextColumn();
+        ImGui::TextUnformatted(
+          item->path.c_str(),
+          item->path.c_str() + item->path.size()
+        );
+
+        ImGui::TableNextColumn();
+        if (item->status == SessionData::MetaTextures::Status::Loading) {
+          ImGui::Text("[loading]");
+        }
+        if (item->status == SessionData::MetaTextures::Status::Ready) {
+          ImGui::Text("[ready]");
+        }
+
+        ImGui::TableNextColumn();
+        ImGui::Text("%zu", item->ref_count);
+
         ImGui::PopID();
       }
       ImGui::EndTable();

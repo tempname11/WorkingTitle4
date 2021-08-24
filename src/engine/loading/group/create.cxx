@@ -18,8 +18,7 @@ void _remove_scene_items(
   Use<SessionData::Vulkan::Core> core,
   Own<SessionData::Scene> scene,
   Use<SessionData::MetaMeshes> meta_meshes,
-  Own<SessionData::Vulkan::Textures> textures,
-  Own<SessionData::MetaTextures> meta_textures,
+  Use<SessionData::MetaTextures> meta_textures,
   Own<DestroyData> data
 ) {
   ZoneScoped;
@@ -36,22 +35,22 @@ void _remove_scene_items(
 
       engine::loading::texture::deref(
         item->texture_albedo_id,
-        core,
-        textures,
+        ctx,
+        session,
         meta_textures
       );
 
       engine::loading::texture::deref(
         item->texture_normal_id,
-        core,
-        textures,
+        ctx,
+        session,
         meta_textures
       );
 
       engine::loading::texture::deref(
         item->texture_romeao_id,
-        core,
-        textures,
+        ctx,
+        session,
         meta_textures
       );
 
@@ -82,7 +81,6 @@ void _destroy(
     &session->vulkan.core,
     &session->scene,
     &session->meta_meshes,
-    &session->vulkan.textures,
     &session->meta_textures,
     data.ptr
   );

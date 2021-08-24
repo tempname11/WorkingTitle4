@@ -547,6 +547,17 @@ TASK_DECL {
       if (action == GLFW_PRESS && key == GLFW_KEY_GRAVE_ACCENT) {
         ptr->state->show_imgui = !ptr->state->show_imgui;
       }
+
+      auto is_alt_pressed = (false
+        || glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS
+        || glfwGetKey(window, GLFW_KEY_RIGHT_ALT) == GLFW_PRESS
+      );
+
+      auto is_control_pressed = (false
+        || glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS
+        || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS
+      );
+
       if (false
         || (true
           && action == GLFW_PRESS
@@ -555,55 +566,53 @@ TASK_DECL {
         || (true
           && action == GLFW_PRESS
           && key == GLFW_KEY_ENTER
-          && (false
-            || glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS
-            || glfwGetKey(window, GLFW_KEY_RIGHT_ALT) == GLFW_PRESS
-          )
+          && is_alt_pressed
         )
       ) {
         ptr->state->is_fullscreen = !ptr->state->is_fullscreen;
       }
+
       if (true
         && ptr->state->show_imgui
         && action == GLFW_PRESS
         && key == GLFW_KEY_G
-        && (false
-          || glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS
-          || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS
-        )
+        && is_control_pressed
       ) {
         ptr->state->show_imgui_window_groups = !ptr->state->show_imgui_window_groups;
       }
+
       if (true
         && ptr->state->show_imgui
         && action == GLFW_PRESS
         && key == GLFW_KEY_M
-        && (false
-          || glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS
-          || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS
-        )
+        && is_control_pressed
       ) {
         ptr->state->show_imgui_window_meshes = !ptr->state->show_imgui_window_meshes;
       }
+
+      if (true
+        && ptr->state->show_imgui
+        && action == GLFW_PRESS
+        && key == GLFW_KEY_T
+        && is_control_pressed
+      ) {
+        ptr->state->show_imgui_window_textures = !ptr->state->show_imgui_window_textures;
+      }
+
       if (true
         && ptr->state->show_imgui
         && action == GLFW_PRESS
         && key == GLFW_KEY_D
-        && (false
-          || glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS
-          || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS
-        )
+        && is_control_pressed
       ) {
         ptr->state->show_imgui_window_demo = !ptr->state->show_imgui_window_demo;
       }
+
       if (true
         && ptr->state->show_imgui
         && action == GLFW_PRESS
         && key == GLFW_KEY_Q
-        && (false
-          || glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS
-          || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS
-        )
+        && is_control_pressed
       ) {
         ptr->state->show_imgui_window_gpu_memory = !ptr->state->show_imgui_window_gpu_memory;
       }
@@ -652,11 +661,11 @@ TASK_DECL {
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 3128);
+    static_assert(size == 3216);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 2264);
+    static_assert(size == 2344);
   }
   #endif
 

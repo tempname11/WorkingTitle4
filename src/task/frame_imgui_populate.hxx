@@ -10,6 +10,7 @@
   Own<SessionData::ImguiContext> imgui, \
   Own<engine::misc::ImguiReactions> imgui_reactions, \
   Use<SessionData::MetaMeshes> meta_meshes, \
+  Use<SessionData::MetaTextures> meta_textures, \
   Own<SessionData::State> state \
 )
 

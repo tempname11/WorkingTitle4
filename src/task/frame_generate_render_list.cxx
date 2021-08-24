@@ -5,23 +5,40 @@ TASK_DECL {
   ZoneScoped;
   for (auto &item : scene->items) {
     auto &mesh = meshes->items.at(item.mesh_id);
-    auto &albedo = textures->items.at(item.texture_albedo_id);
-    auto &normal = textures->items.at(item.texture_normal_id);
-    auto &romeao = textures->items.at(item.texture_romeao_id);
+    auto &albedo_uploader_id = textures->items.at(item.texture_albedo_id).id;
+    auto &normal_uploader_id = textures->items.at(item.texture_normal_id).id;
+    auto &romeao_uploader_id = textures->items.at(item.texture_romeao_id).id;
 
-    // @Temporary: this is very badly designed,
-    // we'll take a mutex for each item!
+    // @Rushed: this is very badly designed,
+    // i.e. we'll take multiple mutexes for each item!
+    // also, there is double indirection, where there should not be!
     auto buffer = engine::uploader::get_buffer(
       &session->vulkan.uploader,
       mesh.id
     );
+
+    auto albedo_view = engine::uploader::get_image(
+      &session->vulkan.uploader,
+      albedo_uploader_id
+    ).second;
+
+    auto normal_view = engine::uploader::get_image(
+      &session->vulkan.uploader,
+      normal_uploader_id
+    ).second;
+
+    auto romeao_view = engine::uploader::get_image(
+      &session->vulkan.uploader,
+      romeao_uploader_id
+    ).second;
+
     render_list->items.push_back(engine::misc::RenderList::Item {
       .transform = item.transform,
       .mesh_buffer = buffer,
       .mesh_vertex_count = mesh.vertex_count,
-      .texture_albedo_view = albedo.view,
-      .texture_normal_view = normal.view,
-      .texture_romeao_view = romeao.view,
+      .texture_albedo_view = albedo_view,
+      .texture_normal_view = normal_view,
+      .texture_romeao_view = romeao_view,
     });
   }
 }

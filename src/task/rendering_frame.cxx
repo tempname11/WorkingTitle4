@@ -163,6 +163,7 @@ TASK_DECL {
       &session->imgui_context,
       &frame_data->imgui_reactions,
       &session->meta_meshes,
+      &session->meta_textures,
       &session->state
     ),
     task::create(

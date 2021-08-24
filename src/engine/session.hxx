@@ -112,6 +112,7 @@ struct SessionData : lib::task::ParentResource {
       size_t ref_count;
       Status status;
       lib::Task *will_have_loaded;
+      lib::Task *will_have_reloaded;
       std::string path;
       VkFormat format;
     } item;
@@ -162,7 +163,9 @@ struct SessionData : lib::task::ParentResource {
     } meshes;
 
     struct Textures {
-      using Item = engine::common::texture::GPU_Data;
+      struct Item {
+        engine::uploader::ID id;
+      };
       std::unordered_map<lib::GUID, Item> items;
     } textures;
 
@@ -220,6 +223,7 @@ struct SessionData : lib::task::ParentResource {
     bool show_imgui_window_demo;
     bool show_imgui_window_groups;
     bool show_imgui_window_meshes;
+    bool show_imgui_window_textures;
     bool show_imgui_window_gpu_memory;
     bool is_fullscreen;
     lib::debug_camera::State debug_camera;

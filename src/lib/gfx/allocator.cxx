@@ -20,6 +20,7 @@ void init(
   for (uint32_t i = 0; i < properties->memoryTypeCount; i++) {
     if ((properties->memoryTypes[i].propertyFlags & memory_property_flags) == memory_property_flags) {
       memory_type_index = i;
+      break;
     }
   }
   assert(memory_type_index != (uint32_t) -1);
