@@ -3,7 +3,7 @@
 #include <GLFW/glfw3.h>
 #include <backends/imgui_impl_glfw.h>
 #include <src/embedded.hxx>
-#include <src/engine/texture.hxx>
+#include <src/engine/common/texture.hxx>
 #include <src/engine/uploader.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/common/texture.hxx>

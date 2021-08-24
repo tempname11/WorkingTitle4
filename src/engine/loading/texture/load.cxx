@@ -1,10 +1,27 @@
 #include <stb_image.h>
+#include <src/global.hxx>
 #include <src/task/defer.hxx>
+#include <src/lib/gfx/utilities.hxx>
 #include <src/engine/uploader.hxx>
-#include <src/engine/texture.hxx>
+#include <src/engine/common/texture.hxx>
 #include "../texture.hxx"
 
 namespace engine::loading::texture {
+
+engine::common::texture::Data<uint8_t> load_rgba8(const char *filename) {
+  int width, height, _channels = 4;
+  auto data = stbi_load(filename, &width, &height, &_channels, 4);
+  if (data == nullptr) {
+    return {};
+  };
+  return engine::common::texture::Data<uint8_t> {
+    .data = data,
+    .width = width,
+    .height = height,
+    .channels = 4,
+    .computed_mip_levels = lib::gfx::utilities::mip_levels(width, height),
+  };
+}
 
 struct LoadData {
   lib::GUID texture_id;
@@ -20,7 +37,7 @@ void _load_read_file(
   Own<LoadData> data 
 ) {
   ZoneScoped;
-  data->the_texture = engine::texture::load_rgba8(data->path.c_str());
+  data->the_texture = load_rgba8(data->path.c_str());
 }
 
 void _load_init_image(
@@ -38,11 +55,20 @@ void _load_init_image(
     .imageType = VK_IMAGE_TYPE_2D,
     .format = data->format,
     .extent = {
-      .width = uint32_t(data->the_texture.width),
-      .height = uint32_t(data->the_texture.height),
+      .width = std::max(
+        uint32_t(1), // for invalid image
+        uint32_t(data->the_texture.width)
+      ),
+      .height = std::max(
+        uint32_t(1), // for invalid image
+        uint32_t(data->the_texture.height)
+      ),
       .depth = 1,
     },
-    .mipLevels = data->the_texture.computed_mip_levels,
+    .mipLevels = std::max(
+      uint32_t(1), // for invalid image
+      data->the_texture.computed_mip_levels
+    ),
     .arrayLayers = 1,
     .samples = VK_SAMPLE_COUNT_1_BIT,
     .tiling = VK_IMAGE_TILING_OPTIMAL,
@@ -58,11 +84,19 @@ void _load_init_image(
     &create_info
   );
   data->texture_item.id = result.id;
-  memcpy(
-    result.mem,
-    data->the_texture.data,
-    result.data_size
-  );
+  if (data->the_texture.data != nullptr) {
+    memcpy(
+      result.mem,
+      data->the_texture.data,
+      result.data_size
+    );
+  } else {
+    memset(
+      result.mem,
+      0,
+      result.data_size
+    );
+  }
 
   engine::uploader::upload_image(
     ctx,
@@ -90,7 +124,7 @@ void _load_finish(
   auto meta = &meta_textures->items.at(data->texture_id);
   meta->status = SessionData::MetaTextures::Status::Ready;
   meta->will_have_loaded = nullptr;
-  // meta->invalid = data->texture_item.vertex_count == 0;
+  meta->invalid = data->the_texture.data == nullptr;
 
   lib::lifetime::deref(&session->lifetime, ctx->runner);
 

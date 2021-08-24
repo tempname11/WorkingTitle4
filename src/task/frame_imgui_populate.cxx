@@ -369,7 +369,11 @@ TASK_DECL {
           ImGui::Text("[loading]");
         }
         if (item->status == SessionData::MetaTextures::Status::Ready) {
-          ImGui::Text("[ready]");
+          if (item->invalid) {
+            ImGui::Text("<invalid>");
+          } else {
+            ImGui::Text("[ready]");
+          }
         }
 
         ImGui::TableNextColumn();

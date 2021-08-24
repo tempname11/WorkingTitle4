@@ -3,15 +3,13 @@
 
 namespace engine::loading::mesh {
 
-engine::common::mesh::T05 zero_t05 = {};
-
 engine::common::mesh::T05 read_t05_file(const char *filename) {
   ZoneScoped;
   auto file = fopen(filename, "rb");
 
   // assert(file != nullptr);
   if (file == nullptr) {
-    return zero_t05;
+    return {};
   }
 
   fseek(file, 0, SEEK_END);
@@ -24,7 +22,7 @@ engine::common::mesh::T05 read_t05_file(const char *filename) {
   if (ferror(file) != 0) {
     fclose(file);
     free(buffer);
-    return zero_t05;
+    return {};
   }
 
   fclose(file);
@@ -34,7 +32,7 @@ engine::common::mesh::T05 read_t05_file(const char *filename) {
   // assert(size == sizeof(uint32_t) + sizeof(engine::common::mesh::VertexT05) * 3 * triangle_count);
   if (size != sizeof(uint32_t) + sizeof(engine::common::mesh::VertexT05) * 3 * triangle_count) {
     free(buffer);
-    return zero_t05;
+    return {};
   }
 
   return {

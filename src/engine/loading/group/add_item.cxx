@@ -2,7 +2,7 @@
 #include <src/lib/task.hxx>
 #include <src/lib/guid.hxx>
 #include <src/task/defer.hxx>
-#include <src/engine/texture.hxx>
+#include <src/engine/common/texture.hxx>
 #include "../mesh.hxx"
 #include "../texture.hxx"
 #include "../group.hxx"
@@ -78,7 +78,7 @@ void add_item(
   lib::GUID romeao_id = 0;
   auto signal_albedo_loaded = engine::loading::texture::load(
     desc->path_albedo,
-    engine::texture::ALBEDO_TEXTURE_FORMAT,
+    engine::common::texture::ALBEDO_TEXTURE_FORMAT,
     ctx,
     session,
     &session->meta_textures,
@@ -87,7 +87,7 @@ void add_item(
   );
   auto signal_normal_loaded = engine::loading::texture::load(
     desc->path_normal,
-    engine::texture::NORMAL_TEXTURE_FORMAT,
+    engine::common::texture::NORMAL_TEXTURE_FORMAT,
     ctx,
     session,
     &session->meta_textures,
@@ -96,7 +96,7 @@ void add_item(
   );
   auto signal_romeao_loaded = engine::loading::texture::load(
     desc->path_romeao,
-    engine::texture::ROMEAO_TEXTURE_FORMAT,
+    engine::common::texture::ROMEAO_TEXTURE_FORMAT,
     ctx,
     session,
     &session->meta_textures,

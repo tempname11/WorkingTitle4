@@ -28,7 +28,7 @@ void _load_init_buffer(
   VkBufferCreateInfo create_info = {
     .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
     .size = std::max(
-      size_t(1), // for zero buffer
+      size_t(1), // for invalid buffer
       data->the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05)
     ),
     .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,

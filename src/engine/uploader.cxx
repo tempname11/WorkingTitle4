@@ -165,10 +165,6 @@ PrepareResult prepare_image(
   ZoneScoped;
 
   auto original_usage = info->usage;
-  auto computed_mip_levels = lib::gfx::utilities::mip_levels(
-    info->extent.width,
-    info->extent.height
-  );
 
   VkBufferCreateInfo buffer_info = {
     .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -208,7 +204,7 @@ PrepareResult prepare_image(
       .format = info->format,
       .subresourceRange = {
         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-        .levelCount = computed_mip_levels,
+        .levelCount = info->mipLevels,
         .layerCount = 1,
       },
     };
@@ -240,7 +236,7 @@ PrepareResult prepare_image(
         .image_view = image_view,
         .width = info->extent.width,
         .height = info->extent.height,
-        .computed_mip_levels = computed_mip_levels,
+        .computed_mip_levels = info->mipLevels,
       },
     });
   }
