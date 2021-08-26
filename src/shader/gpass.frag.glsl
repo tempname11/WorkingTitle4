@@ -1,5 +1,6 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
+#extension GL_GOOGLE_include_directive : enable
 
 layout(location = 0) in vec3 view_space_tangent;
 layout(location = 1) in vec3 view_space_bitangent;
@@ -12,15 +13,6 @@ layout(location = 2) out vec4 gchannel2;
 layout(set = 1, binding = 0) uniform sampler2D albedo_image;
 layout(set = 1, binding = 1) uniform sampler2D normal_image;
 layout(set = 1, binding = 2) uniform sampler2D romeao_image;
-/*
-layout(set = 1, binding = 4) uniform Material {
-  // material
-  vec3 albedo;
-  float metallic;
-  float roughness;
-  float ao;
-} material;
-*/
 
 void main() {
   vec3 albedo = texture(albedo_image, uv).rgb;

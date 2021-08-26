@@ -34,7 +34,6 @@ void record_geometry_draw_commands(
     }
   }
 
-  VkDeviceSize zero = 0;
   for (size_t i = 0; i < render_list->items.size(); i++) {
     auto &item = render_list->items[i];
     auto descriptor_set = descriptor_sets[i];
@@ -94,7 +93,9 @@ void record_geometry_draw_commands(
       1, 1, &descriptor_set,
       0, nullptr
     );
-    vkCmdBindVertexBuffers(cmd, 0, 1, &item.mesh_buffer, &zero);
+    VkDeviceSize vertices_offset = item.mesh_buffer_offset_vertices;
+    vkCmdBindVertexBuffers(cmd, 0, 1, &item.mesh_buffer, &vertices_offset);
+    vkCmdBindIndexBuffer(cmd, item.mesh_buffer, item.mesh_buffer_offset_indices, VK_INDEX_TYPE_UINT16);
     vkCmdPushConstants(
       cmd,
       s_gpass->pipeline_layout,
@@ -103,7 +104,7 @@ void record_geometry_draw_commands(
       sizeof(glm::mat4),
       &item.transform
     );
-    vkCmdDraw(cmd, item.mesh_vertex_count, 1, 0, 0);
+    vkCmdDrawIndexed(cmd, item.mesh_index_count, 1, 0, 0, 0);
   }
 }
 

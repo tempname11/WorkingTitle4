@@ -62,7 +62,7 @@ void init_session_prepass(
     VkVertexInputBindingDescription binding_descriptions[] = {
       {
         .binding = 0,
-        .stride = sizeof(engine::common::mesh::VertexT05),
+        .stride = sizeof(engine::common::mesh::VertexT06),
         .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
       },
     };
@@ -71,31 +71,31 @@ void init_session_prepass(
         .location = 0,
         .binding = 0,
         .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT05, position),
+        .offset = offsetof(engine::common::mesh::VertexT06, position),
       },
       {
         .location = 1,
         .binding = 0,
         .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT05, tangent),
+        .offset = offsetof(engine::common::mesh::VertexT06, tangent),
       },
       {
         .location = 2,
         .binding = 0,
         .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT05, bitangent),
+        .offset = offsetof(engine::common::mesh::VertexT06, bitangent),
       },
       {
         .location = 3,
         .binding = 0,
         .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT05, normal),
+        .offset = offsetof(engine::common::mesh::VertexT06, normal),
       },
       {
         .location = 4,
         .binding = 0,
         .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT05, uv),
+        .offset = offsetof(engine::common::mesh::VertexT06, uv),
       },
     };
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {

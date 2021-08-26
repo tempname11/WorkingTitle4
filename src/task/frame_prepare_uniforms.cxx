@@ -1,4 +1,5 @@
 #include <src/lib/gfx/utilities.hxx>
+#include <src/engine/common/ubo.hxx>
 #include "frame_prepare_uniforms.hxx"
 
 TASK_DECL {
@@ -12,11 +13,13 @@ TASK_DECL {
         / swapchain_description->image_extent.height
     );
     auto view = lib::debug_camera::to_view_matrix(&session_state->debug_camera);
-    const rendering::UBO_Frame data = {
+    const engine::common::ubo::Frame data = {
       .projection = projection,
       .view = view,
       .projection_inverse = glm::inverse(projection),
       .view_inverse = glm::inverse(view),
+      .flags = session_state->ubo_flags,
+      .end_marker = 0xDeadBeef
     };
     auto stake = &common->stakes.ubo_frame[frame_info->inflight_index];
     void * dst;
@@ -33,7 +36,7 @@ TASK_DECL {
 
   { ZoneScopedN("material");
     auto albedo = glm::vec3(1.0, 1.0, 1.0);
-    const rendering::UBO_Material data = {
+    const engine::common::ubo::Material data = {
       .albedo = glm::vec3(1.0f, 1.0f, 1.0f),
       .metallic = 0.5f,
       .roughness = 0.5f,
@@ -53,7 +56,7 @@ TASK_DECL {
   }
 
   { ZoneScopedN("directional_light");
-    const rendering::UBO_DirectionalLight data = {
+    const engine::common::ubo::DirectionalLight data = {
       .direction = glm::vec3(0.0f, 0.0f, -1.0f),
       .intensity = 3.0f * glm::vec3(1.0f, 1.0f, 1.0f),
     };

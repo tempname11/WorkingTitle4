@@ -6,7 +6,7 @@ namespace engine::loading::mesh {
 struct LoadData {
   lib::GUID mesh_id;
   std::string path;
-  engine::common::mesh::T05 the_mesh;
+  engine::common::mesh::T06 the_mesh;
   SessionData::Vulkan::Meshes::Item mesh_item;
 };
 

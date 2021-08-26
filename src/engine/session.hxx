@@ -8,6 +8,7 @@
 #include <TracyVulkan.hpp>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/common/mesh.hxx>
+#include <src/engine/common/ubo.hxx>
 #include <src/engine/uploader.data.hxx>
 #include <src/lib/task.hxx>
 #include <src/lib/lifetime.hxx>
@@ -158,7 +159,9 @@ struct SessionData : lib::task::ParentResource {
     struct Meshes {
       struct Item {
         engine::uploader::ID id;
-        uint32_t vertex_count;
+        uint32_t index_count;
+        uint32_t buffer_offset_indices;
+        uint32_t buffer_offset_vertices;
       };
       std::unordered_map<lib::GUID, Item> items;
     } meshes;
@@ -226,8 +229,11 @@ struct SessionData : lib::task::ParentResource {
     bool show_imgui_window_meshes;
     bool show_imgui_window_textures;
     bool show_imgui_window_gpu_memory;
+    bool show_imgui_window_tools;
+    bool show_imgui_window_flags;
     bool is_fullscreen;
     lib::debug_camera::State debug_camera;
+    engine::common::ubo::Flags ubo_flags;
   } state;
 };
 

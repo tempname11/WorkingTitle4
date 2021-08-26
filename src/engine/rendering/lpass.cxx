@@ -1,5 +1,6 @@
 #include <src/global.hxx>
 #include <src/embedded.hxx>
+#include <src/engine/common/ubo.hxx>
 #include "lpass.hxx"
 
 void init_session_lpass(
@@ -437,7 +438,7 @@ void claim_rendering_lpass(
         .buffer = {
           .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
           .size = (
-            sizeof(rendering::UBO_DirectionalLight)
+            sizeof(engine::common::ubo::DirectionalLight)
           ),
           .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
           .sharingMode = VK_SHARING_MODE_EXCLUSIVE,

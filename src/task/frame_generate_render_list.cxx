@@ -35,7 +35,9 @@ TASK_DECL {
     render_list->items.push_back(engine::misc::RenderList::Item {
       .transform = item.transform,
       .mesh_buffer = buffer,
-      .mesh_vertex_count = mesh.vertex_count,
+      .mesh_index_count = mesh.index_count,
+      .mesh_buffer_offset_indices = mesh.buffer_offset_indices,
+      .mesh_buffer_offset_vertices = mesh.buffer_offset_vertices,
       .texture_albedo_view = albedo_view,
       .texture_normal_view = normal_view,
       .texture_romeao_view = romeao_view,

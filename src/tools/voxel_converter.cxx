@@ -11,6 +11,8 @@
 #include <glm/gtc/color_space.hpp>
 #include <src/engine/common/mesh.hxx>
 
+namespace tools {
+
 #define FLAG_RANDOMIZE
 
 #define X 255
@@ -353,16 +355,20 @@ const glm::vec3 cube_normals[] = {
 };
 
 namespace mesh {
-  struct T05_Builder {
-    std::vector<engine::common::mesh::VertexT05> vertices;
+  struct T06_Builder {
+    std::vector<engine::common::mesh::IndexT06> indices;
+    std::vector<engine::common::mesh::VertexT06> vertices;
   };
 
-  void write(const char *out_filename, T05_Builder *mesh) {
+  void write(const char *out_filename, T06_Builder *mesh) {
     FILE *out = fopen(out_filename, "wb");
     assert(out != nullptr);
-    uint32_t triangle_count = mesh->vertices.size() / 3;
-    fwrite(&triangle_count, 1, sizeof(triangle_count), out);
-    fwrite(mesh->vertices.data(), 1, mesh->vertices.size() * sizeof(decltype(mesh->vertices)::value_type), out);
+    uint32_t index_count = mesh->indices.size();
+    uint32_t vertex_count = mesh->vertices.size();
+    fwrite(&index_count, 1, sizeof(index_count), out);
+    fwrite(&vertex_count, 1, sizeof(vertex_count), out);
+    fwrite(mesh->indices.data(), 1, mesh->indices.size() * sizeof(engine::common::mesh::IndexT06), out);
+    fwrite(mesh->vertices.data(), 1, mesh->vertices.size() * sizeof(engine::common::mesh::VertexT06), out);
     assert(ferror(out) == 0);
     fclose(out);
   }
@@ -385,7 +391,7 @@ struct IntermediateData {
 
 const float TEXTURE_MAPPING_SCALE = 1.0f / 8.0f;
 
-void build_cubes(IntermediateData *data, mesh::T05_Builder *mesh) {
+void build_cubes(IntermediateData *data, mesh::T06_Builder *mesh) {
   for (auto elem: data->voxels) {
     XYZ voxel = { .value = elem.first };
     for (size_t i = 0; i < 6; i++) { // sides
@@ -416,7 +422,10 @@ void build_cubes(IntermediateData *data, mesh::T05_Builder *mesh) {
       auto bitangent = glm::cross(normal, tangent);
       auto scale = TEXTURE_MAPPING_SCALE;
       for (size_t j = 0; j < 6; j++) { // triangle vertices
-        mesh->vertices.push_back(engine::common::mesh::VertexT05 {
+        // @Performance: if this is ever used seriously (which is unlikely),
+        // we could some of the vertices. For now, don't bother.
+        mesh->indices.push_back(mesh->indices.size());
+        mesh->vertices.push_back(engine::common::mesh::VertexT06 {
           .position = v[j],
           .tangent = tangent,
           .bitangent = bitangent,
@@ -424,17 +433,11 @@ void build_cubes(IntermediateData *data, mesh::T05_Builder *mesh) {
           .uv = scale * glm::vec2(glm::dot(v[j], tangent), glm::dot(v[j], bitangent)),
         });
       }
-      /*
-      auto p = data->palette[elem.second];
-      auto albedo = glm::convertSRGBToLinear(glm::vec3(p.x, p.y, p.z) / 255.0f);
-      mesh->albedos.push_back(albedo);
-      mesh->albedos.push_back(albedo);
-      */
     }
   }
 }
 
-void build_mc(IntermediateData *data, mesh::T05_Builder *mesh) {
+void build_mc(IntermediateData *data, mesh::T06_Builder *mesh) {
   std::unordered_set<uint64_t> candidates;
   for (auto &elem: data->voxels) {
     XYZ voxel = { .value = elem.first };
@@ -548,7 +551,10 @@ void build_mc(IntermediateData *data, mesh::T05_Builder *mesh) {
       auto scale = TEXTURE_MAPPING_SCALE;
 
       for (size_t j = 0; j < 3; j++) {
-        mesh->vertices.push_back(engine::common::mesh::VertexT05 {
+        // @Performance: if this is ever used seriously (which is unlikely),
+        // we could some of the vertices. For now, don't bother.
+        mesh->indices.push_back(mesh->indices.size());
+        mesh->vertices.push_back(engine::common::mesh::VertexT06 {
           .position = v[j],
           .tangent = tangent,
           .bitangent = bitangent,
@@ -556,19 +562,6 @@ void build_mc(IntermediateData *data, mesh::T05_Builder *mesh) {
           .uv = scale * glm::vec2(glm::dot(v[j], tangent), glm::dot(v[j], bitangent)),
         });
       }
-
-      /*
-      auto albedo = glm::vec3(0.0f);
-      float n = 0;
-      for (size_t j = 0; j < 8; j++) {
-        if (bits[j]) {
-          auto p = data->palette[data->voxels[values[j]]];
-          albedo += glm::convertSRGBToLinear(glm::vec3(p.x, p.y, p.z) / 255.0f);
-          n++;
-        }
-      }
-      mesh->albedos.push_back(albedo / n);
-      */
     }
   }
 }
@@ -581,14 +574,14 @@ void read_chunk(uint8_t **pCursor, size_t *pBytesLeft, IntermediateData *data) {
   }
   assert(bytes_left >= 12);
   if (0 == memcmp(cursor, "MAIN", 4)) {
-    printf("MAIN\n");
+    // DBG("MAIN");
     cursor += 12;
     bytes_left -= 12;
     while(bytes_left > 0) {
       read_chunk(&cursor, &bytes_left, data);
     }
   } else if (0 == memcmp(cursor, "RGBA", 4)) {
-    printf("RGBA\n");
+    // DBG("RGBA");
     cursor += 12;
     bytes_left -= 12;
     assert(bytes_left >= 4 * 256);
@@ -599,7 +592,7 @@ void read_chunk(uint8_t **pCursor, size_t *pBytesLeft, IntermediateData *data) {
     cursor += 4 * 256;
     bytes_left -= 4 * 256;
   } else if (0 == memcmp(cursor, "XYZI", 4)) {
-    printf("XYZI\n");
+    // DBG("XYZI");
     cursor += 12;
     bytes_left -= 12;
     assert(bytes_left >= 4);
@@ -639,20 +632,12 @@ void read_chunk(uint8_t **pCursor, size_t *pBytesLeft, IntermediateData *data) {
   *pCursor = cursor;
 }
 
-int main(int argc, char** argv) {
-  if (argc != 4) {
-    fprintf(
-      stderr,
-      "USAGE: %s {type} {in-filename} {out-filename}\n\n"
-      "  Converts a MagicaVoxel .vox file {in-filename} into {out-filename} .t05\n"
-      "  type = CUBE / MC\n",
-      argv[0]
-    );
-    return EXIT_FAILURE;
-  }
-
-  auto inFilename = argv[2];
-  FILE *in = fopen(inFilename, "rb");
+void voxel_converter(
+  char const* path_vox,
+  char const* path_t06,
+  bool enable_marching_cubes
+) {
+  FILE *in = fopen(path_vox, "rb");
   assert(in != nullptr);
   fseek(in, 0, SEEK_END);
   auto vox_buffer_size = ftell(in);
@@ -673,7 +658,7 @@ int main(int argc, char** argv) {
   IntermediateData data = {};
   read_chunk(&cursor, &bytes_left, &data);
   free(vox_buffer);
-  printf("VOXEL COUNT: %d\n", (int)data.voxels.size());
+  // DBG("VOXEL COUNT: {}", data.voxels.size());
 
   #ifdef FLAG_RANDOMIZE
     srand(
@@ -701,18 +686,14 @@ int main(int argc, char** argv) {
     }
   #endif
   
-  mesh::T05_Builder mesh = {};
-  if (0 == strcmp("CUBE", argv[1])) {
-    build_cubes(&data, &mesh);
-  } else if (0 == strcmp("MC", argv[1])) {
+  mesh::T06_Builder mesh = {};
+  if (enable_marching_cubes) {
     build_mc(&data, &mesh);
   } else {
-    assert(false);
+    build_cubes(&data, &mesh);
   }
 
-  auto out_filename = argv[3];
-  mesh::write(out_filename, &mesh);
-  printf("DONE\n");
-
-  return 0;
+  mesh::write(path_t06, &mesh);
 }
+
+} // namespace

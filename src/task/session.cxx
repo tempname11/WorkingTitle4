@@ -616,6 +616,24 @@ TASK_DECL {
       ) {
         ptr->state->show_imgui_window_gpu_memory = !ptr->state->show_imgui_window_gpu_memory;
       }
+
+      if (true
+        && ptr->state->show_imgui
+        && action == GLFW_PRESS
+        && key == GLFW_KEY_W
+        && is_control_pressed
+      ) {
+        ptr->state->show_imgui_window_tools = !ptr->state->show_imgui_window_tools;
+      }
+
+      if (true
+        && ptr->state->show_imgui
+        && action == GLFW_PRESS
+        && key == GLFW_KEY_F
+        && is_control_pressed
+      ) {
+        ptr->state->show_imgui_window_flags = !ptr->state->show_imgui_window_flags;
+      }
     });
     it->ready = true;
   }
@@ -661,7 +679,7 @@ TASK_DECL {
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 3216);
+    static_assert(size == 3224);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);

@@ -2,6 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_GOOGLE_include_directive : enable
 #include "sky.glsl"
+#include "frame.glsl"
 
 layout(location = 0) in vec2 position;
 layout(location = 0) out vec3 result; 
@@ -16,6 +17,8 @@ layout(binding = 4) uniform Frame {
   mat4 view;
   mat4 projection_inverse;
   mat4 view_inverse;
+  FrameFlags flags;
+  uint end_marker;
 } frame;
 
 layout(set = 1, binding = 0) uniform DirectionalLight {
@@ -51,6 +54,12 @@ float G_Smith(float NdotV, float NdotL, float roughness) {
 }
 
 void main() {
+  #ifndef NDEBUG
+    if (frame.end_marker != 0xDeadBeef) {
+      return;
+    }
+  #endif
+
   float depth = subpassLoad(zchannel).r;
   /*
   float z_near = 0.1;
@@ -63,7 +72,11 @@ void main() {
   vec3 L = -(frame.view * vec4(directional_light.direction, 0.0)).xyz;
 
   if (depth == 1.0) {
-    result = sky(normalize(target_world.xyz), -directional_light.direction);
+    if (frame.flags.show_sky) {
+      result = sky(normalize(target_world.xyz), -directional_light.direction);
+    } else {
+      result = normalize(target_world.xyz);
+    }
     return;
   }
 
@@ -78,6 +91,11 @@ void main() {
   float roughness = romeao.r;
   float metallic = romeao.g;
   float ao = romeao.b;
+
+  if (frame.flags.show_normals) {
+    result = abs(N) + vec3(0.5);
+    return;
+  }
 
   // light model
   vec3 F0 = mix(F0_dielectric, albedo, metallic);

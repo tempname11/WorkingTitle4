@@ -1,5 +1,6 @@
 #include <src/global.hxx>
 #include <src/engine/common/mesh.hxx>
+#include <src/engine/common/ubo.hxx>
 #include "gpass.hxx"
 
 void claim_rendering_common(
@@ -16,7 +17,7 @@ void claim_rendering_common(
         .buffer = {
           .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
           .size = (
-            sizeof(rendering::UBO_Frame)
+            sizeof(engine::common::ubo::Frame)
           ),
           .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
           .sharingMode = VK_SHARING_MODE_EXCLUSIVE,

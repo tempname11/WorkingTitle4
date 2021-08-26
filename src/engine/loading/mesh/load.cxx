@@ -11,7 +11,7 @@ void _load_read_file(
   Own<LoadData> data 
 ) {
   ZoneScoped;
-  data->the_mesh = read_t05_file(data->path.c_str());
+  data->the_mesh = read_t06_file(data->path.c_str());
 }
 
 void _load_init_buffer(
@@ -24,14 +24,22 @@ void _load_init_buffer(
 ) {
   ZoneScoped;
 
-  data->mesh_item.vertex_count = data->the_mesh.triangle_count * 3;
+  data->mesh_item.index_count = data->the_mesh.index_count;
+  data->mesh_item.buffer_offset_indices = 0;
+  data->mesh_item.buffer_offset_vertices = data->the_mesh.index_count * sizeof(engine::common::mesh::IndexT06);
   VkBufferCreateInfo create_info = {
     .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
     .size = std::max(
       size_t(1), // for invalid buffer
-      data->the_mesh.triangle_count * 3 * sizeof(engine::common::mesh::VertexT05)
+      (0
+        + data->the_mesh.index_count * sizeof(engine::common::mesh::IndexT06)
+        + data->the_mesh.vertex_count * sizeof(engine::common::mesh::VertexT06)
+      )
     ),
-    .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+    .usage = (0
+      | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+      | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+    ),
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
   auto result = engine::uploader::prepare_buffer(
@@ -43,11 +51,13 @@ void _load_init_buffer(
   );
 
   data->mesh_item.id = result.id;
-  memcpy(
-    result.mem,
-    data->the_mesh.vertices,
-    result.data_size
-  );
+  if(data->the_mesh.index_count > 0) {
+    memcpy(
+      result.mem,
+      data->the_mesh.indices,
+      result.data_size
+    );
+  }
 
   engine::uploader::upload_buffer(
     ctx,
@@ -74,11 +84,11 @@ void _load_finish(
   auto meta = &meta_meshes->items.at(data->mesh_id);
   meta->status = SessionData::MetaMeshes::Status::Ready;
   meta->will_have_loaded = nullptr;
-  meta->invalid = data->mesh_item.vertex_count == 0;
+  meta->invalid = data->mesh_item.index_count == 0;
 
   lib::lifetime::deref(&session->lifetime, ctx->runner);
 
-  deinit_t05(&data->the_mesh);
+  deinit_t06(&data->the_mesh);
 
   delete data.ptr;
 }

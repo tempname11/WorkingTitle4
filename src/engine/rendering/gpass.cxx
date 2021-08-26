@@ -1,5 +1,6 @@
 #include <src/global.hxx>
 #include <src/engine/common/mesh.hxx>
+#include <src/engine/common/ubo.hxx>
 #include "gpass.hxx"
 
 void init_session_gpass(
@@ -214,7 +215,7 @@ void init_session_gpass(
     VkVertexInputBindingDescription binding_descriptions[] = {
       {
         .binding = 0,
-        .stride = sizeof(engine::common::mesh::VertexT05),
+        .stride = sizeof(engine::common::mesh::VertexT06),
         .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
       },
     };
@@ -223,31 +224,31 @@ void init_session_gpass(
         .location = 0,
         .binding = 0,
         .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT05, position),
+        .offset = offsetof(engine::common::mesh::VertexT06, position),
       },
       {
         .location = 1,
         .binding = 0,
         .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT05, tangent),
+        .offset = offsetof(engine::common::mesh::VertexT06, tangent),
       },
       {
         .location = 2,
         .binding = 0,
         .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT05, bitangent),
+        .offset = offsetof(engine::common::mesh::VertexT06, bitangent),
       },
       {
         .location = 3,
         .binding = 0,
         .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT05, normal),
+        .offset = offsetof(engine::common::mesh::VertexT06, normal),
       },
       {
         .location = 4,
         .binding = 0,
         .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT05, uv),
+        .offset = offsetof(engine::common::mesh::VertexT06, uv),
       },
     };
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {
@@ -452,7 +453,7 @@ void claim_rendering_gpass(
         .buffer = {
           .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
           .size = (
-            sizeof(rendering::UBO_Material)
+            sizeof(engine::common::ubo::Material)
           ),
           .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
           .sharingMode = VK_SHARING_MODE_EXCLUSIVE,

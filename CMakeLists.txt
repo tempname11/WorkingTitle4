@@ -38,6 +38,7 @@ list (TRANSFORM ALL_EMBEDDED_GLSL REPLACE ${CMAKE_SOURCE_DIR}/src/shader ${CMAKE
 file (GLOB_RECURSE SRC_LIB CONFIGURE_DEPENDS "src/lib/*.cxx")
 file (GLOB_RECURSE SRC_ENGINE CONFIGURE_DEPENDS "src/engine/*.cxx")
 file (GLOB_RECURSE SRC_TASK CONFIGURE_DEPENDS "src/task/*.cxx")
+file (GLOB_RECURSE SRC_TOOLS CONFIGURE_DEPENDS "src/tools/*.cxx")
 
 add_subdirectory(submodule/fmt)
 
@@ -62,16 +63,6 @@ add_executable (
 )
 
 add_executable (
-  cubewriter
-  "src/exe/cubewriter.cxx"
-)
-
-add_executable (
-  voxelconverter
-  "src/exe/voxelconverter.cxx"
-)
-
-add_executable (
   taskmark
   "src/exe/taskmark.cxx"
   "src/impl/global_overload.cxx"
@@ -89,9 +80,12 @@ add_executable (
   "src/impl/global_overload.cxx"
   "src/impl/log.cxx"
   "src/impl/stb_image.cxx"
+  "src/impl/stb_image_write.cxx"
+  "src/impl/tinygltf.cxx"
   ${SRC_LIB}
   ${SRC_ENGINE}
   ${SRC_TASK}
+  ${SRC_TOOLS}
   ${ALL_EMBEDDED_GLSL}
   "${CMAKE_SOURCE_DIR}/submodule/tracy/TracyClient.cpp"
   "${CMAKE_SOURCE_DIR}/submodule/imgui/imgui.cpp"

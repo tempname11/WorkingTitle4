@@ -3,9 +3,9 @@
 
 namespace engine::loading::mesh {
 
-engine::common::mesh::T05 read_t05_file(const char *filename);
+engine::common::mesh::T06 read_t06_file(const char *filename);
 
-void deinit_t05(engine::common::mesh::T05 *it);
+void deinit_t06(engine::common::mesh::T06 *it);
 
 void _unload_item(
   SessionData::Vulkan::Meshes::Item *item,

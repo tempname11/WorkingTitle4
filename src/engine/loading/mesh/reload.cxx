@@ -27,12 +27,12 @@ void _reload_finish(
   );
 
   auto meta = &meta_meshes->items.at(data->mesh_id);
-  meta->invalid = item->vertex_count == 0;
+  meta->invalid = item->index_count == 0;
   meta->will_have_reloaded = nullptr;
 
   lib::lifetime::deref(&session->lifetime, ctx->runner);
 
-  deinit_t05(&data->the_mesh);
+  deinit_t06(&data->the_mesh);
 
   delete data.ptr;
 }

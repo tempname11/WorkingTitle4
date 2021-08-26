@@ -5,6 +5,8 @@
 #include <cassert>
 #include <src/engine/common/mesh.hxx>
 
+namespace tools {
+
 const glm::vec3 cube_vertices[36] = {
   // -XY
   {-1.0f, -1.0f, -1.0f},
@@ -50,45 +52,33 @@ const glm::vec3 cube_vertices[36] = {
   {-1.0f, +1.0f, -1.0f},
 };
 
-const glm::vec3 cube_tangents[12] = {
+const glm::vec3 cube_tangents[6] = {
   // -XY
-  {-1.0f, 0.0f, 0.0f},
   {-1.0f, 0.0f, 0.0f},
   // +XY
   {+1.0f, 0.0f, 0.0f},
-  {+1.0f, 0.0f, 0.0f},
   // -YZ
-  {0.0f, -1.0f, 0.0f},
   {0.0f, -1.0f, 0.0f},
   // +YZ
   {0.0f, +1.0f, 0.0f},
-  {0.0f, +1.0f, 0.0f},
   // -ZX
   {0.0f, 0.0f, -1.0f},
-  {0.0f, 0.0f, -1.0f},
   // +ZX
-  {0.0f, 0.0f, +1.0f},
   {0.0f, 0.0f, +1.0f},
 };
 
-const glm::vec3 cube_normals[12] = {
+const glm::vec3 cube_normals[6] = {
   // -XY
-  {0.0f, 0.0f, -1.0f},
   {0.0f, 0.0f, -1.0f},
   // +XY
   {0.0f, 0.0f, +1.0f},
-  {0.0f, 0.0f, +1.0f},
   // -YZ
-  {-1.0f, 0.0f, 0.0f},
   {-1.0f, 0.0f, 0.0f},
   // +YZ
   {+1.0f, 0.0f, 0.0f},
-  {+1.0f, 0.0f, 0.0f},
   // -ZX
   {0.0f, -1.0f, 0.0f},
-  {0.0f, -1.0f, 0.0f},
   // +ZX
-  {0.0f, +1.0f, 0.0f},
   {0.0f, +1.0f, 0.0f},
 };
 
@@ -137,34 +127,38 @@ const glm::vec2 cube_texcoords[36] = {
   {-1.0f, -1.0f},
 };
 
-int main(int argc, char** argv) {
-  const uint32_t triangle_count = sizeof(cube_normals) / sizeof(*cube_normals);
+void cube_writer(
+  char const *path_t06
+) {
+  const uint32_t vertex_count = sizeof(cube_vertices) / sizeof(*cube_vertices);
+  const uint32_t index_count = vertex_count;
+  // all vertices are unique because the texcoords and normals differ at seams
 
-  if (argc != 2) {
-    fprintf(
-      stderr,
-      "USAGE: %s {out-filename}\n\n"
-      "  Writes the cube triangles into {out-filename} (t04 format)\n",
-      argv[0]
-    );
-    return EXIT_FAILURE;
+  FILE *out = fopen(path_t06, "wb");
+  assert(out != nullptr);
+
+  fwrite(&index_count, 1, sizeof(index_count), out);
+  fwrite(&vertex_count, 1, sizeof(vertex_count), out);
+
+  for (uint16_t i = 0; i < index_count; i++) {
+    fwrite(&i, 1, sizeof(i), out);
   }
 
-  FILE *out = fopen(argv[1], "wb");
-  assert(out != nullptr);
-  fwrite(&triangle_count, 1, sizeof(triangle_count), out);
-  float zero = 0.0;
-  for (size_t i = 0; i < 3 * triangle_count; i++) {
-    engine::common::mesh::VertexT05 v = {};
+  for (size_t i = 0; i < vertex_count; i++) {
+    auto s = i / 6; // side
+    engine::common::mesh::VertexT06 v = {};
     v.position = cube_vertices[i];
-    v.tangent = cube_tangents[i / 3];
-    v.normal = cube_normals[i / 3];
+    v.tangent = cube_tangents[s];
+    v.bitangent = glm::cross(cube_normals[s], cube_tangents[s]);
+    v.normal = cube_normals[s];
     v.uv = cube_texcoords[i];
     fwrite(&v, 1, sizeof(v), out);
   }
 
   auto code = ferror(out);
-  fclose(out);
+  assert(code == 0);
 
-  return code;
+  fclose(out);
 }
+
+} // namespace

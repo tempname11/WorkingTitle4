@@ -8,6 +8,9 @@
 #endif
 #include <misc/cpp/imgui_stdlib.h>
 #include <src/engine/loading/group.hxx>
+#include <src/tools/cube_writer.hxx>
+#include <src/tools/gltf_converter.hxx>
+#include <src/tools/voxel_converter.hxx>
 #include "frame_imgui_populate.hxx"
 
 engine::loading::group::GroupDescription default_group = {
@@ -15,6 +18,11 @@ engine::loading::group::GroupDescription default_group = {
 };
 
 namespace ImGuiX {
+  void Checkbox32(char const* label, uint32_t *v) {
+    bool f = *v;
+    ImGui::Checkbox(label, &f);
+    *v = f;
+  }
   enum class DialogType {
     Open,
     Save,
@@ -76,13 +84,7 @@ namespace ImGuiX {
 }
 
 engine::loading::group::ItemDescription default_group_item = {
-  /*
-  .path_mesh = "assets/mesh.t05",
-  .path_albedo = "assets/texture/albedo.jpg",
-  .path_normal = "assets/texture/normal.jpg",
-  .path_romeao = "assets/texture/romeao.png",
-  */
-  .path_mesh = "assets/r0.t05",
+  .path_mesh = "assets/mesh.t06",
   .path_albedo = "assets/texture-1px/albedo.png",
   .path_normal = "assets/texture-1px/normal.png",
   .path_romeao = "assets/texture-1px/romeao.png",
@@ -143,6 +145,8 @@ TASK_DECL {
       ImGui::MenuItem("Meshes", "CTRL-M", &state->show_imgui_window_meshes);
       ImGui::MenuItem("Textures", "CTRL-T", &state->show_imgui_window_textures);
       ImGui::MenuItem("GPU Memory", "CTRL-Q", &state->show_imgui_window_gpu_memory);
+      ImGui::MenuItem("Tools", "CTRL-W", &state->show_imgui_window_tools);
+      ImGui::MenuItem("Flags", "CTRL-F", &state->show_imgui_window_flags);
       ImGui::EndMenu();
     }
     ImGui::EndMainMenuBar();
@@ -410,6 +414,87 @@ TASK_DECL {
         imgui_allocator(&session->vulkan.uploader.allocator_host);
         ImGui::TreePop();
       }
+      ImGui::End();
+    }
+
+    if (state->show_imgui_window_tools) {
+      ImGui::Begin("Tools", &state->show_imgui_window_tools);
+      if (ImGui::Button("GLTF Converter")) {
+        ImGui::OpenPopup("GLTF Converter");
+      }
+      if (ImGui::Button("VOX Converter")) {
+        ImGui::OpenPopup("VOX Converter");
+      }
+      if (ImGui::Button("Cube Writer")) {
+        ImGui::OpenPopup("Cube Writer");
+      }
+      if (ImGui::BeginPopupModal("GLTF Converter", NULL, 0)) {
+        static std::string path_gltf;
+        static std::string path_t06;
+        ImGuiX::InputPath(&path_gltf, "GLTF Path");
+        ImGuiX::InputPath(&path_t06, "t06 Path", ImGuiX::DialogType::Save);
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+          tools::gltf_converter(path_gltf.c_str(), path_t06.c_str());
+          ImGui::CloseCurrentPopup();
+          path_gltf = {};
+          path_t06 = {};
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+          ImGui::CloseCurrentPopup();
+          path_gltf = {};
+          path_t06 = {};
+        }
+        ImGui::EndPopup();
+      }
+      if (ImGui::BeginPopupModal("VOX Converter", NULL, 0)) {
+        static std::string path_vox;
+        static std::string path_t06;
+        static bool enable_marching_cubes;
+        ImGuiX::InputPath(&path_vox, "VOX Path");
+        ImGuiX::InputPath(&path_t06, "t06 Path", ImGuiX::DialogType::Save);
+        ImGui::Checkbox("enable marching cubes", &enable_marching_cubes);
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+          tools::voxel_converter(
+            path_vox.c_str(),
+            path_t06.c_str(),
+            enable_marching_cubes
+          );
+          ImGui::CloseCurrentPopup();
+          path_vox = {};
+          path_t06 = {};
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+          ImGui::CloseCurrentPopup();
+          path_vox = {};
+          path_t06 = {};
+        }
+        ImGui::EndPopup();
+      }
+      if (ImGui::BeginPopupModal("Cube Writer", NULL, 0)) {
+        static std::string path_t06;
+        ImGuiX::InputPath(&path_t06, "t06 Path", ImGuiX::DialogType::Save);
+        if (ImGui::Button("OK", ImVec2(120, 0))) {
+          tools::cube_writer(path_t06.c_str());
+          ImGui::CloseCurrentPopup();
+          path_t06 = {};
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+          ImGui::CloseCurrentPopup();
+          path_t06 = {};
+        }
+        ImGui::EndPopup();
+      }
+      ImGui::End();
+    }
+
+    if (state->show_imgui_window_flags) {
+      auto it = &state->ubo_flags;
+      ImGui::Begin("Flags", &state->show_imgui_window_flags);
+      ImGuiX::Checkbox32("show normals", &it->show_normals);
+      ImGuiX::Checkbox32("show sky", &it->show_sky);
       ImGui::End();
     }
   }
