@@ -11,7 +11,6 @@
 #include <src/tools/cube_writer.hxx>
 #include <src/tools/gltf_converter.hxx>
 #include <src/tools/voxel_converter.hxx>
-#include <src/tools/console.hxx>
 #include "frame_imgui_populate.hxx"
 
 engine::loading::group::GroupDescription default_group = {
@@ -429,9 +428,6 @@ TASK_DECL {
       if (ImGui::Button("Cube Writer")) {
         ImGui::OpenPopup("Cube Writer");
       }
-      if (ImGui::Button("Console Demo")) {
-        ImGui::OpenPopup("Console");
-      }
       if (ImGui::BeginPopupModal("GLTF Converter", NULL, 0)) {
         static std::string path_gltf;
         static std::string path_t06;
@@ -488,21 +484,6 @@ TASK_DECL {
         if (ImGui::Button("Cancel", ImVec2(120, 0))) {
           ImGui::CloseCurrentPopup();
           path_t06 = {};
-        }
-        ImGui::EndPopup();
-      }
-      if (ImGui::BeginPopupModal("Console", NULL, 0)) {
-        static std::string command;
-        ImGui::InputText("command", &command);
-        if (ImGui::Button("OK", ImVec2(120, 0))) {
-          tools::console(command.c_str());
-          ImGui::CloseCurrentPopup();
-          command = {};
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
-          ImGui::CloseCurrentPopup();
-          command = {};
         }
         ImGui::EndPopup();
       }
