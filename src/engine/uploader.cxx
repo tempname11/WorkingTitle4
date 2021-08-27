@@ -184,6 +184,7 @@ PrepareResult prepare_image(
     &buffer_info
   );
 
+  info->usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
   info->usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
   auto image_device = lib::gfx::allocator::create_image(
     &it->allocator_device,
@@ -656,7 +657,7 @@ void upload_image(
         .subresourceRange = {
           .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
           .baseMipLevel = 0,
-          .levelCount = 1,
+          .levelCount = image_data->computed_mip_levels,
           .baseArrayLayer = 0,
           .layerCount = 1,
         }
