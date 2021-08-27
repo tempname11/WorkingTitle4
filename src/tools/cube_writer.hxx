@@ -1,3 +1,5 @@
+#pragma once
+
 namespace tools {
 
 void cube_writer(

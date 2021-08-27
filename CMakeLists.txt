@@ -77,6 +77,7 @@ target_link_libraries(taskmark fmt::fmt-header-only)
 add_executable (
   engine
   WIN32
+  "src/exe/engine.cxx"
   "src/impl/global_overload.cxx"
   "src/impl/log.cxx"
   "src/impl/stb_image.cxx"
@@ -97,6 +98,7 @@ add_executable (
   "${CMAKE_SOURCE_DIR}/submodule/imgui/backends/imgui_impl_vulkan.cpp"
   "${CMAKE_SOURCE_DIR}/submodule/imgui/misc/cpp/imgui_stdlib.cpp"
 )
+
 target_compile_definitions(engine PUBLIC -DWINDOWS)
 # target_compile_definitions(engine PUBLIC -DWIN32_LEAN_AND_MEAN)
 target_compile_definitions(engine PUBLIC -DVC_EXTRALEAN)
@@ -106,6 +108,8 @@ target_compile_definitions(engine PUBLIC TRACY_ENABLE=1)
 # target_compile_definitions(engine PUBLIC TRACY_NO_EXIT=1)
 target_link_directories (engine PUBLIC $ENV{CUSTOM_LINK_PATH})
 target_link_directories (engine PUBLIC "${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/build/lib/Release/x64")
-target_link_libraries (engine nfd) 
-target_link_libraries (engine glfw3 vulkan-1) 
+target_link_libraries (engine glfw3)
+target_link_libraries (engine vulkan-1)
+target_link_libraries (engine lua54)
+target_link_libraries (engine nfd)
 target_link_libraries(engine fmt::fmt-header-only)
