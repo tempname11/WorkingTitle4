@@ -63,7 +63,7 @@ void main() {
   float depth = subpassLoad(zchannel).r;
   /*
   float z_near = 0.1;
-  float z_far = 100.0;
+  float z_far = 10000.0;
   float z = z_near + (z_far - z_near) * subpassLoad(zchannel).r;
   */
   vec4 target = frame.projection_inverse * vec4(position, 1.0, 1.0);

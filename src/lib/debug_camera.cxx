@@ -15,7 +15,7 @@ State init() {
   };
 }
 
-static const auto CAMERA_SPEED_PER_SEC = 8.0f;
+static const auto CAMERA_SPEED_PER_SEC = 80.0f;
 static const auto MOUSE_SENSITIVITY = 1.0f;
 
 void update(State *it, Input *input, double elapsed_sec) {

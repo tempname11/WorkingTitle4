@@ -1,3 +1,10 @@
+# known bugs
+- pseudo-sky color warps when moving
+
+# intermittent bugs
+- `assert( m_head != m_tail );` in TracyVulkan.hpp
+    (seems correlated with number of Vulkan warnings beforehand.)
+
 ### architectural problems
 - uploader seems very rushed, need to come back to it from a performance perspective
 - also need automatic GPU memory region compacting

@@ -1,4 +1,5 @@
 #include <src/engine/uploader.hxx>
+#include <src/lib/gfx/utilities.hxx>
 #include "../mesh.hxx"
 
 namespace engine::loading::mesh {
@@ -27,11 +28,16 @@ engine::common::mesh::T06 read_t06_file(const char *filename) {
 
   auto index_count = *((uint32_t*) buffer);
   auto vertex_count = *((uint32_t*) (buffer + sizeof(uint32_t)));
+  auto indices_size = index_count * sizeof(engine::common::mesh::IndexT06);
+  auto aligned_size = lib::gfx::utilities::aligned_size(
+    indices_size,
+    sizeof(engine::common::mesh::VertexT06)
+  );
 
   if (
     size != (0
       + 2 * sizeof(uint32_t)
-      + index_count * sizeof(engine::common::mesh::IndexT06)
+      + aligned_size
       + vertex_count * sizeof(engine::common::mesh::VertexT06)
     )
   ) {
@@ -48,7 +54,7 @@ engine::common::mesh::T06 read_t06_file(const char *filename) {
     ),
     .vertices = (engine::common::mesh::VertexT06 *) (buffer
       + 2 * sizeof(uint32_t)
-      + index_count * sizeof(engine::common::mesh::IndexT06)
+      + aligned_size
     ),
   };
 }

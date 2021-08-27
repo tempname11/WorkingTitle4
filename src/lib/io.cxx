@@ -29,6 +29,14 @@ namespace magic {
 }
 
 namespace string {
+  void write_c(FILE *file, char const *c_str, uint32_t size) {
+    if (size == 0 && c_str != nullptr) {
+      size = strlen(c_str);
+    }
+    fwrite(&size, 1, sizeof(size), file);
+    fwrite(c_str, 1, size, file); 
+  }
+
   void write(FILE *file, std::string *str) {
     uint32_t size = str->size();
     fwrite(&size, 1, sizeof(size), file);

@@ -24,19 +24,22 @@ namespace ImGuiX {
     *v = f;
   }
   enum class DialogType {
-    Open,
-    Save,
+    OpenFile,
+    SaveFile,
+    PickFolder
   };
 
-  void InputPath(std::string *path, char const *label, DialogType type = DialogType::Open) {
+  void InputPath(std::string *path, char const *label, DialogType type = DialogType::OpenFile) {
     ImGui::PushID(label);
     ImGui::InputText("", path);
     ImGui::SameLine();
     if (ImGui::Button("...")) {
       nfdchar_t *npath = nullptr;
-      auto result = (type == DialogType::Save
-        ? NFD_SaveDialog(nullptr, nullptr, &npath)
-        : NFD_OpenDialog(nullptr, nullptr, &npath)
+      auto result = (
+        type == DialogType::SaveFile ? NFD_SaveDialog(nullptr, nullptr, &npath) :
+        type == DialogType::OpenFile ? NFD_OpenDialog(nullptr, nullptr, &npath) :
+        type == DialogType::PickFolder ? NFD_PickFolder(nullptr, &npath) :
+        NFD_ERROR
       );
       if (result == NFD_OKAY) {
         // @Note: this is a bit hairy, for relative path extraction
@@ -224,7 +227,7 @@ TASK_DECL {
         }
         if (ImGui::BeginPopupModal("Save group", NULL, 0)) {
           static std::string path;
-          ImGuiX::InputPath(&path, "Path", ImGuiX::DialogType::Save);
+          ImGuiX::InputPath(&path, "Path", ImGuiX::DialogType::SaveFile);
           if (ImGui::Button("OK", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
             engine::loading::group::save(
@@ -430,20 +433,20 @@ TASK_DECL {
       }
       if (ImGui::BeginPopupModal("GLTF Converter", NULL, 0)) {
         static std::string path_gltf;
-        static std::string path_t06;
+        static std::string path_folder;
         ImGuiX::InputPath(&path_gltf, "GLTF Path");
-        ImGuiX::InputPath(&path_t06, "t06 Path", ImGuiX::DialogType::Save);
+        ImGuiX::InputPath(&path_folder, "Folder Path", ImGuiX::DialogType::PickFolder);
         if (ImGui::Button("OK", ImVec2(120, 0))) {
-          tools::gltf_converter(path_gltf.c_str(), path_t06.c_str());
+          tools::gltf_converter(path_gltf.c_str(), path_folder.c_str());
           ImGui::CloseCurrentPopup();
           path_gltf = {};
-          path_t06 = {};
+          path_folder = {};
         }
         ImGui::SameLine();
         if (ImGui::Button("Cancel", ImVec2(120, 0))) {
           ImGui::CloseCurrentPopup();
           path_gltf = {};
-          path_t06 = {};
+          path_folder = {};
         }
         ImGui::EndPopup();
       }
@@ -453,7 +456,7 @@ TASK_DECL {
         static bool enable_marching_cubes;
         static bool enable_random_voxels;
         ImGuiX::InputPath(&path_vox, "VOX Path");
-        ImGuiX::InputPath(&path_t06, "t06 Path", ImGuiX::DialogType::Save);
+        ImGuiX::InputPath(&path_t06, "t06 Path", ImGuiX::DialogType::SaveFile);
         ImGui::Checkbox("enable marching cubes", &enable_marching_cubes);
         ImGui::Checkbox("enable random voxels", &enable_random_voxels);
         if (ImGui::Button("OK", ImVec2(120, 0))) {
@@ -477,7 +480,7 @@ TASK_DECL {
       }
       if (ImGui::BeginPopupModal("Cube Writer", NULL, 0)) {
         static std::string path_t06;
-        ImGuiX::InputPath(&path_t06, "t06 Path", ImGuiX::DialogType::Save);
+        ImGuiX::InputPath(&path_t06, "t06 Path", ImGuiX::DialogType::SaveFile);
         if (ImGui::Button("OK", ImVec2(120, 0))) {
           tools::cube_writer(path_t06.c_str());
           ImGui::CloseCurrentPopup();

@@ -1,5 +1,6 @@
 #include <src/task/defer.hxx>
 #include <src/engine/uploader.hxx>
+#include <src/lib/gfx/utilities.hxx>
 #include "../mesh.hxx"
 #include "common.hxx"
 #include "load.hxx"
@@ -24,15 +25,19 @@ void _load_init_buffer(
 ) {
   ZoneScoped;
 
+  auto aligned_size = lib::gfx::utilities::aligned_size(
+    data->the_mesh.index_count * sizeof(engine::common::mesh::IndexT06),
+    sizeof(engine::common::mesh::VertexT06)
+  );
   data->mesh_item.index_count = data->the_mesh.index_count;
   data->mesh_item.buffer_offset_indices = 0;
-  data->mesh_item.buffer_offset_vertices = data->the_mesh.index_count * sizeof(engine::common::mesh::IndexT06);
+  data->mesh_item.buffer_offset_vertices = aligned_size;
   VkBufferCreateInfo create_info = {
     .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
     .size = std::max(
       size_t(1), // for invalid buffer
       (0
-        + data->the_mesh.index_count * sizeof(engine::common::mesh::IndexT06)
+        + aligned_size
         + data->the_mesh.vertex_count * sizeof(engine::common::mesh::VertexT06)
       )
     ),

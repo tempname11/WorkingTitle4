@@ -32,7 +32,7 @@ glm::mat4 get_projection(float aspect_ratio) {
   return glm::perspective(
     glm::pi<float>() * 0.5f,
     aspect_ratio,
-    0.1f, 100.f
+    0.1f, 10000.f
   ) * glm::scale( // Vulkan convention -> OpenGL convention
     glm::mat4(1.0f),
     glm::vec3(1.0f, -1.0f, 1.0f)

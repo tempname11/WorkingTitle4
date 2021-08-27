@@ -10,6 +10,7 @@ namespace magic {
 }
 
 namespace string {
+  void write_c(FILE *file, char const *c_str, uint32_t size = 0);
   void write(FILE *file, std::string *str);
   void read(FILE *file, std::string *str);
 }

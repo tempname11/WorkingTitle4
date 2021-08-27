@@ -10,6 +10,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/color_space.hpp>
 #include <src/engine/common/mesh.hxx>
+#include "common/mesh.hxx"
 
 namespace tools {
 
@@ -352,26 +353,6 @@ const glm::vec3 cube_normals[] = {
   {0.0f, +1.0f, 0.0f},
 };
 
-namespace mesh {
-  struct T06_Builder {
-    std::vector<engine::common::mesh::IndexT06> indices;
-    std::vector<engine::common::mesh::VertexT06> vertices;
-  };
-
-  void write(const char *out_filename, T06_Builder *mesh) {
-    FILE *out = fopen(out_filename, "wb");
-    assert(out != nullptr);
-    uint32_t index_count = mesh->indices.size();
-    uint32_t vertex_count = mesh->vertices.size();
-    fwrite(&index_count, 1, sizeof(index_count), out);
-    fwrite(&vertex_count, 1, sizeof(vertex_count), out);
-    fwrite(mesh->indices.data(), 1, mesh->indices.size() * sizeof(engine::common::mesh::IndexT06), out);
-    fwrite(mesh->vertices.data(), 1, mesh->vertices.size() * sizeof(engine::common::mesh::VertexT06), out);
-    assert(ferror(out) == 0);
-    fclose(out);
-  }
-}
-
 union XYZ {
   uint64_t value;
   struct {
@@ -389,7 +370,7 @@ struct IntermediateData {
 
 const float TEXTURE_MAPPING_SCALE = 1.0f / 8.0f;
 
-void build_cubes(IntermediateData *data, mesh::T06_Builder *mesh) {
+void build_cubes(IntermediateData *data, common::mesh::T06_Builder *mesh) {
   for (auto elem: data->voxels) {
     XYZ voxel = { .value = elem.first };
     for (size_t i = 0; i < 6; i++) { // sides
@@ -435,7 +416,7 @@ void build_cubes(IntermediateData *data, mesh::T06_Builder *mesh) {
   }
 }
 
-void build_mc(IntermediateData *data, mesh::T06_Builder *mesh) {
+void build_mc(IntermediateData *data, common::mesh::T06_Builder *mesh) {
   std::unordered_set<uint64_t> candidates;
   for (auto &elem: data->voxels) {
     XYZ voxel = { .value = elem.first };
@@ -685,14 +666,14 @@ void voxel_converter(
     }
   }
   
-  mesh::T06_Builder mesh = {};
+  common::mesh::T06_Builder mesh = {};
   if (enable_marching_cubes) {
     build_mc(&data, &mesh);
   } else {
     build_cubes(&data, &mesh);
   }
 
-  mesh::write(path_t06, &mesh);
+  common::mesh::write(path_t06, &mesh);
 }
 
 } // namespace
