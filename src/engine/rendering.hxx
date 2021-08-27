@@ -106,9 +106,7 @@ struct RenderingData : lib::task::ParentResource {
   } prepass;
 
   struct GPass {
-    struct Stakes {
-      std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_material;
-    } stakes;
+    struct Stakes {} stakes;
 
     std::vector<VkFramebuffer> framebuffers;
     std::vector<VkDescriptorSet> descriptor_sets_frame;

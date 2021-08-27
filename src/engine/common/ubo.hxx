@@ -22,11 +22,4 @@ struct DirectionalLight {
   alignas(16) glm::vec3 intensity;
 };
 
-struct Material {
-  alignas(16) glm::vec3 albedo;
-  float metallic;
-  float roughness;
-  float ao;
-};
-
 } // namespace

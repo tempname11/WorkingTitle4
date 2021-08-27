@@ -446,27 +446,7 @@ void claim_rendering_gpass(
 ) {
   ZoneScoped;
   *out = {};
-  out->ubo_material.resize(swapchain_image_count);
-  for (auto &stake : out->ubo_material) {
-    claims.push_back({
-      .info = {
-        .buffer = {
-          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-          .size = (
-            sizeof(engine::common::ubo::Material)
-          ),
-          .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        },
-      },
-      .memory_property_flags = VkMemoryPropertyFlagBits(0
-        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-        | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-      ),
-      .p_stake_buffer = &stake,
-    });
-  }
+  // Material was once here. leaving as placeholder
 }
 
 void init_rendering_gpass(
@@ -507,13 +487,6 @@ void init_rendering_gpass(
         .offset = 0,
         .range = VK_WHOLE_SIZE,
       };
-      /*
-      VkDescriptorBufferInfo ubo_material_info = {
-        .buffer = stakes.ubo_material[i].buffer,
-        .offset = 0,
-        .range = VK_WHOLE_SIZE,
-      };
-      */
       VkWriteDescriptorSet writes[] = {
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -524,17 +497,6 @@ void init_rendering_gpass(
           .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           .pBufferInfo = &ubo_frame_info,
         },
-        /*
-        {
-          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-          .dstSet = descriptor_sets_frame[i],
-          .dstBinding = 1,
-          .dstArrayElement = 0,
-          .descriptorCount = 1,
-          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          .pBufferInfo = &ubo_material_info,
-        },
-        */
       };
       vkUpdateDescriptorSets(
         core->device,

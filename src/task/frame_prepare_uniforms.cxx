@@ -34,27 +34,6 @@ TASK_DECL {
     vkUnmapMemory(core->device, stake->memory);
   }
 
-  { ZoneScopedN("material");
-    auto albedo = glm::vec3(1.0, 1.0, 1.0);
-    const engine::common::ubo::Material data = {
-      .albedo = glm::vec3(1.0f, 1.0f, 1.0f),
-      .metallic = 0.5f,
-      .roughness = 0.5f,
-      .ao = 0.0f,
-    };
-    auto stake = &gpass->stakes.ubo_material[frame_info->inflight_index];
-    void * dst;
-    vkMapMemory(
-      core->device,
-      stake->memory,
-      stake->offset,
-      stake->size,
-      0, &dst
-    );
-    memcpy(dst, &data, sizeof(data));
-    vkUnmapMemory(core->device, stake->memory);
-  }
-
   { ZoneScopedN("directional_light");
     const engine::common::ubo::DirectionalLight data = {
       .direction = glm::vec3(0.0f, 0.0f, -1.0f),
