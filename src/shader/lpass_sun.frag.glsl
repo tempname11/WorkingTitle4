@@ -93,7 +93,7 @@ void main() {
   float ao = romeao.b;
 
   if (frame.flags.show_normals) {
-    result = abs(N) + vec3(0.5);
+    result = N * 0.5 + vec3(0.5);
     return;
   }
 

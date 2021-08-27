@@ -16,7 +16,7 @@ layout(set = 1, binding = 2) uniform sampler2D romeao_image;
 
 void main() {
   vec3 albedo = texture(albedo_image, uv).rgb;
-  vec3 normalmap = texture(normal_image, uv).rgb;
+  vec3 normalmap = 2.0 * texture(normal_image, uv).rgb - vec3(1.0);
   vec3 romeao = texture(romeao_image, uv).rgb;
   vec3 N = normalize(0
 	+ view_space_tangent * normalmap.x
