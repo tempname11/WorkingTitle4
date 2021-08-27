@@ -13,8 +13,6 @@
 
 namespace tools {
 
-#define FLAG_RANDOMIZE
-
 #define X 255
 uint8_t mc_table[256][16] = {
   {X, X, X, X, X, X, X, X, X, X, X, X, X, X, X, X},
@@ -635,7 +633,8 @@ void read_chunk(uint8_t **pCursor, size_t *pBytesLeft, IntermediateData *data) {
 void voxel_converter(
   char const* path_vox,
   char const* path_t06,
-  bool enable_marching_cubes
+  bool enable_marching_cubes,
+  bool enable_random_voxels
 ) {
   FILE *in = fopen(path_vox, "rb");
   assert(in != nullptr);
@@ -660,7 +659,7 @@ void voxel_converter(
   free(vox_buffer);
   // DBG("VOXEL COUNT: {}", data.voxels.size());
 
-  #ifdef FLAG_RANDOMIZE
+  if (enable_random_voxels) {
     srand(
       std::chrono::high_resolution_clock::now().time_since_epoch()
         / std::chrono::nanoseconds(1)
@@ -684,7 +683,7 @@ void voxel_converter(
       } };
       data.voxels.insert({ coord.value, 0 });
     }
-  #endif
+  }
   
   mesh::T06_Builder mesh = {};
   if (enable_marching_cubes) {

@@ -451,14 +451,17 @@ TASK_DECL {
         static std::string path_vox;
         static std::string path_t06;
         static bool enable_marching_cubes;
+        static bool enable_random_voxels;
         ImGuiX::InputPath(&path_vox, "VOX Path");
         ImGuiX::InputPath(&path_t06, "t06 Path", ImGuiX::DialogType::Save);
         ImGui::Checkbox("enable marching cubes", &enable_marching_cubes);
+        ImGui::Checkbox("enable random voxels", &enable_random_voxels);
         if (ImGui::Button("OK", ImVec2(120, 0))) {
           tools::voxel_converter(
             path_vox.c_str(),
             path_t06.c_str(),
-            enable_marching_cubes
+            enable_marching_cubes,
+            enable_random_voxels
           );
           ImGui::CloseCurrentPopup();
           path_vox = {};
