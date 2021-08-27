@@ -2,6 +2,8 @@
 - artifacts on top and left edge of viewport
 - specular highlights seem to be "biased"
     as if only on one side of object, when it should be even.
+- invalid textures don't behave well.
+- voxel converter adds garbage voxels.
 
 ### architectural problems
 - uploader seems very rushed, need to come back to it from a performance perspective
