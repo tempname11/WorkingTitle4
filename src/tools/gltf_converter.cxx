@@ -1,12 +1,16 @@
 #include <algorithm>
 #include <cassert>
+#include <unordered_set>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <tiny_gltf.h>
+#include <stb_image_write.h>
 #include <src/global.hxx>
 #include <src/lib/io.hxx>
 #include <src/lib/mkdir_p.hxx>
-#include <src/engine/loading/group/common.hxx>
 #include "common/mesh.hxx"
+
+const uint8_t GRUP_VERSION = 1;
 
 namespace tools {
 
@@ -16,15 +20,11 @@ void gltf_converter(
 ) {
   ZoneScoped;
 
-  { ZoneScopedN("directory");
-    auto result = mkdir_p(path_folder);
-    assert(result == 0);
-  }
-
   tinygltf::Model model;
   tinygltf::TinyGLTF loader;
   std::string err;
   std::string warn;
+  char buf[1024];
 
   bool ok = loader.LoadASCIIFromFile(&model, &err, &warn, path_gltf);
   assert(ok);
@@ -37,14 +37,24 @@ void gltf_converter(
     DBG("gltf_converter error: {}", err.c_str());
   }
 
+  std::unordered_set<size_t> mero_set;
+
   assert(model.meshes.size() > 0);
   size_t mesh_index = 0;
   for (auto &mesh : model.meshes) {
     size_t primitive_index = 0;
     for (auto &primitive : mesh.primitives) {
       common::mesh::T06_Builder builder;
-    
       assert(primitive.mode == TINYGLTF_MODE_TRIANGLES);
+
+      auto material = &model.materials[primitive.material];
+      auto texture_index = material->pbrMetallicRoughness.metallicRoughnessTexture.index;
+      if (texture_index != -1) {
+        mero_set.insert(
+          model.textures[texture_index].source
+        );
+      }
+
       uint16_t max_index = 0;
       { ZoneScopedN("indices");
         assert(primitive.indices >= 0); // @Incomplete
@@ -79,22 +89,40 @@ void gltf_converter(
         assert(primitive.attributes.contains("TEXCOORD_0"));
 
         auto accessor_position = &model.accessors[primitive.attributes["POSITION"]];
-        auto accessor_normal = &model.accessors[primitive.attributes["NORMAL"]];
         auto accessor_texcoord = &model.accessors[primitive.attributes["TEXCOORD_0"]];
+        auto accessor_normal = &model.accessors[primitive.attributes["NORMAL"]];
+        auto accessor_tangent = (primitive.attributes.contains("TANGENT")
+          ? &model.accessors[primitive.attributes["TANGENT"]]
+          : &model.accessors[primitive.attributes["NORMAL"]] // @Temporary
+        );
 
         auto count = accessor_position->count;
-        assert(accessor_position->count == accessor_normal->count);
         assert(accessor_position->count == accessor_texcoord->count);
+        assert(accessor_position->count == accessor_normal->count);
+        assert(accessor_position->count == accessor_tangent->count);
 
         assert(accessor_position->type == TINYGLTF_TYPE_VEC3);
         assert(accessor_position->componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
         auto buffer_view_position = &model.bufferViews[accessor_position->bufferView];
         auto buffer_position = &model.buffers[buffer_view_position->buffer];
 
+        assert(accessor_texcoord->type == TINYGLTF_TYPE_VEC2);
+        assert(accessor_texcoord->componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
+        auto buffer_view_texcoord = &model.bufferViews[accessor_texcoord->bufferView];
+        auto buffer_texcoord = &model.buffers[buffer_view_texcoord->buffer];
+
         assert(accessor_normal->type == TINYGLTF_TYPE_VEC3);
         assert(accessor_normal->componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
         auto buffer_view_normal = &model.bufferViews[accessor_normal->bufferView];
         auto buffer_normal = &model.buffers[buffer_view_normal->buffer];
+
+        assert(0
+          || accessor_tangent->type == TINYGLTF_TYPE_VEC3
+          || accessor_tangent->type == TINYGLTF_TYPE_VEC4
+        );
+        assert(accessor_tangent->componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
+        auto buffer_view_tangent = &model.bufferViews[accessor_tangent->bufferView];
+        auto buffer_tangent = &model.buffers[buffer_view_tangent->buffer];
         
         for (size_t i = 0; i < count; i++) {
           auto stride_position = (
@@ -109,6 +137,18 @@ void gltf_converter(
           );
           assert(offset_position + sizeof(glm::vec3) <= buffer_position->data.size());
 
+          auto stride_texcoord = (
+            buffer_view_texcoord->byteStride > 0
+              ? buffer_view_texcoord->byteStride
+              : sizeof(glm::vec2)
+          );
+          auto offset_texcoord = (0
+            + accessor_texcoord->byteOffset
+            + buffer_view_texcoord->byteOffset
+            + i * stride_texcoord
+          );
+          assert(offset_texcoord + sizeof(glm::vec2) <= buffer_texcoord->data.size());
+
           auto stride_normal = (
             buffer_view_normal->byteStride > 0
               ? buffer_view_normal->byteStride
@@ -121,14 +161,29 @@ void gltf_converter(
           );
           assert(offset_normal + sizeof(glm::vec3) <= buffer_normal->data.size());
 
+          auto stride_tangent = (
+            buffer_view_tangent->byteStride > 0
+              ? buffer_view_tangent->byteStride
+              : accessor_tangent->type == TINYGLTF_TYPE_VEC3
+                ? sizeof(glm::vec3)
+                : sizeof(glm::vec4)
+          );
+          auto offset_tangent = (0
+            + accessor_tangent->byteOffset
+            + buffer_view_tangent->byteOffset
+            + i * stride_tangent
+          );
+          assert(offset_tangent + sizeof(glm::vec3) <= buffer_tangent->data.size());
+
+          auto normal = *((glm::vec3 *) (&buffer_normal->data[offset_normal]));
+          auto tangent = *((glm::vec3 *) (&buffer_tangent->data[offset_tangent]));
+
           engine::common::mesh::VertexT06 vertex = {
             .position = *((glm::vec3 *) (&buffer_position->data[offset_position])),
-            .normal = *((glm::vec3 *) (&buffer_normal->data[offset_normal])),
-            /*
-            .tangent = _,
-            .bitangent = _,
-            .uv = _,
-            */
+            .tangent = tangent,
+            .bitangent = glm::cross(normal, tangent),
+            .normal = normal,
+            .uv = *((glm::vec2 *) (&buffer_texcoord->data[offset_texcoord])),
           };
           float epsilon = 1e-3;
           assert(vertex.position.x + epsilon >= accessor_position->minValues[0]);
@@ -143,17 +198,16 @@ void gltf_converter(
         assert(max_index == builder.vertices.size() - 1);
       }
 
-      char buf[1024];
       auto buf_len = snprintf(
         buf,
-        1024,
+        sizeof(buf),
         "%s/m%02zu_p%03zu.t06",
         path_folder,
         mesh_index,
         primitive_index
       );
       assert(buf_len >= 0);
-      assert(buf_len < 1024);
+      assert(buf_len < sizeof(buf));
       common::mesh::write(buf, &builder);
 
       primitive_index++;
@@ -161,11 +215,49 @@ void gltf_converter(
     mesh_index++;
   }
 
-  { ZoneScopedN("group");
-    char buf[1024];
-    auto buf_len = snprintf(buf, 1024, "%s/index.grup", path_folder);
+  size_t image_index = 0;
+  for (auto &image_ : model.images) {
+    auto image = &image_;
+    assert(image->component == 4);
+    assert(image->bits == 8);
+    assert(image->pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE);
+
+    if (mero_set.contains(image_index)) {
+      // mutate in-place
+      for (size_t i = 0; i < image->width * image->height; i++) {
+        auto ix0 = i * image->component;
+        image->image[ix0 + 0] = image->image[ix0 + 1];
+        image->image[ix0 + 1] = image->image[ix0 + 2];
+        image->image[ix0 + 2] = 0;
+        image->image[ix0 + 3] = 255;
+      }
+    }
+
+    auto buf_len = snprintf(buf, sizeof(buf), "%s/%02zu.png", path_folder, image_index);
     assert(buf_len >= 0);
-    assert(buf_len < 1024);
+    assert(buf_len < sizeof(buf));
+    auto result = stbi_write_png(
+      buf,
+      image->width,
+      image->height,
+      image->component,
+      image->image.data(),
+      0
+    );
+    assert(result != 0);
+
+    image_index++;
+  }
+
+  { ZoneScopedN("directory");
+    auto result = mkdir_p(path_folder);
+    assert(result == 0);
+  }
+
+  { ZoneScopedN("group");
+    auto buf_len = snprintf(buf, sizeof(buf), "%s/index.grup", path_folder);
+    assert(buf_len >= 0);
+    assert(buf_len < sizeof(buf));
 
     auto file = fopen(buf, "wb");
     assert(file != nullptr);
@@ -182,26 +274,92 @@ void gltf_converter(
     for (size_t m = 0; m < model.meshes.size(); m++) {
       auto mesh = &model.meshes[m];
       for (size_t p = 0; p < mesh->primitives.size(); p++) {
-        char buf[1024];
-        auto buf_len = snprintf(
-          buf,
-          1024,
-          "%s/m%02zu_p%03zu.t06",
-          path_folder,
-          m,
-          p
+        auto primitive = &mesh->primitives[p];
+        auto material = &model.materials[primitive->material];
+
+        glm::mat4 transform = glm::rotate(
+          glm::scale(
+            glm::mat4(1.0f),
+            glm::vec3(0.1f, 0.1f, -0.1f) // @Incomplete: scale should be set externally.
+          ),
+          glm::radians(-90.0f),
+          glm::vec3(1.0f, 0.0f, 0.0f)
         );
-        assert(buf_len >= 0);
-        assert(buf_len < 1024);
-        lib::io::string::write_c(file, buf, buf_len);
-        /*
-        lib::io::string::write_c(file, nullptr); // albedo
-        lib::io::string::write_c(file, nullptr); // normal
-        lib::io::string::write_c(file, nullptr); // romeao
-        */
-        lib::io::string::write_c(file, "assets/texture-1px/albedo.png"); // albedo
-        lib::io::string::write_c(file, "assets/texture-1px/normal.png"); // normal
-        lib::io::string::write_c(file, "assets/texture-1px/romeao.png"); // romeao
+        fwrite(&transform, 1, sizeof(glm::mat4), file);
+        {
+          auto buf_len = snprintf(
+            buf,
+            sizeof(buf),
+            "%s/m%02zu_p%03zu.t06",
+            path_folder,
+            m,
+            p
+          );
+          assert(buf_len >= 0);
+          assert(buf_len < sizeof(buf));
+          lib::io::string::write_c(file, buf, buf_len);
+        }
+
+        { // albedo
+          // @Incomplete: baseColorFactor
+
+          auto texture_index = material->pbrMetallicRoughness.baseColorTexture.index;
+          if (texture_index == -1) {
+            lib::io::string::write_c(file, "assets/texture-1px/albedo.png");
+          } else {
+            assert(material->pbrMetallicRoughness.baseColorTexture.texCoord == 0);
+            auto buf_len = snprintf(
+              buf,
+              sizeof(buf),
+              "%s/%02zu.png",
+              path_folder,
+              size_t(model.textures[texture_index].source)
+            );
+            assert(buf_len >= 0);
+            assert(buf_len < sizeof(buf));
+            lib::io::string::write_c(file, buf, buf_len);
+          }
+        }
+        
+        { // normal
+          auto texture_index = material->normalTexture.index;
+          if (texture_index == -1) {
+            lib::io::string::write_c(file, "assets/texture-1px/normal.png");
+          } else {
+            assert(material->normalTexture.texCoord == 0);
+            auto buf_len = snprintf(
+              buf,
+              sizeof(buf),
+              "%s/%02zu.png",
+              path_folder,
+              size_t(model.textures[texture_index].source)
+            );
+            assert(buf_len >= 0);
+            assert(buf_len < sizeof(buf));
+            lib::io::string::write_c(file, buf, buf_len);
+          }
+        }
+
+        { // romeao
+          // @Incomplete: roughnessFactor, metallicFactor
+
+          auto texture_index = material->pbrMetallicRoughness.metallicRoughnessTexture.index;
+          if (texture_index == -1) {
+            lib::io::string::write_c(file, "assets/texture-1px/romeao.png");
+          } else {
+            assert(material->pbrMetallicRoughness.metallicRoughnessTexture.texCoord == 0);
+            auto buf_len = snprintf(
+              buf,
+              sizeof(buf),
+              "%s/%02zu.png",
+              path_folder,
+              size_t(model.textures[texture_index].source)
+            );
+            assert(buf_len >= 0);
+            assert(buf_len < sizeof(buf));
+            lib::io::string::write_c(file, buf, buf_len);
+          }
+        }
       }
     }
 

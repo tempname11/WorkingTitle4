@@ -1,11 +1,5 @@
 # milestone: pretty picture
 - GLTF
-  - coordinate system in group!
-  - tangent, bitangent
-  - texcoord
-  - ...textures...
-  * scene item transforms
-  * normals?
 
 # side notes
 - tools should be async!

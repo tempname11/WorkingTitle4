@@ -5,7 +5,17 @@
 #include <unordered_map>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
-#include <TracyVulkan.hpp>
+#ifdef TRACY_ENABLE
+  #ifndef TRACY_VULKAN_ENABLE
+    #undef TRACY_ENABLE
+    #include <TracyVulkan.hpp>
+    #define TRACY_ENABLE
+  #else
+    #include <TracyVulkan.hpp>
+  #endif
+#else
+  #include <TracyVulkan.hpp>
+#endif
 #include <src/engine/common/texture.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/common/ubo.hxx>
@@ -132,9 +142,7 @@ struct SessionData : lib::task::ParentResource {
     struct Core {
       VkDevice device;
       const VkAllocationCallbacks *allocator;
-      #ifdef TRACY_ENABLE
-        tracy::VkCtx *tracy_context;
-      #endif
+      TracyVkCtx tracy_context;
 
       struct Properties {
         VkPhysicalDeviceProperties basic;
@@ -233,6 +241,8 @@ struct SessionData : lib::task::ParentResource {
     bool show_imgui_window_flags;
     bool is_fullscreen;
     lib::debug_camera::State debug_camera;
+    glm::vec3 sun_position_xy;
+    float sun_intensity;
     engine::common::ubo::Flags ubo_flags;
   } state;
 };

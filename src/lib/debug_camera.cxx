@@ -1,8 +1,4 @@
 #include <glm/glm.hpp>
-/*
-#include <glm/ext/matrix_transform.hpp>
-#include <glm/gtc/constants.hpp>
-*/
 #include "debug_camera.hxx"
 
 namespace lib::debug_camera {

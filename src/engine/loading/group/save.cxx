@@ -44,6 +44,7 @@ void _save(
 
     item_count++;
     
+    fwrite(&item.transform, 1, sizeof(glm::mat4), file);
     lib::io::string::write(file, &meta_meshes->items.at(item.mesh_id).path);
     lib::io::string::write(file, &meta_textures->items.at(item.texture_albedo_id).path);
     lib::io::string::write(file, &meta_textures->items.at(item.texture_normal_id).path);

@@ -11,6 +11,7 @@ struct GroupDescription {
 };
 
 struct ItemDescription {
+  glm::mat4 transform;
   std::string path_mesh;
   std::string path_albedo;
   std::string path_normal;

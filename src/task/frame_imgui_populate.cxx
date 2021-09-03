@@ -501,6 +501,39 @@ TASK_DECL {
       ImGui::Begin("Flags", &state->show_imgui_window_flags);
       ImGuiX::Checkbox32("show normals", &it->show_normals);
       ImGuiX::Checkbox32("show sky", &it->show_sky);
+      ImGui::VSliderFloat(
+        "Y",
+        ImVec2(20.0f, 128.0f),
+        &state->sun_position_xy.y,
+        -1.0f,
+        1.0f,
+        ""
+      );
+      ImGui::SameLine();
+      ImGui::BeginChild("sun_xy", ImVec2(120.0f, 100.0f));
+      ImGui::SetCursorPosX(30.0f);
+      ImGui::SetCursorPosY(50.0f);
+      ImGui::Text("X: %.3f", state->sun_position_xy.x);
+      ImGui::SetCursorPosX(30.0f);
+      ImGui::Text("Y: %.3f", state->sun_position_xy.y);
+      ImGui::EndChild();
+      ImGui::SetNextItemWidth(128.0f + 24.0f);
+      ImGui::Indent(24.0f);
+      ImGui::SliderFloat(
+        "X",
+        &state->sun_position_xy.x,
+        -1.0f,
+        1.0f,
+        ""
+      );
+      ImGui::SliderFloat(
+        "sun intensity",
+        &state->sun_intensity,
+        0.001f,
+        1000.0f,
+        "%.3f",
+        ImGuiSliderFlags_Logarithmic
+      );
       ImGui::End();
     }
   }

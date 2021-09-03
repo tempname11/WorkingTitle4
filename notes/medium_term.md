@@ -17,6 +17,7 @@
 - resource aliasing seems net harmful. 
 - lib::task: avoid so many allocations
 - semaphores are used unnecessarily to separate work <-> imgui <-> compose
+- all file IO assumes little endian.
 
 ### deprecations
 - Ref/Use/Own is moot for mutex-protected data, so should use Ref everywhere

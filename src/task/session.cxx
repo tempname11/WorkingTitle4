@@ -664,6 +664,7 @@ TASK_DECL {
 
   session->state = {
     .debug_camera = lib::debug_camera::init(),
+    .sun_intensity = 5.0f,
   };
 
   /*
@@ -679,7 +680,7 @@ TASK_DECL {
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 3224);
+    static_assert(size == 3240);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);

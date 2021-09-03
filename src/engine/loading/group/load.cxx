@@ -44,6 +44,7 @@ void _load(
   items_desc.resize(item_count);
   for (size_t i = 0; i < item_count; i++) {
     auto item = &items_desc[i];
+    fread(&item->transform, 1, sizeof(glm::mat4), file);
     lib::io::string::read(file, &item->path_mesh);
     lib::io::string::read(file, &item->path_albedo);
     lib::io::string::read(file, &item->path_normal);

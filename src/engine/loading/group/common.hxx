@@ -1,4 +1,4 @@
 #pragma once
 #include <cstdint>
 
-const uint8_t GRUP_VERSION = 0;
+const uint8_t GRUP_VERSION = 1;

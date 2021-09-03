@@ -35,9 +35,25 @@ TASK_DECL {
   }
 
   { ZoneScopedN("directional_light");
+    auto dir = glm::length(session_state->sun_position_xy) > 1.0f
+      ? glm::normalize(session_state->sun_position_xy)
+      : session_state->sun_position_xy;
+    auto direction = glm::vec3(
+      -dir.x,
+      -dir.y,
+      -std::sqrt(
+        std::max(
+          0.0f,
+          (1.0f
+            - (dir.x * dir.x)
+            - (dir.y * dir.y)
+          )
+        )
+      )
+    );
     const engine::common::ubo::DirectionalLight data = {
-      .direction = glm::vec3(0.0f, 0.0f, -1.0f),
-      .intensity = 3.0f * glm::vec3(1.0f, 1.0f, 1.0f),
+      .direction = direction,
+      .intensity = session_state->sun_intensity * glm::vec3(1.0f),
     };
     auto stake = &lpass->stakes.ubo_directional_light[frame_info->inflight_index];
     void * dst;

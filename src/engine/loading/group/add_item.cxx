@@ -12,6 +12,7 @@ namespace engine::loading::group {
 struct AddItemData {
   lib::GUID group_id;
 
+  glm::mat4 transform;
   lib::GUID mesh_id;
   lib::GUID albedo_id;
   lib::GUID normal_id;
@@ -28,15 +29,7 @@ void _add_item_insert(
 
   scene->items.push_back(SessionData::Scene::Item {
     .group_id = data->group_id,
-    // @Temporary: this transform needs to go to gltf_converter
-    .transform = glm::rotate(
-      glm::scale(
-        glm::mat4(1.0f),
-        glm::vec3(0.1f, 0.1f, -0.1f)
-      ),
-      glm::radians(-90.0f),
-      glm::vec3(1.0f, 0.0f, 0.0f)
-    ),
+    .transform = data->transform,
     .mesh_id = data->mesh_id,
     .texture_albedo_id = data->albedo_id,
     .texture_normal_id = data->normal_id,
@@ -109,6 +102,7 @@ void add_item(
 
   auto data = new AddItemData {
     .group_id = group_id,
+    .transform = desc->transform,
     .mesh_id = mesh_id,
     .albedo_id = albedo_id,
     .normal_id = normal_id,

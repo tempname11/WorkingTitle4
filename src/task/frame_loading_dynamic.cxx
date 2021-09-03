@@ -41,6 +41,9 @@ TASK_DECL {
   }
 
   if (imgui_reactions->added_item_to_group_description != nullptr) {
+    // we don't currently set this in the GUI, so fill it in.
+    imgui_reactions->added_item_to_group_description->transform = glm::mat4(1.0);
+
     engine::loading::group::add_item(
       ctx,
       imgui_reactions->added_item_to_group_id,
