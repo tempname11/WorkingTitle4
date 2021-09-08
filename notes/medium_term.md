@@ -27,7 +27,9 @@
 - multi_alloc?
 
 ### good to have
-- tools should be migrated inside engine!
+- async tools, with an in-progress task GUI view.
+- all paths should be relative to *whatever is referencing them*
+- should also normalize paths on input
 
 ### minor issues
 - rand() is not thread-safe, need to use something different.
@@ -45,3 +47,6 @@
 
 ### refactoring
 - engine/** file naming is a bit of a mess
+
+### return to this with fresh ideas
+- direct lighting calibration

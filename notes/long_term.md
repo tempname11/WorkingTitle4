@@ -1,5 +1,4 @@
 ### graphics
-  - direct lighting calibration
   - shadows
 
   - indirect lighting

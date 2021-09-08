@@ -148,8 +148,8 @@ TASK_DECL {
     rendering->descriptor_pools = std::vector<DescriptorPool>(swapchain_image_count);
     for (auto &pool : rendering->descriptor_pools) {
       // "large enough"
-      const uint32_t COMMON_DESCRIPTOR_COUNT = 1024;
-      const uint32_t COMMON_DESCRIPTOR_MAX_SETS = 256;
+      const uint32_t COMMON_DESCRIPTOR_COUNT = 4096;
+      const uint32_t COMMON_DESCRIPTOR_MAX_SETS = 4096; // @Temporary
 
       VkDescriptorPoolSize sizes[] = {
         { VK_DESCRIPTOR_TYPE_SAMPLER, COMMON_DESCRIPTOR_COUNT },

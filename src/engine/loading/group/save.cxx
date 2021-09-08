@@ -34,7 +34,7 @@ void _save(
   }
      
   auto item_count_pos = ftell(file);
-  uint32_t item_count = 0; // modifier and re-written later
+  uint32_t item_count = 0; // modified and re-written later
   fwrite(&item_count, 1, sizeof(item_count), file);
 
   for (auto &item : scene->items) {
