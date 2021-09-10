@@ -843,7 +843,10 @@ void record_tlas(
   {
     VkBufferCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-      .size = sizeof(VkAccelerationStructureInstanceKHR) * instance_count,
+      .size = std::max(
+        size_t(1),
+        sizeof(VkAccelerationStructureInstanceKHR) * instance_count
+      ),
       .usage = (0
         | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
         | VK_BUFFER_USAGE_TRANSFER_DST_BIT
@@ -864,7 +867,10 @@ void record_tlas(
   {
     VkBufferCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-      .size = sizeof(VkAccelerationStructureInstanceKHR) * instance_count,
+      .size = std::max(
+        size_t(1),
+        sizeof(VkAccelerationStructureInstanceKHR) * instance_count
+      ),
       .usage = (0
         | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
       ),
@@ -884,12 +890,16 @@ void record_tlas(
       &uploader->allocator_host,
       buffer_instances_staging.id
     );
-    memcpy(mapping.mem, instances.data(), instances.size());
+    memcpy(
+      mapping.mem,
+      instances.data(),
+      sizeof(VkAccelerationStructureInstanceKHR) * instances.size()
+    );
   }
 
-  {
+  if (instances.size() > 0) {
     VkBufferCopy region = {
-      .size = instances.size(),
+      .size = sizeof(VkAccelerationStructureInstanceKHR) * instances.size()
     };
     vkCmdCopyBuffer(
       cmd,

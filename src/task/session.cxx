@@ -211,9 +211,10 @@ void init_vulkan(
     };
     const std::vector<const char*> device_extensions = {
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-      VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
-      VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, // for RAY_TRACING_PIPELINE
       VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, // for ACCELERATION_STRUCTURE
+      VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+      VK_KHR_RAY_QUERY_EXTENSION_NAME,
+      // VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
       VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, // for Tracy
       VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME, // for shader printf
     };
@@ -231,17 +232,24 @@ void init_vulkan(
       .pNext = &buffer_device_address_features,
       .accelerationStructure = VK_TRUE,
     };
-    VkPhysicalDeviceRayTracingPipelineFeaturesKHR ray_tracing_features = {
+    VkPhysicalDeviceRayQueryFeaturesKHR ray_query_features = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
+      .pNext = &acceleration_structure_features,
+      .rayQuery = VK_TRUE,
+    };
+    /*
+    VkPhysicalDeviceRayQueryFeaturesKHR ray_tracing_pipeline_features = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR,
       .pNext = &acceleration_structure_features,
       .rayTracingPipeline = VK_TRUE,
     };
+    */
     VkPhysicalDeviceFeatures device_features = {
       .samplerAnisotropy = VK_TRUE,
     };
     const VkDeviceCreateInfo device_create_info = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-      .pNext = &ray_tracing_features,
+      .pNext = &ray_query_features,
       .queueCreateInfoCount = 1,
       .pQueueCreateInfos = &queue_create_info,
       .enabledExtensionCount = (uint32_t) device_extensions.size(),

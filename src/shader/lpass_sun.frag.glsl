@@ -63,42 +63,42 @@ void main() {
   #endif
 
   float depth = subpassLoad(zchannel).r;
-  /*
-  float z_near = 0.1;
-  float z_far = 10000.0;
-  float z = z_near + (z_far - z_near) * subpassLoad(zchannel).r;
-  */
-  vec4 target = frame.projection_inverse * vec4(position, 1.0, 1.0);
-  vec4 target_world = frame.view_inverse * target;
-  vec3 V = -normalize(target.xyz);
+  float z_near = 0.1; // @Temporary: z_near
+  float z_far = 10000.0; // @Temporary: z_far
+  float z_linear = z_near * z_far / (z_far + depth * (z_near - z_far));
+
+  vec4 target_view_long = frame.projection_inverse * vec4(position, 1.0, 1.0);
+  vec3 target_world = normalize((frame.view_inverse * target_view_long).xyz);
+  float perspective_correction = length(target_view_long.xyz);
+  vec3 V = -normalize(target_view_long.xyz);
   vec3 L = -(frame.view * vec4(directional_light.direction, 0.0)).xyz;
 
   if (depth == 1.0) {
     if (frame.flags.show_sky) {
-      result = sky(normalize(target_world.xyz), -directional_light.direction);
+      result = sky(target_world, -directional_light.direction);
     } else {
-      result = normalize(target_world.xyz);
+      result = target_world;
     }
     return;
   }
 
-  vec4 target_exp = frame.projection_inverse * vec4(position, depth, 1.0);
-  vec4 target_exp_world = frame.view_inverse * target;
   rayQueryEXT ray_query;
+  vec3 eye_world = (frame.view_inverse * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
   rayQueryInitializeEXT(
     ray_query,
     accel,
-    gl_RayFlagsTerminateOnFirstHitEXT,
+    0,
     0xFF,
-    target_exp_world.xyz, 0.0,
-    -directional_light.direction, 1000.0 // @Temporary: ray_t_max
+    eye_world + target_world * z_linear * perspective_correction,
+    0.1, // @Temporary: ray_t_min
+    -directional_light.direction,
+    1000.0 // @Temporary: ray_t_max
   );
-  rayQueryProceedEXT(ray_query);
-  if (
-    rayQueryGetIntersectionTypeEXT(ray_query, false) ==
-    gl_RayQueryCandidateIntersectionTriangleEXT
-  ) {
-    result = vec3(0.0);
+  bool incomplete = rayQueryProceedEXT(ray_query);
+  float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);
+
+  if (t_intersection > 0.0) {
+    result = vec3(0.0, 0.0, 0.0);
     return;
   }
 
