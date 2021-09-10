@@ -1,3 +1,4 @@
+#include <src/task/defer.hxx>
 #include "frame_graphics_render.hxx"
 
 void record_geometry_draw_commands(
@@ -226,11 +227,13 @@ void record_gpass(
 
 void record_lpass(
   VkCommandBuffer cmd,
+  SessionData::Vulkan::Core *core,
   RenderingData::LPass *lpass,
   RenderingData::SwapchainDescription *swapchain_description,
   RenderingData::FrameInfo *frame_info,
   SessionData::Vulkan::LPass *s_lpass,
-  SessionData::Vulkan::FullscreenQuad *fullscreen_quad
+  SessionData::Vulkan::FullscreenQuad *fullscreen_quad,
+  VkAccelerationStructureKHR accel
 ) {
   VkClearValue clear_value = { 0.0f, 0.0f, 0.0f, 0.0f };
   VkRenderPassBeginInfo render_pass_info = {
@@ -260,6 +263,32 @@ void record_lpass(
   };
   vkCmdSetViewport(cmd, 0, 1, &viewport);
   vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+  {
+    VkWriteDescriptorSetAccelerationStructureKHR write_tlas = {
+      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
+      .accelerationStructureCount = 1,
+      .pAccelerationStructures = &accel,
+    };
+    VkWriteDescriptorSet writes[] = {
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .pNext = &write_tlas,
+        .dstSet = lpass->descriptor_sets_frame[frame_info->inflight_index],
+        .dstBinding = 5,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+      },
+    };
+    vkUpdateDescriptorSets(
+      core->device,
+      sizeof(writes) / sizeof(*writes),
+      writes,
+      0, nullptr
+    );
+  }
+
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
     s_lpass->pipeline_layout,
@@ -698,6 +727,333 @@ void record_barrier_finalpass_imgui(
   );
 }
 
+struct TlasResult {
+  VkAccelerationStructureKHR accel;
+  lib::gfx::allocator::Buffer buffer_scratch;
+  lib::gfx::allocator::Buffer buffer_accel;
+  lib::gfx::allocator::Buffer buffer_instances;
+  lib::gfx::allocator::Buffer buffer_instances_staging;
+};
+
+void record_tlas(
+  Use<SessionData::Vulkan::Core> core,
+  Use<engine::misc::RenderList> render_list,
+  Ref<SessionData::Vulkan::Uploader> uploader,
+  VkCommandBuffer cmd,
+  TlasResult *tlas_result
+) {
+  ZoneScoped;
+
+  auto ext = &core->extension_pointers;
+
+  const uint32_t instance_count = checked_integer_cast<uint32_t>(render_list->items.size());
+
+  std::vector<VkAccelerationStructureInstanceKHR> instances(instance_count);
+  for (size_t i = 0; i < instance_count; i++) {
+    auto item = &render_list->items[i];
+    glm::mat4 &t = item->transform;
+    instances[i] = VkAccelerationStructureInstanceKHR {
+      .transform = {
+        t[0][0], t[1][0], t[2][0], t[3][0],
+        t[0][1], t[1][1], t[2][1], t[3][1],
+        t[0][2], t[1][2], t[2][2], t[3][2],
+      },
+      .mask = 0xFF,
+      .instanceShaderBindingTableRecordOffset = 0,
+      .flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR,
+      .accelerationStructureReference = item->blas_address,
+    };
+  }
+
+  VkAccelerationStructureGeometryKHR geometry = {
+    .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
+    .geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR,
+    .geometry = {
+      .instances = {
+        .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
+      },
+    },
+    .flags = VK_GEOMETRY_OPAQUE_BIT_KHR,
+  };
+
+	VkAccelerationStructureBuildSizesInfoKHR sizes = {
+    .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR,
+  };
+
+  {
+    VkAccelerationStructureBuildGeometryInfoKHR geometry_info = {
+      .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
+      .type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
+      .flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
+      .geometryCount = 1,
+      .pGeometries = &geometry,
+    };
+    ext->vkGetAccelerationStructureBuildSizesKHR(
+      core->device,
+      VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+      &geometry_info,
+      &instance_count,
+      &sizes
+    );
+  }
+
+  // @Performance: it would really be better to allocate GPU mem from separate pools.
+  // Right now it will prevent a planned defragmentation mechanism in `uploader` from working.
+  lib::gfx::allocator::Buffer buffer_scratch;
+  {
+    VkBufferCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = sizes.buildScratchSize,
+      .usage = (0
+        | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+      ),
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+    buffer_scratch = lib::gfx::allocator::create_buffer(
+      &uploader->allocator_device,
+      core->device,
+      core->allocator,
+      &core->properties.basic,
+      &info
+    );
+  }
+
+  lib::gfx::allocator::Buffer buffer_accel;
+  {
+    VkBufferCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = sizes.accelerationStructureSize,
+      .usage = (0
+        | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+      ),
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+    buffer_accel = lib::gfx::allocator::create_buffer(
+      &uploader->allocator_device,
+      core->device,
+      core->allocator,
+      &core->properties.basic,
+      &info
+    );
+  }
+
+  lib::gfx::allocator::Buffer buffer_instances;
+  {
+    VkBufferCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = sizeof(VkAccelerationStructureInstanceKHR) * instance_count,
+      .usage = (0
+        | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
+        | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+      ),
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+    buffer_instances = lib::gfx::allocator::create_buffer(
+      &uploader->allocator_device,
+      core->device,
+      core->allocator,
+      &core->properties.basic,
+      &info
+    );
+  }
+
+  lib::gfx::allocator::Buffer buffer_instances_staging;
+  {
+    VkBufferCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = sizeof(VkAccelerationStructureInstanceKHR) * instance_count,
+      .usage = (0
+        | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+      ),
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+    buffer_instances_staging = lib::gfx::allocator::create_buffer(
+      &uploader->allocator_host,
+      core->device,
+      core->allocator,
+      &core->properties.basic,
+      &info
+    );
+  }
+
+  {
+    auto mapping = lib::gfx::allocator::get_host_mapping(
+      &uploader->allocator_host,
+      buffer_instances_staging.id
+    );
+    memcpy(mapping.mem, instances.data(), instances.size());
+  }
+
+  {
+    VkBufferCopy region = {
+      .size = instances.size(),
+    };
+    vkCmdCopyBuffer(
+      cmd,
+      buffer_instances_staging.buffer,
+      buffer_instances.buffer,
+      1,
+      &region
+    );
+  }
+  
+  {
+    VkMemoryBarrier memory_barrier = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT,
+    };
+    vkCmdPipelineBarrier(
+      cmd,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+      0,
+      1,
+      &memory_barrier,
+      0, nullptr,
+      0, nullptr
+    );
+  }
+
+  VkDeviceAddress instance_data_address = 0;
+  {
+    VkBufferDeviceAddressInfo info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+      .buffer = buffer_instances.buffer,
+    };
+    instance_data_address = vkGetBufferDeviceAddress(core->device, &info);
+    assert(instance_data_address != 0);
+  }
+
+  VkDeviceAddress scratch_address = 0;
+  {
+    VkBufferDeviceAddressInfo info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+      .buffer = buffer_scratch.buffer,
+    };
+    scratch_address = vkGetBufferDeviceAddress(core->device, &info);
+    assert(scratch_address != 0);
+  }
+
+  VkAccelerationStructureKHR accel;
+  {
+    VkAccelerationStructureCreateInfoKHR create_info = {
+      .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
+      .buffer = buffer_accel.buffer,
+      .size = sizes.accelerationStructureSize,
+      .type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
+    };
+    {
+      auto result = ext->vkCreateAccelerationStructureKHR(
+        core->device,
+        &create_info,
+        core->allocator,
+        &accel
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+
+  {
+    geometry.geometry.instances.data.deviceAddress = instance_data_address;
+    VkAccelerationStructureBuildGeometryInfoKHR geometry_info = {
+      .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
+      .type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
+      .flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
+      .mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+      .dstAccelerationStructure = accel,
+      .geometryCount = 1,
+      .pGeometries = &geometry,
+      .scratchData = scratch_address,
+    };
+    VkAccelerationStructureBuildRangeInfoKHR range_info = {
+      .primitiveCount = instance_count,
+    };
+    VkAccelerationStructureBuildRangeInfoKHR *range_infos[] = { &range_info };
+    ext->vkCmdBuildAccelerationStructuresKHR(
+      cmd,
+      1,
+      &geometry_info,
+      range_infos
+    );
+  }
+
+  {
+    VkMemoryBarrier memory_barrier = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+      .srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
+      .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+    };
+    vkCmdPipelineBarrier(
+      cmd,
+      VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+      VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+      0,
+      1,
+      &memory_barrier,
+      0, nullptr,
+      0, nullptr
+    );
+  }
+
+  *tlas_result = TlasResult {
+    .accel = accel,
+    .buffer_scratch = buffer_scratch,
+    .buffer_accel = buffer_accel,
+    .buffer_instances = buffer_instances,
+    .buffer_instances_staging = buffer_instances_staging,
+  };
+}
+
+void _tlas_cleanup(
+  task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<SessionData> session,
+  Use<SessionData::Vulkan::Core> core,
+  Own<TlasResult> result
+) {
+  lib::lifetime::deref(&session->lifetime, ctx->runner);
+
+  lib::gfx::allocator::destroy_buffer(
+    &session->vulkan.uploader.allocator_device,
+    core->device,
+    core->allocator,
+    result->buffer_accel
+  );
+
+  lib::gfx::allocator::destroy_buffer(
+    &session->vulkan.uploader.allocator_device,
+    core->device,
+    core->allocator,
+    result->buffer_scratch
+  );
+
+  lib::gfx::allocator::destroy_buffer(
+    &session->vulkan.uploader.allocator_device,
+    core->device,
+    core->allocator,
+    result->buffer_instances
+  );
+
+  lib::gfx::allocator::destroy_buffer(
+    &session->vulkan.uploader.allocator_host,
+    core->device,
+    core->allocator,
+    result->buffer_instances_staging
+  );
+
+  auto ext = &core->extension_pointers;
+  ext->vkDestroyAccelerationStructureKHR(
+    core->device,
+    result->accel,
+    core->allocator
+  );
+
+  delete result.ptr;
+}
+
 TASK_DECL {
   ZoneScoped;
   auto pool2 = &(*command_pools)[frame_info->inflight_index];
@@ -724,6 +1080,35 @@ TASK_DECL {
     };
     auto result = vkBeginCommandBuffer(cmd, &info);
     assert(result == VK_SUCCESS);
+  }
+
+  auto tlas_result = new TlasResult;
+  record_tlas(
+    core,
+    render_list,
+    &session->vulkan.uploader,
+    cmd,
+    tlas_result
+  );
+
+  { ZoneScopedN("tlas_cleanup_schedule");
+    auto task_tlas_cleanup = defer(
+      lib::task::create(
+        _tlas_cleanup,
+        session.ptr,
+        core.ptr,
+        tlas_result
+      )
+    );
+
+    lib::lifetime::ref(&session->lifetime);
+
+    ctx->new_tasks.insert(ctx->new_tasks.end(), {
+      task_tlas_cleanup.first,
+    });
+    ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
+      { session->inflight_gpu.signals[frame_info->inflight_index], task_tlas_cleanup.first },
+    });
   }
 
   record_barrier_before_prepass(
@@ -790,11 +1175,13 @@ TASK_DECL {
   { TracyVkZone(core->tracy_context, cmd, "lpass");
     record_lpass(
       cmd,
+      core.ptr,
       lpass.ptr,
       swapchain_description.ptr,
       frame_info.ptr,
       s_lpass.ptr,
-      fullscreen_quad.ptr
+      fullscreen_quad.ptr,
+      tlas_result->accel
     );
   }
 

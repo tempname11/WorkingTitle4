@@ -1,5 +1,6 @@
 #include <src/task/defer.hxx>
 #include <src/engine/uploader.hxx>
+#include <src/engine/blas_storage.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include "../mesh.hxx"
 #include "common.hxx"
@@ -73,6 +74,39 @@ void _load_init_buffer(
     &session->gpu_signal_support,
     queue_work,
     result.id
+  );
+}
+
+void _load_init_blas(
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<SessionData> session,
+  Use<SessionData::Vulkan::Core> core,
+  Own<VkQueue> queue_work,
+  Ref<lib::Task> signal,
+  Own<LoadData> data 
+) {
+  ZoneScoped;
+
+  auto buffer = engine::uploader::get_buffer(
+    &session->vulkan.uploader,
+    data->mesh_item.id
+  );
+
+  engine::blas_storage::VertexInfo vertex_info = {
+    .stride = sizeof(engine::common::mesh::VertexT06),
+    .index_count = data->mesh_item.index_count,
+    .buffer_offset_indices = data->mesh_item.buffer_offset_indices,
+    .buffer_offset_vertices = data->mesh_item.buffer_offset_vertices,
+    .buffer = buffer,
+  };
+
+  data->mesh_item.blas_id = engine::blas_storage::create(
+    ctx,
+    &session->vulkan.blas_storage,
+    signal.ptr,
+    &vertex_info,
+    session,
+    core
   );
 }
 
@@ -154,6 +188,17 @@ lib::Task* load(
       data
     )
   );
+  auto signal_init_blas = lib::task::create_external_signal();
+  auto task_init_blas = defer(
+    lib::task::create(
+      _load_init_blas,
+      session.ptr,
+      &session->vulkan.core,
+      &session->vulkan.queue_work,
+      signal_init_blas,
+      data
+    )
+  );
   auto task_finish = defer(
     lib::task::create(
       _load_finish,
@@ -167,12 +212,14 @@ lib::Task* load(
   ctx->new_tasks.insert(ctx->new_tasks.end(), {
     task_read_file,
     task_init_buffer.first,
+    task_init_blas.first,
     task_finish.first,
   });
 
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
     { task_read_file, task_init_buffer.first },
-    { signal_init_buffer, task_finish.first },
+    { signal_init_buffer, task_init_blas.first },
+    { signal_init_blas, task_finish.first },
   });
 
   SessionData::MetaMeshes::Item meta = {

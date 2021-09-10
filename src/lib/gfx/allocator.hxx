@@ -6,7 +6,7 @@
 namespace lib::gfx::allocator {
   using ID = int64_t;
   // positive values for suballocations,
-  // negative values for dedicagted allocations.
+  // negative values for dedicated allocations.
 }
 
 namespace lib::gfx {

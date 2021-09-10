@@ -36,6 +36,7 @@ struct RenderList {
     uint32_t mesh_index_count;
     uint32_t mesh_buffer_offset_indices;
     uint32_t mesh_buffer_offset_vertices;
+    VkDeviceAddress blas_address;
     VkImageView texture_albedo_view;
     VkImageView texture_normal_view;
     VkImageView texture_romeao_view;

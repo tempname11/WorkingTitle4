@@ -1,4 +1,5 @@
 #include <src/engine/uploader.hxx>
+#include <src/engine/blas_storage.hxx>
 #include "frame_generate_render_list.hxx"
 
 TASK_DECL {
@@ -12,7 +13,7 @@ TASK_DECL {
     // @Rushed: this is very badly designed,
     // i.e. we'll take multiple mutexes for each item!
     // also, there is double indirection, where there should not be!
-    auto buffer = engine::uploader::get_buffer(
+    auto mesh_buffer = engine::uploader::get_buffer(
       &session->vulkan.uploader,
       mesh.id
     );
@@ -32,12 +33,18 @@ TASK_DECL {
       romeao_uploader_id
     ).second;
 
+    auto blas_address = engine::blas_storage::get_address(
+      &session->vulkan.blas_storage,
+      mesh.blas_id
+    );
+
     render_list->items.push_back(engine::misc::RenderList::Item {
       .transform = item.transform,
-      .mesh_buffer = buffer,
+      .mesh_buffer = mesh_buffer,
       .mesh_index_count = mesh.index_count,
       .mesh_buffer_offset_indices = mesh.buffer_offset_indices,
       .mesh_buffer_offset_vertices = mesh.buffer_offset_vertices,
+      .blas_address = blas_address,
       .texture_albedo_view = albedo_view,
       .texture_normal_view = normal_view,
       .texture_romeao_view = romeao_view,

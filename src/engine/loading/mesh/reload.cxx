@@ -1,5 +1,7 @@
 #include <src/task/after_inflight.hxx>
 #include <src/task/defer.hxx>
+#include <src/engine/uploader.hxx>
+#include <src/engine/blas_storage.hxx>
 #include "../mesh.hxx"
 #include "common.hxx"
 #include "load.hxx"
@@ -20,10 +22,16 @@ void _reload_finish(
   auto old_item = *item; // copy old data
   *item = data->mesh_item; // replace the data
 
-  _unload_item(
-    &old_item,
-    session,
-    core
+  engine::uploader::destroy_buffer(
+    &session->vulkan.uploader,
+    core,
+    old_item.id
+  );
+
+  engine::blas_storage::destroy(
+    &session->vulkan.blas_storage,
+    core,
+    old_item.blas_id
   );
 
   auto meta = &meta_meshes->items.at(data->mesh_id);

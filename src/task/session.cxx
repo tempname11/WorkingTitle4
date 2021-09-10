@@ -5,6 +5,7 @@
 #include <src/embedded.hxx>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/uploader.hxx>
+#include <src/engine/blas_storage.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/rendering/prepass.hxx>
@@ -210,11 +211,9 @@ void init_vulkan(
     };
     const std::vector<const char*> device_extensions = {
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-      /*
       VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
       VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, // for RAY_TRACING_PIPELINE
       VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, // for ACCELERATION_STRUCTURE
-      */
       VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, // for Tracy
       VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME, // for shader printf
     };
@@ -288,6 +287,33 @@ void init_vulkan(
     }
   }
 
+  { ZoneScopedN(".core.extension_pointers");
+    it->core.extension_pointers.vkCreateAccelerationStructureKHR = (
+      (PFN_vkCreateAccelerationStructureKHR)
+      vkGetInstanceProcAddr(it->instance, "vkCreateAccelerationStructureKHR")
+    );
+
+    it->core.extension_pointers.vkDestroyAccelerationStructureKHR = (
+      (PFN_vkDestroyAccelerationStructureKHR)
+      vkGetInstanceProcAddr(it->instance, "vkDestroyAccelerationStructureKHR")
+    );
+
+    it->core.extension_pointers.vkGetAccelerationStructureBuildSizesKHR = (
+      (PFN_vkGetAccelerationStructureBuildSizesKHR)
+      vkGetInstanceProcAddr(it->instance, "vkGetAccelerationStructureBuildSizesKHR")
+    );
+
+    it->core.extension_pointers.vkCmdBuildAccelerationStructuresKHR = (
+      (PFN_vkCmdBuildAccelerationStructuresKHR)
+      vkGetInstanceProcAddr(it->instance, "vkCmdBuildAccelerationStructuresKHR")
+    );
+
+    it->core.extension_pointers.vkGetAccelerationStructureDeviceAddressKHR = (
+      (PFN_vkGetAccelerationStructureDeviceAddressKHR)
+      vkGetInstanceProcAddr(it->instance, "vkGetAccelerationStructureDeviceAddressKHR")
+    );
+  }
+
   { ZoneScopedN(".tracy_setup_command_pool");
     VkCommandPoolCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -339,6 +365,14 @@ void init_vulkan(
       it->core.allocator,
       &it->core.properties.memory,
       it->core.queue_family_index,
+      ALLOCATOR_GPU_LOCAL_REGION_SIZE
+    );
+  }
+
+  { ZoneScopedN(".blas_storage");
+    engine::blas_storage::init(
+      &it->blas_storage,
+      &it->core,
       ALLOCATOR_GPU_LOCAL_REGION_SIZE
     );
   }
@@ -680,11 +714,11 @@ TASK_DECL {
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData);
-    static_assert(size == 3240);
+    static_assert(size == 3624);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 2344);
+    static_assert(size == 2728);
   }
   #endif
 

@@ -1,6 +1,4 @@
 #pragma once
-#include <shared_mutex>
-#include <unordered_map>
 #include <vulkan/vulkan.h>
 #include <src/global.hxx>
 #include <src/lib/task.hxx>

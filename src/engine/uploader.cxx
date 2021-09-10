@@ -345,6 +345,8 @@ void _upload_submit(
   Own<VkQueue> queue_work,
   Own<UploadData> data
 ) {
+  ZoneScoped;
+
   uint64_t one = 1;
   auto timeline_info = VkTimelineSemaphoreSubmitInfo {
     .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
@@ -423,12 +425,14 @@ void upload_buffer(
     }
   }
 
-  auto info = VkCommandBufferBeginInfo {
-    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-    .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-  };
-  auto result = vkBeginCommandBuffer(cmd, &info);
-  assert(result == VK_SUCCESS);
+  {
+    auto info = VkCommandBufferBeginInfo {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+    auto result = vkBeginCommandBuffer(cmd, &info);
+    assert(result == VK_SUCCESS);
+  }
 
   VkBufferCopy region = {
     .size = buffer_data->size,
@@ -466,6 +470,11 @@ void upload_buffer(
     data
   );
 
+  // @Note: passing `it` to the task is bit fishy,
+  // because it relies on it having at least the lifetime of `session`.
+  // Which is how it is currently used, but there's no rule or convention
+  // preventing it to be used separately.
+  lib::lifetime::ref(&session->lifetime);
   auto task_finish = defer(
     lib::task::create(
       _upload_buffer_finish,
@@ -483,8 +492,6 @@ void upload_buffer(
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
     { signal, task_finish.first },
   });
-
-  lib::lifetime::ref(&session->lifetime);
 }
 
 void upload_image(

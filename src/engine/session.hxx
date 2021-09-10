@@ -20,6 +20,8 @@
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/common/ubo.hxx>
 #include <src/engine/uploader.data.hxx>
+#include <src/engine/blas_storage/data.hxx>
+#include <src/engine/blas_storage/id.hxx>
 #include <src/lib/task.hxx>
 #include <src/lib/lifetime.hxx>
 #include <src/lib/guid.hxx>
@@ -150,6 +152,14 @@ struct SessionData : lib::task::ParentResource {
         VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing;
       } properties;
 
+      struct ExtensionPointers {
+        PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR;
+        PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR;
+        PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR;
+        PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR;
+        PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR;
+      } extension_pointers;
+
       uint32_t queue_family_index;
     } core;
 
@@ -164,9 +174,13 @@ struct SessionData : lib::task::ParentResource {
     using Uploader = engine::Uploader;
     Uploader uploader;
 
+    using BlasStorage = engine::BlasStorage;
+    BlasStorage blas_storage;
+
     struct Meshes {
       struct Item {
         engine::uploader::ID id;
+        engine::blas_storage::ID blas_id;
         uint32_t index_count;
         uint32_t buffer_offset_indices;
         uint32_t buffer_offset_vertices;

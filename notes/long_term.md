@@ -1,9 +1,4 @@
 ### graphics
-  - shadows
-
-  - indirect lighting
-	(maybe take a look at DDGI?)
-
   - postprocessing
     - tonemapping
 	- HDR

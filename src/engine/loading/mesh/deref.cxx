@@ -1,4 +1,6 @@
 #include <src/task/after_inflight.hxx>
+#include <src/engine/uploader.hxx>
+#include <src/engine/blas_storage.hxx>
 #include "../mesh.hxx"
 #include "common.hxx"
 
@@ -30,10 +32,17 @@ void _deref(
   meta->ref_count--;
   if (meta->ref_count == 0) {
     auto mesh = &meshes->items.at(data->mesh_id);
-    _unload_item(
-      mesh,
-      session,
-      core
+
+    engine::uploader::destroy_buffer(
+      &session->vulkan.uploader,
+      core,
+      mesh->id
+    );
+
+    engine::blas_storage::destroy(
+      &session->vulkan.blas_storage,
+      core,
+      mesh->blas_id
     );
 
     meta_meshes->by_path.erase(meta->path);

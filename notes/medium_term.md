@@ -6,8 +6,11 @@
     (seems correlated with number of Vulkan warnings beforehand.)
 
 ### architectural problems
+- descriptor set counts are fixed
 - uploader seems very rushed, need to come back to it from a performance perspective
 - also need automatic GPU memory region compacting
+- also need multi-alloc-like capability for `allocator`
+- allocators probably should be top-level, not nested inside other structures
 
 - error handing for file reads is hairy.
     consider a set of read helpers that provide zero output on error and go on
@@ -24,9 +27,10 @@
     (grep "Some<SessionData" and the like)
 - task::inject seems net harmful, should deprecate it.
 - subtasks don't seem useful, remove them?
-- multi_alloc?
+- `multi_alloc` (in favor of `allocator`)
 
 ### good to have
+- BLAS compaction
 - async tools, with an in-progress task GUI view.
 - all paths should be relative to *whatever is referencing them*
 - should also normalize paths on input

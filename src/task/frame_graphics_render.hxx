@@ -8,26 +8,27 @@
 #undef TASK_DECL
 #define TASK_DECL void frame_graphics_render( \
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx, \
-  usage::Some<SessionData::Vulkan::Core> core, \
-  usage::Some<RenderingData::SwapchainDescription> swapchain_description, \
-  usage::Some<RenderingData::CommandPools> command_pools, \
-  usage::Some<RenderingData::FrameInfo> frame_info, \
-  usage::Some<RenderingData::DescriptorPools> descriptor_pools, \
-  usage::Some<RenderingData::Prepass> prepass, \
-  usage::Some<RenderingData::GPass> gpass, \
-  usage::Some<RenderingData::LPass> lpass, \
-  usage::Some<RenderingData::Finalpass> finalpass, \
-  usage::Some<RenderingData::ZBuffer> zbuffer, \
-  usage::Some<RenderingData::GBuffer> gbuffer, \
-  usage::Some<RenderingData::LBuffer> lbuffer, \
-  usage::Some<RenderingData::FinalImage> final_image, \
-  usage::Some<SessionData::Vulkan::Prepass> s_prepass, \
-  usage::Some<SessionData::Vulkan::GPass> s_gpass, \
-  usage::Some<SessionData::Vulkan::LPass> s_lpass, \
-  usage::Some<SessionData::Vulkan::Finalpass> s_finalpass, \
-  usage::Some<SessionData::Vulkan::FullscreenQuad> fullscreen_quad, \
-  usage::Full<engine::misc::RenderList> render_list, \
-  usage::Full<engine::misc::GraphicsData> data \
+  Ref<SessionData> session, \
+  Use<SessionData::Vulkan::Core> core, \
+  Use<RenderingData::SwapchainDescription> swapchain_description, \
+  Use<RenderingData::CommandPools> command_pools, \
+  Use<RenderingData::FrameInfo> frame_info, \
+  Use<RenderingData::DescriptorPools> descriptor_pools, \
+  Use<RenderingData::Prepass> prepass, \
+  Use<RenderingData::GPass> gpass, \
+  Use<RenderingData::LPass> lpass, \
+  Use<RenderingData::Finalpass> finalpass, \
+  Use<RenderingData::ZBuffer> zbuffer, \
+  Use<RenderingData::GBuffer> gbuffer, \
+  Use<RenderingData::LBuffer> lbuffer, \
+  Use<RenderingData::FinalImage> final_image, \
+  Use<SessionData::Vulkan::Prepass> s_prepass, \
+  Use<SessionData::Vulkan::GPass> s_gpass, \
+  Use<SessionData::Vulkan::LPass> s_lpass, \
+  Use<SessionData::Vulkan::Finalpass> s_finalpass, \
+  Use<SessionData::Vulkan::FullscreenQuad> fullscreen_quad, \
+  Use<engine::misc::RenderList> render_list, \
+  Own<engine::misc::GraphicsData> data \
 )
 
 TASK_DECL;

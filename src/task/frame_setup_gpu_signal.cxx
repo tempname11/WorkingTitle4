@@ -30,11 +30,7 @@ TASK_DECL {
       inflight_index_saved
     )
   );
-  {
-    std::scoped_lock lock(session->inflight_gpu.mutex);
-    session->inflight_gpu.signals[frame_info->inflight_index] = task_cleanup.second;
-    // not the signal itself, on purpose
-  }
+  session->inflight_gpu.signals[frame_info->inflight_index] = task_cleanup.second;
   lib::task::inject(ctx->runner, {
     task_cleanup.first
   }, {

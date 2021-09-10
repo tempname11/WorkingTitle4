@@ -1,5 +1,5 @@
 # milestone: pretty picture
-- GLTF transforms
-- investigate descriptor set counts
+  - shadows
+    - debug, test, iterate
 
-# side notes
+  - indirect lighting

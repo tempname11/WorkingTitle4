@@ -1,4 +1,3 @@
-#include <src/engine/uploader.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include "../mesh.hxx"
 
@@ -64,19 +63,6 @@ void deinit_t06(engine::common::mesh::T06 *it) {
   if (it->buffer != nullptr) {
     free(it->buffer);
   }
-}
-
-void _unload_item(
-  SessionData::Vulkan::Meshes::Item *item,
-  Ref<SessionData> session,
-  Use<SessionData::Vulkan::Core> core
-) {
-  // @Minor: this does not need to be a procedure
-  engine::uploader::destroy_buffer(
-    &session->vulkan.uploader,
-    core,
-    item->id
-  );
 }
 
 } // namespace

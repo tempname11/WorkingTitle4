@@ -1,4 +1,5 @@
-#version 450
+#version 460
+#extension GL_EXT_ray_query : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_GOOGLE_include_directive : enable
 #include "sky.glsl"
@@ -20,6 +21,7 @@ layout(binding = 4) uniform Frame {
   FrameFlags flags;
   uint end_marker;
 } frame;
+layout(binding = 5) uniform accelerationStructureEXT accel;
 
 layout(set = 1, binding = 0) uniform DirectionalLight {
   vec3 direction;
@@ -28,8 +30,8 @@ layout(set = 1, binding = 0) uniform DirectionalLight {
 
 const vec3 F0_dielectric = vec3(0.04);
 
-vec3 F_fresnelSchlick(float cosTheta, vec3 F0) {
-  return F0 + (1.0 - F0) * pow(max(0.0, 1.0 - cosTheta), 5.0);
+vec3 F_fresnelSchlick(float cos_theta, vec3 F0) {
+  return F0 + (1.0 - F0) * pow(max(0.0, 1.0 - cos_theta), 5.0);
 }
 
 float D_GGX(vec3 N, vec3 H, float roughness) {
@@ -47,9 +49,9 @@ float G_GGX(float NdotV, float roughness) {
   return NdotV / (NdotV * (1.0 - k) + k);
 }
 
-float G_Smith(float NdotV, float NdotL, float roughness) {
-  float g1 = G_GGX(NdotV, roughness);
-  float g2 = G_GGX(NdotL, roughness);
+float G_Smith(float N_dot_V, float N_dot_L, float roughness) {
+  float g1 = G_GGX(N_dot_V, roughness);
+  float g2 = G_GGX(N_dot_L, roughness);
   return g1 * g2;
 }
 
@@ -67,7 +69,7 @@ void main() {
   float z = z_near + (z_far - z_near) * subpassLoad(zchannel).r;
   */
   vec4 target = frame.projection_inverse * vec4(position, 1.0, 1.0);
-  vec4 target_world = frame.view_inverse * frame.projection_inverse * vec4(position, 1.0, 1.0);
+  vec4 target_world = frame.view_inverse * target;
   vec3 V = -normalize(target.xyz);
   vec3 L = -(frame.view * vec4(directional_light.direction, 0.0)).xyz;
 
@@ -77,6 +79,26 @@ void main() {
     } else {
       result = normalize(target_world.xyz);
     }
+    return;
+  }
+
+  vec4 target_exp = frame.projection_inverse * vec4(position, depth, 1.0);
+  vec4 target_exp_world = frame.view_inverse * target;
+  rayQueryEXT ray_query;
+  rayQueryInitializeEXT(
+    ray_query,
+    accel,
+    gl_RayFlagsTerminateOnFirstHitEXT,
+    0xFF,
+    target_exp_world.xyz, 0.0,
+    -directional_light.direction, 1000.0 // @Temporary: ray_t_max
+  );
+  rayQueryProceedEXT(ray_query);
+  if (
+    rayQueryGetIntersectionTypeEXT(ray_query, false) ==
+    gl_RayQueryCandidateIntersectionTriangleEXT
+  ) {
+    result = vec3(0.0);
     return;
   }
 
@@ -90,7 +112,7 @@ void main() {
   vec3 romeao = subpassLoad(gchannel2).rgb;
   float roughness = romeao.r;
   float metallic = romeao.g;
-  float ao = romeao.b;
+  float ao = romeao.b; // unused?
 
   if (frame.flags.show_normals) {
     result = N * 0.5 + vec3(0.5);
@@ -107,7 +129,6 @@ void main() {
 
   vec3 radiance_incoming = directional_light.intensity * max(0.0, dot(N, L));
   vec3 radiance_outgoing = (kD * albedo / PI + specular) * radiance_incoming * NdotL;
-  vec3 ambient = 0.03 * albedo * ao;
 
-  result = ambient + radiance_outgoing;
+  result = radiance_outgoing;
 }
