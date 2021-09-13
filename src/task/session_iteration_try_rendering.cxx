@@ -1,16 +1,17 @@
 #include <backends/imgui_impl_vulkan.h>
 #include <src/embedded.hxx>
 #include <src/engine/common/mesh.hxx>
+#include <src/engine/display/cleanup.hxx>
 #include <src/engine/rendering/common.hxx>
 #include <src/engine/rendering/image_formats.hxx>
 #include <src/engine/rendering/prepass.hxx>
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include "defer.hxx"
 #include "rendering_frame.hxx"
-#include "rendering_cleanup.hxx"
 #include "rendering_imgui_setup_cleanup.hxx"
 #include "session_iteration_try_rendering.hxx"
 
@@ -146,7 +147,9 @@ TASK_DECL {
   }
 
   { ZoneScopedN(".descriptor_pools");
-    rendering->descriptor_pools = std::vector<engine::common::SharedDescriptorPool>(swapchain_image_count);
+    rendering->descriptor_pools = std::vector<engine::common::SharedDescriptorPool>(
+      swapchain_image_count
+    );
     for (auto &pool : rendering->descriptor_pools) {
       // "large enough"
       const uint32_t COMMON_DESCRIPTOR_COUNT = 4096;
@@ -644,6 +647,14 @@ TASK_DECL {
     &session->vulkan.core
   );
 
+  engine::rendering::pass::indirect_light::init_rdata(
+    &rendering->pass_indirect_light,
+    &session->vulkan.pass_indirect_light,
+    &session->vulkan.core,
+    &rendering->common,
+    &rendering->swapchain_description
+  );
+
   init_rendering_finalpass(
     &rendering->finalpass,
     &rendering->common,
@@ -818,7 +829,7 @@ TASK_DECL {
   );
   auto task_cleanup = defer(
     task::create(
-      rendering_cleanup,
+      engine::display::cleanup,
       session_iteration_yarn_end.ptr,
       session.ptr,
       rendering

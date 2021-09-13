@@ -5,10 +5,18 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/rendering/pass/indirect_light.hxx>
 #include <backends/imgui_impl_vulkan.h>
-#include "rendering_cleanup.hxx"
+#include "cleanup.hxx"
 
-TASK_DECL {
+namespace engine::display {
+
+void cleanup(
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<lib::Task> session_iteration_yarn_end,
+  Use<SessionData> session,
+  Own<engine::display::Data> data
+) {
   ZoneScoped;
   auto vulkan = &session->vulkan;
   for (auto image_view : data->gbuffer.channel0_views) {
@@ -64,6 +72,11 @@ TASK_DECL {
 
   deinit_rendering_lpass(
     &data->lpass,
+    &vulkan->core
+  );
+
+  rendering::pass::indirect_light::deinit_rdata(
+    &data->pass_indirect_light,
     &vulkan->core
   );
 
@@ -149,5 +162,7 @@ TASK_DECL {
   ctx->changed_parents = {
     { .ptr = data.ptr, .children = {} }
   };
-  task::signal(ctx->runner, session_iteration_yarn_end.ptr);
+  lib::task::signal(ctx->runner, session_iteration_yarn_end.ptr);
 }
+
+} // namespace
