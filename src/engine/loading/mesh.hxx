@@ -1,6 +1,5 @@
 #include <src/global.hxx>
 #include <src/engine/session.hxx>
-#include <src/engine/rendering.hxx>
 #include <src/lib/guid.hxx>
 
 namespace engine::loading::mesh {

@@ -6,7 +6,7 @@
 void claim_rendering_common(
   size_t swapchain_image_count,
   std::vector<lib::gfx::multi_alloc::Claim> &claims,
-  RenderingData::Common::Stakes *out
+  engine::display::Data::Common::Stakes *out
 ) {
   ZoneScoped;
   *out = {};
@@ -34,8 +34,8 @@ void claim_rendering_common(
 }
 
 void init_rendering_common(
-  RenderingData::Common::Stakes stakes,
-  RenderingData::Common *out,
+  engine::display::Data::Common::Stakes stakes,
+  engine::display::Data::Common *out,
   SessionData::Vulkan::Core *core
 ) {
   VkDescriptorPool descriptor_pool;
@@ -79,7 +79,7 @@ void init_rendering_common(
 }
 
 void deinit_rendering_common(
-  RenderingData::Common *it,
+  engine::display::Data::Common *it,
   SessionData::Vulkan::Core *core
 ) {
   vkDestroyDescriptorPool(

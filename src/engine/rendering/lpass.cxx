@@ -434,7 +434,7 @@ void deinit_session_lpass(
 void claim_rendering_lpass(
   size_t swapchain_image_count,
   std::vector<lib::gfx::multi_alloc::Claim> &claims,
-  RenderingData::LPass::Stakes *out
+  engine::display::Data::LPass::Stakes *out
 ) {
   ZoneScoped;
   *out = {};
@@ -462,13 +462,13 @@ void claim_rendering_lpass(
 }
 
 void init_rendering_lpass(
-  RenderingData::LPass *out,
-  RenderingData::LPass::Stakes stakes,
-  RenderingData::Common *common,
-  RenderingData::SwapchainDescription *swapchain_description,
-  RenderingData::ZBuffer *zbuffer,
-  RenderingData::GBuffer *gbuffer,
-  RenderingData::LBuffer *lbuffer,
+  engine::display::Data::LPass *out,
+  engine::display::Data::LPass::Stakes stakes,
+  engine::display::Data::Common *common,
+  engine::display::Data::SwapchainDescription *swapchain_description,
+  engine::display::Data::ZBuffer *zbuffer,
+  engine::display::Data::GBuffer *gbuffer,
+  engine::display::Data::LBuffer *lbuffer,
   SessionData::Vulkan::LPass *s_lpass,
   SessionData::Vulkan::Core *core
 ) {
@@ -663,7 +663,7 @@ void init_rendering_lpass(
 }
 
 void deinit_rendering_lpass(
-  RenderingData::LPass *it,
+  engine::display::Data::LPass *it,
   SessionData::Vulkan::Core *core
 ) {
   ZoneScoped;

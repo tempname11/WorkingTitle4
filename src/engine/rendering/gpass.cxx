@@ -443,7 +443,7 @@ void deinit_session_gpass(
 void claim_rendering_gpass(
   size_t swapchain_image_count,
   std::vector<lib::gfx::multi_alloc::Claim> &claims,
-  RenderingData::GPass::Stakes *out
+  engine::display::Data::GPass::Stakes *out
 ) {
   ZoneScoped;
   *out = {};
@@ -451,12 +451,12 @@ void claim_rendering_gpass(
 }
 
 void init_rendering_gpass(
-  RenderingData::GPass *out,
-  RenderingData::Common *common,
-  RenderingData::GPass::Stakes stakes,
-  RenderingData::ZBuffer *zbuffer,
-  RenderingData::GBuffer *gbuffer,
-  RenderingData::SwapchainDescription *swapchain_description,
+  engine::display::Data::GPass *out,
+  engine::display::Data::Common *common,
+  engine::display::Data::GPass::Stakes stakes,
+  engine::display::Data::ZBuffer *zbuffer,
+  engine::display::Data::GBuffer *gbuffer,
+  engine::display::Data::SwapchainDescription *swapchain_description,
   SessionData::Vulkan::GPass *s_gpass,
   SessionData::Vulkan::Core *core
 ) {
@@ -547,7 +547,7 @@ void init_rendering_gpass(
 }
 
 void deinit_rendering_gpass(
-  RenderingData::GPass *it,
+  engine::display::Data::GPass *it,
   SessionData::Vulkan::Core *core
 ) {
   ZoneScoped;

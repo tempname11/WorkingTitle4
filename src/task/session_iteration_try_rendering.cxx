@@ -37,7 +37,7 @@ TASK_DECL {
     return;
   }
   
-  auto rendering = new RenderingData;
+  auto rendering = new engine::display::Data;
   // how many images are in swapchain?
   uint32_t swapchain_image_count;
 
@@ -146,7 +146,7 @@ TASK_DECL {
   }
 
   { ZoneScopedN(".descriptor_pools");
-    rendering->descriptor_pools = std::vector<DescriptorPool>(swapchain_image_count);
+    rendering->descriptor_pools = std::vector<engine::common::SharedDescriptorPool>(swapchain_image_count);
     for (auto &pool : rendering->descriptor_pools) {
       // "large enough"
       const uint32_t COMMON_DESCRIPTOR_COUNT = 4096;
@@ -235,9 +235,9 @@ TASK_DECL {
     assert(result == VK_SUCCESS);
   }
 
-  RenderingData::Common::Stakes common_stakes;
-  RenderingData::GPass::Stakes gpass_stakes;
-  RenderingData::LPass::Stakes lpass_stakes;
+  engine::display::Data::Common::Stakes common_stakes;
+  engine::display::Data::GPass::Stakes gpass_stakes;
+  engine::display::Data::LPass::Stakes lpass_stakes;
   { ZoneScopedN(".multi_alloc");
     std::vector<lib::gfx::multi_alloc::Claim> claims;
 

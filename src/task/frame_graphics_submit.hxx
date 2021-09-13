@@ -1,6 +1,6 @@
 #pragma once
 #include <src/engine/session.hxx>
-#include <src/engine/rendering.hxx>
+#include <src/engine/display/data.hxx>
 #include <src/engine/misc.hxx>
 #include "task.hxx"
 
@@ -9,7 +9,7 @@
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx, \
   usage::Full<VkQueue> queue_work, \
   usage::Some<VkSemaphore> example_finished_semaphore, \
-  usage::Some<RenderingData::FrameInfo> frame_info, \
+  usage::Some<engine::display::Data::FrameInfo> frame_info, \
   usage::Full<engine::misc::GraphicsData> data \
 )
 

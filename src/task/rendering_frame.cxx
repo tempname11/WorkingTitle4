@@ -63,7 +63,7 @@ TASK_DECL {
   );
 
   // @Improvement: should put FrameInfo inside FrameData.
-  auto frame_info = new RenderingData::FrameInfo(*latest_frame);
+  auto frame_info = new engine::display::Data::FrameInfo(*latest_frame);
   auto frame_data = new engine::misc::FrameData {};
 
   auto task_setup_gpu_signal = defer(

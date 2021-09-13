@@ -1,6 +1,6 @@
 #pragma once
 #include <src/engine/session.hxx>
-#include <src/engine/rendering.hxx>
+#include <src/engine/display/data.hxx>
 #include "task.hxx"
 
 #undef TASK_DECL
@@ -8,11 +8,11 @@
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx, \
   usage::Full<task::Task> rendering_yarn_end, \
   usage::None<SessionData> session, \
-  usage::None<RenderingData> data, \
+  usage::None<engine::display::Data> data, \
   usage::Some<SessionData::GLFW> glfw, \
-  usage::Some<RenderingData::PresentationFailureState> presentation_failure_state, \
-  usage::Full<RenderingData::FrameInfo> latest_frame, \
-  usage::Some<RenderingData::SwapchainDescription> swapchain_description \
+  usage::Some<engine::display::Data::PresentationFailureState> presentation_failure_state, \
+  usage::Full<engine::display::Data::FrameInfo> latest_frame, \
+  usage::Some<engine::display::Data::SwapchainDescription> swapchain_description \
 )
 
 TASK_DECL;

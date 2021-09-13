@@ -1,10 +1,11 @@
 #include <src/task/defer.hxx>
+#include <src/engine/common/shared_descriptor_pool.hxx>
 #include "frame_graphics_render.hxx"
 
 void record_geometry_draw_commands(
   VkCommandBuffer cmd,
   SessionData::Vulkan::Core *core,
-  DescriptorPool *descriptor_pool,
+  engine::common::SharedDescriptorPool *descriptor_pool,
   SessionData::Vulkan::GPass* s_gpass,
   engine::misc::RenderList *render_list
 ) {
@@ -112,11 +113,11 @@ void record_geometry_draw_commands(
 void record_prepass(
   VkCommandBuffer cmd,
   SessionData::Vulkan::Core *core,
-  DescriptorPool *descriptor_pool,
-  RenderingData::Prepass *prepass,
-  RenderingData::GPass *gpass,
-  RenderingData::SwapchainDescription *swapchain_description,
-  RenderingData::FrameInfo *frame_info,
+  engine::common::SharedDescriptorPool *descriptor_pool,
+  engine::display::Data::Prepass *prepass,
+  engine::display::Data::GPass *gpass,
+  engine::display::Data::SwapchainDescription *swapchain_description,
+  engine::display::Data::FrameInfo *frame_info,
   SessionData::Vulkan::Prepass *s_prepass,
   SessionData::Vulkan::GPass *s_gpass,
   engine::misc::RenderList *render_list
@@ -170,10 +171,10 @@ void record_prepass(
 void record_gpass(
   VkCommandBuffer cmd,
   SessionData::Vulkan::Core *core,
-  DescriptorPool *descriptor_pool,
-  RenderingData::GPass *gpass,
-  RenderingData::SwapchainDescription *swapchain_description,
-  RenderingData::FrameInfo *frame_info,
+  engine::common::SharedDescriptorPool *descriptor_pool,
+  engine::display::Data::GPass *gpass,
+  engine::display::Data::SwapchainDescription *swapchain_description,
+  engine::display::Data::FrameInfo *frame_info,
   SessionData::Vulkan::GPass *s_gpass,
   engine::misc::RenderList *render_list
 ) {
@@ -228,9 +229,9 @@ void record_gpass(
 void record_lpass(
   VkCommandBuffer cmd,
   SessionData::Vulkan::Core *core,
-  RenderingData::LPass *lpass,
-  RenderingData::SwapchainDescription *swapchain_description,
-  RenderingData::FrameInfo *frame_info,
+  engine::display::Data::LPass *lpass,
+  engine::display::Data::SwapchainDescription *swapchain_description,
+  engine::display::Data::FrameInfo *frame_info,
   SessionData::Vulkan::LPass *s_lpass,
   SessionData::Vulkan::FullscreenQuad *fullscreen_quad,
   VkAccelerationStructureKHR accel
@@ -309,11 +310,11 @@ void record_lpass(
 
 void record_finalpass(
   VkCommandBuffer cmd,
-  RenderingData::Finalpass *finalpass,
-  RenderingData::SwapchainDescription *swapchain_description,
-  RenderingData::FrameInfo *frame_info,
-  RenderingData::LBuffer *lbuffer,
-  RenderingData::FinalImage *final_image,
+  engine::display::Data::Finalpass *finalpass,
+  engine::display::Data::SwapchainDescription *swapchain_description,
+  engine::display::Data::FrameInfo *frame_info,
+  engine::display::Data::LBuffer *lbuffer,
+  engine::display::Data::FinalImage *final_image,
   SessionData::Vulkan::Finalpass *s_finalpass
 ) {
   ZoneScoped;
@@ -333,8 +334,8 @@ void record_finalpass(
 
 void record_barrier_before_prepass(
   VkCommandBuffer cmd,
-  RenderingData::FrameInfo *frame_info,
-  RenderingData::ZBuffer *zbuffer
+  engine::display::Data::FrameInfo *frame_info,
+  engine::display::Data::ZBuffer *zbuffer
 ) {
   ZoneScoped;
   VkImageMemoryBarrier barriers[] = {
@@ -370,8 +371,8 @@ void record_barrier_before_prepass(
 
 void record_barrier_prepass_gpass(
   VkCommandBuffer cmd,
-  RenderingData::FrameInfo *frame_info,
-  RenderingData::ZBuffer *zbuffer
+  engine::display::Data::FrameInfo *frame_info,
+  engine::display::Data::ZBuffer *zbuffer
 ) {
   ZoneScoped;
   VkImageMemoryBarrier barriers[] = {
@@ -407,8 +408,8 @@ void record_barrier_prepass_gpass(
 
 void record_barrier_before_gpass(
   VkCommandBuffer cmd,
-  RenderingData::FrameInfo *frame_info,
-  RenderingData::GBuffer *gbuffer
+  engine::display::Data::FrameInfo *frame_info,
+  engine::display::Data::GBuffer *gbuffer
 ) {
   ZoneScoped;
   VkImageMemoryBarrier barriers[] = {
@@ -478,9 +479,9 @@ void record_barrier_before_gpass(
 
 void record_barrier_gpass_lpass(
   VkCommandBuffer cmd,
-  RenderingData::FrameInfo *frame_info,
-  RenderingData::ZBuffer *zbuffer,
-  RenderingData::GBuffer *gbuffer
+  engine::display::Data::FrameInfo *frame_info,
+  engine::display::Data::ZBuffer *zbuffer,
+  engine::display::Data::GBuffer *gbuffer
 ) {
   ZoneScoped;
   VkImageMemoryBarrier barriers_g[] = {
@@ -581,8 +582,8 @@ void record_barrier_gpass_lpass(
 
 void record_barrier_before_lpass(
   VkCommandBuffer cmd,
-  RenderingData::FrameInfo *frame_info,
-  RenderingData::LBuffer *lbuffer
+  engine::display::Data::FrameInfo *frame_info,
+  engine::display::Data::LBuffer *lbuffer
 ) {
   ZoneScoped;
   VkImageMemoryBarrier barriers[] = {
@@ -618,8 +619,8 @@ void record_barrier_before_lpass(
 
 void record_barrier_before_finalpass(
   VkCommandBuffer cmd,
-  RenderingData::FrameInfo *frame_info,
-  RenderingData::FinalImage *final_image
+  engine::display::Data::FrameInfo *frame_info,
+  engine::display::Data::FinalImage *final_image
 ) {
   ZoneScoped;
   VkImageMemoryBarrier barriers[] = {
@@ -655,8 +656,8 @@ void record_barrier_before_finalpass(
 
 void record_barrier_lpass_finalpass(
   VkCommandBuffer cmd,
-  RenderingData::FrameInfo *frame_info,
-  RenderingData::LBuffer *lbuffer
+  engine::display::Data::FrameInfo *frame_info,
+  engine::display::Data::LBuffer *lbuffer
 ) {
   ZoneScoped;
   VkImageMemoryBarrier barriers[] = {
@@ -692,8 +693,8 @@ void record_barrier_lpass_finalpass(
 
 void record_barrier_finalpass_imgui(
   VkCommandBuffer cmd,
-  RenderingData::FrameInfo *frame_info,
-  RenderingData::FinalImage *final_image
+  engine::display::Data::FrameInfo *frame_info,
+  engine::display::Data::FinalImage *final_image
 ) {
   ZoneScoped;
   VkImageMemoryBarrier barriers[] = {

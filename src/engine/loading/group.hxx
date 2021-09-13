@@ -2,7 +2,6 @@
 #include <src/global.hxx>
 #include <src/lib/task.hxx>
 #include <src/engine/session.hxx>
-#include <src/engine/rendering.hxx>
 
 namespace engine::loading::group {
 

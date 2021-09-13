@@ -151,11 +151,11 @@ void deinit_session_finalpass(
 };
 
 void init_rendering_finalpass(
-  RenderingData::Finalpass *out,
-  RenderingData::Common *common,
-  RenderingData::SwapchainDescription *swapchain_description,
-  RenderingData::LBuffer *lbuffer,
-  RenderingData::FinalImage *final_image,
+  engine::display::Data::Finalpass *out,
+  engine::display::Data::Common *common,
+  engine::display::Data::SwapchainDescription *swapchain_description,
+  engine::display::Data::LBuffer *lbuffer,
+  engine::display::Data::FinalImage *final_image,
   SessionData::Vulkan::Finalpass *s_finalpass,
   SessionData::Vulkan::Core *core
 ) {
@@ -225,7 +225,7 @@ void init_rendering_finalpass(
 }
 
 void deinit_rendering_finalpass(
-  RenderingData::Finalpass *it,
+  engine::display::Data::Finalpass *it,
   SessionData::Vulkan::Core *core
 ) {
  // empty!

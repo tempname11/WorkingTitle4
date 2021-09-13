@@ -1,5 +1,5 @@
 #pragma once
-#include <src/engine/rendering.hxx>
+#include <src/engine/display/data.hxx>
 #include <src/engine/session.hxx>
 #include "task.hxx"
 
@@ -10,7 +10,7 @@
   Use<SessionData::Vulkan::Core> core, \
   Use<lib::gpu_signal::Support> gpu_signal_support, \
   Own<VkSemaphore> frame_rendered_semaphore, \
-  Use<RenderingData::FrameInfo> frame_info \
+  Use<engine::display::Data::FrameInfo> frame_info \
 )
 
 TASK_DECL;

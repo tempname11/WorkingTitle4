@@ -2,7 +2,7 @@
 #include <vulkan/vulkan.h>
 #include <src/global.hxx>
 #include <src/engine/session.hxx>
-#include <src/engine/rendering.hxx>
+#include <src/engine/display/data.hxx>
 #include "indirect_light/data.hxx"
 
 namespace engine::rendering::pass::indirect_light {
@@ -20,7 +20,9 @@ void deinit_sdata(
 void init_rdata(
   RData *out,
   SData *sdata,
-  Use<SessionData::Vulkan::Core> core
+  Use<SessionData::Vulkan::Core> core,
+  Own<engine::display::Data::Common> common,
+  Use<engine::display::Data::SwapchainDescription> swapchain_description
 );
 
 void deinit_rdata(

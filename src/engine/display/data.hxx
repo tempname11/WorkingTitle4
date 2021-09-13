@@ -7,14 +7,11 @@
 #include <src/lib/gfx/command_pool_2.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
 #include <src/engine/rendering/pass/indirect_light/data.hxx>
+#include <src/engine/common/shared_descriptor_pool.hxx>
 
-struct DescriptorPool {
-  std::mutex mutex;
-  VkDescriptorPool pool;
-};
+namespace engine::display {
 
-// @Note: this is not a good name. "rendering" is too general a term.
-struct RenderingData : lib::task::ParentResource {
+struct Data : lib::task::ParentResource {
   struct Presentation {
     VkSwapchainKHR swapchain;
     std::vector<VkImage> swapchain_images;
@@ -54,7 +51,7 @@ struct RenderingData : lib::task::ParentResource {
   typedef std::vector<CommandPool2> CommandPools;
   CommandPools command_pools;
 
-  typedef std::vector<DescriptorPool> DescriptorPools;
+  typedef std::vector<common::SharedDescriptorPool> DescriptorPools;
   DescriptorPools descriptor_pools;
 
   VkSemaphore graphics_finished_semaphore;
@@ -122,3 +119,5 @@ struct RenderingData : lib::task::ParentResource {
     std::vector<VkDescriptorSet> descriptor_sets;
   } finalpass;
 };
+
+} // namespace

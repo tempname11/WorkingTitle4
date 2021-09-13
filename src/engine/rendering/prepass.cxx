@@ -218,9 +218,9 @@ void deinit_session_prepass(
 }
 
 void init_rendering_prepass(
-  RenderingData::Prepass *out,
-  RenderingData::ZBuffer *zbuffer,
-  RenderingData::SwapchainDescription *swapchain_description,
+  engine::display::Data::Prepass *out,
+  engine::display::Data::ZBuffer *zbuffer,
+  engine::display::Data::SwapchainDescription *swapchain_description,
   SessionData::Vulkan::Prepass *s_prepass,
   SessionData::Vulkan::Core *core
 ) {
@@ -260,7 +260,7 @@ void init_rendering_prepass(
 }
 
 void deinit_rendering_prepass(
-  RenderingData::Prepass *it,
+  engine::display::Data::Prepass *it,
   SessionData::Vulkan::Core *core
 ) {
   ZoneScoped;

@@ -1,5 +1,5 @@
 #pragma once
-#include <src/engine/rendering.hxx>
+#include <src/engine/display/data.hxx>
 #include <src/engine/misc.hxx>
 #include "task.hxx"
 
@@ -9,7 +9,7 @@
   usage::Full<VkQueue> queue_work, \
   usage::Some<VkSemaphore> graphics_finished_semaphore, \
   usage::Some<VkSemaphore> imgui_finished_semaphore, \
-  usage::Some<RenderingData::FrameInfo> frame_info, \
+  usage::Some<engine::display::Data::FrameInfo> frame_info, \
   usage::Full<engine::misc::ImguiData> data \
 )
 
