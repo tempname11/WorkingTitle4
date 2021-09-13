@@ -10,7 +10,13 @@ void deinit_rdata(
 ) {
   ZoneScoped;
 
-  /* empty! */
+  for (auto framebuffer : it->framebuffers) {
+    vkDestroyFramebuffer(
+      core->device,
+      framebuffer,
+      core->allocator
+    );
+  }
 }
 
 } // namespace

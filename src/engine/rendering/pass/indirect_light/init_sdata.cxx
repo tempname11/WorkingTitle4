@@ -65,7 +65,7 @@ void init_sdata(
       {
         .format = LBUFFER_FORMAT,
         .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -268,6 +268,8 @@ void init_sdata(
       );
       assert(result == VK_SUCCESS);
     }
+    vkDestroyShaderModule(core->device, module_frag, core->allocator);
+    vkDestroyShaderModule(core->device, module_vert, core->allocator);
   }
 
   *out = {

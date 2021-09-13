@@ -1,5 +1,6 @@
 #include <src/task/defer.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
+#include <src/engine/rendering/pass/indirect_light.hxx>
 #include "frame_graphics_render.hxx"
 
 void record_geometry_draw_commands(
@@ -1193,6 +1194,17 @@ TASK_DECL {
       s_lpass.ptr,
       fullscreen_quad.ptr,
       tlas_result->accel
+    );
+  }
+
+  { TracyVkZone(core->tracy_context, cmd, "indirect_light");
+    engine::rendering::pass::indirect_light::record(
+      cmd,
+      indirect_light_rdata,
+      indirect_light_sdata,
+      frame_info,
+      swapchain_description,
+      fullscreen_quad
     );
   }
 

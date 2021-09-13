@@ -12,6 +12,7 @@ struct SData {
 };
 
 struct RData {
+  std::vector<VkFramebuffer> framebuffers;
   std::vector<VkDescriptorSet> descriptor_sets_frame;
 };
 

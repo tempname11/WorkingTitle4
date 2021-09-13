@@ -10,6 +10,7 @@ void init_rdata(
   SData *sdata,
   Use<SessionData::Vulkan::Core> core,
   Own<engine::display::Data::Common> common,
+  Use<engine::display::Data::LBuffer> lbuffer,
   Use<engine::display::Data::SwapchainDescription> swapchain_description
 ) {
   ZoneScoped;
@@ -52,7 +53,37 @@ void init_rdata(
     */
   }
 
+  std::vector<VkFramebuffer> framebuffers;
+  { ZoneScopedN("framebuffers");
+    for (size_t i = 0; i < swapchain_description->image_count; i++) {
+      VkImageView attachments[] = {
+        lbuffer->views[i],
+      };
+      VkFramebuffer framebuffer;
+      VkFramebufferCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .renderPass = sdata->render_pass,
+        .attachmentCount = sizeof(attachments) / sizeof(*attachments),
+        .pAttachments = attachments,
+        .width = swapchain_description->image_extent.width,
+        .height = swapchain_description->image_extent.height,
+        .layers = 1,
+      };
+      {
+        auto result = vkCreateFramebuffer(
+          core->device,
+          &create_info,
+          core->allocator,
+          &framebuffer
+        );
+        assert(result == VK_SUCCESS);
+      }
+      framebuffers.push_back(framebuffer);
+    }
+  }
+
   *out = {
+    .framebuffers = std::move(framebuffers),
     .descriptor_sets_frame = std::move(descriptor_sets_frame),
   };
 }
