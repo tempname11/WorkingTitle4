@@ -10,7 +10,26 @@ void deinit_sdata(
 ) {
   ZoneScoped;
 
-  nc;
+  vkDestroyDescriptorSetLayout(
+    core->device,
+    it->descriptor_set_layout_frame,
+    core->allocator
+  );
+  vkDestroyPipelineLayout(
+    core->device,
+    it->pipeline_layout,
+    core->allocator
+  );
+  vkDestroyRenderPass(
+    core->device,
+    it->render_pass,
+    core->allocator
+  );
+  vkDestroyPipeline(
+    core->device,
+    it->pipeline,
+    core->allocator
+  );
 }
 
 } // namespace

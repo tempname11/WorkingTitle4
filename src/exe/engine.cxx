@@ -2,7 +2,7 @@
 #include <vector>
 #include <src/global.hxx>
 #include <src/lib/task.hxx>
-#include <src/task/session.hxx>
+#include <src/engine/session/setup.hxx>
 
 // #define ENGINE_DEBUG_TASK_THREADS 1
 
@@ -34,7 +34,7 @@ int main() {
   #endif
   auto runner = lib::task::create_runner(QUEUE_COUNT);
   lib::task::inject(runner, {
-    lib::task::create(session, &worker_count),
+    lib::task::create(engine::session::setup, &worker_count),
   });
   lib::task::run(runner, std::move(worker_access_flags), QUEUE_ACCESS_FLAGS_MAIN_THREAD);
   lib::task::discard_runner(runner);

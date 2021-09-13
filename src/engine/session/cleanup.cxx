@@ -6,9 +6,15 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
-#include "session_cleanup.hxx"
+#include <src/engine/rendering/pass/indirect_light.hxx>
+#include "cleanup.hxx"
 
-TASK_DECL {
+namespace engine::session {
+
+void cleanup(
+  lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
+  Own<SessionData> session
+) {
   ZoneScoped;
 
   { ZoneScopedN(".gpu_signal_support");
@@ -29,6 +35,11 @@ TASK_DECL {
     deinit_session_lpass(&it->lpass, core);
 
     deinit_session_finalpass(&it->finalpass, core);
+
+    rendering::pass::indirect_light::deinit_sdata(
+      &it->pass_indirect_light,
+      core
+    );
 
     { ZoneScopedN(".multi_alloc");
       lib::gfx::multi_alloc::deinit(
@@ -97,3 +108,5 @@ TASK_DECL {
     { .ptr = &session->vulkan, .children = {} },
   };
 }
+
+} // namespace

@@ -10,7 +10,7 @@ void deinit_rdata(
 ) {
   ZoneScoped;
 
-  nc;
+  /* empty! */
 }
 
 } // namespace

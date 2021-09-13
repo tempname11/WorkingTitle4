@@ -2,6 +2,7 @@
 #include <vulkan/vulkan.h>
 #include <src/global.hxx>
 #include <src/engine/session.hxx>
+#include <src/engine/rendering.hxx>
 #include "indirect_light/data.hxx"
 
 namespace engine::rendering::pass::indirect_light {

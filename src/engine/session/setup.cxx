@@ -3,6 +3,10 @@
 #include <GLFW/glfw3.h>
 #include <backends/imgui_impl_glfw.h>
 #include <src/embedded.hxx>
+#include <src/lib/gfx/utilities.hxx>
+#include <src/task/defer.hxx>
+#include <src/task/session_iteration.hxx>
+#include <src/task/session_setup_cleanup.hxx>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/uploader.hxx>
 #include <src/engine/blas_storage.hxx>
@@ -12,14 +16,12 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/engine/loading/group.hxx>
 #include <src/engine/misc.hxx>
-#include <src/lib/gfx/utilities.hxx>
-#include "defer.hxx"
-#include "session_cleanup.hxx"
-#include "session_iteration.hxx"
-#include "session_setup_cleanup.hxx"
-#include "session.hxx"
+#include "cleanup.hxx"
+
+namespace engine::session {
 
 // @Incomplete: we may need to calculate this depending on
 // the available GPU memory, the number of memory types we need,
@@ -438,6 +440,11 @@ void init_vulkan(
     &it->core
   );
 
+  rendering::pass::indirect_light::init_sdata(
+    &it->pass_indirect_light,
+    &it->core
+  );
+
   init_session_finalpass(
     &it->finalpass,
     &it->core
@@ -553,7 +560,11 @@ void init_vulkan(
   */
 }
 
-TASK_DECL {
+
+void setup(
+  task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
+  Use<size_t> worker_count
+) {
   ZoneScoped;
   auto session = new SessionData {};
   lib::lifetime::init(&session->lifetime);
@@ -721,12 +732,12 @@ TASK_DECL {
   // when the structs change, recheck that .changed_parents are still valid.
   #ifndef NDEBUG
   {
-    const auto size = sizeof(SessionData);
-    static_assert(size == 3624);
+    const auto size = sizeof(SessionData) - sizeof(SessionData::Vulkan);
+    static_assert(size == 896);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 2728);
+    static_assert(size == 2760);
   }
   #endif
 
@@ -745,7 +756,7 @@ TASK_DECL {
 
   auto task_cleanup = defer(
     lib::task::create(
-      session_cleanup,
+      session::cleanup,
       session
     )
   );
@@ -805,3 +816,5 @@ TASK_DECL {
     { session->lifetime.yarn, task_cleanup.first }
   });
 }
+
+} // namespace

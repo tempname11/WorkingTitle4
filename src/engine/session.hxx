@@ -16,18 +16,19 @@
 #else
   #include <TracyVulkan.hpp>
 #endif
-#include <src/engine/common/texture.hxx>
-#include <src/engine/common/mesh.hxx>
-#include <src/engine/common/ubo.hxx>
-#include <src/engine/uploader.data.hxx>
-#include <src/engine/blas_storage/data.hxx>
-#include <src/engine/blas_storage/id.hxx>
 #include <src/lib/task.hxx>
 #include <src/lib/lifetime.hxx>
 #include <src/lib/guid.hxx>
 #include <src/lib/gpu_signal.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
 #include <src/lib/debug_camera.hxx>
+#include <src/engine/common/texture.hxx>
+#include <src/engine/common/mesh.hxx>
+#include <src/engine/common/ubo.hxx>
+#include <src/engine/uploader.data.hxx>
+#include <src/engine/blas_storage/data.hxx>
+#include <src/engine/blas_storage/id.hxx>
+#include <src/engine/rendering/pass/indirect_light/data.hxx>
 
 struct MetaTexturesKey {
   std::string path;
@@ -221,6 +222,8 @@ struct SessionData : lib::task::ParentResource {
       VkRenderPass render_pass;
       VkPipeline pipeline_sun;
     } lpass;
+
+    engine::rendering::pass::indirect_light::SData pass_indirect_light;
 
     struct Finalpass {
       VkDescriptorSetLayout descriptor_set_layout;

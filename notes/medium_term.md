@@ -6,6 +6,7 @@
     (seems correlated with number of Vulkan warnings beforehand.)
 
 ### architectural problems
+- "lpass" should be split info a few different passes
 - descriptor set counts are fixed
 - uploader seems very rushed, need to come back to it from a performance perspective
 - also need automatic GPU memory region compacting
@@ -48,9 +49,12 @@
 - fullscreen toggle: weird visual jump
 - fullscreen toggle: always primary monitor (want the one which the window "belongs" to)
 - texture mip levels are generated at runtime
+- worker_count (and flags?) needs to be accessible from the task `ctx`
 
 ### refactoring
-- engine/** file naming is a bit of a mess
+- the directory `src/task` should not be there. tasks should be where they logically belong.
+- session/setup should be split up into smaller files
 
 ### return to this with fresh ideas
 - direct lighting calibration
+  (in particular, the gloss on the roof at Sponza is very suspicious)

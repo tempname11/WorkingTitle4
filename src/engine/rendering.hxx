@@ -6,12 +6,14 @@
 #include <src/lib/task.hxx>
 #include <src/lib/gfx/command_pool_2.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
+#include <src/engine/rendering/pass/indirect_light/data.hxx>
 
 struct DescriptorPool {
   std::mutex mutex;
   VkDescriptorPool pool;
 };
 
+// @Note: this is not a good name. "rendering" is too general a term.
 struct RenderingData : lib::task::ParentResource {
   struct Presentation {
     VkSwapchainKHR swapchain;
@@ -113,6 +115,8 @@ struct RenderingData : lib::task::ParentResource {
     std::vector<VkDescriptorSet> descriptor_sets_directional_light;
     std::vector<VkFramebuffer> framebuffers;
   } lpass;
+
+  engine::rendering::pass::indirect_light::RData pass_indirect_light;
 
   struct Finalpass {
     std::vector<VkDescriptorSet> descriptor_sets;
