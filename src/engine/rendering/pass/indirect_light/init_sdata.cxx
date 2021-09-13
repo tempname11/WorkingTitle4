@@ -1,38 +1,89 @@
 #include <src/global.hxx>
-#include <src/engine/common/mesh.hxx>
-#include "image_formats.hxx"
-#include "prepass.hxx"
+#include <src/embedded.hxx>
+#include <src/engine/session.hxx>
+#include "../../image_formats.hxx"
+#include "data.hxx"
 
-void init_session_prepass(
-  SessionData::Vulkan::Prepass *out,
-  SessionData::Vulkan::GPass *gpass,
-  SessionData::Vulkan::Core *core,
-  VkShaderModule module_vert
+namespace engine::rendering::pass::indirect_light {
+
+void init_sdata(
+  SData *out,
+  Use<SessionData::Vulkan::Core> core
 ) {
   ZoneScoped;
+
+  VkDescriptorSetLayout descriptor_set_layout_frame;
+  { ZoneScopedN("descriptor_set_layout_frame");
+    VkDescriptorSetLayoutBinding layout_bindings[] = {
+      {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      },
+    };
+    VkDescriptorSetLayoutCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
+      .pBindings = layout_bindings,
+    };
+    {
+      auto result = vkCreateDescriptorSetLayout(
+        core->device,
+        &create_info,
+        core->allocator,
+        &descriptor_set_layout_frame
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+
+  VkPipelineLayout pipeline_layout;
+  { ZoneScopedN("pipeline_layout");
+    VkDescriptorSetLayout layouts[] = {
+      descriptor_set_layout_frame,
+    };
+    VkPipelineLayoutCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .setLayoutCount = sizeof(layouts) / sizeof(*layouts),
+      .pSetLayouts = layouts,
+    };
+    {
+      auto result = vkCreatePipelineLayout(
+        core->device,
+        &info,
+        core->allocator,
+        &pipeline_layout
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+
   VkRenderPass render_pass;
   { ZoneScopedN("render_pass");
     VkAttachmentDescription attachment_descriptions[] = {
       {
-        .format = ZBUFFER_FORMAT,
+        .format = LBUFFER_FORMAT,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
     };
-    VkAttachmentReference depth_attachment_ref = {
-      .attachment = 0,
-      .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    VkAttachmentReference color_attachment_refs[] = {
+      {
+        .attachment = 0,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      },
     };
     VkSubpassDescription subpass_description = {
       .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-      .colorAttachmentCount = 0,
-      .pColorAttachments = nullptr,
-      .pDepthStencilAttachment = &depth_attachment_ref,
+      .colorAttachmentCount = sizeof(color_attachment_refs) / sizeof(*color_attachment_refs),
+      .pColorAttachments = color_attachment_refs,
+      .pDepthStencilAttachment = nullptr,
     };
     VkRenderPassCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
@@ -51,7 +102,37 @@ void init_session_prepass(
   }
 
   VkPipeline pipeline;
-  { ZoneScopedN(".pipeline");
+  { ZoneScopedN("pipeline");
+    VkShaderModule module_frag = VK_NULL_HANDLE;
+    VkShaderModule module_vert = VK_NULL_HANDLE;
+    { ZoneScopedN("module_vert");
+      VkShaderModuleCreateInfo info = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = embedded_indirect_light_vert_len,
+        .pCode = (const uint32_t*) embedded_indirect_light_vert,
+      };
+      auto result = vkCreateShaderModule(
+        core->device,
+        &info,
+        core->allocator,
+        &module_vert
+      );
+      assert(result == VK_SUCCESS);
+    }
+    { ZoneScopedN("module_frag");
+      VkShaderModuleCreateInfo info = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = embedded_indirect_light_frag_len,
+        .pCode = (const uint32_t*) embedded_indirect_light_frag,
+      };
+      auto result = vkCreateShaderModule(
+        core->device,
+        &info,
+        core->allocator,
+        &module_frag
+      );
+      assert(result == VK_SUCCESS);
+    }
     VkPipelineShaderStageCreateInfo shader_stages[] = {
       {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -59,11 +140,17 @@ void init_session_prepass(
         .module = module_vert,
         .pName = "main",
       },
+      {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .module = module_frag,
+        .pName = "main",
+      },
     };
     VkVertexInputBindingDescription binding_descriptions[] = {
       {
         .binding = 0,
-        .stride = sizeof(engine::common::mesh::VertexT06),
+        .stride = sizeof(glm::vec2),
         .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
       },
     };
@@ -71,32 +158,8 @@ void init_session_prepass(
       {
         .location = 0,
         .binding = 0,
-        .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT06, position),
-      },
-      {
-        .location = 1,
-        .binding = 0,
-        .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT06, tangent),
-      },
-      {
-        .location = 2,
-        .binding = 0,
-        .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT06, bitangent),
-      },
-      {
-        .location = 3,
-        .binding = 0,
-        .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT06, normal),
-      },
-      {
-        .location = 4,
-        .binding = 0,
         .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = offsetof(engine::common::mesh::VertexT06, uv),
+        .offset = 0,
       },
     };
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {
@@ -135,7 +198,7 @@ void init_session_prepass(
       .depthClampEnable = VK_FALSE,
       .rasterizerDiscardEnable = VK_FALSE,
       .polygonMode = VK_POLYGON_MODE_FILL,
-      .cullMode = VK_CULL_MODE_BACK_BIT,
+      .cullMode = VK_CULL_MODE_NONE,
       .frontFace = VK_FRONT_FACE_CLOCKWISE,
       .depthBiasEnable = VK_FALSE,
       .lineWidth = 1.0f,
@@ -147,15 +210,28 @@ void init_session_prepass(
     };
     VkPipelineDepthStencilStateCreateInfo depth_stencil_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-      .depthTestEnable = VK_TRUE,
-      .depthWriteEnable = VK_TRUE,
-      .depthCompareOp = VK_COMPARE_OP_LESS,
+      .depthTestEnable = VK_FALSE,
+      .depthWriteEnable = VK_FALSE,
+      .depthCompareOp = VK_COMPARE_OP_ALWAYS,
+    };
+    VkPipelineColorBlendAttachmentState color_blend_attachments[] = {
+      {
+        .blendEnable = VK_TRUE,
+        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_COLOR,
+        .dstColorBlendFactor = VK_BLEND_FACTOR_DST_COLOR,
+        .colorBlendOp = VK_BLEND_OP_ADD,
+        .colorWriteMask = (0
+          | VK_COLOR_COMPONENT_R_BIT
+          | VK_COLOR_COMPONENT_G_BIT
+          | VK_COLOR_COMPONENT_B_BIT
+        ),
+      },
     };
     VkPipelineColorBlendStateCreateInfo color_blend_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
       .logicOpEnable = VK_FALSE,
-      .attachmentCount = 0,
-      .pAttachments = nullptr,
+      .attachmentCount = sizeof(color_blend_attachments) / sizeof(*color_blend_attachments),
+      .pAttachments = color_blend_attachments,
     };
     VkDynamicState dynamic_states[] = {
       VK_DYNAMIC_STATE_VIEWPORT,
@@ -168,7 +244,7 @@ void init_session_prepass(
     };
     VkGraphicsPipelineCreateInfo pipeline_info = {
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-      .stageCount = sizeof(shader_stages) / sizeof(*shader_stages),
+      .stageCount = 2,
       .pStages = shader_stages,
       .pVertexInputState = &vertex_input_info,
       .pInputAssemblyState = &input_assembly_info,
@@ -178,7 +254,7 @@ void init_session_prepass(
       .pDepthStencilState = &depth_stencil_info,
       .pColorBlendState = &color_blend_info,
       .pDynamicState = &dynamic_info,
-      .layout = gpass->pipeline_layout,
+      .layout = pipeline_layout,
       .renderPass = render_pass,
       .subpass = 0,
     };
@@ -195,80 +271,11 @@ void init_session_prepass(
   }
 
   *out = {
+    .descriptor_set_layout_frame = descriptor_set_layout_frame,
+    .pipeline_layout = pipeline_layout,
     .render_pass = render_pass,
-    .pipeline = pipeline,
+    .pipeline = pipeline
   };
 }
 
-void deinit_session_prepass(
-  SessionData::Vulkan::Prepass *it,
-  SessionData::Vulkan::Core *core
-) {
-  ZoneScoped;
-  vkDestroyRenderPass(
-    core->device,
-    it->render_pass,
-    core->allocator
-  );
-  vkDestroyPipeline(
-    core->device,
-    it->pipeline,
-    core->allocator
-  );
-}
-
-void init_rendering_prepass(
-  RenderingData::Prepass *out,
-  RenderingData::ZBuffer *zbuffer,
-  RenderingData::SwapchainDescription *swapchain_description,
-  SessionData::Vulkan::Prepass *s_prepass,
-  SessionData::Vulkan::Core *core
-) {
-  ZoneScoped;
-  std::vector<VkFramebuffer> framebuffers;
-  { ZoneScopedN("framebuffers");
-    for (size_t i = 0; i < swapchain_description->image_count; i++) {
-      VkImageView attachments[] = {
-        zbuffer->views[i],
-      };
-      VkFramebuffer framebuffer;
-      VkFramebufferCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass = s_prepass->render_pass,
-        .attachmentCount = sizeof(attachments) / sizeof(*attachments),
-        .pAttachments = attachments,
-        .width = swapchain_description->image_extent.width,
-        .height = swapchain_description->image_extent.height,
-        .layers = 1,
-      };
-      {
-        auto result = vkCreateFramebuffer(
-          core->device,
-          &create_info,
-          core->allocator,
-          &framebuffer
-        );
-        assert(result == VK_SUCCESS);
-      }
-      framebuffers.push_back(framebuffer);
-    }
-  }
-
-  *out = {
-    .framebuffers = framebuffers,
-  };
-}
-
-void deinit_rendering_prepass(
-  RenderingData::Prepass *it,
-  SessionData::Vulkan::Core *core
-) {
-  ZoneScoped;
-  for (auto framebuffer : it->framebuffers) {
-    vkDestroyFramebuffer(
-      core->device,
-      framebuffer,
-      core->allocator
-    );
-  }
-}
+} // namespace

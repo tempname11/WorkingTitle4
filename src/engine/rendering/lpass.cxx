@@ -1,6 +1,7 @@
 #include <src/global.hxx>
 #include <src/embedded.hxx>
 #include <src/engine/common/ubo.hxx>
+#include "image_formats.hxx"
 #include "lpass.hxx"
 
 void init_session_lpass(

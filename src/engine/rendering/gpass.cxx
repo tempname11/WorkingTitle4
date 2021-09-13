@@ -1,6 +1,7 @@
 #include <src/global.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/common/ubo.hxx>
+#include "image_formats.hxx"
 #include "gpass.hxx"
 
 void init_session_gpass(

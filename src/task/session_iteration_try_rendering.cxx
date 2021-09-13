@@ -2,6 +2,7 @@
 #include <src/embedded.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/rendering/common.hxx>
+#include <src/engine/rendering/image_formats.hxx>
 #include <src/engine/rendering/prepass.hxx>
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
