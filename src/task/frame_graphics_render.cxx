@@ -1,6 +1,7 @@
 #include <src/task/defer.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
+#include <src/engine/rendering/intra/probe_light_map.hxx>
 #include "frame_graphics_render.hxx"
 
 void record_geometry_draw_commands(
@@ -1196,6 +1197,12 @@ TASK_DECL {
       tlas_result->accel
     );
   }
+
+  engine::rendering::intra::probe_light_map::record_transition_from_probe_pass_to_indirect_light_pass(
+    probe_light_map,
+    frame_info,
+    cmd
+  );
 
   { TracyVkZone(core->tracy_context, cmd, "indirect_light");
     engine::rendering::pass::indirect_light::record(

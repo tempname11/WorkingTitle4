@@ -5,6 +5,9 @@
 layout(location = 0) in vec2 position;
 layout(location = 0) out vec3 result; 
 
+layout(set = 0, binding = 0) uniform sampler2D probe_light_map;
+
 void main() {
-  result = vec3(0.5); // @Incomplete
+  result = texture(probe_light_map, position).rgb;
+  // @Incomplete
 }

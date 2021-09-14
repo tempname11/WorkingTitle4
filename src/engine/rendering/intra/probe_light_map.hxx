@@ -2,9 +2,10 @@
 #include <src/global.hxx>
 #include <src/engine/display/data.hxx>
 #include <src/engine/session.hxx>
-#include "probe_light_map/data.hxx"
 
 namespace engine::rendering::intra::probe_light_map {
+
+struct DData;
 
 void init_ddata(
   DData *out,
@@ -16,6 +17,12 @@ void init_ddata(
 void deinit_ddata(
   DData *it,
   Use<SessionData::Vulkan::Core> core
+);
+
+void record_transition_from_probe_pass_to_indirect_light_pass(
+  Use<DData> it,
+  Use<engine::display::Data::FrameInfo> frame_info,
+  VkCommandBuffer cmd
 );
 
 } // namespace
