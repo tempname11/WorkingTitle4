@@ -1,10 +1,13 @@
 # milestone: pretty picture
   - ddgi
-    - getting the maths right
-    - raytracing pass writing GBuffer-like structure for probes.
-    - direct light pass affecting the probes.
-    - indirect light pass affecting the probes (!).
-    - layout of the texture and reading it from shader
-    - [inflight_count] textures for probe light
-      - setup
+    - raytracing pass, writing probes into GB2
+    - [inflight_count] "secondary GBuffer" (GB2)
+    - direct light passes: GB2 -> LB2
+    - indirect light pass: GB2 -> LB2
+    - [inflight_count] "secondary LBuffer" (LB2)
+    - compute probe pass: LB2, previous probe maps -> new probe maps
+
+    - [inflight_count] probe light map
       - use in shader
+      - data layout
+      - vulkan layout change

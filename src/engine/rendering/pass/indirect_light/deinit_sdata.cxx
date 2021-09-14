@@ -30,6 +30,11 @@ void deinit_sdata(
     it->pipeline,
     core->allocator
   );
+  vkDestroySampler(
+    core->device,
+    it->sampler_probe_light_map,
+    core->allocator
+  );
 }
 
 } // namespace

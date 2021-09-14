@@ -6,6 +6,7 @@
 #include <src/lib/task.hxx>
 #include <src/lib/gfx/command_pool_2.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
+#include <src/engine/rendering/intra/probe_light_map/data.hxx>
 #include <src/engine/rendering/pass/indirect_light/data.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
 
@@ -37,7 +38,7 @@ struct Data : lib::task::ParentResource {
     std::vector<VkFramebuffer> framebuffers;
     VkCommandPool setup_command_pool;
     VkSemaphore setup_semaphore;
-  } imgui_backend; // @Note: should probably be in SessionData!
+  } imgui_backend;
 
   struct FrameInfo {
     uint64_t timestamp_ns;
@@ -58,7 +59,12 @@ struct Data : lib::task::ParentResource {
   VkSemaphore imgui_finished_semaphore;
   VkSemaphore frame_finished_semaphore;
 
-  lib::gfx::multi_alloc::Instance multi_alloc;
+  // @Note: these are mutex-protected, but they are actually only used in init/deinit and 
+  // we could just skip the protection. does this cost much? something to think about.
+  lib::gfx::Allocator allocator_dedicated;
+  lib::gfx::Allocator allocator_shared;
+
+  lib::gfx::multi_alloc::Instance multi_alloc; // now deprecated
 
   struct ZBuffer {
     std::vector<lib::gfx::multi_alloc::StakeImage> stakes;
@@ -78,6 +84,8 @@ struct Data : lib::task::ParentResource {
     std::vector<lib::gfx::multi_alloc::StakeImage> stakes;
     std::vector<VkImageView> views;
   } lbuffer;
+
+  rendering::intra::probe_light_map::DData probe_light_map;
 
   struct FinalImage {
     std::vector<lib::gfx::multi_alloc::StakeImage> stakes;

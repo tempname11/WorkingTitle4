@@ -38,6 +38,7 @@
 - should also normalize paths on input
 
 ### minor issues
+- many allocators are hard to track, both conceptually, and in imgui.
 - rand() is not thread-safe, need to use something different.
 
 - memory usage seems to increase over time,

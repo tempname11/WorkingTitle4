@@ -23,6 +23,7 @@ void init_rdata(
   Use<SessionData::Vulkan::Core> core,
   Own<engine::display::Data::Common> common,
   Use<engine::display::Data::LBuffer> lbuffer,
+  Use<intra::probe_light_map::DData> probe_light_map,
   Use<engine::display::Data::SwapchainDescription> swapchain_description
 );
 

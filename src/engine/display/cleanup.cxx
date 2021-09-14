@@ -5,6 +5,7 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/rendering/intra/probe_light_map.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <backends/imgui_impl_vulkan.h>
 #include "cleanup.hxx"
@@ -19,144 +20,164 @@ void cleanup(
 ) {
   ZoneScoped;
   auto vulkan = &session->vulkan;
+  auto core = &vulkan->core;
+
   for (auto image_view : data->gbuffer.channel0_views) {
     vkDestroyImageView(
-      vulkan->core.device,
+      core->device,
       image_view,
-      vulkan->core.allocator
+      core->allocator
     );
   }
   for (auto image_view : data->gbuffer.channel1_views) {
     vkDestroyImageView(
-      vulkan->core.device,
+      core->device,
       image_view,
-      vulkan->core.allocator
+      core->allocator
     );
   }
   for (auto image_view : data->gbuffer.channel2_views) {
     vkDestroyImageView(
-      vulkan->core.device,
+      core->device,
       image_view,
-      vulkan->core.allocator
+      core->allocator
     );
   }
   for (auto image_view : data->zbuffer.views) {
     vkDestroyImageView(
-      vulkan->core.device,
+      core->device,
       image_view,
-      vulkan->core.allocator
+      core->allocator
     );
   }
   for (auto image_view : data->lbuffer.views) {
     vkDestroyImageView(
-      vulkan->core.device,
+      core->device,
       image_view,
-      vulkan->core.allocator
+      core->allocator
     );
   }
 
   deinit_rendering_common(
     &data->common,
-    &vulkan->core
+    core
   );
 
   deinit_rendering_prepass(
     &data->prepass,
-    &vulkan->core
+    core
   );
 
   deinit_rendering_gpass(
     &data->gpass,
-    &vulkan->core
+    core
   );
 
   deinit_rendering_lpass(
     &data->lpass,
-    &vulkan->core
+    core
   );
 
   rendering::pass::indirect_light::deinit_rdata(
     &data->pass_indirect_light,
-    &vulkan->core
+    core
   );
 
   deinit_rendering_finalpass(
     &data->finalpass,
-    &vulkan->core
+    core
   );
 
   lib::gfx::multi_alloc::deinit(
     &data->multi_alloc,
-    vulkan->core.device,
-    vulkan->core.allocator
+    core->device,
+    core->allocator
   );
+
+  rendering::intra::probe_light_map::deinit_ddata(
+    &data->probe_light_map,
+    core
+  );
+
+  lib::gfx::allocator::deinit(
+    &data->allocator_dedicated,
+    core->device,
+    core->allocator
+  );
+
+  lib::gfx::allocator::deinit(
+    &data->allocator_shared,
+    core->device,
+    core->allocator
+  );
+
   vkDestroyRenderPass(
-    vulkan->core.device,
+    core->device,
     data->imgui_backend.render_pass,
-    vulkan->core.allocator
+    core->allocator
   );
   for (auto framebuffer : data->imgui_backend.framebuffers) {
     vkDestroyFramebuffer(
-      vulkan->core.device,
+      core->device,
       framebuffer,
-      vulkan->core.allocator
+      core->allocator
     );
   }
   ImGui_ImplVulkan_Shutdown();
   for (auto &pool2 : data->command_pools) {
     for (auto pool : pool2.pools) {
       vkDestroyCommandPool(
-        vulkan->core.device,
+        core->device,
         pool,
-        vulkan->core.allocator
+        core->allocator
       );
     }
   }
   for (auto &pool : data->descriptor_pools) {
     vkDestroyDescriptorPool(
-      vulkan->core.device,
+      core->device,
       pool.pool,
-      vulkan->core.allocator
+      core->allocator
     );
   }
   for (size_t i = 0; i < data->swapchain_description.image_count; i++) {
     vkDestroySemaphore(
-      vulkan->core.device,
+      core->device,
       data->presentation.image_acquired[i],
-      vulkan->core.allocator
+      core->allocator
     );
     vkDestroySemaphore(
-      vulkan->core.device,
+      core->device,
       data->presentation.image_rendered[i],
-      vulkan->core.allocator
+      core->allocator
     );
   }
   for (auto image_view : data->final_image.views) {
     vkDestroyImageView(
-      vulkan->core.device,
+      core->device,
       image_view,
-      vulkan->core.allocator
+      core->allocator
     );
   }
   vkDestroySemaphore(
-    vulkan->core.device,
+    core->device,
     data->graphics_finished_semaphore,
-    vulkan->core.allocator
+    core->allocator
   );
   vkDestroySemaphore(
-    vulkan->core.device,
+    core->device,
     data->imgui_finished_semaphore,
-    vulkan->core.allocator
+    core->allocator
   );
   vkDestroySemaphore(
-    vulkan->core.device,
+    core->device,
     data->frame_finished_semaphore,
-    vulkan->core.allocator
+    core->allocator
   );
   vkDestroySwapchainKHR(
-    vulkan->core.device,
+    core->device,
     data->presentation.swapchain,
-    vulkan->core.allocator
+    core->allocator
   );
   delete data.ptr;
   ctx->changed_parents = {

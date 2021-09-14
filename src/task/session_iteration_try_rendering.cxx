@@ -1,5 +1,6 @@
 #include <backends/imgui_impl_vulkan.h>
 #include <src/embedded.hxx>
+#include <src/engine/constants.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/display/cleanup.hxx>
 #include <src/engine/rendering/common.hxx>
@@ -8,6 +9,7 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/rendering/intra/probe_light_map.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include "defer.hxx"
@@ -38,7 +40,7 @@ TASK_DECL {
     return;
   }
   
-  auto rendering = new engine::display::Data;
+  auto rendering = new engine::display::Data {};
   // how many images are in swapchain?
   uint32_t swapchain_image_count;
 
@@ -237,6 +239,31 @@ TASK_DECL {
     );
     assert(result == VK_SUCCESS);
   }
+
+  auto core = &session->vulkan.core;
+
+  lib::gfx::allocator::init(
+    &rendering->allocator_dedicated,
+    &core->properties.memory,
+    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+    0, // always a new region
+    "display.allocator_dedicated"
+  );
+
+  lib::gfx::allocator::init(
+    &rendering->allocator_shared,
+    &core->properties.memory,
+    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+    engine::ALLOCATOR_GPU_LOCAL_REGION_SIZE,
+    "display.allocator_shared"
+  );
+
+  engine::rendering::intra::probe_light_map::init_ddata(
+    &rendering->probe_light_map,
+    &rendering->swapchain_description,
+    &rendering->allocator_dedicated,
+    core
+  );
 
   engine::display::Data::Common::Stakes common_stakes;
   engine::display::Data::GPass::Stakes gpass_stakes;
@@ -653,6 +680,7 @@ TASK_DECL {
     &session->vulkan.core,
     &rendering->common,
     &rendering->lbuffer,
+    &rendering->probe_light_map,
     &rendering->swapchain_description
   );
 

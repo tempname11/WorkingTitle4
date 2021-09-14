@@ -9,8 +9,9 @@ void init_rdata(
   RData *out,
   SData *sdata,
   Use<SessionData::Vulkan::Core> core,
-  Own<engine::display::Data::Common> common,
-  Use<engine::display::Data::LBuffer> lbuffer,
+  Own<display::Data::Common> common,
+  Use<display::Data::LBuffer> lbuffer,
+  Use<intra::probe_light_map::DData> probe_light_map,
   Use<engine::display::Data::SwapchainDescription> swapchain_description
 ) {
   ZoneScoped;
@@ -40,9 +41,21 @@ void init_rdata(
       assert(result == VK_SUCCESS);
     }
 
-    /*
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
+      VkDescriptorImageInfo probe_light_map_image_info = {
+        .sampler = sdata->sampler_probe_light_map,
+        .imageView = probe_light_map->views[i],
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
       VkWriteDescriptorSet writes[] = {
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets_frame[i],
+          .dstBinding = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .pImageInfo = &probe_light_map_image_info,
+        }
       };
       vkUpdateDescriptorSets(
         core->device,
@@ -50,7 +63,6 @@ void init_rdata(
         0, nullptr
       );
     }
-    */
   }
 
   std::vector<VkFramebuffer> framebuffers;

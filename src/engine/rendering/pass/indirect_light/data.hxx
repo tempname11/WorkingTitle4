@@ -9,8 +9,10 @@ struct SData {
   VkPipelineLayout pipeline_layout;
   VkRenderPass render_pass;
   VkPipeline pipeline;
+  VkSampler sampler_probe_light_map;
 };
 
+// should now named be `DData` (after `display`)?
 struct RData {
   std::vector<VkFramebuffer> framebuffers;
   std::vector<VkDescriptorSet> descriptor_sets_frame;

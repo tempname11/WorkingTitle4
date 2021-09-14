@@ -18,15 +18,11 @@
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/engine/loading/group.hxx>
+#include <src/engine/constants.hxx>
 #include <src/engine/misc.hxx>
 #include "cleanup.hxx"
 
 namespace engine::session {
-
-// @Incomplete: we may need to calculate this depending on
-// the available GPU memory, the number of memory types we need,
-// and the `maxMemoryAllocationCount` limit.
-const size_t ALLOCATOR_GPU_LOCAL_REGION_SIZE = 1024 * 1024 * 32;
 
 VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_callback(
   VkDebugUtilsMessageSeverityFlagBitsEXT severity,
@@ -737,7 +733,7 @@ void setup(
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 2760);
+    static_assert(size == 2768);
   }
   #endif
 

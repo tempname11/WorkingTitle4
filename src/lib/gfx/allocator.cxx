@@ -8,7 +8,7 @@ namespace lib::gfx::allocator {
 const float MIN_SIZE_DEDICATED_FRACTION = 0.25;
 
 void init(
-  Allocator *it,
+  Allocator *out,
   VkPhysicalDeviceMemoryProperties *properties,
   VkMemoryPropertyFlagBits memory_property_flags,
   size_t size_region,
@@ -25,11 +25,12 @@ void init(
   }
   assert(memory_type_index != (uint32_t) -1);
 
-  it->memory_type_index = memory_type_index;
-  it->memory_property_flags = memory_property_flags;
-  it->size_region = size_region;
-  it->min_size_dedicated = size_region * MIN_SIZE_DEDICATED_FRACTION;
-  it->debug_name = debug_name;
+  // @Note: we'd like to do `*out = {...}` here, but the mutex won't let us :(
+  out->memory_type_index = memory_type_index;
+  out->memory_property_flags = memory_property_flags;
+  out->size_region = size_region;
+  out->min_size_dedicated = size_region * MIN_SIZE_DEDICATED_FRACTION;
+  out->debug_name = debug_name;
 }
 
 void deinit(
