@@ -335,8 +335,8 @@ void init_session_lpass(
     VkPipelineColorBlendAttachmentState color_blend_attachments[] = {
       {
         .blendEnable = VK_TRUE,
-        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_COLOR,
-        .dstColorBlendFactor = VK_BLEND_FACTOR_DST_COLOR,
+        .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
+        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE,
         .colorBlendOp = VK_BLEND_OP_ADD,
         .colorWriteMask = (0
           | VK_COLOR_COMPONENT_R_BIT
