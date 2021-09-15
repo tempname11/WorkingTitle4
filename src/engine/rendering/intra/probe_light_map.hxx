@@ -19,7 +19,13 @@ void deinit_ddata(
   Use<SessionData::Vulkan::Core> core
 );
 
-void record_transition_from_probe_pass_to_indirect_light_pass(
+void transition_probe_maps_update_into_indirect_light(
+  Use<DData> it,
+  Use<engine::display::Data::FrameInfo> frame_info,
+  VkCommandBuffer cmd
+);
+
+void transition_into_probe_maps_update(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd

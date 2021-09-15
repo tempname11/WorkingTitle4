@@ -32,6 +32,8 @@
 - `multi_alloc` (in favor of `allocator`)
 
 ### good to have
+- debug pass (copy intermediate data to swapchain)
+- separate reference raytracing pass?
 - BLAS compaction
 - async tools, with an in-progress task GUI view.
 - all paths should be relative to *whatever is referencing them*

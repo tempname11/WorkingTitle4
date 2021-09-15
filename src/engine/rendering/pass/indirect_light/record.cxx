@@ -8,7 +8,7 @@ namespace engine::rendering::pass::indirect_light {
 
 void record(
   VkCommandBuffer cmd,
-  Own<RData> rdata,
+  Own<DData> ddata,
   Use<SData> sdata,
   Use<engine::display::Data::FrameInfo> frame_info,
   Use<engine::display::Data::SwapchainDescription> swapchain_description,
@@ -19,7 +19,7 @@ void record(
   VkRenderPassBeginInfo render_pass_info = {
     .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
     .renderPass = sdata->render_pass,
-    .framebuffer = rdata->framebuffers[frame_info->inflight_index],
+    .framebuffer = ddata->framebuffers[frame_info->inflight_index],
     .renderArea = {
       .offset = {0, 0},
       .extent = swapchain_description->image_extent,
@@ -44,7 +44,7 @@ void record(
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
     sdata->pipeline_layout,
-    0, 1, &rdata->descriptor_sets_frame[frame_info->inflight_index],
+    0, 1, &ddata->descriptor_sets_frame[frame_info->inflight_index],
     0, nullptr
   );
   VkDeviceSize offset = 0;

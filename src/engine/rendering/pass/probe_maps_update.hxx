@@ -1,10 +1,9 @@
 #pragma once
 #include <vulkan/vulkan.h>
-#include <src/global.hxx>
 #include <src/engine/session.hxx>
 #include <src/engine/display/data.hxx>
 
-namespace engine::rendering::pass::indirect_light {
+namespace engine::rendering::pass::probe_maps_update {
 
 struct SData;
 struct DData;
@@ -21,12 +20,11 @@ void deinit_sdata(
 
 void init_ddata(
   DData *out,
-  SData *sdata,
-  Use<SessionData::Vulkan::Core> core,
+  Use<SData> sdata,
   Own<engine::display::Data::Common> common,
-  Use<engine::display::Data::LBuffer> lbuffer,
   Use<intra::probe_light_map::DData> probe_light_map,
-  Use<engine::display::Data::SwapchainDescription> swapchain_description
+  Use<engine::display::Data::SwapchainDescription> swapchain_description,
+  Use<SessionData::Vulkan::Core> core
 );
 
 void deinit_ddata(
@@ -35,12 +33,10 @@ void deinit_ddata(
 );
 
 void record(
-  VkCommandBuffer cmd,
-  Own<DData> ddata,
+  Use<DData> ddata,
   Use<SData> sdata,
   Use<engine::display::Data::FrameInfo> frame_info,
-  Use<engine::display::Data::SwapchainDescription> swapchain_description,
-  Use<SessionData::Vulkan::FullscreenQuad> fullscreen_quad
+  VkCommandBuffer cmd
 );
 
 } // namespace

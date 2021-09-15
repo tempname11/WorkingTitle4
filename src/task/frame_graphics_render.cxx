@@ -1,5 +1,6 @@
 #include <src/task/defer.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
+#include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
 #include "frame_graphics_render.hxx"
@@ -1198,7 +1199,22 @@ TASK_DECL {
     );
   }
 
-  engine::rendering::intra::probe_light_map::record_transition_from_probe_pass_to_indirect_light_pass(
+  engine::rendering::intra::probe_light_map::transition_into_probe_maps_update(
+    probe_light_map,
+    frame_info,
+    cmd
+  );
+
+  { TracyVkZone(core->tracy_context, cmd, "probe_maps_update");
+    engine::rendering::pass::probe_maps_update::record(
+      probe_maps_update_ddata,
+      probe_maps_update_sdata,
+      frame_info,
+      cmd
+    );
+  }
+
+  engine::rendering::intra::probe_light_map::transition_probe_maps_update_into_indirect_light(
     probe_light_map,
     frame_info,
     cmd
@@ -1207,7 +1223,7 @@ TASK_DECL {
   { TracyVkZone(core->tracy_context, cmd, "indirect_light");
     engine::rendering::pass::indirect_light::record(
       cmd,
-      indirect_light_rdata,
+      indirect_light_ddata,
       indirect_light_sdata,
       frame_info,
       swapchain_description,

@@ -1,14 +1,22 @@
 # milestone: pretty picture
-  - ddgi
-    - raytracing pass, writing probes into GB2
-    - [inflight_count] "secondary GBuffer" (GB2)
-    - direct light passes: GB2 -> LB2
+  - ddgi later
+    - hysteresis: previous probe maps -> new probe maps
     - indirect light pass: GB2 -> LB2
-    - [inflight_count] "secondary LBuffer" (LB2)
-    - compute probe pass: LB2, previous probe maps -> new probe maps
-       - fix probe_light_map barrier (see @Incomplete in record_transition.cxx)
 
-    - [inflight_count] probe light map
-      - use in shader
-      - data layout
-      - vulkan layout change
+  - ddgi next
+    - probe_light_map
+      - read
+	  - write
+      - figure out if rgba16 shader format works at all
+
+    - raytracing pass, writing probes into GB2
+    - "secondary GBuffer" (GB2)
+    - direct light passes: GB2 -> LB2
+
+  - ddgi current
+    - "secondary LBuffer" (LB2)
+      - fake transition from light pass (terminology?)
+      - declare in probe_maps_update shader
+      - bind to probe_maps_update
+      - images
+      - views

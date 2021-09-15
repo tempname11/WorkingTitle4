@@ -16,6 +16,7 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/engine/loading/group.hxx>
 #include <src/engine/constants.hxx>
@@ -436,6 +437,11 @@ void init_vulkan(
     &it->core
   );
 
+  rendering::pass::probe_maps_update::init_sdata(
+    &it->pass_probe_maps_update,
+    &it->core
+  );
+
   rendering::pass::indirect_light::init_sdata(
     &it->pass_indirect_light,
     &it->core
@@ -733,7 +739,7 @@ void setup(
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 2768);
+    static_assert(size == 2792);
   }
   #endif
 

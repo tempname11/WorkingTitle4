@@ -10,6 +10,7 @@
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
+#include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include "defer.hxx"
@@ -674,7 +675,16 @@ TASK_DECL {
     &session->vulkan.core
   );
 
-  engine::rendering::pass::indirect_light::init_rdata(
+  engine::rendering::pass::probe_maps_update::init_ddata(
+    &rendering->pass_probe_maps_update,
+    &session->vulkan.pass_probe_maps_update,
+    &rendering->common,
+    &rendering->probe_light_map,
+    &rendering->swapchain_description,
+    &session->vulkan.core
+  );
+
+  engine::rendering::pass::indirect_light::init_ddata(
     &rendering->pass_indirect_light,
     &session->vulkan.pass_indirect_light,
     &session->vulkan.core,

@@ -12,8 +12,7 @@ struct SData {
   VkSampler sampler_probe_light_map;
 };
 
-// should now named be `DData` (after `display`)?
-struct RData {
+struct DData {
   std::vector<VkFramebuffer> framebuffers;
   std::vector<VkDescriptorSet> descriptor_sets_frame;
 };

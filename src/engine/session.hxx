@@ -28,6 +28,7 @@
 #include <src/engine/uploader.data.hxx>
 #include <src/engine/blas_storage/data.hxx>
 #include <src/engine/blas_storage/id.hxx>
+#include <src/engine/rendering/pass/probe_maps_update/data.hxx>
 #include <src/engine/rendering/pass/indirect_light/data.hxx>
 
 struct MetaTexturesKey {
@@ -223,6 +224,7 @@ struct SessionData : lib::task::ParentResource {
       VkPipeline pipeline_sun;
     } lpass;
 
+    engine::rendering::pass::probe_maps_update::SData pass_probe_maps_update;
     engine::rendering::pass::indirect_light::SData pass_indirect_light;
 
     struct Finalpass {

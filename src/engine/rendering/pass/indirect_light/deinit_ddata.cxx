@@ -4,8 +4,8 @@
 
 namespace engine::rendering::pass::indirect_light {
 
-void deinit_rdata(
-  RData *it,
+void deinit_ddata(
+  DData *it,
   Use<SessionData::Vulkan::Core> core
 ) {
   ZoneScoped;

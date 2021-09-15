@@ -6,6 +6,7 @@
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
+#include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <backends/imgui_impl_vulkan.h>
 #include "cleanup.hxx"
@@ -78,7 +79,12 @@ void cleanup(
     core
   );
 
-  rendering::pass::indirect_light::deinit_rdata(
+  rendering::pass::probe_maps_update::deinit_ddata(
+    &data->pass_probe_maps_update,
+    core
+  );
+
+  rendering::pass::indirect_light::deinit_ddata(
     &data->pass_indirect_light,
     core
   );

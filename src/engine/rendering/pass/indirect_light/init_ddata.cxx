@@ -5,8 +5,8 @@
 
 namespace engine::rendering::pass::indirect_light {
 
-void init_rdata(
-  RData *out,
+void init_ddata(
+  DData *out,
   SData *sdata,
   Use<SessionData::Vulkan::Core> core,
   Own<display::Data::Common> common,

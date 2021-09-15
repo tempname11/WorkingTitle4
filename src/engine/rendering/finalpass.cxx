@@ -166,13 +166,13 @@ void init_rendering_finalpass(
   for (auto &layout : layouts) {
     layout = s_finalpass->descriptor_set_layout;
   }
-  VkDescriptorSetAllocateInfo allocate_info = {
-    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-    .descriptorPool = common->descriptor_pool,
-    .descriptorSetCount = swapchain_description->image_count,
-    .pSetLayouts = layouts.data(),
-  };
   {
+    VkDescriptorSetAllocateInfo allocate_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool = common->descriptor_pool,
+      .descriptorSetCount = swapchain_description->image_count,
+      .pSetLayouts = layouts.data(),
+    };
     auto result = vkAllocateDescriptorSets(
       core->device,
       &allocate_info,

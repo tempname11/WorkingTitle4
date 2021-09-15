@@ -9,20 +9,20 @@
 
 namespace engine::rendering::intra::probe_light_map {
 
-void record_transition_from_probe_pass_to_indirect_light_pass(
+void transition_into_probe_maps_update(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd
 ) {
   ZoneScoped;
-  // @Note: should probably import usage patterns from respective pass files as constants.
+
   VkImageMemoryBarrier barriers[] = {
     {
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-      .srcAccessMask = 0, // @Incomplete
-      .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-      .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, // @Incomplete
-      .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      .srcAccessMask = 0,
+      .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+      .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .newLayout = VK_IMAGE_LAYOUT_GENERAL,
       .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .image = it->images[frame_info->inflight_index].image,
@@ -37,8 +37,8 @@ void record_transition_from_probe_pass_to_indirect_light_pass(
   };
   vkCmdPipelineBarrier(
     cmd,
-    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, // @Incomplete
-    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
     0,
     0, nullptr,
     0, nullptr,

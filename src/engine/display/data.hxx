@@ -7,6 +7,7 @@
 #include <src/lib/gfx/command_pool_2.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
 #include <src/engine/rendering/intra/probe_light_map/data.hxx>
+#include <src/engine/rendering/pass/probe_maps_update/data.hxx>
 #include <src/engine/rendering/pass/indirect_light/data.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
 
@@ -121,7 +122,8 @@ struct Data : lib::task::ParentResource {
     std::vector<VkFramebuffer> framebuffers;
   } lpass;
 
-  engine::rendering::pass::indirect_light::RData pass_indirect_light;
+  engine::rendering::pass::probe_maps_update::DData pass_probe_maps_update;
+  engine::rendering::pass::indirect_light::DData pass_indirect_light;
 
   struct Finalpass {
     std::vector<VkDescriptorSet> descriptor_sets;
