@@ -23,6 +23,7 @@
   Use<engine::display::Data::ZBuffer> zbuffer, \
   Use<engine::display::Data::GBuffer> gbuffer, \
   Use<engine::display::Data::LBuffer> lbuffer, \
+  Use<engine::rendering::intra::secondary_lbuffer::DData> secondary_lbuffer, \
   Use<engine::rendering::intra::probe_light_map::DData> probe_light_map, \
   Use<engine::display::Data::FinalImage> final_image, \
   Use<SessionData::Vulkan::Prepass> s_prepass, \

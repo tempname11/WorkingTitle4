@@ -10,6 +10,7 @@ void init_ddata(
   DData *out,
   Use<SData> sdata,
   Own<display::Data::Common> common,
+  Use<intra::secondary_lbuffer::DData> secondary_lbuffer,
   Use<intra::probe_light_map::DData> probe_light_map,
   Use<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<SessionData::Vulkan::Core> core
@@ -38,6 +39,11 @@ void init_ddata(
   }
 
   for (size_t i = 0; i < swapchain_description->image_count; i++) {
+    VkDescriptorImageInfo secondary_lbuffer_info = {
+      .sampler = sdata->sampler_lbuffer,
+      .imageView = secondary_lbuffer->views[i],
+      .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
     VkDescriptorImageInfo probe_light_map_info = {
       .imageView = probe_light_map->views[i],
       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
@@ -51,6 +57,15 @@ void init_ddata(
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         .pImageInfo = &probe_light_map_info,
+      },
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_sets[i],
+        .dstBinding = 1,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .pImageInfo = &secondary_lbuffer_info,
       },
     };
     vkUpdateDescriptorSets(

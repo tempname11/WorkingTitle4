@@ -5,6 +5,7 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/rendering/intra/secondary_lbuffer.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
 #include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
@@ -98,6 +99,11 @@ void cleanup(
     &data->multi_alloc,
     core->device,
     core->allocator
+  );
+
+  rendering::intra::secondary_lbuffer::deinit_ddata(
+    &data->secondary_lbuffer,
+    core
   );
 
   rendering::intra::probe_light_map::deinit_ddata(

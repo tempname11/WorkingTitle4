@@ -4,7 +4,6 @@
 #include <src/engine/display/data.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
 #include <src/engine/session.hxx>
-#include "constants.hxx"
 #include "data.hxx"
 
 namespace engine::rendering::intra::probe_light_map {

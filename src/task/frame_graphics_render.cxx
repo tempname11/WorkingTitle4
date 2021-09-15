@@ -2,6 +2,7 @@
 #include <src/engine/common/shared_descriptor_pool.hxx>
 #include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
+#include <src/engine/rendering/intra/secondary_lbuffer.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
 #include "frame_graphics_render.hxx"
 
@@ -1198,6 +1199,12 @@ TASK_DECL {
       tlas_result->accel
     );
   }
+
+  engine::rendering::intra::secondary_lbuffer::transition_all_secondary_light_into_probe_maps_update(
+    secondary_lbuffer,
+    frame_info,
+    cmd
+  );
 
   engine::rendering::intra::probe_light_map::transition_into_probe_maps_update(
     probe_light_map,

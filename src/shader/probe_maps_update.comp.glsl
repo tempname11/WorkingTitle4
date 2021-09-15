@@ -1,5 +1,6 @@
 #version 460
 layout(binding = 0, rgba16) uniform image2D probe_light_map; // format??
+layout(binding = 1) uniform sampler2D lbuffer2_image;
 
 void main() {
   /*

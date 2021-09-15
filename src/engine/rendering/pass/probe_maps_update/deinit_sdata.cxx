@@ -25,6 +25,11 @@ void deinit_sdata(
     it->pipeline,
     core->allocator
   );
+  vkDestroySampler(
+    core->device,
+    it->sampler_lbuffer,
+    core->allocator
+  );
 }
 
 } // namespace

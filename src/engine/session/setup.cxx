@@ -739,7 +739,7 @@ void setup(
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 2792);
+    static_assert(size == 2800);
   }
   #endif
 

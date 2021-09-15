@@ -22,6 +22,7 @@ void init_ddata(
   DData *out,
   Use<SData> sdata,
   Own<engine::display::Data::Common> common,
+  Use<intra::secondary_lbuffer::DData> secondary_lbuffer,
   Use<intra::probe_light_map::DData> probe_light_map,
   Use<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<SessionData::Vulkan::Core> core

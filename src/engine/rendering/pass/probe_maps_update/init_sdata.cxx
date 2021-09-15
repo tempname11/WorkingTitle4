@@ -19,7 +19,13 @@ void init_sdata(
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL,
-      }
+      },
+      {
+        .binding = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
     };
     VkDescriptorSetLayoutCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -100,10 +106,24 @@ void init_sdata(
     );
   }
 
+  VkSampler sampler_lbuffer;
+  { ZoneScopedN("sampler_lbuffer");
+    VkSamplerCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+    };
+    vkCreateSampler(
+      core->device,
+      &create_info,
+      core->allocator,
+      &sampler_lbuffer
+    );
+  }
+
   *out = {
     .descriptor_set_layout = descriptor_set_layout,
     .pipeline_layout = pipeline_layout,
     .pipeline = pipeline,
+    .sampler_lbuffer = sampler_lbuffer,
   };
 }
 
