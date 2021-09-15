@@ -6,6 +6,7 @@
 #include <src/lib/task.hxx>
 #include <src/lib/gfx/command_pool_2.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
+#include <src/engine/rendering/intra/secondary_gbuffer/data.hxx>
 #include <src/engine/rendering/intra/secondary_lbuffer/data.hxx>
 #include <src/engine/rendering/intra/probe_light_map/data.hxx>
 #include <src/engine/rendering/pass/probe_maps_update/data.hxx>
@@ -87,6 +88,7 @@ struct Data : lib::task::ParentResource {
     std::vector<VkImageView> views;
   } lbuffer;
 
+  rendering::intra::secondary_gbuffer::DData secondary_gbuffer;
   rendering::intra::secondary_lbuffer::DData secondary_lbuffer;
   rendering::intra::probe_light_map::DData probe_light_map;
 

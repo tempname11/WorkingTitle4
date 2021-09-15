@@ -9,6 +9,7 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/rendering/intra/secondary_gbuffer.hxx>
 #include <src/engine/rendering/intra/secondary_lbuffer.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
 #include <src/engine/rendering/pass/probe_maps_update.hxx>
@@ -258,6 +259,13 @@ TASK_DECL {
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     engine::ALLOCATOR_GPU_LOCAL_REGION_SIZE,
     "display.allocator_shared"
+  );
+
+  engine::rendering::intra::secondary_gbuffer::init_ddata(
+    &rendering->secondary_gbuffer,
+    &rendering->swapchain_description,
+    &rendering->allocator_dedicated,
+    core
   );
 
   engine::rendering::intra::secondary_lbuffer::init_ddata(
