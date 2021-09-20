@@ -1,5 +1,6 @@
 #include <src/task/defer.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
+#include <src/engine/rendering/pass/secondary_geometry.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
 #include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
@@ -1215,7 +1216,14 @@ TASK_DECL {
     cmd
   );
 
-  // @Incomplete: G2 pass here
+  { TracyVkZone(core->tracy_context, cmd, "secondary_geometry");
+    engine::rendering::pass::secondary_geometry::record(
+      secondary_geometry_ddata,
+      secondary_geometry_sdata,
+      frame_info,
+      cmd
+    );
+  }
 
   engine::rendering::intra::secondary_zbuffer::transition_g2_to_l2(
     zbuffer2,

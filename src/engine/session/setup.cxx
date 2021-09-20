@@ -16,6 +16,7 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/rendering/pass/secondary_geometry.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
 #include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
@@ -438,6 +439,11 @@ void init_vulkan(
     &it->core
   );
 
+  rendering::pass::secondary_geometry::init_sdata(
+    &it->pass_secondary_geometry,
+    &it->core
+  );
+
   rendering::pass::directional_light_secondary::init_sdata(
     &it->pass_directional_light_secondary,
     &it->core
@@ -745,7 +751,7 @@ void setup(
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 2832);
+    static_assert(size == 2856);
   }
   #endif
 

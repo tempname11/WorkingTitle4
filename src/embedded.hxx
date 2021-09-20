@@ -1,5 +1,8 @@
 #pragma once
 
+extern "C" const char embedded_secondary_geometry_comp[];
+extern "C" const size_t embedded_secondary_geometry_comp_len;
+
 extern "C" const char embedded_directional_light_secondary_frag[];
 extern "C" const size_t embedded_directional_light_secondary_frag_len;
 

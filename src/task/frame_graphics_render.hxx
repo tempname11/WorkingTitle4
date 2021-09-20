@@ -17,6 +17,7 @@
   Own<engine::display::Data::Prepass> prepass, \
   Own<engine::display::Data::GPass> gpass, \
   Own<engine::display::Data::LPass> lpass, \
+  Own<engine::rendering::pass::secondary_geometry::DData> secondary_geometry_ddata, \
   Own<engine::rendering::pass::directional_light_secondary::DData> directional_light_secondary_ddata, \
   Own<engine::rendering::pass::probe_maps_update::DData> probe_maps_update_ddata, \
   Own<engine::rendering::pass::indirect_light::DData> indirect_light_ddata, \
@@ -32,6 +33,7 @@
   Use<SessionData::Vulkan::Prepass> s_prepass, \
   Use<SessionData::Vulkan::GPass> s_gpass, \
   Use<SessionData::Vulkan::LPass> s_lpass, \
+  Own<engine::rendering::pass::secondary_geometry::SData> secondary_geometry_sdata, \
   Use<engine::rendering::pass::directional_light_secondary::SData> directional_light_secondary_sdata, \
   Use<engine::rendering::pass::probe_maps_update::SData> probe_maps_update_sdata, \
   Use<engine::rendering::pass::indirect_light::SData> indirect_light_sdata, \

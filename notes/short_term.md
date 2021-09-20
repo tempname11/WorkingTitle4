@@ -10,6 +10,10 @@
 	  - write
       - figure out if rgba16 shader format works at all
 
-    --- all boilerplate done
+    - pmu...
+    - l2...
 
-    - raytracing pass (compute or rt pipeline?), writing probes into GB2
+    - g2...
+      - write g0, g1, g2, z
+      - figure out the coord to write to
+      - dispatch correct amount of workgroups
