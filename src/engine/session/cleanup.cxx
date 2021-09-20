@@ -6,6 +6,7 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/rendering/pass/directional_light_secondary.hxx>
 #include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include "cleanup.hxx"
@@ -36,6 +37,11 @@ void cleanup(
     deinit_session_lpass(&it->lpass, core);
 
     deinit_session_finalpass(&it->finalpass, core);
+
+    rendering::pass::directional_light_secondary::deinit_sdata(
+      &it->pass_directional_light_secondary,
+      core
+    );
 
     rendering::pass::probe_maps_update::deinit_sdata(
       &it->pass_probe_maps_update,

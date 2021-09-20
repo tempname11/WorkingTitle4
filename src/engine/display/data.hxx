@@ -6,9 +6,11 @@
 #include <src/lib/task.hxx>
 #include <src/lib/gfx/command_pool_2.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
+#include <src/engine/rendering/intra/secondary_zbuffer/data.hxx>
 #include <src/engine/rendering/intra/secondary_gbuffer/data.hxx>
 #include <src/engine/rendering/intra/secondary_lbuffer/data.hxx>
 #include <src/engine/rendering/intra/probe_light_map/data.hxx>
+#include <src/engine/rendering/pass/directional_light_secondary/data.hxx>
 #include <src/engine/rendering/pass/probe_maps_update/data.hxx>
 #include <src/engine/rendering/pass/indirect_light/data.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
@@ -88,8 +90,9 @@ struct Data : lib::task::ParentResource {
     std::vector<VkImageView> views;
   } lbuffer;
 
-  rendering::intra::secondary_gbuffer::DData secondary_gbuffer;
-  rendering::intra::secondary_lbuffer::DData secondary_lbuffer;
+  rendering::intra::secondary_zbuffer::DData zbuffer2;
+  rendering::intra::secondary_gbuffer::DData gbuffer2;
+  rendering::intra::secondary_lbuffer::DData lbuffer2;
   rendering::intra::probe_light_map::DData probe_light_map;
 
   struct FinalImage {
@@ -126,6 +129,7 @@ struct Data : lib::task::ParentResource {
     std::vector<VkFramebuffer> framebuffers;
   } lpass;
 
+  engine::rendering::pass::directional_light_secondary::DData pass_directional_light_secondary;
   engine::rendering::pass::probe_maps_update::DData pass_probe_maps_update;
   engine::rendering::pass::indirect_light::DData pass_indirect_light;
 

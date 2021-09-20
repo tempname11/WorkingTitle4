@@ -3,7 +3,7 @@
 #include <src/engine/display/data.hxx>
 #include <src/engine/session.hxx>
 
-namespace engine::rendering::intra::secondary_lbuffer {
+namespace engine::rendering::intra::secondary_zbuffer {
 
 struct DData;
 
@@ -19,13 +19,13 @@ void deinit_ddata(
   Use<SessionData::Vulkan::Core> core
 );
 
-void transition_to_l2(
+void transition_to_g2(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd
 );
 
-void transition_l2_to_probe_maps_update(
+void transition_g2_to_l2(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd

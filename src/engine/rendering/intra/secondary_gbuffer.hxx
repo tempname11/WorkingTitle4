@@ -19,4 +19,16 @@ void deinit_ddata(
   Use<SessionData::Vulkan::Core> core
 );
 
+void transition_to_g2(
+  Use<DData> it,
+  Use<engine::display::Data::FrameInfo> frame_info,
+  VkCommandBuffer cmd
+);
+
+void transition_g2_to_l2(
+  Use<DData> it,
+  Use<engine::display::Data::FrameInfo> frame_info,
+  VkCommandBuffer cmd
+);
+
 } // namespace

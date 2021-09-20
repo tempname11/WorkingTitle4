@@ -120,7 +120,11 @@ void init_session_lpass(
       {
         .format = LBUFFER_FORMAT,
         .samples = VK_SAMPLE_COUNT_1_BIT,
+
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        // @Incomplete: this relies on directional_light currently being
+        // the first thing that writes to lbuffer. Will change in the future.
+
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -198,7 +202,6 @@ void init_session_lpass(
       .pInputAttachments = input_attachment_refs,
       .colorAttachmentCount = sizeof(color_attachment_refs) / sizeof(*color_attachment_refs),
       .pColorAttachments = color_attachment_refs,
-      .pDepthStencilAttachment = nullptr,
     };
     VkRenderPassCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,

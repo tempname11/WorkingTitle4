@@ -12,5 +12,4 @@
 
     --- all boilerplate done
 
-    - raytracing pass, writing probes into GB2
-    - directional light pass: GB2 -> LB2
+    - raytracing pass (compute or rt pipeline?), writing probes into GB2

@@ -9,9 +9,11 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/rendering/intra/secondary_zbuffer.hxx>
 #include <src/engine/rendering/intra/secondary_gbuffer.hxx>
 #include <src/engine/rendering/intra/secondary_lbuffer.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
+#include <src/engine/rendering/pass/directional_light_secondary.hxx>
 #include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/lib/gfx/utilities.hxx>
@@ -261,15 +263,22 @@ TASK_DECL {
     "display.allocator_shared"
   );
 
+  engine::rendering::intra::secondary_zbuffer::init_ddata(
+    &rendering->zbuffer2,
+    &rendering->swapchain_description,
+    &rendering->allocator_dedicated,
+    core
+  );
+
   engine::rendering::intra::secondary_gbuffer::init_ddata(
-    &rendering->secondary_gbuffer,
+    &rendering->gbuffer2,
     &rendering->swapchain_description,
     &rendering->allocator_dedicated,
     core
   );
 
   engine::rendering::intra::secondary_lbuffer::init_ddata(
-    &rendering->secondary_lbuffer,
+    &rendering->lbuffer2,
     &rendering->swapchain_description,
     &rendering->allocator_dedicated,
     core
@@ -691,11 +700,22 @@ TASK_DECL {
     &session->vulkan.core
   );
 
+  engine::rendering::pass::directional_light_secondary::init_ddata(
+    &rendering->pass_directional_light_secondary,
+    &session->vulkan.pass_directional_light_secondary,
+    &rendering->common,
+    &rendering->zbuffer2,
+    &rendering->gbuffer2,
+    &rendering->lbuffer2,
+    &rendering->swapchain_description,
+    &session->vulkan.core
+  );
+
   engine::rendering::pass::probe_maps_update::init_ddata(
     &rendering->pass_probe_maps_update,
     &session->vulkan.pass_probe_maps_update,
     &rendering->common,
-    &rendering->secondary_lbuffer,
+    &rendering->lbuffer2,
     &rendering->probe_light_map,
     &rendering->swapchain_description,
     &session->vulkan.core

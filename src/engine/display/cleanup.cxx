@@ -5,9 +5,11 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/rendering/intra/secondary_zbuffer.hxx>
 #include <src/engine/rendering/intra/secondary_gbuffer.hxx>
 #include <src/engine/rendering/intra/secondary_lbuffer.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
+#include <src/engine/rendering/pass/directional_light_secondary.hxx>
 #include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <backends/imgui_impl_vulkan.h>
@@ -81,6 +83,11 @@ void cleanup(
     core
   );
 
+  rendering::pass::directional_light_secondary::deinit_ddata(
+    &data->pass_directional_light_secondary,
+    core
+  );
+
   rendering::pass::probe_maps_update::deinit_ddata(
     &data->pass_probe_maps_update,
     core
@@ -102,13 +109,18 @@ void cleanup(
     core->allocator
   );
 
+  rendering::intra::secondary_zbuffer::deinit_ddata(
+    &data->zbuffer2,
+    core
+  );
+
   rendering::intra::secondary_gbuffer::deinit_ddata(
-    &data->secondary_gbuffer,
+    &data->gbuffer2,
     core
   );
 
   rendering::intra::secondary_lbuffer::deinit_ddata(
-    &data->secondary_lbuffer,
+    &data->lbuffer2,
     core
   );
 

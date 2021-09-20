@@ -1,7 +1,10 @@
 #include <src/task/defer.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
+#include <src/engine/rendering/pass/directional_light_secondary.hxx>
 #include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
+#include <src/engine/rendering/intra/secondary_zbuffer.hxx>
+#include <src/engine/rendering/intra/secondary_gbuffer.hxx>
 #include <src/engine/rendering/intra/secondary_lbuffer.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
 #include "frame_graphics_render.hxx"
@@ -1200,8 +1203,51 @@ TASK_DECL {
     );
   }
 
-  engine::rendering::intra::secondary_lbuffer::transition_all_secondary_light_into_probe_maps_update(
-    secondary_lbuffer,
+  engine::rendering::intra::secondary_zbuffer::transition_to_g2(
+    zbuffer2,
+    frame_info,
+    cmd
+  );
+
+  engine::rendering::intra::secondary_gbuffer::transition_to_g2(
+    gbuffer2,
+    frame_info,
+    cmd
+  );
+
+  // @Incomplete: G2 pass here
+
+  engine::rendering::intra::secondary_zbuffer::transition_g2_to_l2(
+    zbuffer2,
+    frame_info,
+    cmd
+  );
+
+  engine::rendering::intra::secondary_gbuffer::transition_g2_to_l2(
+    gbuffer2,
+    frame_info,
+    cmd
+  );
+
+  engine::rendering::intra::secondary_lbuffer::transition_to_l2(
+    lbuffer2,
+    frame_info,
+    cmd
+  );
+
+  { TracyVkZone(core->tracy_context, cmd, "directional_light_secondary");
+    engine::rendering::pass::directional_light_secondary::record(
+      directional_light_secondary_ddata,
+      directional_light_secondary_sdata,
+      frame_info,
+      swapchain_description,
+      fullscreen_quad,
+      cmd
+    );
+  }
+
+  engine::rendering::intra::secondary_lbuffer::transition_l2_to_probe_maps_update(
+    lbuffer2,
     frame_info,
     cmd
   );
