@@ -1221,6 +1221,8 @@ TASK_DECL {
       secondary_geometry_ddata,
       secondary_geometry_sdata,
       frame_info,
+      core,
+      tlas_result->accel,
       cmd
     );
   }

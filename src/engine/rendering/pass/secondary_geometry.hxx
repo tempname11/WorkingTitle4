@@ -37,6 +37,8 @@ void record(
   Use<DData> ddata,
   Use<SData> sdata,
   Use<engine::display::Data::FrameInfo> frame_info,
+  Use<SessionData::Vulkan::Core> core,
+  VkAccelerationStructureKHR accel,
   VkCommandBuffer cmd
 );
 

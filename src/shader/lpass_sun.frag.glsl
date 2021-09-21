@@ -96,7 +96,7 @@ void main() {
     -directional_light.direction,
     1000.0 // @Temporary: ray_t_max
   );
-  bool incomplete = rayQueryProceedEXT(ray_query);
+  bool _incomplete = rayQueryProceedEXT(ray_query);
   float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);
 
   if (t_intersection > 0.0) {

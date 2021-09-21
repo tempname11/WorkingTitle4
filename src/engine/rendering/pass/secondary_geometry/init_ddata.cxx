@@ -51,6 +51,10 @@ void init_ddata(
       .imageView = gbuffer2->channel2_views[i],
       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
     };
+    VkDescriptorImageInfo zbuffer_info = {
+      .imageView = zbuffer2->views[i],
+      .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
     VkWriteDescriptorSet writes[] = {
       {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -78,6 +82,15 @@ void init_ddata(
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         .pImageInfo = &gbuffer_channel2_info,
+      },
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_sets[i],
+        .dstBinding = 3,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .pImageInfo = &zbuffer_info,
       },
     };
     vkUpdateDescriptorSets(
