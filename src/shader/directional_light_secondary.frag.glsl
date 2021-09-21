@@ -12,5 +12,5 @@ layout(input_attachment_index = 3, binding = 3) uniform subpassInput zchannel;
 
 void main() {
   // @Incomplete
-  result = vec3(0.0);
+  result = subpassLoad(gchannel0).rgb;
 }

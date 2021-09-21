@@ -42,25 +42,60 @@ void init_ddata(
       assert(result == VK_SUCCESS);
     }
 
-    /*
-
-    @Incomplete: there will be a uniform buffer write here most probably.
-
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
-      VkDescriptorImageInfo probe_light_map_image_info = {
-        .sampler = sdata->sampler_probe_light_map,
-        .imageView = probe_light_map->views[i],
+      VkDescriptorImageInfo gbuffer_channel0_info = {
+        .imageView = gbuffer2->channel0_views[i],
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorImageInfo gbuffer_channel1_info = {
+        .imageView = gbuffer2->channel1_views[i],
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorImageInfo gbuffer_channel2_info = {
+        .imageView = gbuffer2->channel2_views[i],
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorImageInfo zbuffer_info = {
+        .imageView = zbuffer2->views[i],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
       VkWriteDescriptorSet writes[] = {
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-          .dstSet = descriptor_sets_frame[i],
+          .dstSet = descriptor_sets[i],
           .dstBinding = 0,
+          .dstArrayElement = 0,
           .descriptorCount = 1,
-          .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-          .pImageInfo = &probe_light_map_image_info,
-        }
+          .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .pImageInfo = &gbuffer_channel0_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets[i],
+          .dstBinding = 1,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .pImageInfo = &gbuffer_channel1_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets[i],
+          .dstBinding = 2,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .pImageInfo = &gbuffer_channel2_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets[i],
+          .dstBinding = 3,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .pImageInfo = &zbuffer_info,
+        },
       };
       vkUpdateDescriptorSets(
         core->device,
@@ -68,7 +103,6 @@ void init_ddata(
         0, nullptr
       );
     }
-    */
   }
 
   std::vector<VkFramebuffer> framebuffers;

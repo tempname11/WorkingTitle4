@@ -4,7 +4,7 @@
 namespace engine::rendering::intra::probe_light_map {
 
 // @Note: if we use this format, need to check device compatibility.
-const VkFormat FORMAT = VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+const VkFormat FORMAT = VK_FORMAT_B10G11R11_UFLOAT_PACK32; // also used in compute shader
 const uint32_t WIDTH = 2048;
 const uint32_t HEIGHT = 2048;
 

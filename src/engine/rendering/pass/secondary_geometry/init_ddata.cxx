@@ -38,9 +38,47 @@ void init_ddata(
     assert(result == VK_SUCCESS);
   }
 
-  /* not used yet
   for (size_t i = 0; i < swapchain_description->image_count; i++) {
+    VkDescriptorImageInfo gbuffer_channel0_info = {
+      .imageView = gbuffer2->channel0_views[i],
+      .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
+    VkDescriptorImageInfo gbuffer_channel1_info = {
+      .imageView = gbuffer2->channel1_views[i],
+      .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
+    VkDescriptorImageInfo gbuffer_channel2_info = {
+      .imageView = gbuffer2->channel2_views[i],
+      .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
     VkWriteDescriptorSet writes[] = {
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_sets[i],
+        .dstBinding = 0,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .pImageInfo = &gbuffer_channel0_info,
+      },
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_sets[i],
+        .dstBinding = 1,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .pImageInfo = &gbuffer_channel1_info,
+      },
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_sets[i],
+        .dstBinding = 2,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .pImageInfo = &gbuffer_channel2_info,
+      },
     };
     vkUpdateDescriptorSets(
       core->device,
@@ -48,7 +86,6 @@ void init_ddata(
       0, nullptr
     );
   }
-  */
 
   *out = {
     .descriptor_sets = std::move(descriptor_sets),
