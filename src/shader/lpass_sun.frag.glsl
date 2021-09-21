@@ -73,6 +73,7 @@ void main() {
   vec3 V = -normalize(target_view_long.xyz);
   vec3 L = -(frame.view * vec4(directional_light.direction, 0.0)).xyz;
 
+  /* @Temporary
   if (depth == 1.0) {
     if (frame.flags.show_sky) {
       result = sky(target_world, -directional_light.direction);
@@ -81,6 +82,7 @@ void main() {
     }
     return;
   }
+  */
 
   rayQueryEXT ray_query;
   vec3 eye_world = (frame.view_inverse * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
