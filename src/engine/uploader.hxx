@@ -80,7 +80,7 @@ void destroy_image(
   ID id
 );
 
-VkBuffer get_buffer(
+std::pair<VkBuffer, VkDeviceAddress> get_buffer(
   Ref<Uploader> it,
   ID id
 );

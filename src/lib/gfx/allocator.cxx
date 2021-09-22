@@ -264,9 +264,20 @@ Buffer create_buffer(
     assert(result == VK_SUCCESS);
   }
 
+  VkDeviceAddress buffer_address = 0;
+  if (info->usage == (info->usage | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)) {
+    VkBufferDeviceAddressInfo info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+      .buffer = buffer,
+    };
+    buffer_address = vkGetBufferDeviceAddress(device, &info);
+    assert(buffer_address != 0);
+  }
+
   return {
     .id = alloc.id,
     .buffer = buffer,
+    .buffer_address = buffer_address,
   };
 }
 

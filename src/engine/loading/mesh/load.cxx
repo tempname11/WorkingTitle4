@@ -45,7 +45,9 @@ void _load_init_buffer(
     .usage = (0
       | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
       | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+      // usage below is for raytracing:
       | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
+      | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
       | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
     ),
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
@@ -89,10 +91,11 @@ void _load_init_blas(
 ) {
   ZoneScoped;
 
-  auto buffer = engine::uploader::get_buffer(
+  auto pair = engine::uploader::get_buffer(
     &session->vulkan.uploader,
     data->mesh_item.id
   );
+  auto buffer = pair.first;
 
   engine::blas_storage::VertexInfo vertex_info = {
     .stride = sizeof(engine::common::mesh::VertexT06),

@@ -742,6 +742,13 @@ struct TlasResult {
   lib::gfx::allocator::Buffer buffer_accel;
   lib::gfx::allocator::Buffer buffer_instances;
   lib::gfx::allocator::Buffer buffer_instances_staging;
+  lib::gfx::allocator::Buffer buffer_geometry_refs;
+  lib::gfx::allocator::Buffer buffer_geometry_refs_staging;
+};
+
+struct PerInstance {
+  VkDeviceAddress indices_address;
+  VkDeviceAddress vertices_address;
 };
 
 void record_tlas(
@@ -894,6 +901,52 @@ void record_tlas(
     );
   }
 
+  lib::gfx::allocator::Buffer buffer_geometry_refs;
+  {
+    VkBufferCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = std::max(
+        size_t(1),
+        sizeof(PerInstance) * instance_count
+      ),
+      .usage = (0
+        | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+        | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+      ),
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+    buffer_geometry_refs = lib::gfx::allocator::create_buffer(
+      &uploader->allocator_device,
+      core->device,
+      core->allocator,
+      &core->properties.basic,
+      &info
+    );
+  }
+
+  lib::gfx::allocator::Buffer buffer_geometry_refs_staging;
+  {
+    VkBufferCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = std::max(
+        size_t(1),
+        sizeof(PerInstance) * instance_count
+      ),
+      .usage = (0
+        | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+      ),
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+    buffer_geometry_refs_staging = lib::gfx::allocator::create_buffer(
+      &uploader->allocator_host,
+      core->device,
+      core->allocator,
+      &core->properties.basic,
+      &info
+    );
+  }
+
   {
     auto mapping = lib::gfx::allocator::get_host_mapping(
       &uploader->allocator_host,
@@ -906,17 +959,44 @@ void record_tlas(
     );
   }
 
-  if (instances.size() > 0) {
-    VkBufferCopy region = {
-      .size = sizeof(VkAccelerationStructureInstanceKHR) * instances.size()
-    };
-    vkCmdCopyBuffer(
-      cmd,
-      buffer_instances_staging.buffer,
-      buffer_instances.buffer,
-      1,
-      &region
+  {
+    auto mapping = lib::gfx::allocator::get_host_mapping(
+      &uploader->allocator_host,
+      buffer_geometry_refs_staging.id
     );
+    for (size_t i = 0; i < instances.size(); i++) {
+      auto item = &render_list->items[i];
+      auto destination = ((PerInstance *) mapping.mem) + i;
+      destination->indices_address = item->mesh_buffer_address + item->mesh_buffer_offset_indices;
+      destination->vertices_address = item->mesh_buffer_address + item->mesh_buffer_offset_vertices;
+    }
+  }
+
+  if (instances.size() > 0) {
+    {
+      VkBufferCopy region = {
+        .size = sizeof(VkAccelerationStructureInstanceKHR) * instances.size()
+      };
+      vkCmdCopyBuffer(
+        cmd,
+        buffer_instances_staging.buffer,
+        buffer_instances.buffer,
+        1,
+        &region
+      );
+    }
+    {
+      VkBufferCopy region = {
+        .size = sizeof(PerInstance) * instances.size()
+      };
+      vkCmdCopyBuffer(
+        cmd,
+        buffer_geometry_refs_staging.buffer,
+        buffer_geometry_refs.buffer,
+        1,
+        &region
+      );
+    }
   }
   
   {
@@ -1024,6 +1104,8 @@ void record_tlas(
     .buffer_accel = buffer_accel,
     .buffer_instances = buffer_instances,
     .buffer_instances_staging = buffer_instances_staging,
+    .buffer_geometry_refs = buffer_geometry_refs,
+    .buffer_geometry_refs_staging = buffer_geometry_refs_staging,
   };
 }
 
@@ -1061,6 +1143,20 @@ void _tlas_cleanup(
     core->device,
     core->allocator,
     result->buffer_instances_staging
+  );
+
+  lib::gfx::allocator::destroy_buffer(
+    &session->vulkan.uploader.allocator_device,
+    core->device,
+    core->allocator,
+    result->buffer_geometry_refs
+  );
+
+  lib::gfx::allocator::destroy_buffer(
+    &session->vulkan.uploader.allocator_host,
+    core->device,
+    core->allocator,
+    result->buffer_geometry_refs_staging
   );
 
   auto ext = &core->extension_pointers;
@@ -1105,7 +1201,7 @@ TASK_DECL {
   record_tlas(
     core,
     render_list,
-    &session->vulkan.uploader,
+    &session->vulkan.uploader, // horrible!
     cmd,
     tlas_result
   );
@@ -1222,6 +1318,7 @@ TASK_DECL {
       secondary_geometry_sdata,
       frame_info,
       core,
+      tlas_result->buffer_geometry_refs.buffer,
       tlas_result->accel,
       cmd
     );

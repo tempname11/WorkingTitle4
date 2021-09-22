@@ -99,7 +99,6 @@ PrepareResult prepare_buffer(
   );
 
   info->usage = (original_usage
-    | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
     | VK_BUFFER_USAGE_TRANSFER_DST_BIT
   );
   auto buffer_device = lib::gfx::allocator::create_buffer(
@@ -184,8 +183,8 @@ PrepareResult prepare_image(
     &buffer_info
   );
 
-  info->usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-  info->usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+  info->usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+  info->usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
   auto image_device = lib::gfx::allocator::create_image(
     &it->allocator_device,
     device,
@@ -792,7 +791,7 @@ void destroy_image(
   );
 }
 
-VkBuffer get_buffer(
+std::pair<VkBuffer, VkDeviceAddress> get_buffer(
   Ref<Uploader> it,
   ID id
 ) {
@@ -800,7 +799,11 @@ VkBuffer get_buffer(
 
   std::shared_lock lock(it->rw_mutex);
   assert(it->buffers.contains(id));
-  return it->buffers.at(id).buffer_device.buffer;
+  auto item = &it->buffers.at(id);
+  return {
+    item->buffer_device.buffer,
+    item->buffer_device.buffer_address,
+  };
 }
 
 std::pair<VkImage, VkImageView> get_image(

@@ -219,8 +219,13 @@ void init_vulkan(
       VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, // for Tracy
       VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME, // for shader printf
     };
+    VkPhysicalDevice16BitStorageFeatures sixteen_bit_storage_features = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES,
+      .storageBuffer16BitAccess = VK_TRUE,
+    };
     VkPhysicalDeviceTimelineSemaphoreFeatures timeline_semaphore_features = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
+      .pNext = &sixteen_bit_storage_features,
       .timelineSemaphore = VK_TRUE,
     };
     VkPhysicalDeviceBufferDeviceAddressFeaturesEXT buffer_device_address_features = {
@@ -247,6 +252,7 @@ void init_vulkan(
     */
     VkPhysicalDeviceFeatures device_features = {
       .samplerAnisotropy = VK_TRUE,
+      .shaderInt16 = VK_TRUE,
     };
     const VkDeviceCreateInfo device_create_info = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,

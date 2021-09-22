@@ -13,10 +13,12 @@ TASK_DECL {
     // @Rushed: this is very badly designed,
     // i.e. we'll take multiple mutexes for each item!
     // also, there is double indirection, where there should not be!
-    auto mesh_buffer = engine::uploader::get_buffer(
+    auto pair = engine::uploader::get_buffer(
       &session->vulkan.uploader,
       mesh.id
     );
+    auto mesh_buffer = pair.first;
+    auto mesh_buffer_address = pair.second;
 
     auto albedo_view = engine::uploader::get_image(
       &session->vulkan.uploader,
@@ -44,6 +46,7 @@ TASK_DECL {
       .mesh_index_count = mesh.index_count,
       .mesh_buffer_offset_indices = mesh.buffer_offset_indices,
       .mesh_buffer_offset_vertices = mesh.buffer_offset_vertices,
+      .mesh_buffer_address = mesh_buffer_address,
       .blas_address = blas_address,
       .texture_albedo_view = albedo_view,
       .texture_normal_view = normal_view,

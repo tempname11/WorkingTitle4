@@ -83,6 +83,7 @@ void deinit(
 struct Buffer {
   ID id;
   VkBuffer buffer;
+  VkDeviceAddress buffer_address;
 };
 
 struct Image {
