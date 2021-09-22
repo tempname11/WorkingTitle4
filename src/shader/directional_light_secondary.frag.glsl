@@ -1,4 +1,5 @@
 #version 460
+#extension GL_EXT_ray_query : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_GOOGLE_include_directive : enable
 #include "common/light_model.glsl"
@@ -11,6 +12,7 @@ layout(input_attachment_index = 0, binding = 0) uniform subpassInput gchannel0;
 layout(input_attachment_index = 1, binding = 1) uniform subpassInput gchannel1;
 layout(input_attachment_index = 2, binding = 2) uniform subpassInput gchannel2;
 layout(input_attachment_index = 3, binding = 3) uniform subpassInput zchannel;
+layout(binding = 5) uniform accelerationStructureEXT accel;
 
 // @Duplicate in lpass_sun.flag.glsl
 layout(binding = 4) uniform Frame {
@@ -29,19 +31,38 @@ layout(set = 1, binding = 0) uniform DirectionalLight {
 } directional_light;
 
 void main() {
-  vec2 coord = (position * 0.5 + 0.5) * vec2(2048.0); // @Incomplete: use uniform for image size
-  ivec3 work_group_id = ivec3(mod(coord.x, 16), coord.y, coord.x / 16); // @Incomplete: 16
+  // @Incomplete: is this coordinate mapping correct?
+  vec2 coord = (position * 0.5 + 0.5) * vec2(2047.0); // @Incomplete: use uniform for image size
+  ivec3 work_group_id = ivec3(mod(coord.x, 32), mod(coord.y, 32), mod(coord.x / 32, 8)); // @Incomplete: probe grid
+  result = vec3(work_group_id / vec3(32, 32, 8));
 
   // unless noted otherwise, everything is in world space.
-  vec3 eye = frame.view[3].xyz; // @Incomplete: a guess, need to check this
 
-  vec3 origin = vec3(1.0) + 2.0 * work_group_id;
-  vec3 raydir = vec3(0.0, 0.0, 1.0); // @Incomplete many rays
-  float d = subpassLoad(zchannel).r;
-  vec3 here = origin + d * raydir;
+  vec3 probe_origin = vec3(0.5) + 1.0 * work_group_id; // @Incomplete: probe grid
+  vec3 probe_raydir = vec3(0.0, 0.0, -1.0); // @Incomplete many rays
+  float t = subpassLoad(zchannel).r;
+  vec3 probe_hit = probe_origin + t * probe_raydir;
+
+  rayQueryEXT ray_query;
+  rayQueryInitializeEXT(
+    ray_query,
+    accel,
+    0,
+    0xFF,
+    probe_hit,
+    0.1, // @Temporary: move ray_t_min to uniforms
+    -directional_light.direction,
+    1000.0 // @Temporary: move ray_t_max to uniforms
+  );
+  rayQueryProceedEXT(ray_query); // should we use the result here?
+  float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);
+
+  if (t_intersection > 0.0) {
+    discard;
+  }
 
   vec3 L = -directional_light.direction;
-  vec3 V = -raydir;
+  vec3 V = -probe_raydir;
   vec3 N = subpassLoad(gchannel0).rgb;
   vec3 H = normalize(V + L);
 

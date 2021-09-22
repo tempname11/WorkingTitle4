@@ -44,6 +44,7 @@ void record(
   Ref<engine::common::SharedDescriptorPool> descriptor_pool,
   Use<engine::display::Data::LPass> lpass, // @Incomplete many lights
   Use<SessionData::Vulkan::Core> core,
+  VkAccelerationStructureKHR accel,
   VkCommandBuffer cmd
 );
 

@@ -1355,6 +1355,7 @@ TASK_DECL {
       descriptor_pool,
       lpass,
       core,
+      tlas_result->accel,
       cmd
     );
   }

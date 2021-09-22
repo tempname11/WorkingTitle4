@@ -8,6 +8,9 @@ layout(location = 0) out vec3 result;
 layout(set = 0, binding = 0) uniform sampler2D probe_light_map;
 
 void main() {
-  result = texture(probe_light_map, (0.5 + 0.5 * position) * vec2(1280.0, 720.0) / 2048.0 / 10.0).rgb / 8.0;
-  // @Incomplete
+  // @Temporary
+  result = texture(
+    probe_light_map,
+    (0.5 + 0.5 * position) * vec2(1280.0, 720.0) / 2048.0 / 4.0 
+  ).rgb;
 }

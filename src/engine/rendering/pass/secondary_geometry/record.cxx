@@ -63,11 +63,11 @@ void record(
     0, 1, &ddata->descriptor_sets[frame_info->inflight_index],
     0, nullptr
   );
-  // @Incomplete
+  // @Incomplete: probe grid
   vkCmdDispatch(cmd,
-    16, // w
-    16, // h
-    4 // d
+    32, // w
+    32, // h
+    8 // d
   );
 }
 

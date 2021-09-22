@@ -15,9 +15,35 @@ void record(
   Ref<engine::common::SharedDescriptorPool> descriptor_pool,
   Use<engine::display::Data::LPass> lpass, // @Incomplete many lights
   Use<SessionData::Vulkan::Core> core,
+  VkAccelerationStructureKHR accel,
   VkCommandBuffer cmd
 ) {
   ZoneScoped;
+
+  {
+    VkWriteDescriptorSetAccelerationStructureKHR write_tlas = {
+      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
+      .accelerationStructureCount = 1,
+      .pAccelerationStructures = &accel,
+    };
+    VkWriteDescriptorSet writes[] = {
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .pNext = &write_tlas,
+        .dstSet = ddata->descriptor_sets_frame[frame_info->inflight_index],
+        .dstBinding = 5,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+      },
+    };
+    vkUpdateDescriptorSets(
+      core->device,
+      sizeof(writes) / sizeof(*writes),
+      writes,
+      0, nullptr
+    );
+  }
 
   VkClearValue clear_value = { 0.0f, 0.0f, 0.0f, 0.0f };
   VkRenderPassBeginInfo render_pass_info = {
@@ -36,14 +62,14 @@ void record(
   VkViewport viewport = {
     .x = 0.0f,
     .y = 0.0f,
-    .width = float(swapchain_description->image_extent.width),
-    .height = float(swapchain_description->image_extent.height),
+    .width = 2048, // @Temporary
+    .height = 2048, // @Temporary
     .minDepth = 0.0f,
     .maxDepth = 1.0f,
   };
   VkRect2D scissor = {
     .offset = {0, 0},
-    .extent = swapchain_description->image_extent,
+    .extent = {2048, 2048}, // @Temporary
   };
   vkCmdSetViewport(cmd, 0, 1, &viewport);
   vkCmdSetScissor(cmd, 0, 1, &scissor);

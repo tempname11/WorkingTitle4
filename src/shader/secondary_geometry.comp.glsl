@@ -4,6 +4,7 @@
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
 #extension GL_EXT_buffer_reference2 : enable
+#extension GL_EXT_scalar_block_layout : enable
 
 layout(binding = 0, rgba16_snorm) uniform image2D gchannel0;
 layout(binding = 1, rgba8) uniform image2D gchannel1;
@@ -11,7 +12,7 @@ layout(binding = 2, rgba8) uniform image2D gchannel2;
 layout(binding = 3, r16) uniform image2D zchannel;
 layout(binding = 4) uniform accelerationStructureEXT accel;
 
-layout(buffer_reference) readonly buffer IndexBufferRef {
+layout(scalar, buffer_reference) readonly buffer IndexBufferRef {
   u16vec3 data[];
 };
 
@@ -45,8 +46,8 @@ vec3 barycentric_interpolate(vec2 b, vec3 v0, vec3 v1, vec3 v2) {
 
 void main() {
   rayQueryEXT ray_query;
-  vec3 origin_world = vec3(1.0) + 2.0 * gl_WorkGroupID;
-  vec3 raydir_world = vec3(0.0, 0.0, 1.0);
+  vec3 origin_world = vec3(0.5) + 1.0 * gl_WorkGroupID; // @Incomplete: probe grid
+  vec3 raydir_world = vec3(0.0, 0.0, -1.0); // @Incomplete many rays
   rayQueryInitializeEXT(
     ray_query,
     accel,
@@ -57,7 +58,7 @@ void main() {
     raydir_world,
     1000.0 // @Temporary: ray_t_max
   );
-  bool _incomplete = rayQueryProceedEXT(ray_query);
+  rayQueryProceedEXT(ray_query); // should we use the result here?
   float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);
   if (t_intersection == 0.0) {
     return;
@@ -85,7 +86,9 @@ void main() {
   // @Incomplete: convert to world space. for now, assume they are same.
   vec3 n_world = n_object;
 
-  ivec2 store_coord = ivec2(gl_WorkGroupID.xy) + ivec2(16 * gl_WorkGroupID.z, 0);
+  ivec2 store_coord = ivec2(gl_WorkGroupID.xy) + ivec2(32 * gl_WorkGroupID.z, 0);
+  // @Incomplete: probe grid
+
   imageStore(
     zchannel,
     store_coord,

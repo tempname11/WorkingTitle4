@@ -22,8 +22,8 @@ void record(
   );
   // @Incomplete
   vkCmdDispatch(cmd,
-    512, // w
-    512, // h
+    2048, // w
+    2048, // h
     1 // d
   );
 }
