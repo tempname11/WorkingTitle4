@@ -70,9 +70,15 @@ void main() {
 
   u16vec3 indices = geometry_refs.data[instance_index].indices.data[geometry_index];
 
-  vec3 n0_object = geometry_refs.data[instance_index].indices.data[int(indices.x)];
-  vec3 n1_object = geometry_refs.data[instance_index].indices.data[int(indices.y)];
-  vec3 n2_object = geometry_refs.data[instance_index].indices.data[int(indices.z)];
+  VertexBufferRef vertices = geometry_refs.data[instance_index].vertices;
+  vec3 n0_object = vertices.data[int(indices.x)].normal;
+  vec3 n1_object = vertices.data[int(indices.y)].normal;
+  vec3 n2_object = vertices.data[int(indices.z)].normal;
+  /*
+  vec3 n0_object = geometry_refs.data[instance_index].vertices.data[int(indices.x)].normal;
+  vec3 n1_object = geometry_refs.data[instance_index].vertices.data[int(indices.y)].normal;
+  vec3 n2_object = geometry_refs.data[instance_index].vertices.data[int(indices.z)].normal;
+  */
   vec3 n_object = normalize(barycentric_interpolate(bary, n0_object, n1_object, n2_object));
 
   // @Incomplete: read normal map and apply that.
@@ -90,5 +96,17 @@ void main() {
     gchannel0,
     store_coord,
     vec4(n_world, 0.0)
+  );
+
+  imageStore(
+    gchannel1,
+    store_coord,
+    vec4(1.0) // @Incomplete: texture
+  );
+
+  imageStore(
+    gchannel2,
+    store_coord,
+    vec4(1.0) // @Incomplete: texture
   );
 }

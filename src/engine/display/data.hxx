@@ -121,12 +121,16 @@ struct Data : lib::task::ParentResource {
   } gpass;
 
   struct LPass {
+    // @Incomplete: remove for many lights
     struct Stakes {
       std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_directional_light;
     } stakes;
 
     std::vector<VkDescriptorSet> descriptor_sets_frame;
+
+    // @Incomplete: remove for many lights
     std::vector<VkDescriptorSet> descriptor_sets_directional_light;
+
     std::vector<VkFramebuffer> framebuffers;
   } lpass;
 

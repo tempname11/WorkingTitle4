@@ -17,13 +17,13 @@ void init_ddata(
 ) {
   ZoneScoped;
 
-  std::vector<VkDescriptorSet> descriptor_sets;
-  { ZoneScopedN("descriptor_sets");
-    descriptor_sets.resize(swapchain_description->image_count);
+  std::vector<VkDescriptorSet> descriptor_sets_frame;
+  { ZoneScopedN("descriptor_sets_frame");
+    descriptor_sets_frame.resize(swapchain_description->image_count);
 
     std::vector<VkDescriptorSetLayout> layouts(swapchain_description->image_count);
     for (auto &layout : layouts) {
-      layout = sdata->descriptor_set_layout;
+      layout = sdata->descriptor_set_layout_frame;
     }
 
     VkDescriptorSetAllocateInfo allocate_info = {
@@ -37,7 +37,7 @@ void init_ddata(
       auto result = vkAllocateDescriptorSets(
         core->device,
         &allocate_info,
-        descriptor_sets.data()
+        descriptor_sets_frame.data()
       );
       assert(result == VK_SUCCESS);
     }
@@ -59,10 +59,15 @@ void init_ddata(
         .imageView = zbuffer2->views[i],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
+      VkDescriptorBufferInfo ubo_frame_info = {
+        .buffer = common->stakes.ubo_frame[i].buffer,
+        .offset = 0,
+        .range = VK_WHOLE_SIZE,
+      };
       VkWriteDescriptorSet writes[] = {
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-          .dstSet = descriptor_sets[i],
+          .dstSet = descriptor_sets_frame[i],
           .dstBinding = 0,
           .dstArrayElement = 0,
           .descriptorCount = 1,
@@ -71,7 +76,7 @@ void init_ddata(
         },
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-          .dstSet = descriptor_sets[i],
+          .dstSet = descriptor_sets_frame[i],
           .dstBinding = 1,
           .dstArrayElement = 0,
           .descriptorCount = 1,
@@ -80,7 +85,7 @@ void init_ddata(
         },
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-          .dstSet = descriptor_sets[i],
+          .dstSet = descriptor_sets_frame[i],
           .dstBinding = 2,
           .dstArrayElement = 0,
           .descriptorCount = 1,
@@ -89,12 +94,21 @@ void init_ddata(
         },
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-          .dstSet = descriptor_sets[i],
+          .dstSet = descriptor_sets_frame[i],
           .dstBinding = 3,
           .dstArrayElement = 0,
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
           .pImageInfo = &zbuffer_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets_frame[i],
+          .dstBinding = 4,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .pBufferInfo = &ubo_frame_info,
         },
       };
       vkUpdateDescriptorSets(
@@ -140,7 +154,7 @@ void init_ddata(
 
   *out = {
     .framebuffers = std::move(framebuffers),
-    .descriptor_sets = std::move(descriptor_sets),
+    .descriptor_sets_frame = std::move(descriptor_sets_frame),
   };
 }
 

@@ -41,6 +41,9 @@
 - should also normalize paths on input
 
 ### minor issues
+- can we share uniform block declarations (without macros) between different files.
+  - they have to have different bindings!
+
 - many allocators are hard to track, both conceptually, and in imgui.
 - rand() is not thread-safe, need to use something different.
 

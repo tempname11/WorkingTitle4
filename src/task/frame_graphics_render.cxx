@@ -297,21 +297,24 @@ void record_lpass(
       0, nullptr
     );
   }
-
+  {
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(cmd, 0, 1, &fullscreen_quad->vertex_stake.buffer, &offset);
+  }
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
     s_lpass->pipeline_layout,
     0, 1, &lpass->descriptor_sets_frame[frame_info->inflight_index],
     0, nullptr
   );
+
+  // @Incomplete: many lights
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
     s_lpass->pipeline_layout,
     1, 1, &lpass->descriptor_sets_directional_light[frame_info->inflight_index],
     0, nullptr
   );
-  VkDeviceSize offset = 0;
-  vkCmdBindVertexBuffers(cmd, 0, 1, &fullscreen_quad->vertex_stake.buffer, &offset);
   vkCmdDraw(cmd, fullscreen_quad->triangle_count * 3, 1, 0, 0);
   vkCmdEndRenderPass(cmd);
 }
@@ -1349,6 +1352,9 @@ TASK_DECL {
       frame_info,
       swapchain_description,
       fullscreen_quad,
+      descriptor_pool,
+      lpass,
+      core,
       cmd
     );
   }

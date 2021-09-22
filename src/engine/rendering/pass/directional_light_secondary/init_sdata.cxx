@@ -12,8 +12,8 @@ void init_sdata(
 ) {
   ZoneScoped;
 
-  VkDescriptorSetLayout descriptor_set_layout;
-  { ZoneScopedN("descriptor_set_layout");
+  VkDescriptorSetLayout descriptor_set_layout_frame;
+  { ZoneScopedN("descriptor_set_layout_frame");
     VkDescriptorSetLayoutBinding layout_bindings[] = {
       {
         .binding = 0,
@@ -39,6 +39,12 @@ void init_sdata(
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
       },
+      {
+        .binding = 4,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      },
     };
     VkDescriptorSetLayoutCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -50,7 +56,33 @@ void init_sdata(
         core->device,
         &create_info,
         core->allocator,
-        &descriptor_set_layout
+        &descriptor_set_layout_frame
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+
+  VkDescriptorSetLayout descriptor_set_layout_light;
+  { ZoneScopedN("descriptor_set_layout_light");
+    VkDescriptorSetLayoutBinding layout_bindings[] = {
+      {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      },
+    };
+    VkDescriptorSetLayoutCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
+      .pBindings = layout_bindings,
+    };
+    {
+      auto result = vkCreateDescriptorSetLayout(
+        core->device,
+        &create_info,
+        core->allocator,
+        &descriptor_set_layout_light
       );
       assert(result == VK_SUCCESS);
     }
@@ -59,7 +91,8 @@ void init_sdata(
   VkPipelineLayout pipeline_layout;
   { ZoneScopedN("pipeline_layout");
     VkDescriptorSetLayout layouts[] = {
-      descriptor_set_layout,
+      descriptor_set_layout_frame,
+      descriptor_set_layout_light,
     };
     VkPipelineLayoutCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -345,7 +378,8 @@ void init_sdata(
   }
 
   *out = {
-    .descriptor_set_layout = descriptor_set_layout,
+    .descriptor_set_layout_frame = descriptor_set_layout_frame,
+    .descriptor_set_layout_light = descriptor_set_layout_light,
     .pipeline_layout = pipeline_layout,
     .render_pass = render_pass,
     .pipeline = pipeline,

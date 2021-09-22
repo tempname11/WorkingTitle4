@@ -41,6 +41,9 @@ void record(
   Use<engine::display::Data::FrameInfo> frame_info,
   Use<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<SessionData::Vulkan::FullscreenQuad> fullscreen_quad,
+  Ref<engine::common::SharedDescriptorPool> descriptor_pool,
+  Use<engine::display::Data::LPass> lpass, // @Incomplete many lights
+  Use<SessionData::Vulkan::Core> core,
   VkCommandBuffer cmd
 );
 

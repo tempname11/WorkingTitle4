@@ -1,19 +1,20 @@
-# milestone: pretty picture
-  - ddgi
-    - hysteresis: previous probe maps -> new probe maps
-    - indirect light pass: GB2 -> LB2
+# milestone: DDGI
+  --- should be really good
 
-    --- should work
+  - hysteresis: previous probe maps -> new probe maps
+  - variable probe grid
 
-    - probe_light_map
-      - read
-	  - write
-      - figure out if rgba16 shader format works at all
+  --- should work
 
-    - pmu...
-    - l2...
+  - textures
+  -
 
-    - g2...
-      - write g0, g1, g2, z
-      - figure out the coord to write to
-      - dispatch correct amount of workgroups
+  --- should be functional in limited scenarios
+
+  - multiple rays
+
+  - indirect_light...
+  - probe_maps_update...
+  - directional_light_secondary
+    - validation
+    - shadows

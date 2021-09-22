@@ -12,7 +12,12 @@ void deinit_sdata(
 
   vkDestroyDescriptorSetLayout(
     core->device,
-    it->descriptor_set_layout,
+    it->descriptor_set_layout_frame,
+    core->allocator
+  );
+  vkDestroyDescriptorSetLayout(
+    core->device,
+    it->descriptor_set_layout_light,
     core->allocator
   );
   vkDestroyPipelineLayout(

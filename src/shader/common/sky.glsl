@@ -1,6 +1,10 @@
+#ifndef _COMMON_SKY_GLSL_
+#define _COMMON_SKY_GLSL_
+
+#include "constants.glsl"
+
 #define iSteps 16
 #define jSteps 8
-const float PI = 3.14159265359;
 
 // see https://github.com/wwwtyro/glsl-atmosphere/blob/master/index.glsl
 
@@ -123,3 +127,5 @@ vec3 sky(vec3 ray, vec3 sun_direction) {
     0.758
   );
 }
+
+#endif // _COMMON_SKY_GLSL_
