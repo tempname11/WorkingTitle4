@@ -27,20 +27,20 @@ layout(binding = 4) uniform Frame {
 // @Duplicate :UniformDirLight
 layout(set = 1, binding = 0) uniform DirectionalLight {
   vec3 direction;
-  vec3 intensity; // @Terminology: should be illuminance
+  vec3 intensity; // @Cleanup: should be named illuminance here and everywhere else
 } directional_light;
 
 void main() {
-  vec2 coord = (position * 0.5 + 0.5) * vec2(2048.0) - 0.5; // @Cleanup :MoveToUniform
+  vec2 coord = (position * 0.5 + 0.5) * vec2(2048.0) - 0.5; // @Cleanup :MoveToUniform 2048
   ivec3 work_group_id = ivec3(
     mod(coord.x, 32),
     mod(coord.y, 32),
     mod(coord.x / 32, 8)
-  ); // @Incomplete: probe grid
+  ); // @Incomplete :ProbeGrid
 
   // unless noted otherwise, everything is in world space.
 
-  vec3 probe_origin = vec3(0.5) + 1.0 * work_group_id; // @Incomplete: probe grid
+  vec3 probe_origin = vec3(0.5) + 1.0 * work_group_id; // @Incomplete :ProbeGrid
   vec3 probe_raydir = vec3(0.0, 0.0, -1.0); // @Incomplete :ManyRays
   float t = subpassLoad(zchannel).r;
   vec3 probe_hit = probe_origin + t * probe_raydir;

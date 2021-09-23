@@ -1,15 +1,17 @@
 # milestone: DDGI
-  --- should be really good
+  --- should work well
 
   - hysteresis: previous probe maps -> new probe maps
   - variable probe grid
 
-  --- should work
+  --- should work OK in more general scenarios
 
-  - textures
+  :Textures
+  :ProbeGrid
+  :WorldSpaceNormals
 
-  --- should be functional in limited scenarios
+  --- should be functional in current test scene
 
-  - final probe equation
-  - probe packing
-  - multiple rays
+  :ProbeEquation
+  :ProbePacking
+  :ManyRays

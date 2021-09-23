@@ -3,9 +3,9 @@
 #include <src/lib/gfx/allocator.hxx>
 
 namespace engine::common::mesh {
-  using IndexT06 = uint16_t;
+  using IndexT06 = uint16_t; // @See :T06IndexType
 
-  struct VertexT06 {
+  struct VertexT06 { // @See :T06VertexData
     glm::vec3 position; uint8_t _pad0[4];
     glm::vec3 tangent; uint8_t _pad1[4];
     glm::vec3 bitangent; uint8_t _pad2[4];

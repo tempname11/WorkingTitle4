@@ -24,11 +24,10 @@ layout(binding = 5) uniform Frame {
 
 void main() {
   // @CopyPaste (the whole big section below)
-
   float depth = subpassLoad(zchannel).r;
   if (depth == 1.0) { discard; }
-  float z_near = 0.1; // @Cleanup: MoveToUniforms
-  float z_far = 10000.0; // @Cleanup: MoveToUniforms
+  float z_near = 0.1; // @Cleanup :MoveToUniforms
+  float z_far = 10000.0; // @Cleanup :MoveToUniforms
   float z_linear = z_near * z_far / (z_far + depth * (z_near - z_far));
   vec4 target_view_long = frame.projection_inverse * vec4(position, 1.0, 1.0);
   vec3 target_world = normalize((frame.view_inverse * target_view_long).xyz);
@@ -36,18 +35,17 @@ void main() {
   vec3 eye_world = (frame.view_inverse * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
   vec3 pos_world = eye_world + target_world * z_linear * perspective_correction;
 
+  // @Incomplete :ProbeGrid
   ivec3 grid_coord = ivec3(pos_world - 0.5);
-  // @Incomplete :ProbeGrid
   ivec2 packed_probe_coord = grid_coord.xy + ivec2(32 * grid_coord.z, 0);
-  // @Incomplete :ProbeGrid
 
-  // @Incomplete: is this right?
+  // @Incomplete :ProbePacking :ProbeEquation
   result = texture(probe_light_map, (packed_probe_coord + 0.5) / 2048.0).rgb;
   if (frame.flags.disable_indirect_lighting) {
     result = vec3(0.0);
   }
 
-  /*
+  /* debug stuff
   result += grid_coord / vec3(32,32,8);
   result += texture(
     probe_light_map,

@@ -5,6 +5,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
 #extension GL_EXT_buffer_reference2 : enable
 #extension GL_EXT_scalar_block_layout : enable
+#include "common/helpers.glsl"
 
 layout(binding = 0, rgba16_snorm) uniform image2D gchannel0;
 layout(binding = 1, rgba8) uniform image2D gchannel1;
@@ -13,10 +14,10 @@ layout(binding = 3, r16) uniform image2D zchannel;
 layout(binding = 4) uniform accelerationStructureEXT accel;
 
 layout(scalar, buffer_reference) readonly buffer IndexBufferRef {
-  u16vec3 data[];
+  u16vec3 data[]; // @See :T06IndexType
 };
 
-struct PerVertex {
+struct PerVertex { // @See :T06VertexData
   vec3 position;
   vec3 tangent;
   vec3 bitangent;
@@ -38,11 +39,7 @@ layout(binding = 5) readonly buffer GeometryRefs {
 } geometry_refs;
 
 // layout(set = 2, binding = 0) uniform texture2D all_albedo_textures[];
-
-// @Cleanup: move to another file
-vec3 barycentric_interpolate(vec2 b, vec3 v0, vec3 v1, vec3 v2) {
-    return (1.0 - b.x - b.y) * v0 + b.x * v1 + b.y * v2;
-}
+// @Incomplete :Textures
 
 void main() {
   rayQueryEXT ray_query;
@@ -77,8 +74,8 @@ void main() {
   vec3 n2_object = vertices.data[int(indices.z)].normal;
   vec3 n_object = normalize(barycentric_interpolate(bary, n0_object, n1_object, n2_object));
 
-  // @Incomplete: read normal map and apply that.
-  // @Incomplete: convert to world space. for now, assume they are same.
+  // @Incomplete :Textures read normal map and apply that.
+  // @Incomplete: :WorldSpaceNormals convert to world space. for now, assume they are same.
   vec3 n_world = n_object;
 
   ivec2 store_coord = ivec2(gl_WorkGroupID.xy) + ivec2(32 * gl_WorkGroupID.z, 0);
@@ -99,12 +96,12 @@ void main() {
   imageStore(
     gchannel1,
     store_coord,
-    vec4(1.0) // @Incomplete: texture
+    vec4(1.0) // @Incomplete :Textures
   );
 
   imageStore(
     gchannel2,
     store_coord,
-    vec4(1.0) // @Incomplete: texture
+    vec4(1.0) // @Incomplete :Textures
   );
 }

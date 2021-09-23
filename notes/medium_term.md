@@ -1,5 +1,7 @@
 # known bugs
-- pseudo-sky color warps when moving
+- crash when resizing > 2048 pixels
+- crash on mesh reload
+- models with more than 2^16 vertices are not imported correctly (should be split up?)
 
 # intermittent bugs
 - `assert( m_head != m_tail );` in TracyVulkan.hpp
