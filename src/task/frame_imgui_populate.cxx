@@ -501,6 +501,8 @@ TASK_DECL {
       ImGui::Begin("Flags", &state->show_imgui_window_flags);
       ImGuiX::Checkbox32("show normals", &it->show_normals);
       ImGuiX::Checkbox32("show sky", &it->show_sky);
+      ImGuiX::Checkbox32("disable direct lighting", &it->disable_direct_lighting);
+      ImGuiX::Checkbox32("disable indirect lighting", &it->disable_indirect_lighting);
       ImGui::VSliderFloat(
         "Y",
         ImVec2(20.0f, 128.0f),

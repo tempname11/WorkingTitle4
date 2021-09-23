@@ -10,9 +10,11 @@ void init_ddata(
   SData *sdata,
   Use<SessionData::Vulkan::Core> core,
   Own<display::Data::Common> common,
+  Use<display::Data::GBuffer> gbuffer,
+  Use<display::Data::ZBuffer> zbuffer,
   Use<display::Data::LBuffer> lbuffer,
   Use<intra::probe_light_map::DData> probe_light_map,
-  Use<engine::display::Data::SwapchainDescription> swapchain_description
+  Use<display::Data::SwapchainDescription> swapchain_description
 ) {
   ZoneScoped;
 
@@ -42,6 +44,27 @@ void init_ddata(
     }
 
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
+      VkDescriptorImageInfo gbuffer_channel0_image_info = {
+        .imageView = gbuffer->channel0_views[i],
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorImageInfo gbuffer_channel1_image_info = {
+        .imageView = gbuffer->channel1_views[i],
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorImageInfo gbuffer_channel2_image_info = {
+        .imageView = gbuffer->channel2_views[i],
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorImageInfo zbuffer_image_info = {
+        .imageView = zbuffer->views[i],
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorBufferInfo ubo_frame_info = {
+        .buffer = common->stakes.ubo_frame[i].buffer,
+        .offset = 0,
+        .range = VK_WHOLE_SIZE,
+      };
       VkDescriptorImageInfo probe_light_map_image_info = {
         .sampler = sdata->sampler_probe_light_map,
         .imageView = probe_light_map->views[i],
@@ -52,10 +75,55 @@ void init_ddata(
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
           .dstSet = descriptor_sets_frame[i],
           .dstBinding = 0,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .pImageInfo = &gbuffer_channel0_image_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets_frame[i],
+          .dstBinding = 1,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .pImageInfo = &gbuffer_channel1_image_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets_frame[i],
+          .dstBinding = 2,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .pImageInfo = &gbuffer_channel2_image_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets_frame[i],
+          .dstBinding = 3,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .pImageInfo = &zbuffer_image_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets_frame[i],
+          .dstBinding = 4,
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           .pImageInfo = &probe_light_map_image_info,
-        }
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets_frame[i],
+          .dstBinding = 5,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .pBufferInfo = &ubo_frame_info,
+        },
       };
       vkUpdateDescriptorSets(
         core->device,
@@ -70,6 +138,10 @@ void init_ddata(
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
       VkImageView attachments[] = {
         lbuffer->views[i],
+        gbuffer->channel0_views[i],
+        gbuffer->channel1_views[i],
+        gbuffer->channel2_views[i],
+        zbuffer->views[i],
       };
       VkFramebuffer framebuffer;
       VkFramebufferCreateInfo create_info = {

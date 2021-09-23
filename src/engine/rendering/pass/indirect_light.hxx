@@ -24,9 +24,11 @@ void init_ddata(
   SData *sdata,
   Use<SessionData::Vulkan::Core> core,
   Own<engine::display::Data::Common> common,
-  Use<engine::display::Data::LBuffer> lbuffer,
+  Use<display::Data::GBuffer> gbuffer,
+  Use<display::Data::ZBuffer> zbuffer,
+  Use<display::Data::LBuffer> lbuffer,
   Use<intra::probe_light_map::DData> probe_light_map,
-  Use<engine::display::Data::SwapchainDescription> swapchain_description
+  Use<display::Data::SwapchainDescription> swapchain_description
 );
 
 void deinit_ddata(
@@ -38,8 +40,8 @@ void record(
   VkCommandBuffer cmd,
   Own<DData> ddata,
   Use<SData> sdata,
-  Use<engine::display::Data::FrameInfo> frame_info,
-  Use<engine::display::Data::SwapchainDescription> swapchain_description,
+  Use<display::Data::FrameInfo> frame_info,
+  Use<display::Data::SwapchainDescription> swapchain_description,
   Use<SessionData::Vulkan::FullscreenQuad> fullscreen_quad
 );
 

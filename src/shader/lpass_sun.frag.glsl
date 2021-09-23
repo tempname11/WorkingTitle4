@@ -14,7 +14,7 @@ layout(input_attachment_index = 1, binding = 1) uniform subpassInput gchannel1;
 layout(input_attachment_index = 2, binding = 2) uniform subpassInput gchannel2;
 layout(input_attachment_index = 3, binding = 3) uniform subpassInput zchannel;
 
-// @Duplicate in directional_light_secondary.frag.glsl
+// @Duplicate :UniformFrame
 layout(binding = 4) uniform Frame {
   mat4 projection;
   mat4 view;
@@ -26,7 +26,7 @@ layout(binding = 4) uniform Frame {
 
 layout(binding = 5) uniform accelerationStructureEXT accel;
 
-// @Duplicate in directional_light_secondary.frag.glsl
+// @Duplicate :UniformDirLight
 layout(set = 1, binding = 0) uniform DirectionalLight {
   vec3 direction;
   vec3 intensity; // @Terminology
@@ -46,25 +46,23 @@ void main() {
 
   vec4 target_view_long = frame.projection_inverse * vec4(position, 1.0, 1.0);
   vec3 target_world = normalize((frame.view_inverse * target_view_long).xyz);
+  vec3 eye_world = (frame.view_inverse * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
   float perspective_correction = length(target_view_long.xyz);
   vec3 V = -normalize(target_view_long.xyz);
 
   // @Performance: multiply on CPU
   vec3 L = -(frame.view * vec4(directional_light.direction, 0.0)).xyz;
 
-  /* @Temporary
   if (depth == 1.0) {
     if (frame.flags.show_sky) {
       result = sky(target_world, -directional_light.direction);
+      return;
     } else {
-      result = target_world;
+      discard;
     }
-    return;
   }
-  */
 
   rayQueryEXT ray_query;
-  vec3 eye_world = (frame.view_inverse * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
   rayQueryInitializeEXT(
     ray_query,
     accel,
@@ -107,4 +105,8 @@ void main() {
     H,
     directional_light.intensity
   );
+
+  if (frame.flags.disable_direct_lighting) {
+    result *= 0.0;
+  }
 }

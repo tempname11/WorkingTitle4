@@ -14,7 +14,7 @@ layout(input_attachment_index = 2, binding = 2) uniform subpassInput gchannel2;
 layout(input_attachment_index = 3, binding = 3) uniform subpassInput zchannel;
 layout(binding = 5) uniform accelerationStructureEXT accel;
 
-// @Duplicate in lpass_sun.flag.glsl
+// @Duplicate :UniformFrame
 layout(binding = 4) uniform Frame {
   mat4 projection;
   mat4 view;
@@ -24,22 +24,24 @@ layout(binding = 4) uniform Frame {
   uint end_marker;
 } frame;
 
-// @Duplicate in lpass_sun.flag.glsl
+// @Duplicate :UniformDirLight
 layout(set = 1, binding = 0) uniform DirectionalLight {
   vec3 direction;
-  vec3 intensity; // @Terminology
+  vec3 intensity; // @Terminology: should be illuminance
 } directional_light;
 
 void main() {
-  // @Incomplete: is this coordinate mapping correct?
-  vec2 coord = (position * 0.5 + 0.5) * vec2(2047.0); // @Incomplete: use uniform for image size
-  ivec3 work_group_id = ivec3(mod(coord.x, 32), mod(coord.y, 32), mod(coord.x / 32, 8)); // @Incomplete: probe grid
-  result = vec3(work_group_id / vec3(32, 32, 8));
+  vec2 coord = (position * 0.5 + 0.5) * vec2(2048.0) - 0.5; // @Cleanup :MoveToUniform
+  ivec3 work_group_id = ivec3(
+    mod(coord.x, 32),
+    mod(coord.y, 32),
+    mod(coord.x / 32, 8)
+  ); // @Incomplete: probe grid
 
   // unless noted otherwise, everything is in world space.
 
   vec3 probe_origin = vec3(0.5) + 1.0 * work_group_id; // @Incomplete: probe grid
-  vec3 probe_raydir = vec3(0.0, 0.0, -1.0); // @Incomplete many rays
+  vec3 probe_raydir = vec3(0.0, 0.0, -1.0); // @Incomplete :ManyRays
   float t = subpassLoad(zchannel).r;
   vec3 probe_hit = probe_origin + t * probe_raydir;
 
@@ -50,11 +52,11 @@ void main() {
     0,
     0xFF,
     probe_hit,
-    0.1, // @Temporary: move ray_t_min to uniforms
+    0.1, // @Cleanup :MoveToUniform ray_t_min
     -directional_light.direction,
-    1000.0 // @Temporary: move ray_t_max to uniforms
+    1000.0 // @Cleanup :MoveToUniform ray_t_max
   );
-  rayQueryProceedEXT(ray_query); // should we use the result here?
+  rayQueryProceedEXT(ray_query);
   float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);
 
   if (t_intersection > 0.0) {
@@ -73,7 +75,6 @@ void main() {
   vec3 albedo = subpassLoad(gchannel1).rgb;
   vec3 romeao = subpassLoad(gchannel2).rgb;
 
-  // result = subpassLoad(zchannel).rgb;
   result = get_luminance_outgoing(
     albedo,
     romeao,

@@ -737,6 +737,8 @@ TASK_DECL {
     &session->vulkan.pass_indirect_light,
     &session->vulkan.core,
     &rendering->common,
+    &rendering->gbuffer,
+    &rendering->zbuffer,
     &rendering->lbuffer,
     &rendering->probe_light_map,
     &rendering->swapchain_description

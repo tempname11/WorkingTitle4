@@ -7,14 +7,9 @@
   --- should work
 
   - textures
-  -
 
   --- should be functional in limited scenarios
 
+  - final probe equation
+  - probe packing
   - multiple rays
-
-  - indirect_light...
-  - probe_maps_update...
-  - directional_light_secondary
-    - validation
-    - shadows

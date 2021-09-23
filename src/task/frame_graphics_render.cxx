@@ -779,7 +779,10 @@ void record_tlas(
       },
       .mask = 0xFF,
       .instanceShaderBindingTableRecordOffset = 0,
-      .flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR,
+      .flags = (0
+        | VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR
+        | VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR
+      ),
       .accelerationStructureReference = item->blas_address,
     };
   }

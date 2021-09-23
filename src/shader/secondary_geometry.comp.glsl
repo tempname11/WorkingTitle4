@@ -46,40 +46,35 @@ vec3 barycentric_interpolate(vec2 b, vec3 v0, vec3 v1, vec3 v2) {
 
 void main() {
   rayQueryEXT ray_query;
-  vec3 origin_world = vec3(0.5) + 1.0 * gl_WorkGroupID; // @Incomplete: probe grid
-  vec3 raydir_world = vec3(0.0, 0.0, -1.0); // @Incomplete many rays
+  vec3 origin_world = vec3(0.5) + 1.0 * gl_WorkGroupID; // @Incomplete :ProbeGrid
+  vec3 raydir_world = vec3(0.0, 0.0, -1.0); // @Incomplete :ManyRays
   rayQueryInitializeEXT(
     ray_query,
     accel,
     0,
     0xFF,
     origin_world,
-    0.1, // @Temporary: ray_t_min
+    0.1, // @Cleanup :MoveToUniforms ray_t_min
     raydir_world,
-    1000.0 // @Temporary: ray_t_max
+    1000.0 // @Cleanup :MoveToUniforms ray_t_max
   );
-  rayQueryProceedEXT(ray_query); // should we use the result here?
+  rayQueryProceedEXT(ray_query);
   float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);
-  if (t_intersection == 0.0) {
+  bool front_face = rayQueryGetIntersectionFrontFaceEXT(ray_query, false);
+  if (t_intersection == 0.0 || !front_face) {
+    // @Bug: we don't clear the G and Z buffers, so previous frame's data will be there
     return;
   }
-
   // int custom_index = rayQueryGetIntersectionInstanceCustomIndexEXT(ray_query, false);
   int instance_index = rayQueryGetIntersectionInstanceIdEXT(ray_query, false);
   int geometry_index = rayQueryGetIntersectionPrimitiveIndexEXT(ray_query, false);
-  vec2 bary = rayQueryGetIntersectionBarycentricsEXT  (ray_query, false);
+  vec2 bary = rayQueryGetIntersectionBarycentricsEXT(ray_query, false);
 
   u16vec3 indices = geometry_refs.data[instance_index].indices.data[geometry_index];
-
   VertexBufferRef vertices = geometry_refs.data[instance_index].vertices;
   vec3 n0_object = vertices.data[int(indices.x)].normal;
   vec3 n1_object = vertices.data[int(indices.y)].normal;
   vec3 n2_object = vertices.data[int(indices.z)].normal;
-  /*
-  vec3 n0_object = geometry_refs.data[instance_index].vertices.data[int(indices.x)].normal;
-  vec3 n1_object = geometry_refs.data[instance_index].vertices.data[int(indices.y)].normal;
-  vec3 n2_object = geometry_refs.data[instance_index].vertices.data[int(indices.z)].normal;
-  */
   vec3 n_object = normalize(barycentric_interpolate(bary, n0_object, n1_object, n2_object));
 
   // @Incomplete: read normal map and apply that.
@@ -87,7 +82,7 @@ void main() {
   vec3 n_world = n_object;
 
   ivec2 store_coord = ivec2(gl_WorkGroupID.xy) + ivec2(32 * gl_WorkGroupID.z, 0);
-  // @Incomplete: probe grid
+  // @Incomplete :ProbeGrid
 
   imageStore(
     zchannel,

@@ -6,6 +6,8 @@ namespace engine::common::ubo {
 struct Flags {
   uint32_t show_normals;
   uint32_t show_sky;
+  uint32_t disable_direct_lighting;
+  uint32_t disable_indirect_lighting;
 };
 
 struct Frame {
