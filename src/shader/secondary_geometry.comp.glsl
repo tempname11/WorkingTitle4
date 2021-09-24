@@ -6,6 +6,7 @@
 #extension GL_EXT_buffer_reference2 : enable
 #extension GL_EXT_scalar_block_layout : enable
 #include "common/helpers.glsl"
+#include "common/frame.glsl"
 
 layout(binding = 0, rgba16_snorm) uniform image2D gchannel0;
 layout(binding = 1, rgba8) uniform image2D gchannel1;
@@ -38,12 +39,18 @@ layout(binding = 5) readonly buffer GeometryRefs {
   PerInstance data[];
 } geometry_refs;
 
+layout(binding = 6) uniform Frame { FrameData data; } frame;
+
 // layout(set = 2, binding = 0) uniform texture2D all_albedo_textures[];
 // @Incomplete :Textures
 
 void main() {
   rayQueryEXT ray_query;
-  vec3 origin_world = vec3(0.5) + 1.0 * gl_WorkGroupID; // @Incomplete :ProbeGrid
+  uvec3 probe_coord = gl_WorkGroupID;
+  vec3 origin_world = (
+    frame.data.probe.grid_world_position_zero +
+    frame.data.probe.grid_world_position_delta * probe_coord
+  );
   vec3 raydir_world = vec3(0.0, 0.0, -1.0); // @Incomplete :ManyRays
   rayQueryInitializeEXT(
     ray_query,
@@ -75,11 +82,13 @@ void main() {
   vec3 n_object = normalize(barycentric_interpolate(bary, n0_object, n1_object, n2_object));
 
   // @Incomplete :Textures read normal map and apply that.
-  // @Incomplete: :WorldSpaceNormals convert to world space. for now, assume they are same.
+  // @Incomplete :WorldSpaceNormals convert to world space. for now, assume they are same.
   vec3 n_world = n_object;
 
-  ivec2 store_coord = ivec2(gl_WorkGroupID.xy) + ivec2(32 * gl_WorkGroupID.z, 0);
-  // @Incomplete :ProbeGrid
+  ivec2 store_coord = (
+    ivec2(gl_WorkGroupID.xy) +
+    ivec2(frame.data.probe.grid_size.x * gl_WorkGroupID.z, 0)
+  );
 
   imageStore(
     zchannel,

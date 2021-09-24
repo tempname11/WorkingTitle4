@@ -14,16 +14,7 @@ layout(input_attachment_index = 1, binding = 1) uniform subpassInput gchannel1;
 layout(input_attachment_index = 2, binding = 2) uniform subpassInput gchannel2;
 layout(input_attachment_index = 3, binding = 3) uniform subpassInput zchannel;
 
-// @Duplicate :UniformFrame
-layout(binding = 4) uniform Frame {
-  mat4 projection;
-  mat4 view;
-  mat4 projection_inverse;
-  mat4 view_inverse;
-  FrameFlags flags;
-  uint end_marker;
-} frame;
-
+layout(binding = 4) uniform Frame { FrameData data; } frame;
 layout(binding = 5) uniform accelerationStructureEXT accel;
 
 // @Duplicate :UniformDirLight
@@ -34,7 +25,8 @@ layout(set = 1, binding = 0) uniform DirectionalLight {
 
 void main() {
   #ifndef NDEBUG
-    if (frame.end_marker != 0xDeadBeef) {
+    // @Cleanup move this sanity check
+    if (frame.data.end_marker != 0xDeadBeef) {
       return;
     }
   #endif
@@ -44,17 +36,17 @@ void main() {
   float z_far = 10000.0; // @Temporary: move to uniforms
   float z_linear = z_near * z_far / (z_far + depth * (z_near - z_far));
 
-  vec4 target_view_long = frame.projection_inverse * vec4(position, 1.0, 1.0);
-  vec3 target_world = normalize((frame.view_inverse * target_view_long).xyz);
-  vec3 eye_world = (frame.view_inverse * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+  vec4 target_view_long = frame.data.projection_inverse * vec4(position, 1.0, 1.0);
+  vec3 target_world = normalize((frame.data.view_inverse * target_view_long).xyz);
+  vec3 eye_world = (frame.data.view_inverse * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
   float perspective_correction = length(target_view_long.xyz);
   vec3 V = -normalize(target_view_long.xyz);
 
   // @Performance: multiply on CPU
-  vec3 L = -(frame.view * vec4(directional_light.direction, 0.0)).xyz;
+  vec3 L = -(frame.data.view * vec4(directional_light.direction, 0.0)).xyz;
 
   if (depth == 1.0) {
-    if (frame.flags.show_sky) {
+    if (frame.data.flags.show_sky) {
       result = sky(target_world, -directional_light.direction);
       return;
     } else {
@@ -90,7 +82,7 @@ void main() {
   vec3 albedo = subpassLoad(gchannel1).rgb;
   vec3 romeao = subpassLoad(gchannel2).rgb;
 
-  if (frame.flags.show_normals) {
+  if (frame.data.flags.show_normals) {
     result = N * 0.5 + vec3(0.5);
     return;
   }
@@ -106,7 +98,7 @@ void main() {
     directional_light.intensity
   );
 
-  if (frame.flags.disable_direct_lighting) {
+  if (frame.data.flags.disable_direct_lighting) {
     result *= 0.0;
   }
 }

@@ -12,17 +12,8 @@ layout(input_attachment_index = 0, binding = 0) uniform subpassInput gchannel0;
 layout(input_attachment_index = 1, binding = 1) uniform subpassInput gchannel1;
 layout(input_attachment_index = 2, binding = 2) uniform subpassInput gchannel2;
 layout(input_attachment_index = 3, binding = 3) uniform subpassInput zchannel;
+layout(binding = 4) uniform Frame { FrameData data; } frame;
 layout(binding = 5) uniform accelerationStructureEXT accel;
-
-// @Duplicate :UniformFrame
-layout(binding = 4) uniform Frame {
-  mat4 projection;
-  mat4 view;
-  mat4 projection_inverse;
-  mat4 view_inverse;
-  FrameFlags flags;
-  uint end_marker;
-} frame;
 
 // @Duplicate :UniformDirLight
 layout(set = 1, binding = 0) uniform DirectionalLight {
@@ -31,16 +22,21 @@ layout(set = 1, binding = 0) uniform DirectionalLight {
 } directional_light;
 
 void main() {
-  vec2 coord = (position * 0.5 + 0.5) * vec2(2048.0) - 0.5; // @Cleanup :MoveToUniform 2048
-  ivec3 work_group_id = ivec3(
-    mod(coord.x, 32),
-    mod(coord.y, 32),
-    mod(coord.x / 32, 8)
-  ); // @Incomplete :ProbeGrid
+  uvec2 coord = uvec2((position * 0.5 + 0.5) * frame.data.probe.secondary_gbuffer_texel_size);
+  // truncated, otherwise would need to subtract 0.5.
+
+  // @Performance: could do bit operations here if working with powers of 2.
+  uvec3 probe_grid_coord = uvec3(
+    mod(coord.x, frame.data.probe.grid_size.x),
+    mod(coord.y, frame.data.probe.grid_size.y),
+    mod(coord.x / frame.data.probe.grid_size.x, frame.data.probe.grid_size.z)
+  ); // :ManyRays
 
   // unless noted otherwise, everything is in world space.
-
-  vec3 probe_origin = vec3(0.5) + 1.0 * work_group_id; // @Incomplete :ProbeGrid
+  vec3 probe_origin = (
+    frame.data.probe.grid_world_position_zero +
+    frame.data.probe.grid_world_position_delta * probe_grid_coord
+  );
   vec3 probe_raydir = vec3(0.0, 0.0, -1.0); // @Incomplete :ManyRays
   float t = subpassLoad(zchannel).r;
   vec3 probe_hit = probe_origin + t * probe_raydir;

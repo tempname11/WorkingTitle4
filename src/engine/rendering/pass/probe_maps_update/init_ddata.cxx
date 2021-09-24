@@ -48,6 +48,11 @@ void init_ddata(
       .imageView = probe_light_map->views[i],
       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
     };
+    VkDescriptorBufferInfo ubo_frame_info = {
+      .buffer = common->stakes.ubo_frame[i].buffer,
+      .offset = 0,
+      .range = VK_WHOLE_SIZE,
+    };
     VkWriteDescriptorSet writes[] = {
       {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -67,6 +72,15 @@ void init_ddata(
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .pImageInfo = &secondary_lbuffer_info,
       },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets[i],
+          .dstBinding = 2,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .pBufferInfo = &ubo_frame_info,
+        },
     };
     vkUpdateDescriptorSets(
       core->device,

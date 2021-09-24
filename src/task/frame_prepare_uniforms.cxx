@@ -1,10 +1,12 @@
 #include <src/lib/gfx/utilities.hxx>
 #include <src/engine/common/ubo.hxx>
+#include <src/engine/rendering/intra/secondary_gbuffer/constants.hxx>
+#include <src/engine/rendering/intra/probe_light_map/constants.hxx>
 #include "frame_prepare_uniforms.hxx"
 
 TASK_DECL {
-  // @Note: this is probably the wrong place to update the buffers!
-  // Need to think on what's right.
+  // @Cleanup: get rid of this task and do this stuff
+  // where it actually makes sense to do it.
 
   ZoneScoped;
   { ZoneScopedN("frame");
@@ -19,6 +21,21 @@ TASK_DECL {
       .projection_inverse = glm::inverse(projection),
       .view_inverse = glm::inverse(view),
       .flags = session_state->ubo_flags,
+      .probe_info = {
+        .grid_size = glm::uvec3(32, 32, 8),
+        .ray_pack_size = glm::uvec2(1, 1), // :ManyRays
+        .ray_count = 1, // :ManyRays
+        .grid_world_position_zero = glm::vec3(0.5),
+        .grid_world_position_delta = glm::vec3(1.0),
+        .light_map_texel_size = glm::vec2(
+          engine::rendering::intra::probe_light_map::WIDTH,
+          engine::rendering::intra::probe_light_map::HEIGHT
+        ),
+        .secondary_gbuffer_texel_size = glm::vec2(
+          engine::rendering::intra::secondary_gbuffer::WIDTH,
+          engine::rendering::intra::secondary_gbuffer::HEIGHT
+        ),
+      },
       .end_marker = 0xDeadBeef
     };
     auto stake = &common->stakes.ubo_frame[frame_info->inflight_index];
@@ -34,6 +51,7 @@ TASK_DECL {
     vkUnmapMemory(core->device, stake->memory);
   }
 
+  // This should not be here! :ManyLights 
   { ZoneScopedN("directional_light");
     auto dir = glm::length(session_state->sun_position_xy) > 1.0f
       ? glm::normalize(session_state->sun_position_xy)
