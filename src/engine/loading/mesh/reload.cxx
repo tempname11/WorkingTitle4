@@ -83,6 +83,17 @@ void reload(
       data
     )
   );
+  auto signal_init_blas = lib::task::create_external_signal();
+  auto task_init_blas = defer(
+    lib::task::create(
+      _load_init_blas,
+      session.ptr,
+      &session->vulkan.core,
+      &session->vulkan.queue_work,
+      signal_init_blas,
+      data
+    )
+  );
   auto task_finish = lib::task::create(
     after_inflight,
     session.ptr,
@@ -102,12 +113,14 @@ void reload(
   ctx->new_tasks.insert(ctx->new_tasks.end(), {
     task_read_file,
     task_init_buffer.first,
+    task_init_blas.first,
     task_finish,
   });
 
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
     { task_read_file, task_init_buffer.first },
-    { signal_init_buffer, task_finish },
+    { signal_init_buffer, task_init_blas.first },
+    { signal_init_blas, task_finish },
   });
 }
 

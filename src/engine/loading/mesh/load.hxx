@@ -24,6 +24,15 @@ void _load_init_buffer(
   Own<LoadData> data 
 );
 
+void _load_init_blas(
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<SessionData> session,
+  Use<SessionData::Vulkan::Core> core,
+  Own<VkQueue> queue_work,
+  Ref<lib::Task> signal,
+  Own<LoadData> data 
+);
+
 void _load_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<SessionData> session,

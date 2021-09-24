@@ -1,6 +1,5 @@
 # known bugs
-- crash when resizing > 2048 pixels
-- crash on mesh reload
+- crash when resizing to width > 2048 pixels
 - models with more than 2^16 vertices are not imported correctly (should be split up?)
 
 # intermittent bugs
