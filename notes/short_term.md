@@ -1,6 +1,7 @@
 # milestone: DDGI
   --- should work well
 
+  - multiple bounces
   - variable probe grid :ProbeGrid
   - visibility testing
   - energy conservation
@@ -9,4 +10,3 @@
 
   :Textures
   - hysteresis: previous probe maps -> new probe maps
-  :WorldSpaceNormals

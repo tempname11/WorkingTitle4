@@ -46,6 +46,7 @@ void main() {
   );
   vec3 probe_raydir = -spherical_fibonacci(ray_index, ray_count);
   float t = subpassLoad(zchannel).r;
+  if (t == 0.0) { discard; }
   vec3 probe_hit = probe_origin + t * probe_raydir;
 
   rayQueryEXT ray_query;
@@ -61,10 +62,7 @@ void main() {
   );
   rayQueryProceedEXT(ray_query);
   float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);
-
-  if (t_intersection > 0.0) {
-    discard;
-  }
+  if (t_intersection > 0.0) { discard; }
 
   vec3 L = -directional_light.direction;
   vec3 V = -probe_raydir;

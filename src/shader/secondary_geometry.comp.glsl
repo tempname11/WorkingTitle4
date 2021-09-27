@@ -49,6 +49,11 @@ layout(binding = 6) uniform Frame { FrameData data; } frame;
 // @Incomplete :Textures
 
 void main() {
+  ivec2 store_coord = ( // :SecondaryCoordEncoding
+    ivec2(gl_GlobalInvocationID.xy) +
+    ivec2(frame.data.probe.grid_size.x * 8 * gl_GlobalInvocationID.z, 0)
+  );
+
   rayQueryEXT ray_query;
   uint ray_index = gl_LocalInvocationIndex;
   uvec3 probe_coord = gl_WorkGroupID;
@@ -71,13 +76,19 @@ void main() {
   float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);
   bool front_face = rayQueryGetIntersectionFrontFaceEXT(ray_query, false);
   if (t_intersection == 0.0 || !front_face) {
-    // @Bug: we don't clear the G and Z buffers, so previous frame's data will be there
+    // We don't clear the G buffer, which should not matter.
+    imageStore(
+      zchannel,
+      store_coord,
+      vec4(0.0)
+    );
     return;
   }
   // int custom_index = rayQueryGetIntersectionInstanceCustomIndexEXT(ray_query, false);
   int instance_index = rayQueryGetIntersectionInstanceIdEXT(ray_query, false);
   int geometry_index = rayQueryGetIntersectionPrimitiveIndexEXT(ray_query, false);
   vec2 bary = rayQueryGetIntersectionBarycentricsEXT(ray_query, false);
+  mat4x3 object_to_world = rayQueryGetIntersectionObjectToWorldEXT(ray_query, false);
 
   u16vec3 indices = geometry_refs.data[instance_index].indices.data[geometry_index];
   VertexBufferRef vertices = geometry_refs.data[instance_index].vertices;
@@ -87,12 +98,8 @@ void main() {
   vec3 n_object = normalize(barycentric_interpolate(bary, n0_object, n1_object, n2_object));
 
   // @Incomplete :Textures read normal map and apply that.
-  // @Incomplete :WorldSpaceNormals convert to world space. for now, assume they are same.
-  vec3 n_world = n_object;
-
-  ivec2 store_coord = ( // :SecondaryCoordEncoding
-    ivec2(gl_GlobalInvocationID.xy) +
-    ivec2(frame.data.probe.grid_size.x * 8 * gl_GlobalInvocationID.z, 0)
+  vec3 n_world = frame.data.flags.debug_C ? n_object : (
+    object_to_world * vec4(n_object, 0.0) 
   );
 
   imageStore(

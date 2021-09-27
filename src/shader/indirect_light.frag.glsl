@@ -74,12 +74,13 @@ void main() {
 
     float weight = trilinear.x * trilinear.y * trilinear.z;
 
+    /*
     if (frame.data.flags.debug_A) {
       // @Incomplete: produces weird grid-like artifacts
       // maybe because of probes-in-the-wall and no visibility info?
-
       weight *= dot(probe_direction, N) + 1.0; // "smooth backface"
     }
+    */
 
     const float min_weight = 0.01;
     weight = max(min_weight, weight);
@@ -93,7 +94,7 @@ void main() {
     result = vec3(0.0);
   }
 
-  if (frame.data.flags.debug_C) {
+  if (frame.data.flags.debug_B) {
     /*
     result += texture(
       probe_light_map,
