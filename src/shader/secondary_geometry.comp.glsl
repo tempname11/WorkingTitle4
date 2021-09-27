@@ -7,6 +7,10 @@
 #extension GL_EXT_scalar_block_layout : enable
 #include "common/helpers.glsl"
 #include "common/frame.glsl"
+#include "common/probes.glsl"
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in; // :DDGI_N_Rays 64
+const uint ray_count = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
 
 layout(binding = 0, rgba16_snorm) uniform image2D gchannel0;
 layout(binding = 1, rgba8) uniform image2D gchannel1;
@@ -46,12 +50,13 @@ layout(binding = 6) uniform Frame { FrameData data; } frame;
 
 void main() {
   rayQueryEXT ray_query;
+  uint ray_index = gl_LocalInvocationIndex;
   uvec3 probe_coord = gl_WorkGroupID;
   vec3 origin_world = (
     frame.data.probe.grid_world_position_zero +
     frame.data.probe.grid_world_position_delta * probe_coord
   );
-  vec3 raydir_world = vec3(0.0, 0.0, -1.0); // @Incomplete :ManyRays
+  vec3 raydir_world = -spherical_fibonacci(ray_index, ray_count);
   rayQueryInitializeEXT(
     ray_query,
     accel,
@@ -85,9 +90,9 @@ void main() {
   // @Incomplete :WorldSpaceNormals convert to world space. for now, assume they are same.
   vec3 n_world = n_object;
 
-  ivec2 store_coord = (
-    ivec2(gl_WorkGroupID.xy) +
-    ivec2(frame.data.probe.grid_size.x * gl_WorkGroupID.z, 0)
+  ivec2 store_coord = ( // :SecondaryCoordEncoding
+    ivec2(gl_GlobalInvocationID.xy) +
+    ivec2(frame.data.probe.grid_size.x * 8 * gl_GlobalInvocationID.z, 0)
   );
 
   imageStore(

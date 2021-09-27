@@ -3,7 +3,10 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_GOOGLE_include_directive : enable
 #include "common/light_model.glsl"
+#include "common/probes.glsl"
 #include "common/frame.glsl"
+
+const uint ray_count = 64; // :DDGI_N_Rays 64
 
 layout(location = 0) in vec2 position;
 layout(location = 0) out vec3 result; 
@@ -22,22 +25,26 @@ layout(set = 1, binding = 0) uniform DirectionalLight {
 } directional_light;
 
 void main() {
-  uvec2 coord = uvec2((position * 0.5 + 0.5) * frame.data.probe.secondary_gbuffer_texel_size);
+  uvec2 texel_coord = uvec2((position * 0.5 + 0.5) * frame.data.probe.secondary_gbuffer_texel_size);
   // truncated, otherwise would need to subtract 0.5.
 
   // @Performance: could do bit operations here if working with powers of 2.
+
+  // :DDGI_N_Rays 64
+  uvec2 tmp_ray_coord = uvec2(mod(texel_coord, 8));
+  uint ray_index = tmp_ray_coord.x + tmp_ray_coord.y * 8;
   uvec3 probe_grid_coord = uvec3(
-    mod(coord.x, frame.data.probe.grid_size.x),
-    mod(coord.y, frame.data.probe.grid_size.y),
-    mod(coord.x / frame.data.probe.grid_size.x, frame.data.probe.grid_size.z)
-  ); // :ManyRays
+    mod(texel_coord.x / 8, frame.data.probe.grid_size.x),
+    texel_coord.y / 8,
+    texel_coord.x / 8 / frame.data.probe.grid_size.x
+  );
 
   // unless noted otherwise, everything is in world space.
   vec3 probe_origin = (
     frame.data.probe.grid_world_position_zero +
     frame.data.probe.grid_world_position_delta * probe_grid_coord
   );
-  vec3 probe_raydir = vec3(0.0, 0.0, -1.0); // @Incomplete :ManyRays
+  vec3 probe_raydir = -spherical_fibonacci(ray_index, ray_count);
   float t = subpassLoad(zchannel).r;
   vec3 probe_hit = probe_origin + t * probe_raydir;
 

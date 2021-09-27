@@ -6,15 +6,33 @@ layout(binding = 0, r11f_g11f_b10f) uniform image2D probe_light_map;
 layout(binding = 1) uniform sampler2D lbuffer2_image;
 layout(binding = 2) uniform Frame { FrameData data; } frame;
 
+// @Performance :UseComputeLocalSize
+
 void main() {
+  // :DDGI_N_Rays 64
   // @Incomplete :ProbePacking
-  vec4 value = texture(
-    lbuffer2_image,
-    (vec2(gl_WorkGroupID.xy) + 0.5) / frame.data.probe.secondary_gbuffer_texel_size
+
+  uvec2 texel_coord_base = 8 * uvec2(
+    gl_WorkGroupID.x + gl_WorkGroupID.z * frame.data.probe.grid_size.x,
+    gl_WorkGroupID.y
   );
+  vec4 value = vec4(0.0);
+
+  for (uint x = 0; x < 8; x++) {
+    for (uint y = 0; y < 8; y++) {
+      value += texture(
+        lbuffer2_image,
+        (vec2(texel_coord_base + uvec2(x, y)) + 0.5) / frame.data.probe.secondary_gbuffer_texel_size
+      );
+    }
+  }
+  value /= 64.0;
   imageStore(
     probe_light_map,
-    ivec2(gl_WorkGroupID.xy),
+    ivec2(
+      gl_WorkGroupID.x + gl_WorkGroupID.z * frame.data.probe.grid_size.x,
+      gl_WorkGroupID.y
+    ),
     value
   );
 }

@@ -135,8 +135,8 @@ void init_ddata(
         .renderPass = sdata->render_pass,
         .attachmentCount = sizeof(attachments) / sizeof(*attachments),
         .pAttachments = attachments,
-        .width = swapchain_description->image_extent.width,
-        .height = swapchain_description->image_extent.height,
+        .width = 2048, // @Temporary
+        .height = 2048, // @Temporary
         .layers = 1,
       };
       {

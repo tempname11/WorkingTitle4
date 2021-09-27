@@ -37,13 +37,13 @@ void main() {
       vec3(frame.data.probe.grid_size)
     )
   );
-  // :ManyRays
+  // @Incomplete :ProbePacking
   uvec2 packed_probe_coord = (
     grid_coord.xy +
     uvec2(frame.data.probe.grid_size.x * grid_coord.z, 0)
   );
 
-  // @Incomplete :ProbePacking :ProbeEquation
+  // @Incomplete :ProbeEquation
   result = texture(
     probe_light_map,
     (packed_probe_coord + 0.5) / frame.data.probe.light_map_texel_size
@@ -53,11 +53,9 @@ void main() {
     result = vec3(0.0);
   }
 
-  /* debug stuff
-  result += grid_coord / vec3(32,32,8);
   result += texture(
     probe_light_map,
-    (0.5 + 0.5 * position) * vec2(1280.0, 720.0) / 2048.0 / 4.0 
+    (0.5 + 0.5 * position) * vec2(1280.0, 720.0) / 2048.0 
   ).rgb;
-  */
+  //result += grid_coord / vec3(32,32,8);
 }

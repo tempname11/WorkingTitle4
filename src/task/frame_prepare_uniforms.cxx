@@ -23,8 +23,6 @@ TASK_DECL {
       .flags = session_state->ubo_flags,
       .probe_info = {
         .grid_size = glm::uvec3(32, 32, 8),
-        .ray_pack_size = glm::uvec2(1, 1), // :ManyRays
-        .ray_count = 1, // :ManyRays
         .grid_world_position_zero = glm::vec3(0.5),
         .grid_world_position_delta = glm::vec3(1.0),
         .light_map_texel_size = glm::vec2(

@@ -7,7 +7,7 @@
   (seems correlated with number of Vulkan warnings beforehand.)
 
 ### architectural problems
-- all compute workgroups are size 1
+- all compute workgroups are size 1 :UseComputeLocalSize
 - "lpass" should be split info a few different passes
 - descriptor set counts are fixed
 - uploader seems very rushed, need to come back to it from a performance perspective

@@ -10,8 +10,6 @@ struct FrameFlags {
 
 struct FrameProbe {
   uvec3 grid_size;
-  uvec2 ray_pack_size;
-  uint ray_count;
   vec3 grid_world_position_zero;
   vec3 grid_world_position_delta;
   vec2 light_map_texel_size;

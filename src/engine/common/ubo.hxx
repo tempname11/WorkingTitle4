@@ -12,8 +12,6 @@ struct Flags {
 
 struct ProbeInfo {
   alignas(16) glm::uvec3 grid_size;
-  alignas(16) glm::uvec2 ray_pack_size;
-  uint32_t ray_count;
   alignas(16) glm::vec3 grid_world_position_zero;
   alignas(16) glm::vec3 grid_world_position_delta;
   alignas(16) glm::vec2 light_map_texel_size;

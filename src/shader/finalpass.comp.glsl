@@ -2,6 +2,8 @@
 layout(binding = 0, rgba16) uniform image2D final_image;
 layout(binding = 1) uniform sampler2D lbuffer_image;
 
+// @Performance :UseComputeLocalSize
+
 void main() {
   vec3 light = texture(
     lbuffer_image,

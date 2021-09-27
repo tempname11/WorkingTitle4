@@ -52,7 +52,7 @@ void record(
     .framebuffer = ddata->framebuffers[frame_info->inflight_index],
     .renderArea = {
       .offset = {0, 0},
-      .extent = swapchain_description->image_extent,
+      .extent = {2048, 2048}, // @Temporary
     },
     .clearValueCount = 1,
     .pClearValues = &clear_value,

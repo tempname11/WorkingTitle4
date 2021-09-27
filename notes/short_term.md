@@ -14,4 +14,3 @@
 
   :ProbeEquation
   :ProbePacking
-  :ManyRays

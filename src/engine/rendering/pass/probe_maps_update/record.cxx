@@ -20,11 +20,11 @@ void record(
     0, 1, &ddata->descriptor_sets[frame_info->inflight_index],
     0, nullptr
   );
-  // @Incomplete
+  // @Incomplete :ProbeGrid
   vkCmdDispatch(cmd,
-    2048, // w
-    2048, // h
-    1 // d
+    32,
+    32,
+    8
   );
 }
 
