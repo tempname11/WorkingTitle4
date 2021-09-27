@@ -1,17 +1,12 @@
 # milestone: DDGI
   --- should work well
 
-  - hysteresis: previous probe maps -> new probe maps
-  - variable probe grid
-  - visibility
+  - variable probe grid :ProbeGrid
+  - visibility testing
   - energy conservation
 
   --- should work OK in more general scenarios
 
   :Textures
-  :ProbeGrid
+  - hysteresis: previous probe maps -> new probe maps
   :WorldSpaceNormals
-
-  --- should be functional in current test scene
-
-  :ProbePacking

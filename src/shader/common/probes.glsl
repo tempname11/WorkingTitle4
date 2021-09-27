@@ -1,3 +1,6 @@
+#ifndef _COMMON_PROBES_GLSL_
+#define _COMMON_PROBES_GLSL_
+
 #include "constants.glsl"
 
 float madfrac(float a, float b) {
@@ -48,3 +51,5 @@ vec3 octo_decode(vec2 o) {
   }
   return normalize(v);
 }
+
+#endif // _COMMON_PROBES_GLSL_

@@ -2,6 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_GOOGLE_include_directive : enable
 #include "common/frame.glsl"
+#include "common/probes.glsl"
 
 layout(location = 0) in vec2 position;
 layout(location = 0) out vec3 result; 
@@ -57,18 +58,20 @@ void main() {
     );
 
     // @Incomplete :ProbePacking
-    uvec2 packed_probe_coord = 6 * (
+    uvec2 probe_base_texel_coord = 1 + 6 * (
       grid_coord.xy +
       uvec2(frame.data.probe.grid_size.x * grid_coord.z, 0)
     );
     vec3 illuminance = texture(
       probe_light_map,
-      (packed_probe_coord + 0.5) / frame.data.probe.light_map_texel_size
+      (
+        probe_base_texel_coord +
+        (2.0 + 2.0 * octo_encode(N))
+      ) / frame.data.probe.light_map_texel_size
     ).rgb;
 
     vec3 probe_direction = normalize(grid_cube_vertex_coord - grid_cube_coord);
 
-    // @Incomplete :ProbeEquation
     float weight = trilinear.x * trilinear.y * trilinear.z;
 
     if (frame.data.flags.debug_A) {
@@ -90,13 +93,15 @@ void main() {
     result = vec3(0.0);
   }
 
-  if (frame.data.flags.debug_B) {
+  if (frame.data.flags.debug_C) {
+    /*
     result += texture(
       probe_light_map,
-      (0.5 + 0.5 * position) * vec2(1280.0, 720.0) / 2048.0 
+      (0.5 + 0.5 * position) * vec2(1280.0, 720.0) / 2048.0 / 64.0
     ).rgb;
-  }
-  if (frame.data.flags.debug_C) {
+    */
+    /*
     result += grid_coord0 / vec3(32,32,8);
+    */
   }
 }
