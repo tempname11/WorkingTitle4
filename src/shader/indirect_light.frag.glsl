@@ -57,7 +57,7 @@ void main() {
     );
 
     // @Incomplete :ProbePacking
-    uvec2 packed_probe_coord = (
+    uvec2 packed_probe_coord = 6 * (
       grid_coord.xy +
       uvec2(frame.data.probe.grid_size.x * grid_coord.z, 0)
     );

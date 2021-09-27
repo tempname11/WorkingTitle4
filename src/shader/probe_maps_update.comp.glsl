@@ -2,6 +2,8 @@
 #extension GL_GOOGLE_include_directive : enable
 #include "common/frame.glsl"
 
+layout(local_size_x = 6, local_size_y = 6, local_size_z = 1) in; // :OctomapSize
+
 layout(binding = 0, r11f_g11f_b10f) uniform image2D probe_light_map;
 layout(binding = 1) uniform sampler2D lbuffer2_image;
 layout(binding = 2) uniform Frame { FrameData data; } frame;
@@ -32,7 +34,7 @@ void main() {
     ivec2(
       gl_WorkGroupID.x + gl_WorkGroupID.z * frame.data.probe.grid_size.x,
       gl_WorkGroupID.y
-    ),
+    ) * 6 + ivec2(gl_LocalInvocationID.xy),
     value
   );
 }
