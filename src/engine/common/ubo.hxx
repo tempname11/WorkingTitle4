@@ -8,6 +8,9 @@ struct Flags {
   uint32_t show_sky;
   uint32_t disable_direct_lighting;
   uint32_t disable_indirect_lighting;
+  uint32_t debug_A;
+  uint32_t debug_B;
+  uint32_t debug_C;
 };
 
 struct ProbeInfo {

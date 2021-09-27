@@ -503,6 +503,9 @@ TASK_DECL {
       ImGuiX::Checkbox32("show sky", &it->show_sky);
       ImGuiX::Checkbox32("disable direct lighting", &it->disable_direct_lighting);
       ImGuiX::Checkbox32("disable indirect lighting", &it->disable_indirect_lighting);
+      ImGuiX::Checkbox32("debug A", &it->debug_A);
+      ImGuiX::Checkbox32("debug B", &it->debug_B);
+      ImGuiX::Checkbox32("debug C", &it->debug_C);
       ImGui::VSliderFloat(
         "Y",
         ImVec2(20.0f, 128.0f),

@@ -6,6 +6,9 @@ struct FrameFlags {
   bool show_sky;
   bool disable_direct_lighting;
   bool disable_indirect_lighting;
+  bool debug_A;
+  bool debug_B;
+  bool debug_C;
 };
 
 struct FrameProbe {
