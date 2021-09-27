@@ -5,7 +5,7 @@ project ("WorkingTitle4")
 message(CUSTOM_LINK_PATH = $ENV{CUSTOM_LINK_PATH})
 message(CUSTOM_INCLUDE_PATH = $ENV{CUSTOM_INCLUDE_PATH})
 
-file (GLOB SRC_SHADER_COMMON CONFIGURE_DEPENDS "src/shader/*common.glsl") # hacky glob, instead of include analysis
+file (GLOB SRC_SHADER_COMMON CONFIGURE_DEPENDS "src/shader/common/*.glsl") # hacky glob, instead of include analysis
 file (GLOB SRC_SHADER_PROG CONFIGURE_DEPENDS "src/shader/*.*.glsl")
 
 foreach (GLSL_FILE IN LISTS SRC_SHADER_PROG)
