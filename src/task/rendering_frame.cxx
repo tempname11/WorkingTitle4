@@ -57,6 +57,7 @@ TASK_DECL {
     latest_frame->timestamp_ns = new_timestamp_ns;
   }
   latest_frame->number++;
+  latest_frame->is_sequential = (latest_frame->number > 0);
   latest_frame->timeline_semaphore_value = latest_frame->number + 1;
   latest_frame->inflight_index = (
     latest_frame->number % swapchain_description->image_count
@@ -133,6 +134,7 @@ TASK_DECL {
       &data->gpass,
       &data->lpass,
       &data->pass_secondary_geometry,
+      &data->pass_indirect_light_secondary,
       &data->pass_directional_light_secondary,
       &data->pass_probe_maps_update,
       &data->pass_indirect_light,
@@ -149,6 +151,7 @@ TASK_DECL {
       &session->vulkan.gpass,
       &session->vulkan.lpass,
       &session->vulkan.pass_secondary_geometry,
+      &session->vulkan.pass_indirect_light_secondary,
       &session->vulkan.pass_directional_light_secondary,
       &session->vulkan.pass_probe_maps_update,
       &session->vulkan.pass_indirect_light,

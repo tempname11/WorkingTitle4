@@ -101,10 +101,9 @@ void main() {
   vec3 n2_object = vertices.data[int(indices.z)].normal;
   vec3 n_object = normalize(barycentric_interpolate(bary, n0_object, n1_object, n2_object));
 
-  // @Incomplete :Textures read normal map and apply that.
-  vec3 n_world = frame.data.flags.debug_C ? n_object : (
-    object_to_world * vec4(n_object, 0.0) 
-  );
+  // @Incomplete :Textures
+  // Read normal map and apply that.
+  vec3 n_world = object_to_world * vec4(n_object, 0.0);
 
   imageStore(
     zchannel,

@@ -4,7 +4,7 @@
 #include "../../image_formats.hxx"
 #include "data.hxx"
 
-namespace engine::rendering::pass::directional_light_secondary {
+namespace engine::rendering::pass::indirect_light_secondary {
 
 void init_sdata(
   SData *out,
@@ -41,13 +41,13 @@ void init_sdata(
       },
       {
         .binding = 4,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
       },
       {
         .binding = 5,
-        .descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
       },
@@ -68,37 +68,10 @@ void init_sdata(
     }
   }
 
-  VkDescriptorSetLayout descriptor_set_layout_light;
-  { ZoneScopedN("descriptor_set_layout_light");
-    VkDescriptorSetLayoutBinding layout_bindings[] = {
-      {
-        .binding = 0,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-      },
-    };
-    VkDescriptorSetLayoutCreateInfo create_info = {
-      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-      .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
-      .pBindings = layout_bindings,
-    };
-    {
-      auto result = vkCreateDescriptorSetLayout(
-        core->device,
-        &create_info,
-        core->allocator,
-        &descriptor_set_layout_light
-      );
-      assert(result == VK_SUCCESS);
-    }
-  }
-
   VkPipelineLayout pipeline_layout;
   { ZoneScopedN("pipeline_layout");
     VkDescriptorSetLayout layouts[] = {
       descriptor_set_layout_frame,
-      descriptor_set_layout_light,
     };
     VkPipelineLayoutCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -122,7 +95,7 @@ void init_sdata(
       {
         .format = LBUFFER_FORMAT,
         .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -224,8 +197,8 @@ void init_sdata(
     { ZoneScopedN("module_vert");
       VkShaderModuleCreateInfo info = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = embedded_directional_light_secondary_vert_len,
-        .pCode = (const uint32_t*) embedded_directional_light_secondary_vert,
+        .codeSize = embedded_indirect_light_secondary_vert_len,
+        .pCode = (const uint32_t*) embedded_indirect_light_secondary_vert,
       };
       auto result = vkCreateShaderModule(
         core->device,
@@ -238,8 +211,8 @@ void init_sdata(
     { ZoneScopedN("module_frag");
       VkShaderModuleCreateInfo info = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = embedded_directional_light_secondary_frag_len,
-        .pCode = (const uint32_t*) embedded_directional_light_secondary_frag,
+        .codeSize = embedded_indirect_light_secondary_frag_len,
+        .pCode = (const uint32_t*) embedded_indirect_light_secondary_frag,
       };
       auto result = vkCreateShaderModule(
         core->device,
@@ -380,12 +353,29 @@ void init_sdata(
     vkDestroyShaderModule(core->device, module_vert, core->allocator);
   }
 
+  VkSampler sampler_probe_light_map;
+  { ZoneScopedN("sampler_probe_light_map");
+    VkSamplerCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+      .magFilter = VK_FILTER_LINEAR,
+      .minFilter = VK_FILTER_LINEAR,
+      .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+      .maxLod = VK_LOD_CLAMP_NONE,
+    };
+    vkCreateSampler(
+      core->device,
+      &create_info,
+      core->allocator,
+      &sampler_probe_light_map
+    );
+  }
+
   *out = {
     .descriptor_set_layout_frame = descriptor_set_layout_frame,
-    .descriptor_set_layout_light = descriptor_set_layout_light,
     .pipeline_layout = pipeline_layout,
     .render_pass = render_pass,
     .pipeline = pipeline,
+    .sampler_probe_light_map = sampler_probe_light_map,
   };
 }
 

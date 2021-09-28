@@ -11,8 +11,7 @@ layout(input_attachment_index = 0, binding = 0) uniform subpassInput gchannel0;
 layout(input_attachment_index = 1, binding = 1) uniform subpassInput gchannel1;
 layout(input_attachment_index = 2, binding = 2) uniform subpassInput gchannel2;
 layout(input_attachment_index = 3, binding = 3) uniform subpassInput zchannel;
-layout(set = 0, binding = 4) uniform sampler2D probe_light_map;
-
+layout(binding = 4) uniform sampler2D probe_light_map;
 layout(binding = 5) uniform Frame { FrameData data; } frame;
 
 void main() {
@@ -94,15 +93,13 @@ void main() {
     result = vec3(0.0);
   }
 
+  /*
   if (frame.data.flags.debug_B) {
-    /*
     result += texture(
       probe_light_map,
-      (0.5 + 0.5 * position) * vec2(1280.0, 720.0) / 2048.0 / 64.0
+      (0.5 + 0.5 * position) * vec2(1280.0, 720.0) / 2048.0
     ).rgb;
-    */
-    /*
-    result += grid_coord0 / vec3(32,32,8);
-    */
+    // result += grid_coord0 / vec3(32,32,8);
   }
+  */
 }

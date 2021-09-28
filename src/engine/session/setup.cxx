@@ -17,6 +17,7 @@
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/engine/rendering/pass/secondary_geometry.hxx>
+#include <src/engine/rendering/pass/indirect_light_secondary.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
 #include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
@@ -450,6 +451,11 @@ void init_vulkan(
     &it->core
   );
 
+  rendering::pass::indirect_light_secondary::init_sdata(
+    &it->pass_indirect_light_secondary,
+    &it->core
+  );
+
   rendering::pass::directional_light_secondary::init_sdata(
     &it->pass_directional_light_secondary,
     &it->core
@@ -753,11 +759,11 @@ void setup(
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData) - sizeof(SessionData::Vulkan);
-    static_assert(size == 928);
+    static_assert(size == 920);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 2864);
+    static_assert(size == 2904);
   }
   #endif
 

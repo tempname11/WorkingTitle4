@@ -1,6 +1,7 @@
 #include <src/task/defer.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
 #include <src/engine/rendering/pass/secondary_geometry.hxx>
+#include <src/engine/rendering/pass/indirect_light_secondary.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
 #include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
@@ -1348,6 +1349,30 @@ TASK_DECL {
     cmd
   );
 
+  engine::rendering::intra::probe_light_map::transition_previous_into_l2(
+    probe_light_map,
+    frame_info,
+    swapchain_description,
+    cmd
+  );
+
+  { TracyVkZone(core->tracy_context, cmd, "indirect_light_secondary");
+    engine::rendering::pass::indirect_light_secondary::record(
+      indirect_light_secondary_ddata,
+      indirect_light_secondary_sdata,
+      frame_info,
+      swapchain_description,
+      fullscreen_quad,
+      cmd
+    );
+  }
+
+  engine::rendering::intra::secondary_lbuffer::transition_inside_l2(
+    lbuffer2,
+    frame_info,
+    cmd
+  );
+
   { TracyVkZone(core->tracy_context, cmd, "directional_light_secondary");
     engine::rendering::pass::directional_light_secondary::record(
       directional_light_secondary_ddata,
@@ -1366,6 +1391,13 @@ TASK_DECL {
   engine::rendering::intra::secondary_lbuffer::transition_l2_to_probe_maps_update(
     lbuffer2,
     frame_info,
+    cmd
+  );
+
+  engine::rendering::intra::probe_light_map::transition_previous_into_probe_maps_update(
+    probe_light_map,
+    frame_info,
+    swapchain_description,
     cmd
   );
 

@@ -29,6 +29,7 @@
 #include <src/engine/blas_storage/data.hxx>
 #include <src/engine/blas_storage/id.hxx>
 #include <src/engine/rendering/pass/secondary_geometry/data.hxx>
+#include <src/engine/rendering/pass/indirect_light_secondary/data.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary/data.hxx>
 #include <src/engine/rendering/pass/probe_maps_update/data.hxx>
 #include <src/engine/rendering/pass/indirect_light/data.hxx>
@@ -227,6 +228,7 @@ struct SessionData : lib::task::ParentResource {
     } lpass;
 
     engine::rendering::pass::secondary_geometry::SData pass_secondary_geometry;
+    engine::rendering::pass::indirect_light_secondary::SData pass_indirect_light_secondary;
     engine::rendering::pass::directional_light_secondary::SData pass_directional_light_secondary;
     engine::rendering::pass::probe_maps_update::SData pass_probe_maps_update;
     engine::rendering::pass::indirect_light::SData pass_indirect_light;

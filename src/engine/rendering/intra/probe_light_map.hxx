@@ -32,4 +32,18 @@ void transition_into_probe_maps_update(
   VkCommandBuffer cmd
 );
 
+void transition_previous_into_l2(
+  Use<DData> it,
+  Use<display::Data::FrameInfo> frame_info,
+  Use<display::Data::SwapchainDescription> swapchain_description,
+  VkCommandBuffer cmd
+);
+
+void transition_previous_into_probe_maps_update(
+  Use<DData> it,
+  Use<display::Data::FrameInfo> frame_info,
+  Use<display::Data::SwapchainDescription> swapchain_description,
+  VkCommandBuffer cmd
+);
+
 } // namespace

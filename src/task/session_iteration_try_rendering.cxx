@@ -14,6 +14,7 @@
 #include <src/engine/rendering/intra/secondary_lbuffer.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
 #include <src/engine/rendering/pass/secondary_geometry.hxx>
+#include <src/engine/rendering/pass/indirect_light_secondary.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
 #include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
@@ -707,6 +708,18 @@ TASK_DECL {
     &rendering->common,
     &rendering->gbuffer2,
     &rendering->zbuffer2,
+    &rendering->swapchain_description,
+    &session->vulkan.core
+  );
+
+  engine::rendering::pass::indirect_light_secondary::init_ddata(
+    &rendering->pass_indirect_light_secondary,
+    &session->vulkan.pass_indirect_light_secondary,
+    &rendering->common,
+    &rendering->zbuffer2,
+    &rendering->gbuffer2,
+    &rendering->lbuffer2,
+    &rendering->probe_light_map,
     &rendering->swapchain_description,
     &session->vulkan.core
   );

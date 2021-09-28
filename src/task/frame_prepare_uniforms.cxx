@@ -20,7 +20,7 @@ TASK_DECL {
       .view = view,
       .projection_inverse = glm::inverse(projection),
       .view_inverse = glm::inverse(view),
-      .is_frame_sequential = frame_info->number != 0,
+      .is_frame_sequential = frame_info->is_sequential,
       .flags = session_state->ubo_flags,
       .probe_info = {
         .random_orientation = lib::gfx::utilities::get_random_rotation(),

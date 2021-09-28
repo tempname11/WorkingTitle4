@@ -3,18 +3,18 @@
 #include <src/engine/display/data.hxx>
 #include "data.hxx"
 
-namespace engine::rendering::pass::indirect_light {
+namespace engine::rendering::pass::indirect_light_secondary {
 
 void init_ddata(
   DData *out,
-  SData *sdata,
-  Use<SessionData::Vulkan::Core> core,
+  Use<SData> sdata,
   Own<display::Data::Common> common,
-  Use<display::Data::GBuffer> gbuffer,
-  Use<display::Data::ZBuffer> zbuffer,
-  Use<display::Data::LBuffer> lbuffer,
+  Use<intra::secondary_zbuffer::DData> zbuffer2,
+  Use<intra::secondary_gbuffer::DData> gbuffer2,
+  Use<intra::secondary_lbuffer::DData> lbuffer2,
   Use<intra::probe_light_map::DData> probe_light_map,
-  Use<display::Data::SwapchainDescription> swapchain_description
+  Use<display::Data::SwapchainDescription> swapchain_description,
+  Use<SessionData::Vulkan::Core> core
 ) {
   ZoneScoped;
 
@@ -44,31 +44,35 @@ void init_ddata(
     }
 
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
-      VkDescriptorImageInfo gbuffer_channel0_image_info = {
-        .imageView = gbuffer->channel0_views[i],
+      auto i_prev = (
+        (i + swapchain_description->image_count - 1) %
+        swapchain_description->image_count
+      );
+      VkDescriptorImageInfo gbuffer_channel0_info = {
+        .imageView = gbuffer2->channel0_views[i],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
-      VkDescriptorImageInfo gbuffer_channel1_image_info = {
-        .imageView = gbuffer->channel1_views[i],
+      VkDescriptorImageInfo gbuffer_channel1_info = {
+        .imageView = gbuffer2->channel1_views[i],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
-      VkDescriptorImageInfo gbuffer_channel2_image_info = {
-        .imageView = gbuffer->channel2_views[i],
+      VkDescriptorImageInfo gbuffer_channel2_info = {
+        .imageView = gbuffer2->channel2_views[i],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
-      VkDescriptorImageInfo zbuffer_image_info = {
-        .imageView = zbuffer->views[i],
+      VkDescriptorImageInfo zbuffer_info = {
+        .imageView = zbuffer2->views[i],
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorImageInfo probe_light_map_previous_image_info = {
+        .sampler = sdata->sampler_probe_light_map,
+        .imageView = probe_light_map->views[i_prev],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
       VkDescriptorBufferInfo ubo_frame_info = {
         .buffer = common->stakes.ubo_frame[i].buffer,
         .offset = 0,
         .range = VK_WHOLE_SIZE,
-      };
-      VkDescriptorImageInfo probe_light_map_image_info = {
-        .sampler = sdata->sampler_probe_light_map,
-        .imageView = probe_light_map->views[i],
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
       VkWriteDescriptorSet writes[] = {
         {
@@ -77,7 +81,7 @@ void init_ddata(
           .dstBinding = 0,
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-          .pImageInfo = &gbuffer_channel0_image_info,
+          .pImageInfo = &gbuffer_channel0_info,
         },
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -85,7 +89,7 @@ void init_ddata(
           .dstBinding = 1,
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-          .pImageInfo = &gbuffer_channel1_image_info,
+          .pImageInfo = &gbuffer_channel1_info,
         },
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -93,7 +97,7 @@ void init_ddata(
           .dstBinding = 2,
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-          .pImageInfo = &gbuffer_channel2_image_info,
+          .pImageInfo = &gbuffer_channel2_info,
         },
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -101,7 +105,7 @@ void init_ddata(
           .dstBinding = 3,
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
-          .pImageInfo = &zbuffer_image_info,
+          .pImageInfo = &zbuffer_info,
         },
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -109,7 +113,7 @@ void init_ddata(
           .dstBinding = 4,
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-          .pImageInfo = &probe_light_map_image_info,
+          .pImageInfo = &probe_light_map_previous_image_info,
         },
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -132,11 +136,11 @@ void init_ddata(
   { ZoneScopedN("framebuffers");
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
       VkImageView attachments[] = {
-        lbuffer->views[i],
-        gbuffer->channel0_views[i],
-        gbuffer->channel1_views[i],
-        gbuffer->channel2_views[i],
-        zbuffer->views[i],
+        lbuffer2->views[i],
+        gbuffer2->channel0_views[i],
+        gbuffer2->channel1_views[i],
+        gbuffer2->channel2_views[i],
+        zbuffer2->views[i],
       };
       VkFramebuffer framebuffer;
       VkFramebufferCreateInfo create_info = {
@@ -144,8 +148,8 @@ void init_ddata(
         .renderPass = sdata->render_pass,
         .attachmentCount = sizeof(attachments) / sizeof(*attachments),
         .pAttachments = attachments,
-        .width = swapchain_description->image_extent.width,
-        .height = swapchain_description->image_extent.height,
+        .width = 2048, // @Temporary
+        .height = 2048, // @Temporary
         .layers = 1,
       };
       {

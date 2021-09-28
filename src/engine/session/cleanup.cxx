@@ -7,6 +7,7 @@
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/engine/rendering/pass/secondary_geometry.hxx>
+#include <src/engine/rendering/pass/indirect_light_secondary.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
 #include <src/engine/rendering/pass/probe_maps_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
@@ -41,6 +42,11 @@ void cleanup(
 
     rendering::pass::secondary_geometry::deinit_sdata(
       &it->pass_secondary_geometry,
+      core
+    );
+
+    rendering::pass::indirect_light_secondary::deinit_sdata(
+      &it->pass_indirect_light_secondary,
       core
     );
 
