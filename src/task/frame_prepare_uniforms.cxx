@@ -20,8 +20,10 @@ TASK_DECL {
       .view = view,
       .projection_inverse = glm::inverse(projection),
       .view_inverse = glm::inverse(view),
+      .is_frame_sequential = frame_info->number != 0,
       .flags = session_state->ubo_flags,
       .probe_info = {
+        .random_orientation = lib::gfx::utilities::get_random_rotation(),
         .grid_size = glm::uvec3(32, 32, 8),
         .grid_world_position_zero = glm::vec3(0.5),
         .grid_world_position_delta = glm::vec3(1.0),

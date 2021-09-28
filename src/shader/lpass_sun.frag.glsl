@@ -27,6 +27,7 @@ void main() {
   #ifndef NDEBUG
     // @Cleanup move this sanity check
     if (frame.data.end_marker != 0xDeadBeef) {
+      result = vec3(1.0, 0.0, 0.0);
       return;
     }
   #endif

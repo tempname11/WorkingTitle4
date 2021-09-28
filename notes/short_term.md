@@ -1,12 +1,6 @@
 # milestone: DDGI
-  --- should work well
-
-  - multiple bounces
-  - variable probe grid :ProbeGrid
-  - visibility testing
-  - energy conservation
-
-  --- should work OK in more general scenarios
-
-  :Textures
-  - hysteresis: previous probe maps -> new probe maps
+  - think more carefully about equations, energy conservation etc.
+  - use some kind of visibility testing (we already have the ray distances!)
+  - use textures :Textures
+  - use a view-dependent, variable size probe grid :ProbeGrid
+  - use multiple bounces

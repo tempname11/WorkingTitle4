@@ -2,6 +2,7 @@
 #define _COMMON_PROBES_GLSL_
 
 #include "constants.glsl"
+#include "constants.glsl"
 
 float madfrac(float a, float b) {
   return a * b - floor(a * b);
@@ -20,6 +21,12 @@ vec3 spherical_fibonacci(float i, float n) {
     sin(phi) * sin_theta,
     cos_theta
   );
+}
+
+// @Performance: maybe precompute N vectors instead?
+vec3 get_probe_ray_direction(float i, float n, mat3 random_orientation) {
+  //return -spherical_fibonacci(i, n);
+  return random_orientation * spherical_fibonacci(i, n);
 }
 
 float sign_not_zero(float k) {

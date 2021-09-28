@@ -8,8 +8,9 @@ const uint ray_count = 64; // :DDGI_N_Rays 64
 layout(local_size_x = 6, local_size_y = 6, local_size_z = 1) in; // :OctomapSize
 
 layout(binding = 0, r11f_g11f_b10f) uniform image2D probe_light_map;
-layout(binding = 1) uniform sampler2D lbuffer2_image;
-layout(binding = 2) uniform Frame { FrameData data; } frame;
+layout(binding = 1, r11f_g11f_b10f) uniform image2D probe_light_map_previous;
+layout(binding = 2) uniform sampler2D lbuffer2_image;
+layout(binding = 3) uniform Frame { FrameData data; } frame;
 
 // @Performance :UseComputeLocalSize
 
@@ -29,7 +30,11 @@ void main() {
     for (uint y = 0; y < 8; y++) {
       // :DDGI_N_Rays 64
       uint ray_index = x + y * 8;
-      vec3 ray_direction = -spherical_fibonacci(ray_index, ray_count);
+      vec3 ray_direction = get_probe_ray_direction(
+        ray_index,
+        ray_count,
+        frame.data.probe.random_orientation
+      );
 
       vec3 ray_luminance = texture(
         lbuffer2_image,
@@ -39,13 +44,24 @@ void main() {
       value += vec4(ray_luminance * weight, weight);
     }
   }
+  value = value / value.a;
+
+  ivec2 texel_coord = ivec2(
+    gl_WorkGroupID.x + gl_WorkGroupID.z * frame.data.probe.grid_size.x,
+    gl_WorkGroupID.y
+  ) * 6 + ivec2(gl_LocalInvocationID.xy);
+
+  if (frame.data.is_frame_sequential) {
+    vec4 previous = imageLoad(
+      probe_light_map_previous,
+      texel_coord
+    );
+    value = previous * 0.99 + 0.01 * value; // @Cleanup :MoveToUniform
+  }
 
   imageStore(
     probe_light_map,
-    ivec2(
-      gl_WorkGroupID.x + gl_WorkGroupID.z * frame.data.probe.grid_size.x,
-      gl_WorkGroupID.y
-    ) * 6 + ivec2(gl_LocalInvocationID.xy),
-    value.rgba / value.a
+    texel_coord,
+    value
   );
 }

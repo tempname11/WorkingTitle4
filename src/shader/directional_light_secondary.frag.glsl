@@ -44,7 +44,11 @@ void main() {
     frame.data.probe.grid_world_position_zero +
     frame.data.probe.grid_world_position_delta * probe_grid_coord
   );
-  vec3 probe_raydir = -spherical_fibonacci(ray_index, ray_count);
+  vec3 probe_raydir = get_probe_ray_direction(
+    ray_index,
+    ray_count,
+    frame.data.probe.random_orientation
+  );
   float t = subpassLoad(zchannel).r;
   if (t == 0.0) { discard; }
   vec3 probe_hit = probe_origin + t * probe_raydir;

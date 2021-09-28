@@ -12,6 +12,7 @@ struct FrameFlags {
 };
 
 struct FrameProbe {
+  mat3 random_orientation;
   uvec3 grid_size;
   vec3 grid_world_position_zero;
   vec3 grid_world_position_delta;
@@ -23,7 +24,8 @@ struct FrameData {
   mat4 projection;
   mat4 view;
   mat4 projection_inverse;
-  mat4 view_inverse;
+  mat4 view_inverse; 
+  bool is_frame_sequential;
   FrameFlags flags;
   FrameProbe probe;
   uint end_marker;

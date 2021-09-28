@@ -1372,6 +1372,7 @@ TASK_DECL {
   engine::rendering::intra::probe_light_map::transition_into_probe_maps_update(
     probe_light_map,
     frame_info,
+    swapchain_description,
     cmd
   );
 

@@ -39,6 +39,10 @@ void init_ddata(
   }
 
   for (size_t i = 0; i < swapchain_description->image_count; i++) {
+    auto i_prev = (
+      (i + swapchain_description->image_count - 1) %
+      swapchain_description->image_count
+    );
     VkDescriptorImageInfo secondary_lbuffer_info = {
       .sampler = sdata->sampler_lbuffer,
       .imageView = secondary_lbuffer->views[i],
@@ -46,6 +50,10 @@ void init_ddata(
     };
     VkDescriptorImageInfo probe_light_map_info = {
       .imageView = probe_light_map->views[i],
+      .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
+    VkDescriptorImageInfo probe_light_map_info_previous = {
+      .imageView = probe_light_map->views[i_prev],
       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
     };
     VkDescriptorBufferInfo ubo_frame_info = {
@@ -69,18 +77,27 @@ void init_ddata(
         .dstBinding = 1,
         .dstArrayElement = 0,
         .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .pImageInfo = &probe_light_map_info_previous,
+      },
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_sets[i],
+        .dstBinding = 2,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .pImageInfo = &secondary_lbuffer_info,
       },
-        {
-          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-          .dstSet = descriptor_sets[i],
-          .dstBinding = 2,
-          .dstArrayElement = 0,
-          .descriptorCount = 1,
-          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          .pBufferInfo = &ubo_frame_info,
-        },
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_sets[i],
+        .dstBinding = 3,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .pBufferInfo = &ubo_frame_info,
+      },
     };
     vkUpdateDescriptorSets(
       core->device,

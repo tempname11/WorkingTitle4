@@ -21,13 +21,14 @@ void deinit_ddata(
 
 void transition_probe_maps_update_into_indirect_light(
   Use<DData> it,
-  Use<engine::display::Data::FrameInfo> frame_info,
+  Use<display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd
 );
 
 void transition_into_probe_maps_update(
   Use<DData> it,
-  Use<engine::display::Data::FrameInfo> frame_info,
+  Use<display::Data::FrameInfo> frame_info,
+  Use<display::Data::SwapchainDescription> swapchain_description,
   VkCommandBuffer cmd
 );
 

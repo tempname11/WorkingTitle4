@@ -16,4 +16,8 @@ glm::mat4 get_projection(float aspect_ratio);
 
 uint32_t mip_levels(int width, int height);
 
+glm::vec3 get_random_unit_vector();
+
+glm::mat3 get_random_rotation();
+
 } // namespace

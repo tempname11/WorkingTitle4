@@ -61,7 +61,11 @@ void main() {
     frame.data.probe.grid_world_position_zero +
     frame.data.probe.grid_world_position_delta * probe_coord
   );
-  vec3 raydir_world = -spherical_fibonacci(ray_index, ray_count);
+  vec3 raydir_world = get_probe_ray_direction(
+    ray_index,
+    ray_count,
+    frame.data.probe.random_orientation
+  );
   rayQueryInitializeEXT(
     ray_query,
     accel,

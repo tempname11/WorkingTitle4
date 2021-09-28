@@ -4,7 +4,7 @@
 namespace engine::common::ubo {
 
 struct Flags {
-  uint32_t show_normals;
+  alignas(16) uint32_t show_normals;
   uint32_t show_sky;
   uint32_t disable_direct_lighting;
   uint32_t disable_indirect_lighting;
@@ -14,6 +14,7 @@ struct Flags {
 };
 
 struct ProbeInfo {
+  alignas(16) glm::mat3x4 random_orientation;
   alignas(16) glm::uvec3 grid_size;
   alignas(16) glm::vec3 grid_world_position_zero;
   alignas(16) glm::vec3 grid_world_position_delta;
@@ -26,6 +27,7 @@ struct Frame {
   glm::mat4 view;
   glm::mat4 projection_inverse;
   glm::mat4 view_inverse;
+  uint32_t is_frame_sequential;
   Flags flags;
   ProbeInfo probe_info;
   alignas(16) uint32_t end_marker;
