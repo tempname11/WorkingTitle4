@@ -125,6 +125,9 @@ vec3 get_indirect_luminance(
   // @Incomplete: material diffuse properties should be considered here!
   // :DDGI_Textures
 
+  // @Hack @Temporary
+  sum.rgb *= 2.0;
+
   return sum.rgb / sum.a;
 }
 
