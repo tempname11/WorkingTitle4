@@ -19,11 +19,16 @@ layout(binding = 4) uniform sampler2D probe_light_map_previous;
 layout(binding = 5) uniform Frame { FrameData data; } frame;
 
 void main() {
-  // @Bug: on `!frame.is_sequential` probe_light_map_previous will have junk data.
+  if (!frame.data.is_frame_sequential) {
+    result = vec3(0.0);
+    return;
+  }
 
-  // @Cleanup: share this with other L2 passes.
-  uvec2 texel_coord = uvec2((position * 0.5 + 0.5) * frame.data.probe.secondary_gbuffer_texel_size);
-  // truncated, otherwise would need to subtract 0.5.
+  // @Cleanup: share this code with other L2 passes, they have a lot in common.
+  uvec2 texel_coord = uvec2(
+    (position * 0.5 + 0.5) * frame.data.probe.secondary_gbuffer_texel_size
+  );
+  // Truncated, otherwise would need to subtract 0.5.
 
   // @Performance: could do bit operations here if working with powers of 2.
   // :DDGI_N_Rays 64
@@ -55,6 +60,8 @@ void main() {
     pos_world,
     N,
     frame.data,
+    frame.data.probe.grid_world_position_zero_prev,
+    frame.data.probe.grid_world_position_delta,
     probe_light_map_previous
   );
 }

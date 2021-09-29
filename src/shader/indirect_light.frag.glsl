@@ -34,6 +34,8 @@ void main() {
     pos_world,
     N,
     frame.data,
+    frame.data.probe.grid_world_position_zero,
+    frame.data.probe.grid_world_position_delta,
     probe_light_map
   );
 
@@ -41,13 +43,19 @@ void main() {
     result = vec3(0.0);
   }
 
-  /*
   if (frame.data.flags.debug_B) {
     result += texture(
       probe_light_map,
       (0.5 + 0.5 * position) * vec2(1280.0, 720.0) / 2048.0
     ).rgb;
-    // result += grid_coord0 / vec3(32,32,8);
+    /*
+    vec3 grid_coord_float = (
+      (pos_world - frame.data.probe.grid_world_position_zero) /
+      frame.data.probe.grid_world_position_delta
+    ); // may be out of bounds
+
+    ivec3 grid_coord0 = ivec3(grid_coord_float);
+    if (grid_coord0.z >= 1) result += grid_coord0 / vec3(32,32,8);
+    */
   }
-  */
 }

@@ -266,6 +266,7 @@ struct SessionData : lib::task::ParentResource {
     bool show_imgui_window_flags;
     bool is_fullscreen;
     lib::debug_camera::State debug_camera;
+    lib::debug_camera::State debug_camera_prev;
     glm::vec3 sun_position_xy;
     float sun_intensity;
     engine::common::ubo::Flags ubo_flags;

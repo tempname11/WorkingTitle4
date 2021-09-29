@@ -23,7 +23,7 @@ void record(
     .framebuffer = ddata->framebuffers[frame_info->inflight_index],
     .renderArea = {
       .offset = {0, 0},
-      .extent = {2048, 2048}, // @Temporary
+      .extent = {2048, 2048}, // :ProbeGrid
     },
     .clearValueCount = 1,
     .pClearValues = &clear_value,
@@ -33,14 +33,14 @@ void record(
   VkViewport viewport = {
     .x = 0.0f,
     .y = 0.0f,
-    .width = 2048, // @Temporary
-    .height = 2048, // @Temporary
+    .width = 2048, // :ProbeGrid
+    .height = 2048, // :ProbeGrid
     .minDepth = 0.0f,
     .maxDepth = 1.0f,
   };
   VkRect2D scissor = {
     .offset = {0, 0},
-    .extent = {2048, 2048}, // @Temporary
+    .extent = {2048, 2048}, // :ProbeGrid
   };
   vkCmdSetViewport(cmd, 0, 1, &viewport);
   vkCmdSetScissor(cmd, 0, 1, &scissor);

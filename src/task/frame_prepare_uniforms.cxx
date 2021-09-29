@@ -15,6 +15,19 @@ TASK_DECL {
         / swapchain_description->image_extent.height
     );
     auto view = lib::debug_camera::to_view_matrix(&session_state->debug_camera);
+
+    auto grid_world_position_zero = (
+      glm::vec3(0.5f) -
+      glm::vec3(32.0f, 32.0f, 8.0f) / 2.0f + // :ProbeGrid
+      glm::floor(session_state->debug_camera.position)
+    );
+    auto grid_world_position_zero_prev = (
+      glm::vec3(0.5f) -
+      glm::vec3(32.0f, 32.0f, 8.0f) / 2.0f + // :ProbeGrid
+      glm::floor(session_state->debug_camera_prev.position)
+    );
+    auto grid_world_position_delta = glm::vec3(1.0); // :ProbeGrid
+
     const engine::common::ubo::Frame data = {
       .projection = projection,
       .view = view,
@@ -24,9 +37,14 @@ TASK_DECL {
       .flags = session_state->ubo_flags,
       .probe_info = {
         .random_orientation = lib::gfx::utilities::get_random_rotation(),
-        .grid_size = glm::uvec3(32, 32, 8),
-        .grid_world_position_zero = glm::vec3(0.5),
-        .grid_world_position_delta = glm::vec3(1.0),
+        .grid_size = glm::uvec3(32, 32, 8), // :ProbeGrid
+        .change_from_prev = glm::ivec3(glm::round(
+          (grid_world_position_zero - grid_world_position_zero_prev) /
+          grid_world_position_delta
+        )),
+        .grid_world_position_zero = grid_world_position_zero,
+        .grid_world_position_zero_prev = grid_world_position_zero_prev,
+        .grid_world_position_delta = grid_world_position_delta,
         .light_map_texel_size = glm::vec2(
           engine::rendering::intra::probe_light_map::WIDTH,
           engine::rendering::intra::probe_light_map::HEIGHT
@@ -36,7 +54,7 @@ TASK_DECL {
           engine::rendering::intra::secondary_gbuffer::HEIGHT
         ),
       },
-      .end_marker = 0xDeadBeef
+      .end_marker = 0xDeadBeef,
     };
     auto stake = &common->stakes.ubo_frame[frame_info->inflight_index];
     void * dst;

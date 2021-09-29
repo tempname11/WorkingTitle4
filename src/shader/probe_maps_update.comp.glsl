@@ -12,8 +12,6 @@ layout(binding = 1, r11f_g11f_b10f) uniform image2D probe_light_map_previous;
 layout(binding = 2) uniform sampler2D lbuffer2_image;
 layout(binding = 3) uniform Frame { FrameData data; } frame;
 
-// @Performance :UseComputeLocalSize
-
 void main() {
   // :DDGI_N_Rays 64
   // @Incomplete :ProbePacking
@@ -38,26 +36,50 @@ void main() {
 
       vec3 ray_luminance = texture(
         lbuffer2_image,
-        (vec2(texel_coord_base + uvec2(x, y)) + 0.5) / frame.data.probe.secondary_gbuffer_texel_size
+        (
+          (vec2(texel_coord_base + uvec2(x, y)) + 0.5) /
+            frame.data.probe.secondary_gbuffer_texel_size
+        )
       ).rgb;
       float weight = max(0.0, dot(map_direction, ray_direction));
       value += vec4(ray_luminance * weight, weight);
     }
   }
-  value = value / value.a;
+  value = value / value.a; // @Incomplete: potential div by 0 here?
 
+  if (frame.data.is_frame_sequential) {
+    ivec3 grid_coord_prev = ivec3(gl_WorkGroupID) + frame.data.probe.change_from_prev;
+    // Hmm, `+` seems wrong here, but it actually works. Need to think about this more.
+
+    // are vector boolean expressions possible in GLSL? if so, this could use them.
+    bool out_of_bounds = (false
+      || grid_coord_prev.x < 0
+      || grid_coord_prev.y < 0
+      || grid_coord_prev.z < 0
+      || grid_coord_prev.x >= frame.data.probe.grid_size.x
+      || grid_coord_prev.y >= frame.data.probe.grid_size.y
+      || grid_coord_prev.z >= frame.data.probe.grid_size.z
+    );
+
+    if (!out_of_bounds) {
+      ivec2 texel_coord_prev = ivec2(
+        grid_coord_prev.x + grid_coord_prev.z * frame.data.probe.grid_size.x,
+        grid_coord_prev.y
+      ) * 6 + ivec2(gl_LocalInvocationID.xy);
+
+      vec4 previous = imageLoad(
+        probe_light_map_previous,
+        texel_coord_prev
+      );
+      value = previous * 0.98 + 0.02 * value; // @Cleanup :MoveToUniform
+    }
+  }
+
+  // ivec3 grid_coord = gl_WorkGroupID;
   ivec2 texel_coord = ivec2(
     gl_WorkGroupID.x + gl_WorkGroupID.z * frame.data.probe.grid_size.x,
     gl_WorkGroupID.y
   ) * 6 + ivec2(gl_LocalInvocationID.xy);
-
-  if (frame.data.is_frame_sequential) {
-    vec4 previous = imageLoad(
-      probe_light_map_previous,
-      texel_coord
-    );
-    value = previous * 0.99 + 0.01 * value; // @Cleanup :MoveToUniform
-  }
 
   imageStore(
     probe_light_map,

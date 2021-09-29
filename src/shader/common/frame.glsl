@@ -14,7 +14,9 @@ struct FrameFlags {
 struct FrameProbe {
   mat3 random_orientation;
   uvec3 grid_size;
+  ivec3 change_from_prev;
   vec3 grid_world_position_zero;
+  vec3 grid_world_position_zero_prev;
   vec3 grid_world_position_delta;
   vec2 light_map_texel_size;
   vec2 secondary_gbuffer_texel_size; // move this out of Probe?

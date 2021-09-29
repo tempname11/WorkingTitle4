@@ -741,8 +741,10 @@ void setup(
     .worker_count = *worker_count,
   };
 
+  auto debug_camera = lib::debug_camera::init();
   session->state = {
-    .debug_camera = lib::debug_camera::init(),
+    .debug_camera = debug_camera,
+    .debug_camera_prev = debug_camera,
     .sun_intensity = 5.0f,
   };
 
@@ -759,7 +761,7 @@ void setup(
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData) - sizeof(SessionData::Vulkan);
-    static_assert(size == 920);
+    static_assert(size == 968);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
