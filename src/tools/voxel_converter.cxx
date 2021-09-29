@@ -402,7 +402,13 @@ void build_cubes(IntermediateData *data, common::mesh::T06_Builder *mesh) {
       auto scale = TEXTURE_MAPPING_SCALE;
       for (size_t j = 0; j < 6; j++) { // triangle vertices
         // @Performance: if this is ever used seriously (which is unlikely),
-        // we could some of the vertices. For now, don't bother.
+        // we could reuse some of the vertices. For now, don't bother.
+
+        // Also, we currently can't convert more than 2^16 vertex meshes. :NotEnoughIndices
+        assert(
+          mesh->indices.size() <=
+          std::numeric_limits<engine::common::mesh::IndexT06>::max()
+        );
         mesh->indices.push_back(mesh->indices.size());
         mesh->vertices.push_back(engine::common::mesh::VertexT06 {
           .position = v[j],
@@ -531,7 +537,13 @@ void build_mc(IntermediateData *data, common::mesh::T06_Builder *mesh) {
 
       for (size_t j = 0; j < 3; j++) {
         // @Performance: if this is ever used seriously (which is unlikely),
-        // we could some of the vertices. For now, don't bother.
+        // we could reuse some vertices. For now, don't bother.
+
+        // Also, we currently can't convert more than 2^16 vertex meshes. :NotEnoughIndices
+        assert(
+          mesh->indices.size() <=
+          std::numeric_limits<engine::common::mesh::IndexT06>::max()
+        );
         mesh->indices.push_back(mesh->indices.size());
         mesh->vertices.push_back(engine::common::mesh::VertexT06 {
           .position = v[j],
