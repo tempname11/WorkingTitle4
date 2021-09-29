@@ -20,5 +20,42 @@ layout(binding = 5) uniform Frame { FrameData data; } frame;
 
 void main() {
   // @Note check frame=0
-  result = vec3(0.0, 0.0, 0.0); // @Incomplete
+
+  // @Cleanup share this with other L2 passes.
+  uvec2 texel_coord = uvec2((position * 0.5 + 0.5) * frame.data.probe.secondary_gbuffer_texel_size);
+  // truncated, otherwise would need to subtract 0.5.
+
+  // @Performance: could do bit operations here if working with powers of 2.
+
+  // :DDGI_N_Rays 64
+  uvec2 tmp_ray_coord = uvec2(mod(texel_coord, 8));
+  uint ray_index = tmp_ray_coord.x + tmp_ray_coord.y * 8;
+  uvec3 probe_grid_coord = uvec3(
+    mod(texel_coord.x / 8, frame.data.probe.grid_size.x),
+    texel_coord.y / 8,
+    texel_coord.x / 8 / frame.data.probe.grid_size.x
+  );
+
+  // unless noted otherwise, everything is in world space.
+  vec3 probe_origin = (
+    frame.data.probe.grid_world_position_zero +
+    frame.data.probe.grid_world_position_delta * probe_grid_coord
+  );
+  vec3 probe_raydir = get_probe_ray_direction(
+    ray_index,
+    ray_count,
+    frame.data.probe.random_orientation
+  );
+  float t = subpassLoad(zchannel).r;
+  if (t == 0.0) { discard; }
+  vec3 pos_world = probe_origin + t * probe_raydir;
+
+  vec3 N = subpassLoad(gchannel0).rgb;
+
+  result = get_indirect_luminance(
+    pos_world,
+    N,
+    frame.data,
+    probe_light_map_previous
+  );
 }
