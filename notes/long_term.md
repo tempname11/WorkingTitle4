@@ -1,11 +1,10 @@
-### postprocessing
+### Postprocessing
   - Tone mapping.
   - HDR: eye adaptation.
   - Depth of field.
   - Motion blur.
 
-# other
-  - scene editor
-    - interactive selection
-  - interactive translate-rotate-scale
-  - edit properties via UI
+### Scene editor
+  - Interactive selection.
+  - Interactive translate-rotate-scale.
+  - Edit properties via UI.

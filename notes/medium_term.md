@@ -1,5 +1,6 @@
 # known bugs
 - models with more than 2^16 vertices are not imported correctly
+- direct light sometimes is "clipped" as if in a view-dependent circular "shadow"
 
 # intermittent bugs
 - `assert( m_head != m_tail );` in TracyVulkan.hpp
