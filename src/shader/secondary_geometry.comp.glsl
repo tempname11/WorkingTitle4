@@ -46,7 +46,7 @@ layout(binding = 5) readonly buffer GeometryRefs {
 layout(binding = 6) uniform Frame { FrameData data; } frame;
 
 // layout(set = 2, binding = 0) uniform texture2D all_albedo_textures[];
-// @Incomplete :Textures
+// @Incomplete :DDGI_Textures
 
 void main() {
   ivec2 store_coord = ( // :SecondaryCoordEncoding
@@ -101,7 +101,7 @@ void main() {
   vec3 n2_object = vertices.data[int(indices.z)].normal;
   vec3 n_object = normalize(barycentric_interpolate(bary, n0_object, n1_object, n2_object));
 
-  // @Incomplete :Textures
+  // @Incomplete :DDGI_Textures
   // Read normal map and apply that.
   vec3 n_world = object_to_world * vec4(n_object, 0.0);
 
@@ -120,12 +120,12 @@ void main() {
   imageStore(
     gchannel1,
     store_coord,
-    vec4(1.0) // @Incomplete :Textures
+    vec4(1.0) // @Incomplete :DDGI_Textures
   );
 
   imageStore(
     gchannel2,
     store_coord,
-    vec4(1.0) // @Incomplete :Textures
+    vec4(1.0) // @Incomplete :DDGI_Textures
   );
 }
