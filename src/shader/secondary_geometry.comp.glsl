@@ -85,7 +85,7 @@ void main() {
     0,
     0xFF,
     origin_world,
-    0.1, // @Cleanup :MoveToUniforms ray_t_min
+    0.01, // @Cleanup :MoveToUniforms ray_t_min
     raydir_world,
     1000.0 // @Cleanup :MoveToUniforms ray_t_max
   );

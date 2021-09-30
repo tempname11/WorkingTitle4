@@ -62,7 +62,7 @@ void main() {
     0,
     0xFF,
     probe_hit,
-    0.1, // @Cleanup :MoveToUniform ray_t_min
+    0.01, // @Cleanup :MoveToUniform ray_t_min
     -directional_light.direction,
     1000.0 // @Cleanup :MoveToUniform ray_t_max
   );
