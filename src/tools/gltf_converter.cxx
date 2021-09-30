@@ -44,7 +44,9 @@ void traverse_nodes(
       );
     }
     if (node.scale.size() == 3) {
-      assert(node.scale[0] != 0);
+      assert(node.scale[0] > 0.0);
+      assert(node.scale[1] > 0.0);
+      assert(node.scale[2] > 0.0);
       transform_node *= glm::scale(
         glm::mat4(1.0f),
         glm::vec3(
@@ -338,6 +340,14 @@ void gltf_converter(
           assert(vertex.position.x - epsilon <= accessor_position->maxValues[0]);
           assert(vertex.position.y - epsilon <= accessor_position->maxValues[1]);
           assert(vertex.position.z - epsilon <= accessor_position->maxValues[2]);
+
+          vertex.position.z = -vertex.position.z;
+          // @Hack: this is ugly. This converter had a `flip` scale matrix
+          // applied in the final transform before, presumably because the
+          // handedness of the GLTF coordinate system differed from ours.
+          // That caused problems with Vulkan RT determining triangle facing in
+          // object space, so we just flip the vertices here instead.
+
           builder.vertices.push_back(vertex);
         }
 
@@ -423,7 +433,7 @@ void gltf_converter(
     glm::mat4 transform_global = glm::rotate(
       glm::scale(
         glm::mat4(1.0f),
-        glm::vec3(1.0f, 1.0f, -1.0f) * scale
+        glm::vec3(1.0f, 1.0f, 1.0f) * scale
       ),
       glm::radians(90.0f),
       glm::vec3(1.0f, 0.0f, 0.0f)
