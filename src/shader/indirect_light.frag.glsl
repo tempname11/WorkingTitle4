@@ -16,6 +16,7 @@ layout(binding = 5) uniform Frame { FrameData data; } frame;
 
 void main() {
   vec3 N_view = subpassLoad(gchannel0).rgb;
+  vec3 albedo = subpassLoad(gchannel1).rgb;
   vec3 N = (frame.data.view_inverse * vec4(N_view, 0.0)).xyz;
 
   // @Cleanup share this logic with other L1 passes
@@ -36,8 +37,9 @@ void main() {
     frame.data,
     frame.data.probe.grid_world_position_zero,
     frame.data.probe.grid_world_position_delta,
-    probe_light_map
-  );
+    probe_light_map,
+    albedo
+  ); // :GI_Equations @Think
 
   if (frame.data.flags.disable_indirect_lighting) {
     result = vec3(0.0);

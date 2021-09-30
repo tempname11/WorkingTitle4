@@ -53,7 +53,7 @@ vec3 get_luminance_outgoing(
   vec3 specular = D * G * F / max(0.001, 4.0 * NdotV * NdotL);
   vec3 kD = (1.0 - F) * (1.0 - metallic);
 
-  // @Terminology: is luminance_incoming even correct?
+  // @Think: is "luminance_incoming" the corrent term here?
   vec3 luminance_outgoing = (kD * albedo / PI + specular) * luminance_incoming * NdotL;
 
   return luminance_outgoing;

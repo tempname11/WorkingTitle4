@@ -69,7 +69,8 @@ vec3 get_indirect_luminance(
   FrameData frame_data,
   vec3 grid_world_position_zero,
   vec3 grid_world_position_delta,
-  sampler2D probe_light_map
+  sampler2D probe_light_map,
+  vec3 albedo
 ) {
   vec3 grid_coord_float = (
     (pos_world - grid_world_position_zero) /
@@ -149,9 +150,9 @@ vec3 get_indirect_luminance(
   // :DDGI_Textures
 
   // @Hack: just boost signal for now.
-  sum.rgb *= 2.0;
+  sum.rgb *= 1.5;
 
-  return sum.rgb / sum.a;
+  return albedo * sum.rgb / sum.a;
 }
 
 #endif // _COMMON_PROBES_GLSL_

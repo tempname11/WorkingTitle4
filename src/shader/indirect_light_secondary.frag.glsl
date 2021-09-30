@@ -57,6 +57,7 @@ void main() {
   vec3 pos_world = probe_origin + t * probe_raydir;
 
   vec3 N = subpassLoad(gchannel0).rgb;
+  vec3 albedo = subpassLoad(gchannel1).rgb;
 
   result = get_indirect_luminance(
     pos_world,
@@ -64,6 +65,7 @@ void main() {
     frame.data,
     frame.data.probe.grid_world_position_zero_prev,
     frame.data.probe.grid_world_position_delta,
-    probe_light_map_previous
+    probe_light_map_previous,
+    albedo
   );
 }
