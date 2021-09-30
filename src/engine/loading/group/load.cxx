@@ -11,6 +11,57 @@ struct LoadData {
   std::string path;
 };
 
+bool _read_file(
+  char const *path,
+  GroupDescription *group_desc,
+  std::vector<ItemDescription> *items_desc
+) {
+  FILE *file = fopen(path, "rb");
+  if (file == nullptr) {
+    return false;
+  }
+
+  if (!lib::io::magic::check(file, "GRUP")) {
+    fclose(file);
+    return false;
+  }
+
+  uint8_t version = (uint8_t) -1;
+  fread(&version, 1, sizeof(version), file);
+  if (version != GRUP_VERSION) {
+    fclose(file);
+    return false;
+  }
+
+  lib::io::string::read(file, &group_desc->name);
+
+  uint32_t item_count = 0;
+  fread(&item_count, 1, sizeof(item_count), file);
+
+  items_desc->resize(item_count);
+  for (size_t i = 0; i < item_count; i++) {
+    auto item = &items_desc->data()[i];
+    fread(&item->transform, 1, sizeof(glm::mat4), file);
+    lib::io::string::read(file, &item->path_mesh);
+    lib::io::string::read(file, &item->path_albedo);
+    lib::io::string::read(file, &item->path_normal);
+    lib::io::string::read(file, &item->path_romeao);
+  }
+
+  if (ferror(file) != 0) {
+    fclose(file);
+    return false;
+  }
+
+  if (!lib::io::is_eof(file)) {
+    fclose(file);
+    return false;
+  }
+
+  fclose(file);
+  return true;
+}
+
 void _load(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<SessionData> session,
@@ -21,45 +72,15 @@ void _load(
   GroupDescription group_desc;
   std::vector<ItemDescription> items_desc;
 
-  FILE *file = fopen(data->path.c_str(), "rb");
-  if (file == nullptr) {
-    assert(false);
+  bool ok = _read_file(
+    data->path.c_str(),
+    &group_desc,
+    &items_desc
+  );
+  if (!ok) {
+    group_desc.name = "Invalid group";
+    items_desc.clear();
   }
-
-  if (!lib::io::magic::check(file, "GRUP")) {
-    assert(false);
-  }
-
-  uint8_t version = (uint8_t) -1;
-  fread(&version, 1, sizeof(version), file);
-  if (version != GRUP_VERSION) {
-    assert(false);
-  }
-
-  lib::io::string::read(file, &group_desc.name);
-
-  uint32_t item_count = 0;
-  fread(&item_count, 1, sizeof(item_count), file);
-
-  items_desc.resize(item_count);
-  for (size_t i = 0; i < item_count; i++) {
-    auto item = &items_desc[i];
-    fread(&item->transform, 1, sizeof(glm::mat4), file);
-    lib::io::string::read(file, &item->path_mesh);
-    lib::io::string::read(file, &item->path_albedo);
-    lib::io::string::read(file, &item->path_normal);
-    lib::io::string::read(file, &item->path_romeao);
-  }
-
-  if (ferror(file) != 0) {
-    assert(false);
-  }
-
-  if (!lib::io::is_eof(file)) {
-    assert(false);
-  }
-
-  fclose(file);
 
   // @Note: this might be better done manually,
   // without calls to `create` and `add_item`.
