@@ -499,8 +499,6 @@ TASK_DECL {
     if (state->show_imgui_window_flags) {
       auto it = &state->ubo_flags;
       ImGui::Begin("Flags", &state->show_imgui_window_flags);
-      ImGuiX::Checkbox32("show normals", &it->show_normals);
-      ImGuiX::Checkbox32("show sky", &it->show_sky);
       ImGuiX::Checkbox32("disable direct lighting", &it->disable_direct_lighting);
       ImGuiX::Checkbox32("disable indirect lighting", &it->disable_indirect_lighting);
       ImGuiX::Checkbox32("debug A", &it->debug_A);

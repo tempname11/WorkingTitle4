@@ -3,18 +3,18 @@
 
 namespace engine::common::ubo {
 
+using gl_bool = uint32_t;
+
 struct Flags {
-  alignas(16) uint32_t show_normals;
-  uint32_t show_sky;
-  uint32_t disable_direct_lighting;
-  uint32_t disable_indirect_lighting;
-  uint32_t debug_A;
-  uint32_t debug_B;
-  uint32_t debug_C;
+  gl_bool disable_direct_lighting;
+  gl_bool disable_indirect_lighting;
+  gl_bool debug_A;
+  gl_bool debug_B;
+  gl_bool debug_C;
 };
 
 struct ProbeInfo {
-  alignas(16) glm::mat3x4 random_orientation;
+  glm::mat3x4 random_orientation;
   alignas(16) glm::uvec3 grid_size;
   alignas(16) glm::uvec2 grid_size_z_factors;
   alignas(16) glm::ivec3 change_from_prev;
@@ -31,13 +31,13 @@ struct Frame {
   glm::mat4 projection_inverse;
   glm::mat4 view_inverse;
   uint32_t is_frame_sequential;
-  Flags flags;
-  ProbeInfo probe_info;
+  alignas(16) Flags flags;
+  alignas(16) ProbeInfo probe_info;
   alignas(16) uint32_t end_marker;
 };
 
 struct DirectionalLight {
-  alignas(16) glm::vec3 direction;
+  glm::vec3 direction;
   alignas(16) glm::vec3 intensity;
 };
 

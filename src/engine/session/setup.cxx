@@ -758,10 +758,11 @@ void setup(
   */
 
   // when the structs change, recheck that .changed_parents are still valid.
+  // remove this when subresources are removed.
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData) - sizeof(SessionData::Vulkan);
-    static_assert(size == 968);
+    static_assert(size == 944);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);

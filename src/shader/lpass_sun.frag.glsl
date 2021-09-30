@@ -20,12 +20,12 @@ layout(binding = 5) uniform accelerationStructureEXT accel;
 // @Duplicate :UniformDirLight
 layout(set = 1, binding = 0) uniform DirectionalLight {
   vec3 direction;
-  vec3 intensity; // @Terminology
+  vec3 intensity; // @Cleanup :ShouldBeIlluminance
 } directional_light;
 
 void main() {
   #ifndef NDEBUG
-    // @Cleanup move this sanity check
+    // @Cleanup: move this sanity check somewhere?
     if (frame.data.end_marker != 0xDeadBeef) {
       result = vec3(1.0, 0.0, 0.0);
       return;
@@ -43,16 +43,12 @@ void main() {
   float perspective_correction = length(target_view_long.xyz);
   vec3 V = -normalize(target_view_long.xyz);
 
-  // @Performance: multiply on CPU
+  // @Performance: can multiply on CPU
   vec3 L = -(frame.data.view * vec4(directional_light.direction, 0.0)).xyz;
 
   if (depth == 1.0) {
-    if (frame.data.flags.show_sky) {
-      result = sky(target_world, -directional_light.direction);
-      return;
-    } else {
-      discard;
-    }
+    result = sky(target_world, -directional_light.direction);
+    return;
   }
 
   rayQueryEXT ray_query;
@@ -82,11 +78,6 @@ void main() {
 
   vec3 albedo = subpassLoad(gchannel1).rgb;
   vec3 romeao = subpassLoad(gchannel2).rgb;
-
-  if (frame.data.flags.show_normals) {
-    result = N * 0.5 + vec3(0.5);
-    return;
-  }
 
   result = get_luminance_outgoing(
     albedo,
