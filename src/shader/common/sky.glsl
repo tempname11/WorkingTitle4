@@ -112,8 +112,9 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
     return iSun * (pRlh * kRlh * totalRlh + pMie * kMie * totalMie);
 }
 
-vec3 sky(vec3 ray, vec3 sun_direction) {
-  return atmosphere(
+vec3 sky(vec3 ray, vec3 sun_direction, vec3 sun_illuminance) {
+  // Lots of `earth-like` constants.
+  vec3 result = atmosphere(
     normalize(ray.xzy),
     vec3(0.0, 6e6, 0.0),
     sun_direction.xzy,
@@ -125,7 +126,22 @@ vec3 sky(vec3 ray, vec3 sun_direction) {
     8e3,
     1.2e3,
     0.758
+  ) * (
+    length(sun_illuminance) / sqrt(75.0) // @Hack
   );
+  
+  // Subtle hint at orientation for debugging.
+  result = ray * 0.1 + result;
+
+  // Get rid of ugly cutout at nadir.
+  float nadir_weight = clamp(
+    dot(ray, vec3(0, 0, -1.0)) / 0.05,
+    0.0,
+    1.0
+  );
+  result = mix(result, vec3(0.0), nadir_weight);
+
+  return result;
 }
 
 #endif // _COMMON_SKY_GLSL_

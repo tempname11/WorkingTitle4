@@ -3,9 +3,11 @@
 #include "common/frame.glsl"
 #include "common/probes.glsl"
 
-const uint ray_count = 64; // :DDGI_N_Rays 64
-
-layout(local_size_x = 6, local_size_y = 6, local_size_z = 1) in; // :OctomapSize
+layout(
+  local_size_x = octomap_light_texel_size.x,
+  local_size_y = octomap_light_texel_size.y,
+  local_size_z = 1
+) in;
 
 layout(binding = 0, r11f_g11f_b10f) uniform image2D probe_light_map;
 layout(binding = 1, r11f_g11f_b10f) uniform image2D probe_light_map_previous;
@@ -37,7 +39,7 @@ void main() {
 
       vec3 ray_direction = get_probe_ray_direction(
         ray_index,
-        ray_count,
+        probe_ray_count,
         frame.data.probe.random_orientation
       );
 
@@ -74,7 +76,7 @@ void main() {
         probe_coord_prev.z % frame.data.probe.grid_size_z_factors.x,
         probe_coord_prev.z / frame.data.probe.grid_size_z_factors.x
       );
-      ivec2 texel_coord_prev = octomap_coord + 6 * ( // :OctomapSize
+      ivec2 texel_coord_prev = octomap_coord + ivec2(octomap_light_texel_size) * (
         probe_coord_prev.xy +
         ivec2(z_subcoord_prev * frame.data.probe.grid_size.xy)
       );
@@ -88,7 +90,7 @@ void main() {
     }
   }
 
-  ivec2 texel_coord = octomap_coord + 6 * ( // :OctomapSize
+  ivec2 texel_coord = octomap_coord + ivec2(octomap_light_texel_size) * (
     ivec2(probe_coord.xy) +
     ivec2(z_subcoord * frame.data.probe.grid_size.xy)
   );

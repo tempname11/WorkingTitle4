@@ -47,7 +47,11 @@ void main() {
   vec3 L = -(frame.data.view * vec4(directional_light.direction, 0.0)).xyz;
 
   if (depth == 1.0) {
-    result = sky(target_world, -directional_light.direction);
+    result = sky(
+      target_world,
+      -directional_light.direction,
+      directional_light.intensity
+    );
     return;
   }
 

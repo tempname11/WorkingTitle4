@@ -6,6 +6,7 @@
 
 const uint probe_ray_count = 64;
 const uvec2 probe_ray_count_factors = uvec2(8, 8);
+const uvec2 octomap_light_texel_size = uvec2(6, 6); // :OctomapSize
 
 float madfrac(float a, float b) {
   return a * b - floor(a * b);
@@ -113,7 +114,7 @@ vec3 get_indirect_luminance(
       grid_coord.z / frame_data.probe.grid_size_z_factors.x
     );
 
-    uvec2 probe_base_texel_coord = 1 + 6 * ( // :OctomapSize
+    uvec2 probe_base_texel_coord = 1 /* border */ + octomap_light_texel_size * (
       grid_coord.xy +
       frame_data.probe.grid_size.xy * current_z_subcoord
     );
