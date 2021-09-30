@@ -18,7 +18,7 @@ void main() {
   vec3 N_view = subpassLoad(gchannel0).rgb;
   vec3 N = (frame.data.view_inverse * vec4(N_view, 0.0)).xyz;
 
-  // @Cleanup share this logic with other L passes
+  // @Cleanup share this logic with other L1 passes
   float depth = subpassLoad(zchannel).r;
   if (depth == 1.0) { discard; }
   float z_near = 0.1; // @Cleanup :MoveToUniforms
@@ -44,18 +44,30 @@ void main() {
   }
 
   if (frame.data.flags.debug_B) {
+    vec2 lbuffer_size = vec2(1280.0, 720.0); // @Cleanup :MoveToUniform
     result += texture(
       probe_light_map,
-      (0.5 + 0.5 * position) * vec2(1280.0, 720.0) / 2048.0
+      (
+        (0.5 + 0.5 * vec2(position.x, -position.y))
+          * lbuffer_size
+          / frame.data.probe.light_map_texel_size
+      )
     ).rgb;
-    /*
-    vec3 grid_coord_float = (
+  }
+
+  if (frame.data.flags.debug_C) {
+    vec3 grid_coord = floor(
       (pos_world - frame.data.probe.grid_world_position_zero) /
       frame.data.probe.grid_world_position_delta
-    ); // may be out of bounds
+    );
 
-    ivec3 grid_coord0 = ivec3(grid_coord_float);
-    if (grid_coord0.z >= 1) result += grid_coord0 / vec3(32,32,8);
-    */
+    if (true
+      && grid_coord.x >= 0
+      && grid_coord.y >= 0
+      && grid_coord.z >= 0
+      && grid_coord.x < frame.data.probe.grid_size.x
+      && grid_coord.y < frame.data.probe.grid_size.y
+      && grid_coord.z < frame.data.probe.grid_size.z
+    ) result += grid_coord / (frame.data.probe.grid_size - 1);
   }
 }

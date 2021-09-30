@@ -1,6 +1,6 @@
 #include <src/lib/gfx/utilities.hxx>
+#include <src/engine/constants.hxx>
 #include <src/engine/common/ubo.hxx>
-#include <src/engine/rendering/intra/secondary_gbuffer/constants.hxx>
 #include <src/engine/rendering/intra/probe_light_map/constants.hxx>
 #include "frame_prepare_uniforms.hxx"
 
@@ -17,16 +17,16 @@ TASK_DECL {
     auto view = lib::debug_camera::to_view_matrix(&session_state->debug_camera);
 
     auto grid_world_position_zero = (
-      glm::vec3(0.5f) -
-      glm::vec3(32.0f, 32.0f, 8.0f) / 2.0f + // :ProbeGrid
-      glm::floor(session_state->debug_camera.position)
-    );
+      glm::floor(session_state->debug_camera.position / engine::PROBE_WORLD_DELTA)
+        - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE)
+        + 0.5f
+    ) * engine::PROBE_WORLD_DELTA;
     auto grid_world_position_zero_prev = (
-      glm::vec3(0.5f) -
-      glm::vec3(32.0f, 32.0f, 8.0f) / 2.0f + // :ProbeGrid
-      glm::floor(session_state->debug_camera_prev.position)
-    );
-    auto grid_world_position_delta = glm::vec3(1.0); // :ProbeGrid
+      glm::floor(session_state->debug_camera_prev.position / engine::PROBE_WORLD_DELTA)
+        - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE)
+        + 0.5f
+    ) * engine::PROBE_WORLD_DELTA;
+;
 
     const engine::common::ubo::Frame data = {
       .projection = projection,
@@ -37,22 +37,20 @@ TASK_DECL {
       .flags = session_state->ubo_flags,
       .probe_info = {
         .random_orientation = lib::gfx::utilities::get_random_rotation(),
-        .grid_size = glm::uvec3(32, 32, 8), // :ProbeGrid
+        .grid_size = engine::PROBE_GRID_SIZE,
+        .grid_size_z_factors = engine::PROBE_GRID_SIZE_Z_FACTORS,
         .change_from_prev = glm::ivec3(glm::round(
           (grid_world_position_zero - grid_world_position_zero_prev) /
-          grid_world_position_delta
+          engine::PROBE_WORLD_DELTA
         )),
         .grid_world_position_zero = grid_world_position_zero,
         .grid_world_position_zero_prev = grid_world_position_zero_prev,
-        .grid_world_position_delta = grid_world_position_delta,
+        .grid_world_position_delta = engine::PROBE_WORLD_DELTA,
         .light_map_texel_size = glm::vec2(
           engine::rendering::intra::probe_light_map::WIDTH,
           engine::rendering::intra::probe_light_map::HEIGHT
         ),
-        .secondary_gbuffer_texel_size = glm::vec2(
-          engine::rendering::intra::secondary_gbuffer::WIDTH,
-          engine::rendering::intra::secondary_gbuffer::HEIGHT
-        ),
+        .secondary_gbuffer_texel_size = glm::vec2(engine::G2_TEXEL_SIZE),
       },
       .end_marker = 0xDeadBeef,
     };

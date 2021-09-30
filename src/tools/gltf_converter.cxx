@@ -239,7 +239,7 @@ void gltf_converter(
         auto accessor_normal = &model.accessors[primitive.attributes["NORMAL"]];
         auto accessor_tangent = (primitive.attributes.contains("TANGENT")
           ? &model.accessors[primitive.attributes["TANGENT"]]
-          : &model.accessors[primitive.attributes["NORMAL"]] // @Temporary
+          : &model.accessors[primitive.attributes["NORMAL"]] // ????? @Think
         );
 
         auto count = accessor_position->count;

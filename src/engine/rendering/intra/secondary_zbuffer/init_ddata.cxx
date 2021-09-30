@@ -1,10 +1,10 @@
 #pragma once
 #include <src/global.hxx>
 #include <src/lib/gfx/allocator.hxx>
+#include <src/engine/constants.hxx>
 #include <src/engine/display/data.hxx>
 #include <src/engine/session.hxx>
 #include <src/engine/rendering/image_formats.hxx>
-#include "constants.hxx"
 #include "data.hxx"
 
 namespace engine::rendering::intra::secondary_zbuffer {
@@ -26,8 +26,8 @@ void init_ddata(
       .imageType = VK_IMAGE_TYPE_2D,
       .format = ZBUFFER2_FORMAT,
       .extent = {
-        .width = WIDTH,
-        .height = HEIGHT,
+        .width = G2_TEXEL_SIZE.x,
+        .height = G2_TEXEL_SIZE.y,
         .depth = 1,
       },
       .mipLevels = 1,

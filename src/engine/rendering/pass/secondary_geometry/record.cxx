@@ -1,5 +1,6 @@
 #include <vulkan/vulkan.h>
 #include <src/global.hxx>
+#include <src/engine/constants.hxx>
 #include <src/engine/session.hxx>
 #include <src/engine/display/data.hxx>
 #include "data.hxx"
@@ -63,11 +64,10 @@ void record(
     0, 1, &ddata->descriptor_sets[frame_info->inflight_index],
     0, nullptr
   );
-  // @Incomplete: probe grid
   vkCmdDispatch(cmd,
-    32, // w
-    32, // h
-    8 // d
+    PROBE_GRID_SIZE.x,
+    PROBE_GRID_SIZE.y,
+    PROBE_GRID_SIZE.z
   );
 }
 

@@ -122,8 +122,9 @@ void init_session_lpass(
         .samples = VK_SAMPLE_COUNT_1_BIT,
 
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        // @Incomplete: this relies on directional_light currently being
-        // the first thing that writes to lbuffer. Will change in the future.
+        // This relies on directional_light currently being
+        // the first thing that writes to lbuffer. The plan is to do
+        // "indirect light" first, then we'll use OP_LOAD here. :IndirectFirst
 
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,

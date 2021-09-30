@@ -6,8 +6,6 @@
 #include "common/probes.glsl"
 #include "common/frame.glsl"
 
-const uint ray_count = 64; // :DDGI_N_Rays 64
-
 layout(location = 0) in vec2 position;
 layout(location = 0) out vec3 result; 
 
@@ -30,14 +28,18 @@ void main() {
   );
   // Truncated, otherwise would need to subtract 0.5.
 
+  // @CopyPaste :L2_ProbeCoord
   // @Performance: could do bit operations here if working with powers of 2.
-  // :DDGI_N_Rays 64
-  uvec2 tmp_ray_coord = uvec2(mod(texel_coord, 8));
-  uint ray_index = tmp_ray_coord.x + tmp_ray_coord.y * 8;
+  uvec2 ray_subcoord = texel_coord % probe_ray_count_factors;
+  uint ray_index = ray_subcoord.x + ray_subcoord.y * probe_ray_count_factors.x;
+  uvec2 combined_coord = texel_coord / probe_ray_count_factors;
   uvec3 probe_grid_coord = uvec3(
-    mod(texel_coord.x / 8, frame.data.probe.grid_size.x),
-    texel_coord.y / 8,
-    texel_coord.x / 8 / frame.data.probe.grid_size.x
+    combined_coord.xy % frame.data.probe.grid_size.xy,
+    (combined_coord.x / frame.data.probe.grid_size.x) +
+    (
+      (combined_coord.y / frame.data.probe.grid_size.y)
+        * frame.data.probe.grid_size_z_factors.x
+    )
   );
 
   // everything is in world space.
@@ -47,7 +49,7 @@ void main() {
   );
   vec3 probe_raydir = get_probe_ray_direction(
     ray_index,
-    ray_count,
+    probe_ray_count,
     frame.data.probe.random_orientation
   );
   float t = subpassLoad(zchannel).r;

@@ -147,7 +147,8 @@ size_t get_texel_size(VkFormat format) {
       return 4;
     }
     default: {
-      // @Incomplete
+      // If this asserts, time to add new cases!
+      // Not sure if Vulkan API can do this for us instead?
       assert(false);
       return 0;
     }

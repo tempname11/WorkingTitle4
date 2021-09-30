@@ -16,7 +16,7 @@ void _load(
   Ref<SessionData> session,
   Own<LoadData> data
 ) {
-  // @Incomplete: should not assert on bad input!
+  // @Bug: should not assert on bad input!
 
   GroupDescription group_desc;
   std::vector<ItemDescription> items_desc;

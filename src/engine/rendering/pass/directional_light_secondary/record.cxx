@@ -1,5 +1,6 @@
 #include <vulkan/vulkan.h>
 #include <src/global.hxx>
+#include <src/engine/constants.hxx>
 #include <src/engine/display/data.hxx>
 #include <src/engine/session.hxx>
 #include "data.hxx"
@@ -13,7 +14,7 @@ void record(
   Use<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<SessionData::Vulkan::FullscreenQuad> fullscreen_quad,
   Ref<engine::common::SharedDescriptorPool> descriptor_pool,
-  Use<engine::display::Data::LPass> lpass, // @Incomplete many lights
+  Use<engine::display::Data::LPass> lpass, // will want to remove for :ManyLights
   Use<SessionData::Vulkan::Core> core,
   VkAccelerationStructureKHR accel,
   VkCommandBuffer cmd
@@ -52,7 +53,10 @@ void record(
     .framebuffer = ddata->framebuffers[frame_info->inflight_index],
     .renderArea = {
       .offset = {0, 0},
-      .extent = {2048, 2048}, // @Temporary
+      .extent = {
+        G2_TEXEL_SIZE.x,
+        G2_TEXEL_SIZE.y,
+      },
     },
     .clearValueCount = 1,
     .pClearValues = &clear_value,
@@ -62,14 +66,17 @@ void record(
   VkViewport viewport = {
     .x = 0.0f,
     .y = 0.0f,
-    .width = 2048, // @Temporary
-    .height = 2048, // @Temporary
+    .width = float(G2_TEXEL_SIZE.x),
+    .height = float(G2_TEXEL_SIZE.y),
     .minDepth = 0.0f,
     .maxDepth = 1.0f,
   };
   VkRect2D scissor = {
     .offset = {0, 0},
-    .extent = {2048, 2048}, // @Temporary
+    .extent = {
+      G2_TEXEL_SIZE.x,
+      G2_TEXEL_SIZE.y,
+    },
   };
   vkCmdSetViewport(cmd, 0, 1, &viewport);
   vkCmdSetScissor(cmd, 0, 1, &scissor);
@@ -84,7 +91,7 @@ void record(
     0, nullptr
   );
 
-  size_t light_count = 1; // @Incomplete: many lights
+  size_t light_count = 1; // :ManyLights
 
   std::vector<VkDescriptorSet> descriptor_sets(light_count);
   std::vector<VkDescriptorSetLayout> descriptor_set_layouts(light_count);

@@ -41,8 +41,7 @@ TASK_DECL {
   }
 
   if (imgui_reactions->added_item_to_group_description != nullptr) {
-    // we don't currently set this in the GUI, so fill it in.
-    // @Incomplete
+    // @Incomplete: no transform in GUI yet.
     imgui_reactions->added_item_to_group_description->transform = glm::mat4(1.0);
     /*glm::translate(
       glm::rotate(

@@ -309,7 +309,7 @@ void record_lpass(
     0, nullptr
   );
 
-  // @Incomplete: many lights
+  // :ManyLights
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
     s_lpass->pipeline_layout,

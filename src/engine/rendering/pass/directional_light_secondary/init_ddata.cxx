@@ -1,4 +1,5 @@
 #include <src/global.hxx>
+#include <src/engine/constants.hxx>
 #include <src/engine/session.hxx>
 #include <src/engine/display/data.hxx>
 #include "data.hxx"
@@ -135,8 +136,8 @@ void init_ddata(
         .renderPass = sdata->render_pass,
         .attachmentCount = sizeof(attachments) / sizeof(*attachments),
         .pAttachments = attachments,
-        .width = 2048, // @Temporary
-        .height = 2048, // @Temporary
+        .width = G2_TEXEL_SIZE.x,
+        .height = G2_TEXEL_SIZE.y,
         .layers = 1,
       };
       {

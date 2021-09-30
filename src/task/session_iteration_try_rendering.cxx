@@ -160,9 +160,9 @@ TASK_DECL {
       swapchain_image_count
     );
     for (auto &pool : rendering->descriptor_pools) {
-      // "large enough"
+      // "large enough" :FixedDescriptorPool
       const uint32_t COMMON_DESCRIPTOR_COUNT = 4096;
-      const uint32_t COMMON_DESCRIPTOR_MAX_SETS = 4096; // @Temporary
+      const uint32_t COMMON_DESCRIPTOR_MAX_SETS = 4096;
 
       VkDescriptorPoolSize sizes[] = {
         { VK_DESCRIPTOR_TYPE_SAMPLER, COMMON_DESCRIPTOR_COUNT },

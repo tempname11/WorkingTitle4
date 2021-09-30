@@ -14,6 +14,7 @@ struct FrameFlags {
 struct FrameProbe {
   mat3 random_orientation;
   uvec3 grid_size;
+  uvec2 grid_size_z_factors;
   ivec3 change_from_prev;
   vec3 grid_world_position_zero;
   vec3 grid_world_position_zero_prev;

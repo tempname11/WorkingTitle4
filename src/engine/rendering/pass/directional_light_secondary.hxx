@@ -42,7 +42,7 @@ void record(
   Use<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<SessionData::Vulkan::FullscreenQuad> fullscreen_quad,
   Ref<engine::common::SharedDescriptorPool> descriptor_pool,
-  Use<engine::display::Data::LPass> lpass, // @Incomplete many lights
+  Use<engine::display::Data::LPass> lpass, // remove for :ManyLights
   Use<SessionData::Vulkan::Core> core,
   VkAccelerationStructureKHR accel,
   VkCommandBuffer cmd

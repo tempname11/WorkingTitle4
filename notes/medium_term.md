@@ -10,7 +10,7 @@
 - Render passes are not really used, but they should be. :UseRenderPasses
 - Some compute workgroups are size 1 which is not good for perf. :UseComputeLocalSize
 - "lpass" should be split info a few different passes :ManyLights
-- Descriptor pool counts are fixed; can run out of them.
+- Descriptor pool counts are fixed; can run out of them. :FixedDescriptorPool
 - Uploader seems very rushed, need to come back to it from a performance perspective
 - Also need automatic GPU memory region compacting
 - Also need multi-alloc-like capability for `allocator`
@@ -49,6 +49,8 @@
   (but Tracy profiling shows everything is great!?)
   (maybe these are external (DLL?) allocations and we don't track them.)
 
+- Over time, performance drops, but swapchain recreation (via window resize) helps.
+
 ### minor issues
 - r11g11b10 probe_light_map has yellow tint on saturation
 - fullscreen toggle: weird visual jump
@@ -60,6 +62,7 @@
   (Need to enable their presence by default, and also fix the actual errors.)
 
 ### refactoring
+- Primary LBuffer: indirect light first. :IndirectFirst
 - Move ad-hoc inline constants to uniform or at least `common/constants.glsl` :MoveToUniform
 - The directory `src/task` should not be there. tasks should be where they logically belong.
 - `session/setup.cxx` does too much and should be split up into smaller files.

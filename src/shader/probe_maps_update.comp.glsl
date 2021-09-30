@@ -13,21 +13,28 @@ layout(binding = 2) uniform sampler2D lbuffer2_image;
 layout(binding = 3) uniform Frame { FrameData data; } frame;
 
 void main() {
-  // :DDGI_N_Rays 64
-  // @Incomplete :ProbePacking
+  ivec2 octomap_coord = ivec2(gl_LocalInvocationID.xy);
+  uvec3 probe_coord = gl_WorkGroupID;
 
-  uvec2 texel_coord_base = 8 * uvec2(
-    gl_WorkGroupID.x + gl_WorkGroupID.z * frame.data.probe.grid_size.x,
-    gl_WorkGroupID.y
+  uvec2 z_subcoord = uvec2(
+    probe_coord.z % frame.data.probe.grid_size_z_factors.x,
+    probe_coord.z / frame.data.probe.grid_size_z_factors.x
   );
 
-  vec3 map_direction = octo_decode(mod(gl_LocalInvocationID.xy - 1.0, 4.0) / 2.0 - 1.0);
+  uvec2 texel_coord_base = probe_ray_count_factors * (
+    probe_coord.xy +
+    z_subcoord * frame.data.probe.grid_size.xy
+  );
+
+  vec3 octomap_direction = octo_decode(
+    mod(octomap_coord - 1.0, 4.0) / 2.0 - 1.0
+  );
 
   vec4 value = vec4(0.0);
-  for (uint x = 0; x < 8; x++) {
-    for (uint y = 0; y < 8; y++) {
-      // :DDGI_N_Rays 64
-      uint ray_index = x + y * 8;
+  for (uint x = 0; x < probe_ray_count_factors.x; x++) {
+    for (uint y = 0; y < probe_ray_count_factors.y; y++) {
+      uint ray_index = x + y * probe_ray_count_factors.x;
+
       vec3 ray_direction = get_probe_ray_direction(
         ray_index,
         ray_count,
@@ -41,45 +48,50 @@ void main() {
             frame.data.probe.secondary_gbuffer_texel_size
         )
       ).rgb;
-      float weight = max(0.0, dot(map_direction, ray_direction));
+
+      float weight = max(0.0, dot(octomap_direction, ray_direction));
       value += vec4(ray_luminance * weight, weight);
     }
   }
   value = value / value.a; // @Incomplete: potential div by 0 here?
 
   if (frame.data.is_frame_sequential) {
-    ivec3 grid_coord_prev = ivec3(gl_WorkGroupID) + frame.data.probe.change_from_prev;
-    // Hmm, `+` seems wrong here, but it actually works. Need to think about this more.
+    ivec3 probe_coord_prev = ivec3(probe_coord) + frame.data.probe.change_from_prev;
+    // @Think: `+` seems wrong here, instead of `-`, but it actually works.
 
-    // are vector boolean expressions possible in GLSL? if so, this could use them.
+    // Are vector boolean expressions possible in GLSL? if so, this could use them.
     bool out_of_bounds = (false
-      || grid_coord_prev.x < 0
-      || grid_coord_prev.y < 0
-      || grid_coord_prev.z < 0
-      || grid_coord_prev.x >= frame.data.probe.grid_size.x
-      || grid_coord_prev.y >= frame.data.probe.grid_size.y
-      || grid_coord_prev.z >= frame.data.probe.grid_size.z
+      || probe_coord_prev.x < 0
+      || probe_coord_prev.y < 0
+      || probe_coord_prev.z < 0
+      || probe_coord_prev.x >= frame.data.probe.grid_size.x
+      || probe_coord_prev.y >= frame.data.probe.grid_size.y
+      || probe_coord_prev.z >= frame.data.probe.grid_size.z
     );
 
     if (!out_of_bounds) {
-      ivec2 texel_coord_prev = ivec2(
-        grid_coord_prev.x + grid_coord_prev.z * frame.data.probe.grid_size.x,
-        grid_coord_prev.y
-      ) * 6 + ivec2(gl_LocalInvocationID.xy);
+      uvec2 z_subcoord_prev = uvec2(
+        probe_coord_prev.z % frame.data.probe.grid_size_z_factors.x,
+        probe_coord_prev.z / frame.data.probe.grid_size_z_factors.x
+      );
+      ivec2 texel_coord_prev = octomap_coord + 6 * ( // :OctomapSize
+        probe_coord_prev.xy +
+        ivec2(z_subcoord_prev * frame.data.probe.grid_size.xy)
+      );
 
       vec4 previous = imageLoad(
         probe_light_map_previous,
         texel_coord_prev
       );
-      value = previous * 0.98 + 0.02 * value; // @Cleanup :MoveToUniform
+      value = previous * 0.98 + 0.02 * value;
+      // @Cleanup :MoveToUniform hysteresis_thing
     }
   }
 
-  // ivec3 grid_coord = gl_WorkGroupID;
-  ivec2 texel_coord = ivec2(
-    gl_WorkGroupID.x + gl_WorkGroupID.z * frame.data.probe.grid_size.x,
-    gl_WorkGroupID.y
-  ) * 6 + ivec2(gl_LocalInvocationID.xy);
+  ivec2 texel_coord = octomap_coord + 6 * ( // :OctomapSize
+    ivec2(probe_coord.xy) +
+    ivec2(z_subcoord * frame.data.probe.grid_size.xy)
+  );
 
   imageStore(
     probe_light_map,

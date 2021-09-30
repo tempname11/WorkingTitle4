@@ -9,8 +9,11 @@
 #include "common/frame.glsl"
 #include "common/probes.glsl"
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in; // :DDGI_N_Rays 64
-const uint ray_count = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
+layout(
+  local_size_x = probe_ray_count_factors.x,
+  local_size_y = probe_ray_count_factors.y,
+  local_size_z = 1
+) in;
 
 layout(binding = 0, rgba16_snorm) uniform image2D gchannel0;
 layout(binding = 1, rgba8) uniform image2D gchannel1;
@@ -19,10 +22,10 @@ layout(binding = 3, r16) uniform image2D zchannel;
 layout(binding = 4) uniform accelerationStructureEXT accel;
 
 layout(scalar, buffer_reference) readonly buffer IndexBufferRef {
-  u16vec3 data[]; // @See :T06IndexType
+  u16vec3 data[]; // :T06IndexType
 };
 
-struct PerVertex { // @See :T06VertexData
+struct PerVertex { // :T06VertexData
   vec3 position;
   vec3 tangent;
   vec3 bitangent;
@@ -46,24 +49,34 @@ layout(binding = 5) readonly buffer GeometryRefs {
 layout(binding = 6) uniform Frame { FrameData data; } frame;
 
 // layout(set = 2, binding = 0) uniform texture2D all_albedo_textures[];
-// @Incomplete :DDGI_Textures
+// :DDGI_Textures
 
 void main() {
-  ivec2 store_coord = ( // :SecondaryCoordEncoding
-    ivec2(gl_GlobalInvocationID.xy) +
-    ivec2(frame.data.probe.grid_size.x * 8 * gl_GlobalInvocationID.z, 0)
+  uvec3 probe_coord = gl_WorkGroupID;
+  uint ray_index = gl_LocalInvocationIndex;
+
+  uvec2 z_subcoord = uvec2(
+    probe_coord.z % frame.data.probe.grid_size_z_factors.x,
+    probe_coord.z / frame.data.probe.grid_size_z_factors.x
+  );
+
+  ivec2 store_coord = ivec2(
+    gl_GlobalInvocationID.xy +
+    (
+      frame.data.probe.grid_size.xy *
+      probe_ray_count_factors *
+      z_subcoord
+    )
   );
 
   rayQueryEXT ray_query;
-  uint ray_index = gl_LocalInvocationIndex;
-  uvec3 probe_coord = gl_WorkGroupID;
   vec3 origin_world = (
     frame.data.probe.grid_world_position_zero +
     frame.data.probe.grid_world_position_delta * probe_coord
   );
   vec3 raydir_world = get_probe_ray_direction(
     ray_index,
-    ray_count,
+    probe_ray_count,
     frame.data.probe.random_orientation
   );
   rayQueryInitializeEXT(
@@ -80,7 +93,8 @@ void main() {
   float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);
   bool front_face = rayQueryGetIntersectionFrontFaceEXT(ray_query, false);
   if (t_intersection == 0.0 || !front_face) {
-    // We don't clear the G buffer, which should not matter.
+    // We don't currently clear the G buffer, which should not matter,
+    // because we ignore it when Z == 0.0.
     imageStore(
       zchannel,
       store_coord,
@@ -99,11 +113,12 @@ void main() {
   vec3 n0_object = vertices.data[int(indices.x)].normal;
   vec3 n1_object = vertices.data[int(indices.y)].normal;
   vec3 n2_object = vertices.data[int(indices.z)].normal;
-  vec3 n_object = normalize(barycentric_interpolate(bary, n0_object, n1_object, n2_object));
+  vec3 n_object_unnorm = barycentric_interpolate(bary, n0_object, n1_object, n2_object);
 
-  // @Incomplete :DDGI_Textures
+  // :DDGI_Textures
   // Read normal map and apply that.
-  vec3 n_world = object_to_world * vec4(n_object, 0.0);
+  vec3 n_world = normalize(object_to_world * vec4(n_object_unnorm, 0.0));
+  // normalize here because of potential scale factor inside the matrix.
 
   imageStore(
     zchannel,
@@ -120,12 +135,12 @@ void main() {
   imageStore(
     gchannel1,
     store_coord,
-    vec4(1.0) // @Incomplete :DDGI_Textures
+    vec4(1.0) // :DDGI_Textures
   );
 
   imageStore(
     gchannel2,
     store_coord,
-    vec4(1.0) // @Incomplete :DDGI_Textures
+    vec4(1.0) // :DDGI_Textures
   );
 }

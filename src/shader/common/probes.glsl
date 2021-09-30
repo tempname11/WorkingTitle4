@@ -4,6 +4,9 @@
 #include "constants.glsl"
 #include "frame.glsl"
 
+const uint probe_ray_count = 64;
+const uvec2 probe_ray_count_factors = uvec2(8, 8);
+
 float madfrac(float a, float b) {
   return a * b - floor(a * b);
 }
@@ -105,9 +108,14 @@ vec3 get_indirect_luminance(
       vec3(grid_cube_vertex_coord)
     ); // choose first or second in each component depending on the cube vertex.
 
-    uvec2 probe_base_texel_coord = 1 + 6 * (
+    uvec2 current_z_subcoord = uvec2(
+      grid_coord.z % frame_data.probe.grid_size_z_factors.x,
+      grid_coord.z / frame_data.probe.grid_size_z_factors.x
+    );
+
+    uvec2 probe_base_texel_coord = 1 + 6 * ( // :OctomapSize
       grid_coord.xy +
-      uvec2(frame_data.probe.grid_size.x * grid_coord.z, 0)
+      frame_data.probe.grid_size.xy * current_z_subcoord
     );
 
     vec3 illuminance = texture(
@@ -115,8 +123,7 @@ vec3 get_indirect_luminance(
       (
         probe_base_texel_coord +
         (2.0 + 2.0 * octo_encode(N))
-        // @Incomplete: think this through again, may be a bug here
-        // i.e. is +0.5 really not needed?
+        // @Think: not 100% sure, is +0.5 really not needed here?
       ) / frame_data.probe.light_map_texel_size
     ).rgb;
 
@@ -140,7 +147,7 @@ vec3 get_indirect_luminance(
   // @Incomplete: material diffuse properties should be considered here!
   // :DDGI_Textures
 
-  // @Hack @Temporary
+  // @Hack: just boost signal for now.
   sum.rgb *= 2.0;
 
   return sum.rgb / sum.a;

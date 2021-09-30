@@ -33,8 +33,8 @@ void main() {
   #endif
 
   float depth = subpassLoad(zchannel).r;
-  float z_near = 0.1; // @Temporary: move to uniforms
-  float z_far = 10000.0; // @Temporary: move to uniforms
+  float z_near = 0.1; // @Cleanup :MoveToUniforms
+  float z_far = 10000.0; // @Cleanup :MoveToUniforms
   float z_linear = z_near * z_far / (z_far + depth * (z_near - z_far));
 
   vec4 target_view_long = frame.data.projection_inverse * vec4(position, 1.0, 1.0);
@@ -62,9 +62,9 @@ void main() {
     0,
     0xFF,
     eye_world + target_world * z_linear * perspective_correction,
-    0.1, // @Temporary: move ray_t_min to uniforms
+    0.1, // @Cleanup :MoveToUniforms ray_t_max
     -directional_light.direction,
-    1000.0 // @Temporary: move ray_t_max to uniforms
+    1000.0 // @Cleanup :MoveToUniforms ray_t_max
   );
   rayQueryProceedEXT(ray_query); // should we use the result here?
   float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);
