@@ -2,6 +2,7 @@
   - *** use "lazy" probe maps. ***
   - use texture LODs properly
   - use skybox in L2
+  - investigate things looking "too dim"
   - investigate "smooth backface" artifacts
   - investigate "self-lighting"
   - investigate "zero-grid-coord-repeat"

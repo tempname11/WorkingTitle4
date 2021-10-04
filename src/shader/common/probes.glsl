@@ -146,9 +146,6 @@ vec3 get_indirect_luminance(
     sum += vec4(illuminance * weight, weight);
   }
 
-  // @Hack: just boost signal for now.
-  sum.rgb *= 2;
-
   return albedo * sum.rgb / sum.a;
 }
 
