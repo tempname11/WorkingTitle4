@@ -60,52 +60,72 @@ void record(
     );
   }
 
-  VkDescriptorSet descriptor_set_textures;
-  { ZoneScoped("descriptor_set_textures");
+  VkDescriptorSet descriptor_sets_textures[2];
+  { ZoneScoped("descriptor_sets_textures");
     uint32_t count = checked_integer_cast<uint32_t>(
       render_list->items.size()
     );
 
     {
       std::scoped_lock lock(descriptor_pool->mutex);
+      uint32_t counts[] = { count, count };
+      VkDescriptorSetLayout layouts[] = {
+        sdata->descriptor_set_layout_textures,
+        sdata->descriptor_set_layout_textures,
+      };
       VkDescriptorSetVariableDescriptorCountAllocateInfo count_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO,
-        .descriptorSetCount = 1,
-        .pDescriptorCounts = &count,
+        .descriptorSetCount = sizeof(counts) / sizeof(*counts),
+        .pDescriptorCounts = counts,
       };
       VkDescriptorSetAllocateInfo allocate_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .pNext = &count_info,
         .descriptorPool = descriptor_pool->pool,
-        .descriptorSetCount = 1,
-        .pSetLayouts = &sdata->descriptor_set_layout_textures,
+        .descriptorSetCount = sizeof(layouts) / sizeof(*layouts),
+        .pSetLayouts = layouts,
       };
       auto result = vkAllocateDescriptorSets(
         core->device,
         &allocate_info,
-        &descriptor_set_textures
+        descriptor_sets_textures
       );
       assert(result == VK_SUCCESS);
     }
 
-    std::vector<VkDescriptorImageInfo> image_infos;
-    image_infos.resize(count);
+    std::vector<VkDescriptorImageInfo> albedo_infos;
+    std::vector<VkDescriptorImageInfo> romeao_infos;
+    albedo_infos.resize(count);
+    romeao_infos.resize(count);
     for (size_t i = 0; i < count; i++) {
-      image_infos[i] = {
+      albedo_infos[i] = {
         .imageView = render_list->items[i].texture_albedo_view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      romeao_infos[i] = {
+        .imageView = render_list->items[i].texture_romeao_view,
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
     }
     if (count > 0) {
-      VkWriteDescriptorSet writes[1] = {
+      VkWriteDescriptorSet writes[] = {
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-          .dstSet = descriptor_set_textures,
+          .dstSet = descriptor_sets_textures[0],
           .dstBinding = 0,
           .dstArrayElement = 0,
           .descriptorCount = count,
           .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-          .pImageInfo = image_infos.data(),
+          .pImageInfo = albedo_infos.data(),
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets_textures[1],
+          .dstBinding = 0,
+          .dstArrayElement = 0,
+          .descriptorCount = count,
+          .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+          .pImageInfo = romeao_infos.data(),
         },
       };
       vkUpdateDescriptorSets(
@@ -127,7 +147,7 @@ void record(
   vkCmdBindDescriptorSets(
     cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
     sdata->pipeline_layout,
-    1, 1, &descriptor_set_textures,
+    1, 2, descriptor_sets_textures,
     0, nullptr
   );
   vkCmdDispatch(cmd,

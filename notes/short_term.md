@@ -9,5 +9,3 @@
 
   - think more carefully about equations, energy conservation etc.
   - use some kind of visibility testing (we already have the ray distances!)
-
-  :DDGI_Textures

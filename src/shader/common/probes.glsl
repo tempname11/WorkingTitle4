@@ -146,9 +146,6 @@ vec3 get_indirect_luminance(
     sum += vec4(illuminance * weight, weight);
   }
 
-  // @Incomplete: material diffuse properties should be considered here!
-  // :DDGI_Textures
-
   // @Hack: just boost signal for now.
   sum.rgb *= 2;
 

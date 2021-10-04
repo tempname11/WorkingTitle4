@@ -47,7 +47,7 @@ layout(binding = 6) uniform Frame { FrameData data; } frame;
 layout(binding = 7) uniform sampler albedo_sampler;
 
 layout(set = 1, binding = 0) uniform texture2D albedo_textures[];
-// :DDGI_Textures
+layout(set = 2, binding = 0) uniform texture2D romeao_textures[];
 
 void main() {
   uvec3 probe_coord = gl_WorkGroupID;
@@ -127,7 +127,10 @@ void main() {
     v2.uv
   );
 
-  // @Incomplete: LODs are unavailable here
+  // @Incomplete: LODs are unavailable,
+  // because compute shaders have no implicit gradients.
+  // (and even they did for some reason, the result would be wrong)
+
   vec3 albedo = texture(
     sampler2D(
       albedo_textures[instance_index],
@@ -136,10 +139,16 @@ void main() {
     uv
   ).rgb;
 
-  // :DDGI_Textures
-  // Read normal map and apply that.
+  // @Perfomance @Think: do we even need this in G2?
+  vec3 romeao = texture(
+    sampler2D(
+      romeao_textures[instance_index],
+      albedo_sampler
+    ),
+    uv
+  ).rgb;
+
   vec3 n_world = normalize(object_to_world * vec4(n_object_unnorm, 0.0));
-  // normalize here because of potential scale factor inside the matrix.
 
   imageStore(
     zchannel,
@@ -162,6 +171,6 @@ void main() {
   imageStore(
     gchannel2,
     store_coord,
-    vec4(1.0) // :DDGI_Textures
+    vec4(romeao, 0.0)
   );
 }

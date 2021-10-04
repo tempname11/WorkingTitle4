@@ -119,8 +119,9 @@ void init_sdata(
 
   VkPipelineLayout pipeline_layout;
   { ZoneScopedN("pipeline_layout");
-    VkDescriptorSetLayout layouts[2] = {
+    VkDescriptorSetLayout layouts[3] = {
       descriptor_set_layout_frame,
+      descriptor_set_layout_textures,
       descriptor_set_layout_textures,
     };
     VkPipelineLayoutCreateInfo info = {

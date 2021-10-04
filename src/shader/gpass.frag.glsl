@@ -19,9 +19,9 @@ void main() {
   vec3 normalmap = 2.0 * texture(normal_image, uv).rgb - vec3(1.0);
   vec3 romeao = texture(romeao_image, uv).rgb;
   vec3 N = normalize(0
-	+ view_space_tangent * normalmap.x
-	+ view_space_bitangent * normalmap.y
-	+ view_space_normal * normalmap.z
+    + view_space_tangent * normalmap.x
+    + view_space_bitangent * normalmap.y
+    + view_space_normal * normalmap.z
   );
   gchannel0 = vec4(N, 0.0);
   gchannel1 = vec4(albedo, 0.0);
