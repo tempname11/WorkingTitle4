@@ -91,8 +91,13 @@ _Allocation _allocate(
 
     VkDeviceMemory memory;
     {
+      VkMemoryAllocateFlagsInfo flags_info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
+        .flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT,
+      };
       VkMemoryAllocateInfo alloc_info = {
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext = &flags_info,
         .allocationSize = requirements->size,
         .memoryTypeIndex = it->memory_type_index,
       };
@@ -163,8 +168,13 @@ _Allocation _allocate(
     if (need_new_region) {
       VkDeviceMemory memory;
       {
+        VkMemoryAllocateFlagsInfo flags_info = {
+          .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
+          .flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT,
+        };
         VkMemoryAllocateInfo alloc_info = {
           .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+          .pNext = &flags_info,
           .allocationSize = it->size_region,
           .memoryTypeIndex = it->memory_type_index,
         };

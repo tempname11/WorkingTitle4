@@ -150,7 +150,7 @@ vec3 get_indirect_luminance(
   // :DDGI_Textures
 
   // @Hack: just boost signal for now.
-  sum.rgb *= 1.5;
+  sum.rgb *= 2;
 
   return albedo * sum.rgb / sum.a;
 }

@@ -1325,7 +1325,9 @@ TASK_DECL {
       secondary_geometry_sdata,
       frame_info,
       core,
+      descriptor_pool,
       tlas_result->buffer_geometry_refs.buffer,
+      render_list,
       tlas_result->accel,
       cmd
     );

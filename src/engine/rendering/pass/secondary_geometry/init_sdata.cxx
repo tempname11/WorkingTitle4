@@ -11,8 +11,10 @@ void init_sdata(
 ) {
   ZoneScoped;
 
-  VkDescriptorSetLayout descriptor_set_layout;
-  { ZoneScopedN("descriptor_set_layout");
+  VkDescriptorSetLayout descriptor_set_layout_frame;
+  VkDescriptorSetLayout descriptor_set_layout_textures;
+
+  { ZoneScopedN("descriptor_set_layout_frame");
     VkDescriptorSetLayoutBinding layout_bindings[] = {
       {
         .binding = 0,
@@ -56,6 +58,12 @@ void init_sdata(
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL,
       },
+      {
+        .binding = 7,
+        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
     };
     VkDescriptorSetLayoutCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -67,7 +75,43 @@ void init_sdata(
         core->device,
         &create_info,
         core->allocator,
-        &descriptor_set_layout
+        &descriptor_set_layout_frame
+      );
+      assert(result == VK_SUCCESS);
+    }
+  }
+
+  { ZoneScopedN("descriptor_set_layout_textures");
+    VkDescriptorSetLayoutBinding layout_bindings[] = {
+      {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+        .descriptorCount = 1024, // @Incomplete :LargeEnough
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
+    };
+
+    VkDescriptorBindingFlags flags = (0
+      | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT
+      // | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
+    );
+    VkDescriptorSetLayoutBindingFlagsCreateInfo flags_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+      .bindingCount = 1,
+      .pBindingFlags = &flags,
+    };
+    VkDescriptorSetLayoutCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .pNext = &flags_info,
+      .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
+      .pBindings = layout_bindings,
+    };
+    {
+      auto result = vkCreateDescriptorSetLayout(
+        core->device,
+        &create_info,
+        core->allocator,
+        &descriptor_set_layout_textures
       );
       assert(result == VK_SUCCESS);
     }
@@ -75,10 +119,14 @@ void init_sdata(
 
   VkPipelineLayout pipeline_layout;
   { ZoneScopedN("pipeline_layout");
+    VkDescriptorSetLayout layouts[2] = {
+      descriptor_set_layout_frame,
+      descriptor_set_layout_textures,
+    };
     VkPipelineLayoutCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 1,
-      .pSetLayouts = &descriptor_set_layout,
+      .setLayoutCount = sizeof(layouts) / sizeof(*layouts),
+      .pSetLayouts = layouts,
     };
     {
       auto result = vkCreatePipelineLayout(
@@ -136,10 +184,31 @@ void init_sdata(
     );
   }
 
+  VkSampler sampler_albedo;
+  { ZoneScopedN("sampler_albedo");
+    VkSamplerCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+      .magFilter = VK_FILTER_LINEAR,
+      .minFilter = VK_FILTER_LINEAR,
+      .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+      .anisotropyEnable = true,
+      .maxAnisotropy = core->properties.basic.limits.maxSamplerAnisotropy,
+      .maxLod = VK_LOD_CLAMP_NONE,
+    };
+    vkCreateSampler(
+      core->device,
+      &create_info,
+      core->allocator,
+      &sampler_albedo
+    );
+  }
+
   *out = {
-    .descriptor_set_layout = descriptor_set_layout,
+    .descriptor_set_layout_frame = descriptor_set_layout_frame,
+    .descriptor_set_layout_textures = descriptor_set_layout_textures,
     .pipeline_layout = pipeline_layout,
     .pipeline = pipeline,
+    .sampler_albedo = sampler_albedo,
   };
 }
 

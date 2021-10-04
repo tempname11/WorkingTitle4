@@ -1,5 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.h>
+#include <src/engine/misc.hxx>
 #include <src/engine/session.hxx>
 #include <src/engine/display/data.hxx>
 
@@ -38,7 +39,9 @@ void record(
   Use<SData> sdata,
   Use<engine::display::Data::FrameInfo> frame_info,
   Use<SessionData::Vulkan::Core> core,
-  VkBuffer render_list,
+  Ref<engine::common::SharedDescriptorPool> descriptor_pool,
+  VkBuffer geometry_refs,
+  Use<engine::misc::RenderList> render_list,
   VkAccelerationStructureKHR accel,
   VkCommandBuffer cmd
 );

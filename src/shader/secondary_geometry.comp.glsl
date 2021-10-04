@@ -5,6 +5,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
 #extension GL_EXT_buffer_reference2 : enable
 #extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_nonuniform_qualifier : enable
 #include "common/helpers.glsl"
 #include "common/frame.glsl"
 #include "common/probes.glsl"
@@ -14,12 +15,6 @@ layout(
   local_size_y = probe_ray_count_factors.y,
   local_size_z = 1
 ) in;
-
-layout(binding = 0, rgba16_snorm) uniform image2D gchannel0;
-layout(binding = 1, rgba8) uniform image2D gchannel1;
-layout(binding = 2, rgba8) uniform image2D gchannel2;
-layout(binding = 3, r16) uniform image2D zchannel;
-layout(binding = 4) uniform accelerationStructureEXT accel;
 
 layout(scalar, buffer_reference) readonly buffer IndexBufferRef {
   u16vec3 data[]; // :T06IndexType
@@ -42,13 +37,16 @@ struct PerInstance {
   VertexBufferRef vertices;
 };
 
-layout(binding = 5) readonly buffer GeometryRefs {
-  PerInstance data[];
-} geometry_refs;
-
+layout(binding = 0, rgba16_snorm) uniform image2D gchannel0;
+layout(binding = 1, rgba8) uniform image2D gchannel1;
+layout(binding = 2, rgba8) uniform image2D gchannel2;
+layout(binding = 3, r16) uniform image2D zchannel;
+layout(binding = 4) uniform accelerationStructureEXT accel;
+layout(binding = 5) readonly buffer GeometryRefs { PerInstance data[]; } geometry_refs;
 layout(binding = 6) uniform Frame { FrameData data; } frame;
+layout(binding = 7) uniform sampler albedo_sampler;
 
-// layout(set = 2, binding = 0) uniform texture2D all_albedo_textures[];
+layout(set = 1, binding = 0) uniform texture2D albedo_textures[];
 // :DDGI_Textures
 
 void main() {
@@ -110,10 +108,33 @@ void main() {
 
   u16vec3 indices = geometry_refs.data[instance_index].indices.data[geometry_index];
   VertexBufferRef vertices = geometry_refs.data[instance_index].vertices;
-  vec3 n0_object = vertices.data[int(indices.x)].normal;
-  vec3 n1_object = vertices.data[int(indices.y)].normal;
-  vec3 n2_object = vertices.data[int(indices.z)].normal;
-  vec3 n_object_unnorm = barycentric_interpolate(bary, n0_object, n1_object, n2_object);
+
+  PerVertex v0 = vertices.data[int(indices.x)];
+  PerVertex v1 = vertices.data[int(indices.y)];
+  PerVertex v2 = vertices.data[int(indices.z)];
+
+  vec3 n_object_unnorm = barycentric_interpolate(
+    bary,
+    v0.normal,
+    v1.normal,
+    v2.normal
+  );
+
+  vec2 uv = barycentric_interpolate(
+    bary,
+    v0.uv,
+    v1.uv,
+    v2.uv
+  );
+
+  // @Incomplete: LODs are unavailable here
+  vec3 albedo = texture(
+    sampler2D(
+      albedo_textures[instance_index],
+      albedo_sampler
+    ),
+    uv
+  ).rgb;
 
   // :DDGI_Textures
   // Read normal map and apply that.
@@ -135,7 +156,7 @@ void main() {
   imageStore(
     gchannel1,
     store_coord,
-    vec4(1.0) // :DDGI_Textures
+    vec4(albedo, 0.0)
   );
 
   imageStore(

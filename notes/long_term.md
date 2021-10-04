@@ -3,6 +3,7 @@
   - HDR: eye adaptation.
   - Depth of field.
   - Motion blur.
+  - TAA
 
 ### Scene editor
   - Interactive selection.

@@ -224,25 +224,26 @@ void init_vulkan(
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES,
       .storageBuffer16BitAccess = VK_TRUE,
     };
-    VkPhysicalDeviceTimelineSemaphoreFeatures timeline_semaphore_features = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES,
-      .pNext = &sixteen_bit_storage_features,
-      .timelineSemaphore = VK_TRUE,
-    };
-    VkPhysicalDeviceBufferDeviceAddressFeaturesEXT buffer_device_address_features = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT,
-      .pNext = &timeline_semaphore_features,
-      .bufferDeviceAddress = VK_TRUE,
-    };
     VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure_features = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
-      .pNext = &buffer_device_address_features,
+      .pNext = &sixteen_bit_storage_features,
       .accelerationStructure = VK_TRUE,
     };
     VkPhysicalDeviceRayQueryFeaturesKHR ray_query_features = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
       .pNext = &acceleration_structure_features,
       .rayQuery = VK_TRUE,
+    };
+    VkPhysicalDeviceVulkan12Features vulkan_1_2_features = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+      .pNext = &ray_query_features,
+      .descriptorIndexing = VK_TRUE,
+      .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+      //.descriptorBindingPartiallyBound = VK_TRUE,
+      .descriptorBindingVariableDescriptorCount = VK_TRUE,
+      .runtimeDescriptorArray = VK_TRUE,
+      .timelineSemaphore = VK_TRUE,
+      .bufferDeviceAddress = VK_TRUE,
     };
     /*
     VkPhysicalDeviceRayQueryFeaturesKHR ray_tracing_pipeline_features = {
@@ -257,7 +258,7 @@ void init_vulkan(
     };
     const VkDeviceCreateInfo device_create_info = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-      .pNext = &ray_query_features,
+      .pNext = &vulkan_1_2_features,
       .queueCreateInfoCount = 1,
       .pQueueCreateInfos = &queue_create_info,
       .enabledExtensionCount = (uint32_t) device_extensions.size(),
@@ -766,7 +767,7 @@ void setup(
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 2904);
+    static_assert(size == 2920);
   }
   #endif
 

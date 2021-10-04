@@ -176,8 +176,13 @@ void _internal_end(
   for (uint32_t i = 0; i < data->so_far_per_memory_type.size(); i++) {
     VkDeviceMemory memory = VK_NULL_HANDLE;
     if (data->so_far_per_memory_type[i] > 0) {
+      VkMemoryAllocateFlagsInfo flags_info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
+        .flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT,
+      };
       VkMemoryAllocateInfo alloc_info = {
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext = &flags_info,
         .allocationSize = data->so_far_per_memory_type[i],
         .memoryTypeIndex = i,
       };
