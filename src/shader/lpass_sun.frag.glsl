@@ -62,7 +62,7 @@ void main() {
     0,
     0xFF,
     eye_world + target_world * z_linear * perspective_correction,
-    0.01, // @Cleanup :MoveToUniforms ray_t_min
+    0.1, // @Cleanup :MoveToUniforms ray_t_min
     -directional_light.direction,
     1000.0 // @Cleanup :MoveToUniforms ray_t_max
   );
