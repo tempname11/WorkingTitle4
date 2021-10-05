@@ -8,11 +8,10 @@
   - investigate "zero-grid-coord-repeat"
   - investigate "edge-sponza-wraparound-maybe"
   - think more carefully about equations, energy conservation etc. :GI_Equations
+  - try 8 instead of 6 octosize?
 
   - use visibility testing
+    - ? more complex bleeding tests ?
     - read in get_indirect_luminance, guessing a weight.
     - update map in probe_maps_update
     - introduce probe_visibility_map
-    - settle on a format and size of visibility map.
-    - read about Chebyshev chest etc.
-    - think of a good test for light bleeding.

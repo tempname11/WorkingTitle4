@@ -9,10 +9,16 @@ layout(
   local_size_z = 1
 ) in;
 
+// :ProbeLightFormat
 layout(binding = 0, r11f_g11f_b10f) uniform image2D probe_light_map;
 layout(binding = 1, r11f_g11f_b10f) uniform image2D probe_light_map_previous;
+
 layout(binding = 2) uniform sampler2D lbuffer2_image;
 layout(binding = 3) uniform Frame { FrameData data; } frame;
+
+// :ProbeDepthFormat
+layout(binding = 4, rg16) uniform image2D probe_depth_map;
+layout(binding = 5, rg16) uniform image2D probe_depth_map_previous;
 
 void main() {
   ivec2 octomap_coord = ivec2(gl_LocalInvocationID.xy);

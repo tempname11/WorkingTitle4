@@ -2,7 +2,6 @@
 #include <src/global.hxx>
 #include <src/lib/gfx/allocator.hxx>
 #include <src/engine/display/data.hxx>
-#include <src/engine/rendering/intra/probe_light_map.hxx>
 #include <src/engine/session.hxx>
 #include "data.hxx"
 

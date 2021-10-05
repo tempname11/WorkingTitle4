@@ -9,6 +9,7 @@
 #include <src/engine/rendering/intra/secondary_gbuffer.hxx>
 #include <src/engine/rendering/intra/secondary_lbuffer.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
+#include <src/engine/rendering/intra/probe_depth_map.hxx>
 #include "frame_graphics_render.hxx"
 
 void record_geometry_draw_commands(
@@ -1358,6 +1359,13 @@ TASK_DECL {
     cmd
   );
 
+  engine::rendering::intra::probe_depth_map::transition_previous_into_l2(
+    probe_depth_map,
+    frame_info,
+    swapchain_description,
+    cmd
+  );
+
   { TracyVkZone(core->tracy_context, cmd, "indirect_light_secondary");
     engine::rendering::pass::indirect_light_secondary::record(
       indirect_light_secondary_ddata,
@@ -1403,8 +1411,22 @@ TASK_DECL {
     cmd
   );
 
+  engine::rendering::intra::probe_depth_map::transition_previous_into_probe_maps_update(
+    probe_depth_map,
+    frame_info,
+    swapchain_description,
+    cmd
+  );
+
   engine::rendering::intra::probe_light_map::transition_into_probe_maps_update(
     probe_light_map,
+    frame_info,
+    swapchain_description,
+    cmd
+  );
+
+  engine::rendering::intra::probe_depth_map::transition_into_probe_maps_update(
+    probe_depth_map,
     frame_info,
     swapchain_description,
     cmd
@@ -1421,6 +1443,12 @@ TASK_DECL {
 
   engine::rendering::intra::probe_light_map::transition_probe_maps_update_into_indirect_light(
     probe_light_map,
+    frame_info,
+    cmd
+  );
+
+  engine::rendering::intra::probe_depth_map::transition_probe_maps_update_into_indirect_light(
+    probe_depth_map,
     frame_info,
     cmd
   );

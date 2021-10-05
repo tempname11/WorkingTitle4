@@ -13,6 +13,7 @@
 #include <src/engine/rendering/intra/secondary_gbuffer.hxx>
 #include <src/engine/rendering/intra/secondary_lbuffer.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
+#include <src/engine/rendering/intra/probe_depth_map.hxx>
 #include <src/engine/rendering/pass/secondary_geometry.hxx>
 #include <src/engine/rendering/pass/indirect_light_secondary.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
@@ -288,6 +289,13 @@ TASK_DECL {
 
   engine::rendering::intra::probe_light_map::init_ddata(
     &rendering->probe_light_map,
+    &rendering->swapchain_description,
+    &rendering->allocator_dedicated,
+    core
+  );
+
+  engine::rendering::intra::probe_depth_map::init_ddata(
+    &rendering->probe_depth_map,
     &rendering->swapchain_description,
     &rendering->allocator_dedicated,
     core

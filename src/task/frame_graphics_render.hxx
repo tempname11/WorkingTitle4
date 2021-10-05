@@ -30,6 +30,7 @@
   Use<engine::rendering::intra::secondary_gbuffer::DData> gbuffer2, \
   Use<engine::rendering::intra::secondary_lbuffer::DData> lbuffer2, \
   Use<engine::rendering::intra::probe_light_map::DData> probe_light_map, \
+  Use<engine::rendering::intra::probe_depth_map::DData> probe_depth_map, \
   Use<engine::display::Data::FinalImage> final_image, \
   Use<SessionData::Vulkan::Prepass> s_prepass, \
   Use<SessionData::Vulkan::GPass> s_gpass, \

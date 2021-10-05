@@ -5,7 +5,7 @@
 #include <src/engine/session.hxx>
 #include "data.hxx"
 
-namespace engine::rendering::intra::probe_light_map {
+namespace engine::rendering::intra::probe_depth_map {
 
 void transition_previous_into_l2(
   Use<DData> it,

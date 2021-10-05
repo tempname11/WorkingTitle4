@@ -146,6 +146,7 @@ TASK_DECL {
       &data->gbuffer2,
       &data->lbuffer2,
       &data->probe_light_map,
+      &data->probe_depth_map,
       &data->final_image,
       &session->vulkan.prepass,
       &session->vulkan.gpass,
