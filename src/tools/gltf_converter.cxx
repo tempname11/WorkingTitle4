@@ -342,6 +342,9 @@ void gltf_converter(
           assert(vertex.position.z - epsilon <= accessor_position->maxValues[2]);
 
           vertex.position.z = -vertex.position.z;
+          vertex.tangent.z = -vertex.tangent.z;
+          vertex.bitangent.z = -vertex.bitangent.z;
+          vertex.normal.z = -vertex.normal.z;
           // @Hack: this is ugly. This converter had a `flip` scale matrix
           // applied in the final transform before, presumably because the
           // handedness of the GLTF coordinate system differed from ours.
