@@ -533,16 +533,16 @@ TASK_DECL {
       ImGui::SliderFloat(
         "Sun intensity",
         &state->sun_intensity,
-        0.001f,
-        1000.0f,
+        0.005f,
+        5000.0f,
         "%.3f",
         ImGuiSliderFlags_Logarithmic
       );
       ImGui::SliderFloat(
         "Probe depth sharpness",
         &state->probe_depth_sharpness,
-        0.001f,
-        1000.0f,
+        1.0f,
+        100.0f,
         "%.3f",
         ImGuiSliderFlags_Logarithmic
       );

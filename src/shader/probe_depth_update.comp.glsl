@@ -67,7 +67,9 @@ void main() {
       );
     }
   }
-  value = value / value.w; // @Incomplete: potential div by 0 here?
+  if (value.w > 0.0) {
+    value /= value.w;
+  }
 
   if (frame.data.is_frame_sequential) {
     ivec3 probe_coord_prev = ivec3(probe_coord) + frame.data.probe.change_from_prev;
