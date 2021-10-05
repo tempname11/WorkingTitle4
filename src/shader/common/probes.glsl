@@ -166,23 +166,24 @@ vec3 get_indirect_luminance(
 
     if (frame_data.flags.debug_B) {
       // @Incomplete: produces weird grid-like artifacts
-      // maybe because of probes-in-the-wall and no visibility info?
+      // maybe because of probes-in-the-wall and no "bias"?
       vec3 probe_direction = normalize(grid_cube_vertex_coord - grid_cube_coord);
-      /*
+
       float smooth_backface = dot(probe_direction, N) + 1.0;
       weight *= smooth_backface;
-      */
+      /*
       float backface = max(0.0, dot(probe_direction, N));
       weight *= backface;
+      */
     }
 
-    const float min_weight = 0.01;
+    const float min_weight = 0.000001;
     weight = max(min_weight, weight);
-
     sum += vec4(illuminance * weight, weight);
   }
 
-  return albedo * sum.rgb / sum.a;
+  sum /= sum.a;
+  return albedo * sum.rgb;
 }
 
 #endif // _COMMON_PROBES_GLSL_
