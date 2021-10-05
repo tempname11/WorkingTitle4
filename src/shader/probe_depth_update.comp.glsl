@@ -4,21 +4,17 @@
 #include "common/probes.glsl"
 
 layout(
-  local_size_x = octomap_light_texel_size.x,
-  local_size_y = octomap_light_texel_size.y,
+  local_size_x = octomap_depth_texel_size.x,
+  local_size_y = octomap_depth_texel_size.y,
   local_size_z = 1
 ) in;
 
-// :ProbeLightFormat
-layout(binding = 0, r11f_g11f_b10f) uniform image2D probe_light_map;
-layout(binding = 1, r11f_g11f_b10f) uniform image2D probe_light_map_previous;
-
-layout(binding = 2) uniform sampler2D lbuffer2_image;
-layout(binding = 3) uniform Frame { FrameData data; } frame;
-
 // :ProbeDepthFormat
-layout(binding = 4, rg16) uniform image2D probe_depth_map;
-layout(binding = 5, rg16) uniform image2D probe_depth_map_previous;
+layout(binding = 0, rg16) uniform image2D probe_depth_map;
+layout(binding = 1, rg16) uniform image2D probe_depth_map_previous;
+
+layout(binding = 2) uniform sampler2D zbuffer2_image;
+layout(binding = 3) uniform Frame { FrameData data; } frame;
 
 void main() {
   ivec2 octomap_coord = ivec2(gl_LocalInvocationID.xy);
@@ -34,8 +30,10 @@ void main() {
     z_subcoord * frame.data.probe.grid_size.xy
   );
 
+  const float border = 1.0;
+  vec2 unique_texel_size = octomap_depth_texel_size - 2.0 * border;
   vec3 octomap_direction = octo_decode(
-    mod(octomap_coord - 1.0, 4.0) / 2.0 - 1.0
+    mod(octomap_coord - border, unique_texel_size) / (0.5 * unique_texel_size) - 1.0
   );
 
   vec4 value = vec4(0.0);
@@ -49,19 +47,29 @@ void main() {
         frame.data.probe.random_orientation
       );
 
-      vec3 ray_luminance = texture(
-        lbuffer2_image,
+      float ray_distance = texture(
+        zbuffer2_image,
         (
           (vec2(texel_coord_base + uvec2(x, y)) + 0.5) /
             frame.data.probe.secondary_gbuffer_texel_size
         )
-      ).rgb;
+      ).r;
 
       float weight = max(0.0, dot(octomap_direction, ray_direction));
-      value += vec4(ray_luminance * weight, weight);
+
+      weight = pow(weight, 2.0);
+      // @Incomplete :MoveToUniform :DepthSharpness
+      // 2.0 currently plucked out of thin air!
+
+      value += vec4(
+        ray_distance * weight,
+        ray_distance * ray_distance * weight,
+        0,
+        weight
+      );
     }
   }
-  value = value / value.a; // @Incomplete: potential div by 0 here?
+  value = value / value.w; // @Incomplete: potential div by 0 here?
 
   if (frame.data.is_frame_sequential) {
     ivec3 probe_coord_prev = ivec3(probe_coord) + frame.data.probe.change_from_prev;
@@ -82,13 +90,13 @@ void main() {
         probe_coord_prev.z % frame.data.probe.grid_size_z_factors.x,
         probe_coord_prev.z / frame.data.probe.grid_size_z_factors.x
       );
-      ivec2 texel_coord_prev = octomap_coord + ivec2(octomap_light_texel_size) * (
+      ivec2 texel_coord_prev = octomap_coord + ivec2(octomap_depth_texel_size) * (
         probe_coord_prev.xy +
         ivec2(z_subcoord_prev * frame.data.probe.grid_size.xy)
       );
 
       vec4 previous = imageLoad(
-        probe_light_map_previous,
+        probe_depth_map_previous,
         texel_coord_prev
       );
       value = previous * 0.98 + 0.02 * value;
@@ -96,13 +104,13 @@ void main() {
     }
   }
 
-  ivec2 texel_coord = octomap_coord + ivec2(octomap_light_texel_size) * (
+  ivec2 texel_coord = octomap_coord + ivec2(octomap_depth_texel_size) * (
     ivec2(probe_coord.xy) +
     ivec2(z_subcoord * frame.data.probe.grid_size.xy)
   );
 
   imageStore(
-    probe_light_map,
+    probe_depth_map,
     texel_coord,
     value
   );

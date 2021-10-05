@@ -14,7 +14,8 @@
 #include <src/engine/rendering/pass/secondary_geometry/data.hxx>
 #include <src/engine/rendering/pass/indirect_light_secondary/data.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary/data.hxx>
-#include <src/engine/rendering/pass/probe_maps_update/data.hxx>
+#include <src/engine/rendering/pass/probe_light_update/data.hxx>
+#include <src/engine/rendering/pass/probe_depth_update/data.hxx>
 #include <src/engine/rendering/pass/indirect_light/data.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
 
@@ -141,7 +142,8 @@ struct Data : lib::task::ParentResource {
   engine::rendering::pass::secondary_geometry::DData pass_secondary_geometry;
   engine::rendering::pass::indirect_light_secondary::DData pass_indirect_light_secondary;
   engine::rendering::pass::directional_light_secondary::DData pass_directional_light_secondary;
-  engine::rendering::pass::probe_maps_update::DData pass_probe_maps_update;
+  engine::rendering::pass::probe_light_update::DData pass_probe_light_update;
+  engine::rendering::pass::probe_depth_update::DData pass_probe_depth_update;
   engine::rendering::pass::indirect_light::DData pass_indirect_light;
 
   struct Finalpass {

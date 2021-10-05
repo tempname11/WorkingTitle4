@@ -8,7 +8,7 @@ namespace engine {
 // and the `maxMemoryAllocationCount` limit.
 const size_t ALLOCATOR_GPU_LOCAL_REGION_SIZE = 1024 * 1024 * 32;
 
-const auto PROBE_WORLD_DELTA = glm::vec3(1.0);
+const auto PROBE_WORLD_DELTA = glm::vec3(3.0);
 const auto PROBE_GRID_SIZE = glm::uvec3(32, 32, 16);
 const auto PROBE_GRID_SIZE_Z_FACTORS = glm::uvec2(4, 4);
 const auto PROBE_RAY_COUNT = 64; // :GI_N_Rays

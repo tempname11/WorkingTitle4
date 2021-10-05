@@ -5,21 +5,22 @@
 #include <src/engine/session.hxx>
 #include "data.hxx"
 
-namespace engine::rendering::intra::secondary_lbuffer {
+namespace engine::rendering::intra::probe_light_map {
 
-void transition_l2_to_probe_maps_update(
+void transition_from_update_into_indirect_light(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd
 ) {
   ZoneScoped;
 
+  // @Note: should probably import usage patterns from respective pass files as constants!
   VkImageMemoryBarrier barriers[] = {
     {
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-      .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+      .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
       .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-      .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
       .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -35,8 +36,8 @@ void transition_l2_to_probe_maps_update(
   };
   vkCmdPipelineBarrier(
     cmd,
-    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
     0,
     0, nullptr,
     0, nullptr,

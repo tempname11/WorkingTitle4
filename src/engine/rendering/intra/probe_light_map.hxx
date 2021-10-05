@@ -19,13 +19,13 @@ void deinit_ddata(
   Use<SessionData::Vulkan::Core> core
 );
 
-void transition_probe_maps_update_into_indirect_light(
+void transition_from_update_into_indirect_light(
   Use<DData> it,
   Use<display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd
 );
 
-void transition_into_probe_maps_update(
+void transition_into_update(
   Use<DData> it,
   Use<display::Data::FrameInfo> frame_info,
   Use<display::Data::SwapchainDescription> swapchain_description,
@@ -39,7 +39,7 @@ void transition_previous_into_l2(
   VkCommandBuffer cmd
 );
 
-void transition_previous_into_probe_maps_update(
+void transition_previous_into_update(
   Use<DData> it,
   Use<display::Data::FrameInfo> frame_info,
   Use<display::Data::SwapchainDescription> swapchain_description,

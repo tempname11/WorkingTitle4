@@ -4,7 +4,7 @@
 #include <src/engine/display/data.hxx>
 #include "data.hxx"
 
-namespace engine::rendering::pass::probe_maps_update {
+namespace engine::rendering::pass::probe_light_update {
 
 void init_ddata(
   DData *out,
@@ -66,7 +66,6 @@ void init_ddata(
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstSet = descriptor_sets[i],
         .dstBinding = 0,
-        .dstArrayElement = 0,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         .pImageInfo = &probe_light_map_info,
@@ -75,7 +74,6 @@ void init_ddata(
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstSet = descriptor_sets[i],
         .dstBinding = 1,
-        .dstArrayElement = 0,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         .pImageInfo = &probe_light_map_info_previous,
@@ -84,7 +82,6 @@ void init_ddata(
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstSet = descriptor_sets[i],
         .dstBinding = 2,
-        .dstArrayElement = 0,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .pImageInfo = &secondary_lbuffer_info,
@@ -93,7 +90,6 @@ void init_ddata(
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstSet = descriptor_sets[i],
         .dstBinding = 3,
-        .dstArrayElement = 0,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .pBufferInfo = &ubo_frame_info,

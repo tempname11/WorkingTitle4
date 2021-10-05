@@ -7,7 +7,7 @@
 
 namespace engine::rendering::intra::secondary_lbuffer {
 
-void transition_to_l2(
+void transition_into_l2(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd

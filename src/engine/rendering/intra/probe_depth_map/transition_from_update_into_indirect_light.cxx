@@ -5,15 +5,16 @@
 #include <src/engine/session.hxx>
 #include "data.hxx"
 
-namespace engine::rendering::intra::secondary_zbuffer {
+namespace engine::rendering::intra::probe_depth_map {
 
-void transition_g2_to_l2(
+void transition_from_update_into_indirect_light(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd
 ) {
   ZoneScoped;
 
+  // @Note: should probably import usage patterns from respective pass files as constants!
   VkImageMemoryBarrier barriers[] = {
     {
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,

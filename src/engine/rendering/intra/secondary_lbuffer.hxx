@@ -19,7 +19,7 @@ void deinit_ddata(
   Use<SessionData::Vulkan::Core> core
 );
 
-void transition_to_l2(
+void transition_into_l2(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd
@@ -31,7 +31,7 @@ void transition_inside_l2(
   VkCommandBuffer cmd
 );
 
-void transition_l2_to_probe_maps_update(
+void transition_from_l2_into_probe_update(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd

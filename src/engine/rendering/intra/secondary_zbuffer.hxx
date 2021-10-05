@@ -19,13 +19,13 @@ void deinit_ddata(
   Use<SessionData::Vulkan::Core> core
 );
 
-void transition_to_g2(
+void transition_into_g2(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd
 );
 
-void transition_g2_to_l2(
+void transition_from_g2_into_reads(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd

@@ -3,7 +3,7 @@
 #include <src/engine/session.hxx>
 #include "data.hxx"
 
-namespace engine::rendering::pass::probe_maps_update {
+namespace engine::rendering::pass::probe_depth_update {
 
 void init_sdata(
   SData *out,
@@ -79,8 +79,8 @@ void init_sdata(
     { ZoneScopedN("module_comp");
       VkShaderModuleCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = embedded_probe_maps_update_comp_len,
-        .pCode = (const uint32_t*) embedded_probe_maps_update_comp,
+        .codeSize = embedded_probe_depth_update_comp_len,
+        .pCode = (const uint32_t*) embedded_probe_depth_update_comp,
       };
       auto result = vkCreateShaderModule(
         core->device,
@@ -118,8 +118,8 @@ void init_sdata(
     );
   }
 
-  VkSampler sampler_lbuffer;
-  { ZoneScopedN("sampler_lbuffer");
+  VkSampler sampler_zbuffer;
+  { ZoneScopedN("sampler_zbuffer");
     VkSamplerCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
     };
@@ -127,7 +127,7 @@ void init_sdata(
       core->device,
       &create_info,
       core->allocator,
-      &sampler_lbuffer
+      &sampler_zbuffer
     );
   }
 
@@ -135,7 +135,7 @@ void init_sdata(
     .descriptor_set_layout = descriptor_set_layout,
     .pipeline_layout = pipeline_layout,
     .pipeline = pipeline,
-    .sampler_lbuffer = sampler_lbuffer,
+    .sampler_zbuffer = sampler_zbuffer,
   };
 }
 

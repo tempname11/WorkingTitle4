@@ -31,7 +31,8 @@
 #include <src/engine/rendering/pass/secondary_geometry/data.hxx>
 #include <src/engine/rendering/pass/indirect_light_secondary/data.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary/data.hxx>
-#include <src/engine/rendering/pass/probe_maps_update/data.hxx>
+#include <src/engine/rendering/pass/probe_light_update/data.hxx>
+#include <src/engine/rendering/pass/probe_depth_update/data.hxx>
 #include <src/engine/rendering/pass/indirect_light/data.hxx>
 
 struct MetaTexturesKey {
@@ -230,7 +231,8 @@ struct SessionData : lib::task::ParentResource {
     engine::rendering::pass::secondary_geometry::SData pass_secondary_geometry;
     engine::rendering::pass::indirect_light_secondary::SData pass_indirect_light_secondary;
     engine::rendering::pass::directional_light_secondary::SData pass_directional_light_secondary;
-    engine::rendering::pass::probe_maps_update::SData pass_probe_maps_update;
+    engine::rendering::pass::probe_light_update::SData pass_probe_light_update;
+    engine::rendering::pass::probe_depth_update::SData pass_probe_depth_update;
     engine::rendering::pass::indirect_light::SData pass_indirect_light;
 
     struct Finalpass {

@@ -9,7 +9,8 @@
 #include <src/engine/rendering/pass/secondary_geometry.hxx>
 #include <src/engine/rendering/pass/indirect_light_secondary.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
-#include <src/engine/rendering/pass/probe_maps_update.hxx>
+#include <src/engine/rendering/pass/probe_light_update.hxx>
+#include <src/engine/rendering/pass/probe_depth_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include "cleanup.hxx"
 
@@ -55,8 +56,13 @@ void cleanup(
       core
     );
 
-    rendering::pass::probe_maps_update::deinit_sdata(
-      &it->pass_probe_maps_update,
+    rendering::pass::probe_light_update::deinit_sdata(
+      &it->pass_probe_light_update,
+      core
+    );
+
+    rendering::pass::probe_depth_update::deinit_sdata(
+      &it->pass_probe_depth_update,
       core
     );
 

@@ -7,7 +7,7 @@
 
 namespace engine::rendering::intra::secondary_zbuffer {
 
-void transition_to_g2(
+void transition_into_g2(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd

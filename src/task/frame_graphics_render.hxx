@@ -20,7 +20,8 @@
   Own<engine::rendering::pass::secondary_geometry::DData> secondary_geometry_ddata, \
   Own<engine::rendering::pass::indirect_light_secondary::DData> indirect_light_secondary_ddata, \
   Own<engine::rendering::pass::directional_light_secondary::DData> directional_light_secondary_ddata, \
-  Own<engine::rendering::pass::probe_maps_update::DData> probe_maps_update_ddata, \
+  Own<engine::rendering::pass::probe_light_update::DData> probe_light_update_ddata, \
+  Own<engine::rendering::pass::probe_depth_update::DData> probe_depth_update_ddata, \
   Own<engine::rendering::pass::indirect_light::DData> indirect_light_ddata, \
   Own<engine::display::Data::Finalpass> finalpass, \
   Use<engine::display::Data::ZBuffer> zbuffer, \
@@ -38,7 +39,8 @@
   Own<engine::rendering::pass::secondary_geometry::SData> secondary_geometry_sdata, \
   Use<engine::rendering::pass::indirect_light_secondary::SData> indirect_light_secondary_sdata, \
   Use<engine::rendering::pass::directional_light_secondary::SData> directional_light_secondary_sdata, \
-  Use<engine::rendering::pass::probe_maps_update::SData> probe_maps_update_sdata, \
+  Use<engine::rendering::pass::probe_light_update::SData> probe_light_update_sdata, \
+  Use<engine::rendering::pass::probe_depth_update::SData> probe_depth_update_sdata, \
   Use<engine::rendering::pass::indirect_light::SData> indirect_light_sdata, \
   Use<SessionData::Vulkan::Finalpass> s_finalpass, \
   Use<SessionData::Vulkan::FullscreenQuad> fullscreen_quad, \

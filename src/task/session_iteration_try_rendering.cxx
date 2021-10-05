@@ -17,7 +17,8 @@
 #include <src/engine/rendering/pass/secondary_geometry.hxx>
 #include <src/engine/rendering/pass/indirect_light_secondary.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
-#include <src/engine/rendering/pass/probe_maps_update.hxx>
+#include <src/engine/rendering/pass/probe_light_update.hxx>
+#include <src/engine/rendering/pass/probe_depth_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include "defer.hxx"
@@ -743,12 +744,22 @@ TASK_DECL {
     &session->vulkan.core
   );
 
-  engine::rendering::pass::probe_maps_update::init_ddata(
-    &rendering->pass_probe_maps_update,
-    &session->vulkan.pass_probe_maps_update,
+  engine::rendering::pass::probe_light_update::init_ddata(
+    &rendering->pass_probe_light_update,
+    &session->vulkan.pass_probe_light_update,
     &rendering->common,
     &rendering->lbuffer2,
     &rendering->probe_light_map,
+    &rendering->swapchain_description,
+    &session->vulkan.core
+  );
+
+  engine::rendering::pass::probe_depth_update::init_ddata(
+    &rendering->pass_probe_depth_update,
+    &session->vulkan.pass_probe_depth_update,
+    &rendering->common,
+    &rendering->zbuffer2,
+    &rendering->probe_depth_map,
     &rendering->swapchain_description,
     &session->vulkan.core
   );

@@ -19,7 +19,8 @@
 #include <src/engine/rendering/pass/secondary_geometry.hxx>
 #include <src/engine/rendering/pass/indirect_light_secondary.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
-#include <src/engine/rendering/pass/probe_maps_update.hxx>
+#include <src/engine/rendering/pass/probe_light_update.hxx>
+#include <src/engine/rendering/pass/probe_depth_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/engine/loading/group.hxx>
 #include <src/engine/constants.hxx>
@@ -462,8 +463,13 @@ void init_vulkan(
     &it->core
   );
 
-  rendering::pass::probe_maps_update::init_sdata(
-    &it->pass_probe_maps_update,
+  rendering::pass::probe_light_update::init_sdata(
+    &it->pass_probe_light_update,
+    &it->core
+  );
+
+  rendering::pass::probe_depth_update::init_sdata(
+    &it->pass_probe_depth_update,
     &it->core
   );
 
@@ -767,7 +773,7 @@ void setup(
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
-    static_assert(size == 2920);
+    static_assert(size == 2952);
   }
   #endif
 

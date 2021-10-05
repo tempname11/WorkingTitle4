@@ -36,6 +36,7 @@ void init_ddata(
       .tiling = VK_IMAGE_TILING_OPTIMAL,
       .usage = (0
         | VK_IMAGE_USAGE_STORAGE_BIT
+        | VK_IMAGE_USAGE_SAMPLED_BIT
         | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
       ),
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,

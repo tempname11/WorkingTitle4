@@ -3,7 +3,8 @@
 #include <src/engine/rendering/pass/secondary_geometry.hxx>
 #include <src/engine/rendering/pass/indirect_light_secondary.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
-#include <src/engine/rendering/pass/probe_maps_update.hxx>
+#include <src/engine/rendering/pass/probe_light_update.hxx>
+#include <src/engine/rendering/pass/probe_depth_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/engine/rendering/intra/secondary_zbuffer.hxx>
 #include <src/engine/rendering/intra/secondary_gbuffer.hxx>
@@ -1308,7 +1309,7 @@ TASK_DECL {
     );
   }
 
-  engine::rendering::intra::secondary_zbuffer::transition_to_g2(
+  engine::rendering::intra::secondary_zbuffer::transition_into_g2(
     zbuffer2,
     frame_info,
     cmd
@@ -1334,7 +1335,7 @@ TASK_DECL {
     );
   }
 
-  engine::rendering::intra::secondary_zbuffer::transition_g2_to_l2(
+  engine::rendering::intra::secondary_zbuffer::transition_from_g2_into_reads(
     zbuffer2,
     frame_info,
     cmd
@@ -1346,7 +1347,7 @@ TASK_DECL {
     cmd
   );
 
-  engine::rendering::intra::secondary_lbuffer::transition_to_l2(
+  engine::rendering::intra::secondary_lbuffer::transition_into_l2(
     lbuffer2,
     frame_info,
     cmd
@@ -1398,60 +1399,78 @@ TASK_DECL {
     );
   }
 
-  engine::rendering::intra::secondary_lbuffer::transition_l2_to_probe_maps_update(
+  //
+
+  engine::rendering::intra::secondary_lbuffer::transition_from_l2_into_probe_update(
     lbuffer2,
     frame_info,
     cmd
   );
 
-  engine::rendering::intra::probe_light_map::transition_previous_into_probe_maps_update(
+  engine::rendering::intra::probe_light_map::transition_previous_into_update(
     probe_light_map,
     frame_info,
     swapchain_description,
     cmd
   );
 
-  engine::rendering::intra::probe_depth_map::transition_previous_into_probe_maps_update(
-    probe_depth_map,
-    frame_info,
-    swapchain_description,
-    cmd
-  );
-
-  engine::rendering::intra::probe_light_map::transition_into_probe_maps_update(
+  engine::rendering::intra::probe_light_map::transition_into_update(
     probe_light_map,
     frame_info,
     swapchain_description,
     cmd
   );
 
-  engine::rendering::intra::probe_depth_map::transition_into_probe_maps_update(
-    probe_depth_map,
-    frame_info,
-    swapchain_description,
-    cmd
-  );
-
-  { TracyVkZone(core->tracy_context, cmd, "probe_maps_update");
-    engine::rendering::pass::probe_maps_update::record(
-      probe_maps_update_ddata,
-      probe_maps_update_sdata,
+  { TracyVkZone(core->tracy_context, cmd, "probe_light_update");
+    engine::rendering::pass::probe_light_update::record(
+      probe_light_update_ddata,
+      probe_light_update_sdata,
       frame_info,
       cmd
     );
   }
 
-  engine::rendering::intra::probe_light_map::transition_probe_maps_update_into_indirect_light(
+  engine::rendering::intra::probe_light_map::transition_from_update_into_indirect_light(
     probe_light_map,
     frame_info,
     cmd
   );
 
-  engine::rendering::intra::probe_depth_map::transition_probe_maps_update_into_indirect_light(
+  //
+
+  // zbuffer2 has been already transitioned above,
+  // in `transiton_from_g2_into_reads`.
+
+  engine::rendering::intra::probe_depth_map::transition_previous_into_update(
+    probe_depth_map,
+    frame_info,
+    swapchain_description,
+    cmd
+  );
+
+  engine::rendering::intra::probe_depth_map::transition_into_update(
+    probe_depth_map,
+    frame_info,
+    swapchain_description,
+    cmd
+  );
+
+  { TracyVkZone(core->tracy_context, cmd, "probe_depth_update");
+    engine::rendering::pass::probe_depth_update::record(
+      probe_depth_update_ddata,
+      probe_depth_update_sdata,
+      frame_info,
+      cmd
+    );
+  }
+
+  engine::rendering::intra::probe_depth_map::transition_from_update_into_indirect_light(
     probe_depth_map,
     frame_info,
     cmd
   );
+
+  //
 
   { TracyVkZone(core->tracy_context, cmd, "indirect_light");
     engine::rendering::pass::indirect_light::record(
