@@ -136,22 +136,24 @@ vec3 get_indirect_luminance(
       (
         light_base_texel_coord +
         (light_hsize * (1.0 + octo_encode(N)))
-        // @Think: not 100% sure, is +0.5 really not needed here?
+          // no +0.5!
       ) / frame_data.probe.light_map_texel_size
     ).rgb;
 
-    vec2 d_d2 = texture(
-      probe_depth_map,
-      (
-        depth_base_texel_coord +
-        (depth_hsize * (1.0 + octo_encode(N)))
-        // @Think: not 100% sure, is +0.5 really not needed here?
-      ) / frame_data.probe.depth_map_texel_size
-    ).rg;
-
     float weight = trilinear.x * trilinear.y * trilinear.z;
 
+    vec3 probe_direction = normalize(grid_cube_vertex_coord - grid_cube_coord);
+
     if (frame_data.flags.debug_A) {
+      vec2 d_d2 = texture(
+        probe_depth_map,
+        (
+          depth_base_texel_coord +
+          (depth_hsize * (1.0 + octo_encode(-probe_direction)))
+          // no +0.5!
+        ) / frame_data.probe.depth_map_texel_size
+      ).rg;
+
       float mean = d_d2.x;
       float variance = abs(d_d2.x * d_d2.x - d_d2.y);
       float dist = length(grid_cube_coord - grid_cube_vertex_coord);
@@ -167,7 +169,6 @@ vec3 get_indirect_luminance(
     if (frame_data.flags.debug_B) {
       // @Incomplete: produces weird grid-like artifacts
       // maybe because of probes-in-the-wall and no "bias"?
-      vec3 probe_direction = normalize(grid_cube_vertex_coord - grid_cube_coord);
 
       float smooth_backface = dot(probe_direction, N) + 1.0;
       weight *= smooth_backface;
