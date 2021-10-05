@@ -22,6 +22,7 @@ struct FrameProbe {
   vec2 depth_map_texel_size;
   vec2 secondary_gbuffer_texel_size; // @Cleanup move this out of Probe?
   float depth_sharpness;
+  float normal_bias;
 };
 
 struct FrameData {

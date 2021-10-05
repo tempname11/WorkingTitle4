@@ -754,6 +754,7 @@ void setup(
     .debug_camera_prev = debug_camera,
     .sun_intensity = 5.0f,
     .probe_depth_sharpness = 10.0f,
+    .probe_normal_bias = 0.001f,
   };
 
   /*
@@ -770,7 +771,7 @@ void setup(
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData) - sizeof(SessionData::Vulkan);
-    static_assert(size == 952);
+    static_assert(size == 960);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);

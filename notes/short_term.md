@@ -1,11 +1,13 @@
 # Milestone: GI in Sponza
   - *** use "lazy" probe maps. ***
   - use texture LODs properly
-  - use skybox in L2
-  - investigate things looking "too dim"
-  - investigate "smooth backface" artifacts
-  - investigate "self-lighting"
+
   - investigate "zero-grid-coord-repeat"
   - investigate "edge-sponza-wraparound" bug
+
+  - investigate things looking "too dim"
   - think more carefully about equations, energy conservation etc. :GI_Equations
-  - investigate and try bias
+
+  - use skybox in L2
+  - investigate "smooth backface" artifacts
+  - investigate "self-lighting"

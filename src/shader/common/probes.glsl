@@ -142,21 +142,28 @@ vec3 get_indirect_luminance(
 
     float weight = trilinear.x * trilinear.y * trilinear.z;
 
-    vec3 probe_direction = normalize(grid_cube_vertex_coord - grid_cube_coord);
-
     if (frame_data.flags.debug_A) {
+      float disable_bias = 0.0;
+      // leave all the code for now, but it seems it's not working at all.
+
+      vec3 point_to_probe_biased = (
+        grid_cube_vertex_coord -
+        (grid_cube_coord + N * frame_data.probe.normal_bias * disable_bias)
+      );
+      float dist = length(point_to_probe_biased);
+      point_to_probe_biased /= dist;
+
       vec2 d_d2 = texture(
         probe_depth_map,
         (
           depth_base_texel_coord +
-          (depth_hsize * (1.0 + octo_encode(-probe_direction)))
+          (depth_hsize * (1.0 + octo_encode(-point_to_probe_biased)))
           // no +0.5!
         ) / frame_data.probe.depth_map_texel_size
       ).rg;
 
       float mean = d_d2.x;
       float variance = abs(d_d2.x * d_d2.x - d_d2.y);
-      float dist = length(grid_cube_coord - grid_cube_vertex_coord);
       float diff = max(0.0, dist - mean);
 
       // see https://http.download.nvidia.com/developer/presentations/2006/gdc/2006-GDC-Variance-Shadow-Maps.pdf
@@ -167,6 +174,8 @@ vec3 get_indirect_luminance(
     }
 
     if (frame_data.flags.debug_B) {
+      vec3 probe_direction = normalize(grid_cube_vertex_coord - grid_cube_coord);
+
       // @Incomplete: produces weird grid-like artifacts
       // maybe because of probes-in-the-wall and no "bias"?
 

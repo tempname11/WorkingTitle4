@@ -546,6 +546,14 @@ TASK_DECL {
         "%.3f",
         ImGuiSliderFlags_Logarithmic
       );
+      ImGui::SliderFloat(
+        "Probe normal bias",
+        &state->probe_normal_bias,
+        0.1f,
+        0.000001f,
+        "%.6f",
+        ImGuiSliderFlags_Logarithmic
+      );
       ImGui::End();
     }
   }

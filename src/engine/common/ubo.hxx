@@ -26,6 +26,7 @@ struct ProbeInfo {
   glm::vec2 depth_map_texel_size;
   glm::vec2 secondary_gbuffer_texel_size;
   float depth_sharpness;
+  float normal_bias;
 };
 
 struct Frame {

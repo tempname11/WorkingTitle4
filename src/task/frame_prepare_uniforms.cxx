@@ -57,6 +57,7 @@ TASK_DECL {
         ),
         .secondary_gbuffer_texel_size = glm::vec2(engine::G2_TEXEL_SIZE),
         .depth_sharpness = session_state->probe_depth_sharpness,
+        .normal_bias = session_state->probe_normal_bias,
       },
       .end_marker = 0xDeadBeef,
     };
