@@ -12,7 +12,8 @@ layout(input_attachment_index = 1, binding = 1) uniform subpassInput gchannel1;
 layout(input_attachment_index = 2, binding = 2) uniform subpassInput gchannel2;
 layout(input_attachment_index = 3, binding = 3) uniform subpassInput zchannel;
 layout(binding = 4) uniform sampler2D probe_light_map;
-layout(binding = 5) uniform Frame { FrameData data; } frame;
+layout(binding = 5) uniform sampler2D probe_depth_map;
+layout(binding = 6) uniform Frame { FrameData data; } frame;
 
 void main() {
   vec3 N_view = subpassLoad(gchannel0).rgb;
@@ -47,12 +48,22 @@ void main() {
 
   if (frame.data.flags.debug_B) {
     vec2 lbuffer_size = vec2(1280.0, 720.0); // @Cleanup :MoveToUniform
+    /*
     result += texture(
       probe_light_map,
       clamp((
         (0.5 + 0.5 * vec2(position.x, -position.y))
           * lbuffer_size
           / frame.data.probe.light_map_texel_size
+      ), 0.0, 1.0)
+    ).rgb;
+    */
+    result += texture(
+      probe_depth_map,
+      clamp((
+        (0.5 + 0.5 * vec2(position.x, -position.y))
+          * lbuffer_size
+          / frame.data.probe.depth_map_texel_size
       ), 0.0, 1.0)
     ).rgb;
   }

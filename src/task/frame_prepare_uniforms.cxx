@@ -2,6 +2,7 @@
 #include <src/engine/constants.hxx>
 #include <src/engine/common/ubo.hxx>
 #include <src/engine/rendering/intra/probe_light_map/constants.hxx>
+#include <src/engine/rendering/intra/probe_depth_map/constants.hxx>
 #include "frame_prepare_uniforms.hxx"
 
 TASK_DECL {
@@ -49,6 +50,10 @@ TASK_DECL {
         .light_map_texel_size = glm::vec2(
           engine::rendering::intra::probe_light_map::WIDTH,
           engine::rendering::intra::probe_light_map::HEIGHT
+        ),
+        .depth_map_texel_size = glm::vec2(
+          engine::rendering::intra::probe_depth_map::WIDTH,
+          engine::rendering::intra::probe_depth_map::HEIGHT
         ),
         .secondary_gbuffer_texel_size = glm::vec2(engine::G2_TEXEL_SIZE),
       },

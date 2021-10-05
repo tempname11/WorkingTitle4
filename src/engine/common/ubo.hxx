@@ -22,6 +22,7 @@ struct ProbeInfo {
   alignas(16) glm::vec3 grid_world_position_zero_prev;
   alignas(16) glm::vec3 grid_world_position_delta;
   alignas(16) glm::vec2 light_map_texel_size;
+  glm::vec2 depth_map_texel_size;
   glm::vec2 secondary_gbuffer_texel_size;
 };
 

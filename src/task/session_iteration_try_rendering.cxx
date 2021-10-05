@@ -773,6 +773,7 @@ TASK_DECL {
     &rendering->zbuffer,
     &rendering->lbuffer,
     &rendering->probe_light_map,
+    &rendering->probe_depth_map,
     &rendering->swapchain_description
   );
 

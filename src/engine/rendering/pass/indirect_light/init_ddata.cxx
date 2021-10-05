@@ -14,6 +14,7 @@ void init_ddata(
   Use<display::Data::ZBuffer> zbuffer,
   Use<display::Data::LBuffer> lbuffer,
   Use<intra::probe_light_map::DData> probe_light_map,
+  Use<intra::probe_depth_map::DData> probe_depth_map,
   Use<display::Data::SwapchainDescription> swapchain_description
 ) {
   ZoneScoped;
@@ -70,6 +71,11 @@ void init_ddata(
         .imageView = probe_light_map->views[i],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
+      VkDescriptorImageInfo probe_depth_map_image_info = {
+        .sampler = sdata->sampler_probe_light_map, // @Cleanup
+        .imageView = probe_depth_map->views[i],
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
       VkWriteDescriptorSet writes[] = {
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -115,6 +121,14 @@ void init_ddata(
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
           .dstSet = descriptor_sets_frame[i],
           .dstBinding = 5,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .pImageInfo = &probe_depth_map_image_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets_frame[i],
+          .dstBinding = 6,
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           .pBufferInfo = &ubo_frame_info,

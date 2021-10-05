@@ -18,7 +18,8 @@ struct FrameProbe {
   vec3 grid_world_position_zero_prev;
   vec3 grid_world_position_delta;
   vec2 light_map_texel_size;
-  vec2 secondary_gbuffer_texel_size; // move this out of Probe?
+  vec2 depth_map_texel_size;
+  vec2 secondary_gbuffer_texel_size; // @Cleanup move this out of Probe?
 };
 
 struct FrameData {
