@@ -9,8 +9,6 @@
   - investigate "edge-sponza-wraparound-maybe"
   - think more carefully about equations, energy conservation etc. :GI_Equations
   - try 8 instead of 6 octosize?
-  - figure out best "depth-sharpness"/"cosine-power" value :DepthSharpness
 
   - use visibility testing
-    - ? more complex bleeding tests ?
-    - read in get_indirect_luminance, guessing a weight.
+    - investigate bias

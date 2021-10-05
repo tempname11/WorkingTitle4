@@ -56,6 +56,7 @@ TASK_DECL {
           engine::rendering::intra::probe_depth_map::HEIGHT
         ),
         .secondary_gbuffer_texel_size = glm::vec2(engine::G2_TEXEL_SIZE),
+        .depth_sharpness = session_state->probe_depth_sharpness,
       },
       .end_marker = 0xDeadBeef,
     };

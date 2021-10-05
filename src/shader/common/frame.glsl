@@ -4,6 +4,7 @@
 struct FrameFlags {
   bool disable_direct_lighting;
   bool disable_indirect_lighting;
+  bool disable_multiple_bounces;
   bool debug_A;
   bool debug_B;
   bool debug_C;
@@ -20,6 +21,7 @@ struct FrameProbe {
   vec2 light_map_texel_size;
   vec2 depth_map_texel_size;
   vec2 secondary_gbuffer_texel_size; // @Cleanup move this out of Probe?
+  float depth_sharpness;
 };
 
 struct FrameData {

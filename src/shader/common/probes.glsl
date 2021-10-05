@@ -71,6 +71,7 @@ vec3 get_indirect_luminance(
   vec3 grid_world_position_zero,
   vec3 grid_world_position_delta,
   sampler2D probe_light_map,
+  sampler2D probe_depth_map,
   vec3 albedo
 ) {
   vec3 grid_coord_float = (
@@ -116,30 +117,64 @@ vec3 get_indirect_luminance(
       grid_coord.z / frame_data.probe.grid_size_z_factors.x
     );
 
-    uvec2 probe_base_texel_coord = 1 /* border */ + octomap_light_texel_size * (
+    uvec2 light_base_texel_coord = 1 /* border */ + octomap_light_texel_size * (
       grid_coord.xy +
       frame_data.probe.grid_size.xy * current_z_subcoord
     );
 
+    uvec2 depth_base_texel_coord = 1 /* border */ + octomap_depth_texel_size * (
+      grid_coord.xy +
+      frame_data.probe.grid_size.xy * current_z_subcoord
+    );
+
+    const float border = 1.0;
+    const vec2 light_hsize = 0.5 * octomap_light_texel_size - border;
+    const vec2 depth_hsize = 0.5 * octomap_depth_texel_size - border;
+
     vec3 illuminance = texture(
       probe_light_map,
       (
-        probe_base_texel_coord +
-        (2.0 + 2.0 * octo_encode(N))
+        light_base_texel_coord +
+        (light_hsize * (1.0 + octo_encode(N)))
         // @Think: not 100% sure, is +0.5 really not needed here?
       ) / frame_data.probe.light_map_texel_size
     ).rgb;
 
+    vec2 d_d2 = texture(
+      probe_depth_map,
+      (
+        depth_base_texel_coord +
+        (depth_hsize * (1.0 + octo_encode(N)))
+        // @Think: not 100% sure, is +0.5 really not needed here?
+      ) / frame_data.probe.depth_map_texel_size
+    ).rg;
+
     float weight = trilinear.x * trilinear.y * trilinear.z;
 
-    /*
     if (frame_data.flags.debug_A) {
+      float mean = d_d2.x;
+      float variance = abs(d_d2.x * d_d2.x - d_d2.y);
+      float dist = length(grid_cube_coord - grid_cube_vertex_coord);
+      float diff = max(0.0, dist - mean);
+
+      // see https://http.download.nvidia.com/developer/presentations/2006/gdc/2006-GDC-Variance-Shadow-Maps.pdf
+      float chebyshev = (
+        variance / (variance + diff * diff)
+      );
+      illuminance *= pow(chebyshev, 3.0); // @Cleanup :MoveToUniform
+    }
+
+    if (frame_data.flags.debug_B) {
       // @Incomplete: produces weird grid-like artifacts
       // maybe because of probes-in-the-wall and no visibility info?
       vec3 probe_direction = normalize(grid_cube_vertex_coord - grid_cube_coord);
-      weight *= dot(probe_direction, N) + 1.0; // "smooth backface"
+      /*
+      float smooth_backface = dot(probe_direction, N) + 1.0;
+      weight *= smooth_backface;
+      */
+      float backface = max(0.0, dot(probe_direction, N));
+      weight *= backface;
     }
-    */
 
     const float min_weight = 0.01;
     weight = max(min_weight, weight);

@@ -501,6 +501,7 @@ TASK_DECL {
       ImGui::Begin("Flags", &state->show_imgui_window_flags);
       ImGuiX::Checkbox32("disable direct lighting", &it->disable_direct_lighting);
       ImGuiX::Checkbox32("disable indirect lighting", &it->disable_indirect_lighting);
+      ImGuiX::Checkbox32("disable multiple bounces", &it->disable_multiple_bounces);
       ImGuiX::Checkbox32("debug A", &it->debug_A);
       ImGuiX::Checkbox32("debug B", &it->debug_B);
       ImGuiX::Checkbox32("debug C", &it->debug_C);
@@ -530,8 +531,16 @@ TASK_DECL {
         ""
       );
       ImGui::SliderFloat(
-        "sun intensity",
+        "Sun intensity",
         &state->sun_intensity,
+        0.001f,
+        1000.0f,
+        "%.3f",
+        ImGuiSliderFlags_Logarithmic
+      );
+      ImGui::SliderFloat(
+        "Probe depth sharpness",
+        &state->probe_depth_sharpness,
         0.001f,
         1000.0f,
         "%.3f",

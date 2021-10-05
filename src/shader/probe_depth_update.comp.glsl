@@ -57,9 +57,7 @@ void main() {
 
       float weight = max(0.0, dot(octomap_direction, ray_direction));
 
-      weight = pow(weight, 2.0);
-      // @Incomplete :MoveToUniform :DepthSharpness
-      // 2.0 currently plucked out of thin air!
+      weight = pow(weight, frame.data.probe.depth_sharpness);
 
       value += vec4(
         ray_distance * weight,

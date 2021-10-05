@@ -27,6 +27,7 @@ void init_ddata(
   Use<intra::secondary_gbuffer::DData> gbuffer2,
   Use<intra::secondary_lbuffer::DData> lbuffer2,
   Use<intra::probe_light_map::DData> probe_light_map,
+  Use<intra::probe_depth_map::DData> probe_depth_map,
   Use<display::Data::SwapchainDescription> swapchain_description,
   Use<SessionData::Vulkan::Core> core
 );

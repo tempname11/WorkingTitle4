@@ -8,6 +8,7 @@ using gl_bool = uint32_t;
 struct Flags {
   gl_bool disable_direct_lighting;
   gl_bool disable_indirect_lighting;
+  gl_bool disable_multiple_bounces;
   gl_bool debug_A;
   gl_bool debug_B;
   gl_bool debug_C;
@@ -24,6 +25,7 @@ struct ProbeInfo {
   alignas(16) glm::vec2 light_map_texel_size;
   glm::vec2 depth_map_texel_size;
   glm::vec2 secondary_gbuffer_texel_size;
+  float depth_sharpness;
 };
 
 struct Frame {

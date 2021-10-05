@@ -729,6 +729,7 @@ TASK_DECL {
     &rendering->gbuffer2,
     &rendering->lbuffer2,
     &rendering->probe_light_map,
+    &rendering->probe_depth_map,
     &rendering->swapchain_description,
     &session->vulkan.core
   );

@@ -14,7 +14,8 @@ layout(input_attachment_index = 1, binding = 1) uniform subpassInput gchannel1;
 layout(input_attachment_index = 2, binding = 2) uniform subpassInput gchannel2;
 layout(input_attachment_index = 3, binding = 3) uniform subpassInput zchannel;
 layout(binding = 4) uniform sampler2D probe_light_map_previous;
-layout(binding = 5) uniform Frame { FrameData data; } frame;
+layout(binding = 5) uniform sampler2D probe_depth_map_previous;
+layout(binding = 6) uniform Frame { FrameData data; } frame;
 
 void main() {
   if (!frame.data.is_frame_sequential) {
@@ -66,6 +67,11 @@ void main() {
     frame.data.probe.grid_world_position_zero_prev,
     frame.data.probe.grid_world_position_delta,
     probe_light_map_previous,
+    probe_depth_map_previous,
     albedo
   );
+
+  if (frame.data.flags.disable_multiple_bounces) {
+    result = vec3(0.0);
+  }
 }

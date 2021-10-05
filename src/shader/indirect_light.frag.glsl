@@ -39,6 +39,7 @@ void main() {
     frame.data.probe.grid_world_position_zero,
     frame.data.probe.grid_world_position_delta,
     probe_light_map,
+    probe_depth_map,
     albedo
   ); // :GI_Equations @Think
 
@@ -46,7 +47,7 @@ void main() {
     result = vec3(0.0);
   }
 
-  if (frame.data.flags.debug_B) {
+  if (frame.data.flags.debug_C) {
     vec2 lbuffer_size = vec2(1280.0, 720.0); // @Cleanup :MoveToUniform
     /*
     result += texture(
@@ -58,6 +59,8 @@ void main() {
       ), 0.0, 1.0)
     ).rgb;
     */
+
+    /*
     result += texture(
       probe_depth_map,
       clamp((
@@ -66,21 +69,22 @@ void main() {
           / frame.data.probe.depth_map_texel_size
       ), 0.0, 1.0)
     ).rgb;
-  }
+    */
 
-  if (frame.data.flags.debug_C) {
-    vec3 grid_coord = floor(
+    vec3 grid_coord = (
       (pos_world - frame.data.probe.grid_world_position_zero) /
       frame.data.probe.grid_world_position_delta
     );
-
     if (true
       && grid_coord.x >= 0
       && grid_coord.y >= 0
       && grid_coord.z >= 0
-      && grid_coord.x < frame.data.probe.grid_size.x
-      && grid_coord.y < frame.data.probe.grid_size.y
-      && grid_coord.z < frame.data.probe.grid_size.z
-    ) result += grid_coord / (frame.data.probe.grid_size - 1);
+      && grid_coord.x <= frame.data.probe.grid_size.x - 1
+      && grid_coord.y <= frame.data.probe.grid_size.y - 1
+      && grid_coord.z <= frame.data.probe.grid_size.z - 1
+    ) {
+      result += floor(grid_coord) / (frame.data.probe.grid_size - 1);
+      // result += pow(abs(fract(grid_coord) * 2.0 - 1.0), vec3(10.0));
+    }
   }
 }
