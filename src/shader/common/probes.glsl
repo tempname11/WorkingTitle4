@@ -30,6 +30,7 @@ vec3 spherical_fibonacci(float i, float n) {
 
 // @Performance: maybe precompute N vectors instead?
 vec3 get_probe_ray_direction(float i, float n, mat3 random_orientation) {
+  //return vec3(0, 0, -1);
   return random_orientation * spherical_fibonacci(i, n);
 }
 
@@ -134,41 +135,51 @@ vec3 get_indirect_luminance(
       probe_light_map,
       (
         light_base_texel_coord +
-        (light_hsize * (1.0 + octo_encode(N)))
-          // no +0.5!
+        (light_hsize * (1.0 + octo_encode(N))) // no +0.5
       ) / frame_data.probe.light_map_texel_size
     ).rgb;
 
     float weight = 1.0;
 
     if (frame_data.flags.debug_A) {
+      // These indirect "shadows" don't currently work well. @Bug :WeirdShadowArtifacts
       // Haven't yet seen results that show that the bias is helpful.
       // But maybe we're doing something else wrong, so leave it be.
       vec3 point_to_probe_biased = (
-        grid_cube_vertex_coord -
-        (grid_cube_coord + N * frame_data.probe.normal_bias)
+        frame_data.probe.grid_world_position_delta * 0.5 * (
+          grid_cube_vertex_coord - grid_cube_coord
+        ) + N * frame_data.probe.normal_bias
       );
       float dist = length(point_to_probe_biased);
       point_to_probe_biased /= dist;
 
-      vec2 d_d2 = texture(
+      vec2 values = texture(
         probe_depth_map,
         (
           depth_base_texel_coord +
-          (depth_hsize * (1.0 + octo_encode(-point_to_probe_biased)))
-          // no +0.5!
+          (depth_hsize * (1.0 + octo_encode(-point_to_probe_biased))) // no +0.5
         ) / frame_data.probe.depth_map_texel_size
       ).rg;
 
-      float mean = d_d2.x;
-      float variance = abs(d_d2.x * d_d2.x - d_d2.y);
+      float mean = values.x;
+      float mean2 = values.y;
+      float variance = abs(mean * mean - mean2);
       float diff = max(0.0, dist - mean);
 
       // see https://http.download.nvidia.com/developer/presentations/2006/gdc/2006-GDC-Variance-Shadow-Maps.pdf
       float chebyshev = (
         variance / (variance + diff * diff)
       );
-      illuminance *= pow(chebyshev, 3.0); // @Cleanup :MoveToUniform
+
+      if (!frame_data.flags.debug_B && !frame_data.flags.debug_C) {
+        illuminance *= clamp(pow(chebyshev, 3.0), 0.0, 1.0); // @Cleanup :MoveToUniform
+      } else if (frame_data.flags.debug_B && !frame_data.flags.debug_C) {
+        illuminance *= dist;
+      } else if (frame_data.flags.debug_C && !frame_data.flags.debug_B) {
+        illuminance *= mean;
+      } else {
+        illuminance *= dist > mean ? 0.0 : 1.0;
+      }
     }
 
     // "smooth backface" produced weird grid-like artifacts,

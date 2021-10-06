@@ -33,7 +33,7 @@ void main() {
   const float border = 1.0;
   vec2 unique_texel_size = octomap_light_texel_size - 2.0 * border;
   vec3 octomap_direction = octo_decode(
-    mod(octomap_coord - border, unique_texel_size) / (0.5 * unique_texel_size) - 1.0
+    mod(octomap_coord - border + 0.5, unique_texel_size) / (0.5 * unique_texel_size) - 1.0
   );
 
   vec4 value = vec4(0.0);
@@ -56,6 +56,7 @@ void main() {
       ).rgb;
 
       float weight = max(0.0, dot(octomap_direction, ray_direction));
+
       value += vec4(ray_luminance * weight, weight);
     }
   }
@@ -91,6 +92,7 @@ void main() {
         probe_light_map_previous,
         texel_coord_prev
       );
+
       value = previous * 0.98 + 0.02 * value;
       // @Cleanup :MoveToUniform hysteresis_thing
     }

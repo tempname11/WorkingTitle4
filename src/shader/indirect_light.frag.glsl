@@ -34,6 +34,9 @@ void main() {
       frame.data.sky_sun_direction,
       frame.data.sky_intensity
     );
+    if (frame.data.flags.disable_sky) {
+      result *= 0.0;
+    }
     return;
   }
   float perspective_correction = length(target_view_long.xyz);
@@ -55,26 +58,29 @@ void main() {
     result = vec3(0.0);
   }
 
-  if (frame.data.flags.debug_C) {
-    vec2 lbuffer_size = vec2(1280.0, 720.0); // @Cleanup :MoveToUniform
-    result += texture(
-      probe_light_map,
-      clamp((
-        (0.5 + 0.5 * vec2(position.x, -position.y))
-          * lbuffer_size
-          / frame.data.probe.light_map_texel_size
-      ), 0.0, 1.0)
-    ).rgb;
-
+  if (frame.data.flags.debug_B) {
     /*
-    result += texture(
-      probe_depth_map,
-      clamp((
-        (0.5 + 0.5 * vec2(position.x, -position.y))
-          * lbuffer_size
-          / frame.data.probe.depth_map_texel_size
-      ), 0.0, 1.0)
-    ).rgb;
+    vec2 lbuffer_size = vec2(1280.0, 720.0); // @Cleanup :MoveToUniform
+
+    if (frame.data.flags.debug_C) {
+      result += texture(
+        probe_light_map,
+        clamp((
+          (0.5 + 0.5 * vec2(position.x, -position.y))
+            * lbuffer_size
+            / frame.data.probe.light_map_texel_size
+        ), 0.0, 1.0)
+      ).rgb;
+    } else {
+      result += texture(
+        probe_depth_map,
+        clamp((
+          (0.5 + 0.5 * vec2(position.x, -position.y))
+            * lbuffer_size
+            / frame.data.probe.depth_map_texel_size
+        ), 0.0, 1.0)
+      ).rgb;
+    }
     */
 
     /*

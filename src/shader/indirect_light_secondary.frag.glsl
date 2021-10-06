@@ -62,6 +62,9 @@ void main() {
       frame.data.sky_sun_direction,
       frame.data.sky_intensity
     );
+    if (frame.data.flags.disable_sky) {
+      result *= 0.0;
+    }
     return;
   } else if (t == 0.0) {
     discard;

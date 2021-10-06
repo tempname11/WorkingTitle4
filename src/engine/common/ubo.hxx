@@ -9,6 +9,7 @@ struct Flags {
   gl_bool disable_direct_lighting;
   gl_bool disable_indirect_lighting;
   gl_bool disable_multiple_bounces;
+  gl_bool disable_sky;
   gl_bool debug_A;
   gl_bool debug_B;
   gl_bool debug_C;

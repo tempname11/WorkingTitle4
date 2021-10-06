@@ -33,7 +33,7 @@ void main() {
   const float border = 1.0;
   vec2 unique_texel_size = octomap_depth_texel_size - 2.0 * border;
   vec3 octomap_direction = octo_decode(
-    mod(octomap_coord - border, unique_texel_size) / (0.5 * unique_texel_size) - 1.0
+    mod(octomap_coord - border + 0.5, unique_texel_size) / (0.5 * unique_texel_size) - 1.0
   );
 
   vec4 value = vec4(0.0);
@@ -56,6 +56,16 @@ void main() {
       ).r;
 
       float weight = max(0.0, dot(octomap_direction, ray_direction));
+
+      float max_distance = length(frame.data.probe.grid_world_position_delta * 0.5);
+      if (ray_distance == 0.0) {
+        // no hit
+        ray_distance = max_distance;
+      }
+      ray_distance = min(
+        max_distance,
+        ray_distance
+      );
 
       weight = pow(weight, frame.data.probe.depth_sharpness);
 
@@ -99,7 +109,8 @@ void main() {
         probe_depth_map_previous,
         texel_coord_prev
       );
-      value = previous * 0.98 + 0.02 * value;
+
+      value = previous * 0.99 + 0.01 * value;
       // @Cleanup :MoveToUniform hysteresis_thing
     }
   }
