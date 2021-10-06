@@ -1,13 +1,13 @@
-# Milestone: GI in Sponza
-  - *** use "lazy" probe maps. ***
-  - use texture LODs properly
+# Milestone: great GI in Sponza
+  *** use "lazy" probe maps. ***
+  *** cascades.              ***
+  *** reference ray tracer.  ***
 
-  - investigate "zero-grid-coord-repeat"
-  - investigate "edge-sponza-wraparound" bug
+  ... use texture LODs properly
+  ... think more carefully about equations, energy conservation etc. :GI_Equations
 
-  - investigate things looking "too dim"
-  - think more carefully about equations, energy conservation etc. :GI_Equations
-
-  - use skybox in L2
-  - investigate "smooth backface" artifacts
   - investigate "self-lighting"
+    - first, build probe visualization via spheres in world space.
+
+  ! :WeirdShadowArtifacts
+  ! investigate "zero-grid-coord-repeat"/"edge-sponza-wraparound" bug

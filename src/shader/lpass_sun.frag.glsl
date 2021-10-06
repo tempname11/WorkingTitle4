@@ -2,7 +2,6 @@
 #extension GL_EXT_ray_query : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_GOOGLE_include_directive : enable
-#include "common/sky.glsl"
 #include "common/frame.glsl"
 #include "common/light_model.glsl"
 
@@ -47,12 +46,7 @@ void main() {
   vec3 L = -(frame.data.view * vec4(directional_light.direction, 0.0)).xyz;
 
   if (depth == 1.0) {
-    result = sky(
-      target_world,
-      -directional_light.direction,
-      directional_light.intensity
-    );
-    return;
+    discard;
   }
 
   rayQueryEXT ray_query;

@@ -30,6 +30,8 @@ struct FrameData {
   mat4 view;
   mat4 projection_inverse;
   mat4 view_inverse; 
+  vec3 sky_sun_direction;
+  vec3 sky_intensity;
   bool is_frame_sequential;
   FrameFlags flags;
   FrameProbe probe;

@@ -1,6 +1,7 @@
 #version 460
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_GOOGLE_include_directive : enable
+#include "common/sky.glsl"
 #include "common/frame.glsl"
 #include "common/probes.glsl"
 
@@ -22,12 +23,19 @@ void main() {
 
   // @Cleanup share this logic with other L1 passes
   float depth = subpassLoad(zchannel).r;
-  if (depth == 1.0) { discard; }
   float z_near = 0.1; // @Cleanup :MoveToUniforms
   float z_far = 10000.0; // @Cleanup :MoveToUniforms
   float z_linear = z_near * z_far / (z_far + depth * (z_near - z_far));
   vec4 target_view_long = frame.data.projection_inverse * vec4(position, 1.0, 1.0);
   vec3 target_world = normalize((frame.data.view_inverse * target_view_long).xyz);
+  if (depth == 1.0) {
+    result = sky(
+      target_world,
+      frame.data.sky_sun_direction,
+      frame.data.sky_intensity
+    );
+    return;
+  }
   float perspective_correction = length(target_view_long.xyz);
   vec3 eye_world = (frame.data.view_inverse * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
   vec3 pos_world = eye_world + target_world * z_linear * perspective_correction;
@@ -49,7 +57,6 @@ void main() {
 
   if (frame.data.flags.debug_C) {
     vec2 lbuffer_size = vec2(1280.0, 720.0); // @Cleanup :MoveToUniform
-    /*
     result += texture(
       probe_light_map,
       clamp((
@@ -58,7 +65,6 @@ void main() {
           / frame.data.probe.light_map_texel_size
       ), 0.0, 1.0)
     ).rgb;
-    */
 
     /*
     result += texture(
@@ -71,6 +77,7 @@ void main() {
     ).rgb;
     */
 
+    /*
     vec3 grid_coord = (
       (pos_world - frame.data.probe.grid_world_position_zero) /
       frame.data.probe.grid_world_position_delta
@@ -86,5 +93,6 @@ void main() {
       result += floor(grid_coord) / (frame.data.probe.grid_size - 1);
       // result += pow(abs(fract(grid_coord) * 2.0 - 1.0), vec3(10.0));
     }
+    */
   }
 }

@@ -96,7 +96,7 @@ void main() {
     imageStore(
       zchannel,
       store_coord,
-      vec4(0.0)
+      vec4(t_intersection == 0.0 ? -1.0 : 0.0)
     );
     return;
   }
@@ -139,7 +139,7 @@ void main() {
     uv
   ).rgb;
 
-  // @Perfomance @Think: do we even need this in G2?
+  // @Performance @Think: do we even need this in G2?
   vec3 romeao = texture(
     sampler2D(
       romeao_textures[instance_index],

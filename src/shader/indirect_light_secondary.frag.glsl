@@ -2,6 +2,7 @@
 #extension GL_EXT_ray_query : enable
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_GOOGLE_include_directive : enable
+#include "common/sky.glsl"
 #include "common/light_model.glsl"
 #include "common/probes.glsl"
 #include "common/frame.glsl"
@@ -54,7 +55,17 @@ void main() {
     frame.data.probe.random_orientation
   );
   float t = subpassLoad(zchannel).r;
-  if (t == 0.0) { discard; }
+  if (t < 0.0) {
+    if (probe_raydir.z < 0.0) { discard; }
+    result = sky(
+      probe_raydir,
+      frame.data.sky_sun_direction,
+      frame.data.sky_intensity
+    );
+    return;
+  } else if (t == 0.0) {
+    discard;
+  }
   vec3 pos_world = probe_origin + t * probe_raydir;
 
   vec3 N = subpassLoad(gchannel0).rgb;

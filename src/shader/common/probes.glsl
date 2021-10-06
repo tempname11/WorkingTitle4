@@ -30,7 +30,6 @@ vec3 spherical_fibonacci(float i, float n) {
 
 // @Performance: maybe precompute N vectors instead?
 vec3 get_probe_ray_direction(float i, float n, mat3 random_orientation) {
-  //return -spherical_fibonacci(i, n);
   return random_orientation * spherical_fibonacci(i, n);
 }
 
@@ -140,15 +139,14 @@ vec3 get_indirect_luminance(
       ) / frame_data.probe.light_map_texel_size
     ).rgb;
 
-    float weight = trilinear.x * trilinear.y * trilinear.z;
+    float weight = 1.0;
 
     if (frame_data.flags.debug_A) {
-      float disable_bias = 0.0;
-      // leave all the code for now, but it seems it's not working at all.
-
+      // Haven't yet seen results that show that the bias is helpful.
+      // But maybe we're doing something else wrong, so leave it be.
       vec3 point_to_probe_biased = (
         grid_cube_vertex_coord -
-        (grid_cube_coord + N * frame_data.probe.normal_bias * disable_bias)
+        (grid_cube_coord + N * frame_data.probe.normal_bias)
       );
       float dist = length(point_to_probe_biased);
       point_to_probe_biased /= dist;
@@ -173,22 +171,16 @@ vec3 get_indirect_luminance(
       illuminance *= pow(chebyshev, 3.0); // @Cleanup :MoveToUniform
     }
 
-    if (frame_data.flags.debug_B) {
-      vec3 probe_direction = normalize(grid_cube_vertex_coord - grid_cube_coord);
+    // "smooth backface" produced weird grid-like artifacts,
+    // so we just use a sane one.
+    vec3 probe_direction = normalize(grid_cube_vertex_coord - grid_cube_coord);
+    float backface = dot(probe_direction, N) >= 0.0 ? 1.0 : 0.0;
+    weight *= backface;
 
-      // @Incomplete: produces weird grid-like artifacts
-      // maybe because of probes-in-the-wall and no "bias"?
-
-      float smooth_backface = dot(probe_direction, N) + 1.0;
-      weight *= smooth_backface;
-      /*
-      float backface = max(0.0, dot(probe_direction, N));
-      weight *= backface;
-      */
-    }
-
-    const float min_weight = 0.000001;
+    const float min_weight = 0.000001; // @Cleanup :MoveToUniform
     weight = max(min_weight, weight);
+    weight *= trilinear.x * trilinear.y * trilinear.z;
+
     sum += vec4(illuminance * weight, weight);
   }
 

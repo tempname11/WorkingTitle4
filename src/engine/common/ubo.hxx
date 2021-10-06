@@ -34,6 +34,8 @@ struct Frame {
   glm::mat4 view;
   glm::mat4 projection_inverse;
   glm::mat4 view_inverse;
+  alignas(16) glm::vec3 sky_sun_direction;
+  alignas(16) glm::vec3 sky_intensity;
   uint32_t is_frame_sequential;
   alignas(16) Flags flags;
   alignas(16) ProbeInfo probe_info;

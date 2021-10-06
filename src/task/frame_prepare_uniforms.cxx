@@ -10,6 +10,25 @@ TASK_DECL {
   // where it actually makes sense to do it.
 
   ZoneScoped;
+
+  auto dir = glm::length(session_state->sun_position_xy) > 1.0f
+    ? glm::normalize(session_state->sun_position_xy)
+    : session_state->sun_position_xy;
+  auto sun_direction = glm::vec3(
+    dir.x,
+    dir.y,
+    std::sqrt(
+      std::max(
+        0.0f,
+        (1.0f
+          - (dir.x * dir.x)
+          - (dir.y * dir.y)
+        )
+      )
+    )
+  );
+  auto sun_intensity = session_state->sun_intensity * glm::vec3(1.0f);
+
   { ZoneScopedN("frame");
     auto projection = lib::gfx::utilities::get_projection(
       float(swapchain_description->image_extent.width)
@@ -27,13 +46,14 @@ TASK_DECL {
         - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE)
         + 0.5f
     ) * engine::PROBE_WORLD_DELTA;
-;
 
     const engine::common::ubo::Frame data = {
       .projection = projection,
       .view = view,
       .projection_inverse = glm::inverse(projection),
       .view_inverse = glm::inverse(view),
+      .sky_sun_direction = sun_direction,
+      .sky_intensity = sun_intensity,
       .is_frame_sequential = frame_info->is_sequential,
       .flags = session_state->ubo_flags,
       .probe_info = {
@@ -76,25 +96,9 @@ TASK_DECL {
 
   // This should not be here! :ManyLights 
   { ZoneScopedN("directional_light");
-    auto dir = glm::length(session_state->sun_position_xy) > 1.0f
-      ? glm::normalize(session_state->sun_position_xy)
-      : session_state->sun_position_xy;
-    auto direction = glm::vec3(
-      -dir.x,
-      -dir.y,
-      -std::sqrt(
-        std::max(
-          0.0f,
-          (1.0f
-            - (dir.x * dir.x)
-            - (dir.y * dir.y)
-          )
-        )
-      )
-    );
     const engine::common::ubo::DirectionalLight data = {
-      .direction = direction,
-      .intensity = session_state->sun_intensity * glm::vec3(1.0f),
+      .direction = -sun_direction, // we have it backwards here
+      .intensity = sun_intensity,
     };
     auto stake = &lpass->stakes.ubo_directional_light[frame_info->inflight_index];
     void * dst;
