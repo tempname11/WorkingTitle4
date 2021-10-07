@@ -36,16 +36,26 @@ TASK_DECL {
     );
     auto view = lib::debug_camera::to_view_matrix(&session_state->debug_camera);
 
+    auto some_world_offset = glm::vec3(0.5);
+    // @Hack: make sure probes are not in the wall for voxel stuff
+
     auto grid_world_position_zero = (
-      glm::floor(session_state->debug_camera.position / engine::PROBE_WORLD_DELTA)
-        - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE)
-        + 0.5f
-    ) * engine::PROBE_WORLD_DELTA;
+      glm::floor(
+        (session_state->debug_camera.position - some_world_offset)
+          / engine::PROBE_WORLD_DELTA
+      )
+      - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE)
+      + 1.0f
+    ) * engine::PROBE_WORLD_DELTA + some_world_offset;
+
     auto grid_world_position_zero_prev = (
-      glm::floor(session_state->debug_camera_prev.position / engine::PROBE_WORLD_DELTA)
-        - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE)
-        + 0.5f
-    ) * engine::PROBE_WORLD_DELTA;
+      glm::floor(
+        (session_state->debug_camera_prev.position - some_world_offset)
+          / engine::PROBE_WORLD_DELTA
+      )
+      - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE)
+      + 1.0f
+    ) * engine::PROBE_WORLD_DELTA + some_world_offset;
 
     const engine::common::ubo::Frame data = {
       .projection = projection,
@@ -60,10 +70,12 @@ TASK_DECL {
         .random_orientation = lib::gfx::utilities::get_random_rotation(),
         .grid_size = engine::PROBE_GRID_SIZE,
         .grid_size_z_factors = engine::PROBE_GRID_SIZE_Z_FACTORS,
-        .change_from_prev = glm::ivec3(glm::round(
-          (grid_world_position_zero - grid_world_position_zero_prev) /
-          engine::PROBE_WORLD_DELTA
-        )),
+        .change_from_prev = glm::ivec3(
+          glm::round( // deal with float division precision
+            (grid_world_position_zero - grid_world_position_zero_prev) /
+            engine::PROBE_WORLD_DELTA
+          )
+        ),
         .grid_world_position_zero = grid_world_position_zero,
         .grid_world_position_zero_prev = grid_world_position_zero_prev,
         .grid_world_position_delta = engine::PROBE_WORLD_DELTA,

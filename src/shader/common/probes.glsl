@@ -77,34 +77,35 @@ vec3 get_indirect_luminance(
   vec3 grid_coord_float = (
     (pos_world - grid_world_position_zero) /
     grid_world_position_delta
-  ); // may be out of bounds
+  );
 
-  ivec3 grid_coord0 = ivec3(grid_coord_float);
+  ivec3 grid_coord0 = ivec3(floor(grid_coord_float)); // needs to be signed to check bounds
   vec3 grid_cube_coord = fract(grid_coord_float);
   
   // are vector boolean expressions possible in GLSL? if so, this could use them.
+  // @Cleanup: yes, see `lessThan`
   bool out_of_bounds = (false
     || grid_coord0.x < 0
     || grid_coord0.y < 0
     || grid_coord0.z < 0
-    || grid_coord0.x + 1 >= frame_data.probe.grid_size.x
-    || grid_coord0.y + 1 >= frame_data.probe.grid_size.y
-    || grid_coord0.z + 1 >= frame_data.probe.grid_size.z
+    || grid_coord0.x > frame_data.probe.grid_size.x - 2
+    || grid_coord0.y > frame_data.probe.grid_size.y - 2
+    || grid_coord0.z > frame_data.probe.grid_size.z - 2
   );
 
   if (out_of_bounds) {
-    return vec3(0.0);
+    return vec3(0.0); // vec3(grid_cube_coord);
   }
 
   vec4 sum = vec4(0.0);
   for (uint i = 0; i < 8; i++) {
-    ivec3 grid_cube_vertex_coord = ivec3(
+    uvec3 grid_cube_vertex_coord = ivec3(
       (i & 1) == 1 ? 1 : 0,
       (i & 2) == 2 ? 1 : 0,
       (i & 4) == 4 ? 1 : 0
     );
 
-    ivec3 grid_coord = grid_coord0 + grid_cube_vertex_coord; // may be out of bounds
+    uvec3 grid_coord = grid_coord0 + grid_cube_vertex_coord;
 
     vec3 trilinear = mix(
       1.0 - grid_cube_coord,
@@ -142,8 +143,9 @@ vec3 get_indirect_luminance(
     float weight = 1.0;
 
     if (frame_data.flags.debug_A) {
-      // These indirect "shadows" don't currently work well. @Bug :WeirdShadowArtifacts
-      // Haven't yet seen results that show that the bias is helpful.
+      // Not yet convinced these are worth it. Disabled by default.
+
+      // Haven't yet seen results that show that the "normal bias" is helpful.
       // But maybe we're doing something else wrong, so leave it be.
       vec3 point_to_probe_biased = (
         frame_data.probe.grid_world_position_delta * 0.5 * (
@@ -171,6 +173,9 @@ vec3 get_indirect_luminance(
         variance / (variance + diff * diff)
       );
 
+      illuminance *= clamp(pow(chebyshev, 3.0), 0.0, 1.0); // @Cleanup :MoveToUniform
+
+      /*
       if (!frame_data.flags.debug_B && !frame_data.flags.debug_C) {
         illuminance *= clamp(pow(chebyshev, 3.0), 0.0, 1.0); // @Cleanup :MoveToUniform
       } else if (frame_data.flags.debug_B && !frame_data.flags.debug_C) {
@@ -180,6 +185,7 @@ vec3 get_indirect_luminance(
       } else {
         illuminance *= dist > mean ? 0.0 : 1.0;
       }
+      */
     }
 
     // "smooth backface" produced weird grid-like artifacts,

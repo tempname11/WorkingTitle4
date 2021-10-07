@@ -52,14 +52,13 @@ void main() {
     probe_light_map,
     probe_depth_map,
     albedo
-  ); // :GI_Equations @Think
+  );
 
   if (frame.data.flags.disable_indirect_lighting) {
     result = vec3(0.0);
   }
 
   if (frame.data.flags.debug_B) {
-    /*
     vec2 lbuffer_size = vec2(1280.0, 720.0); // @Cleanup :MoveToUniform
 
     if (frame.data.flags.debug_C) {
@@ -81,7 +80,6 @@ void main() {
         ), 0.0, 1.0)
       ).rgb;
     }
-    */
 
     /*
     vec3 grid_coord = (
