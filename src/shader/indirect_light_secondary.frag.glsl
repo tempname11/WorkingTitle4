@@ -108,7 +108,7 @@ void main() {
     albedo
   );
 
-  if (frame.data.flags.disable_multiple_bounces) {
+  if (frame.data.flags.disable_indirect_bounces) {
     result = vec3(0.0);
   }
 }

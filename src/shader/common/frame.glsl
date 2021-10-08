@@ -4,7 +4,8 @@
 struct FrameFlags {
   bool disable_direct_lighting;
   bool disable_indirect_lighting;
-  bool disable_multiple_bounces;
+  bool disable_indirect_shadows;
+  bool disable_indirect_bounces;
   bool disable_sky;
   bool debug_A;
   bool debug_B;

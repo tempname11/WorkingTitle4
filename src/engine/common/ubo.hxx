@@ -8,8 +8,10 @@ using gl_bool = uint32_t;
 struct Flags {
   gl_bool disable_direct_lighting;
   gl_bool disable_indirect_lighting;
-  gl_bool disable_multiple_bounces;
+  gl_bool disable_indirect_shadows;
+  gl_bool disable_indirect_bounces;
   gl_bool disable_sky;
+
   gl_bool debug_A;
   gl_bool debug_B;
   gl_bool debug_C;

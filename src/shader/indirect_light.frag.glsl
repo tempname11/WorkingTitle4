@@ -57,6 +57,7 @@ void main() {
     result = vec3(0.0);
   }
 
+  /*
   if (frame.data.flags.debug_A) {
     vec2 lbuffer_size = vec2(1280.0, 720.0); // @Cleanup :MoveToUniform
 
@@ -81,4 +82,5 @@ void main() {
       ).rgb;
     }
   }
+  */
 }

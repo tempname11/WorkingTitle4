@@ -499,13 +499,14 @@ TASK_DECL {
     if (state->show_imgui_window_flags) {
       auto it = &state->ubo_flags;
       ImGui::Begin("Flags", &state->show_imgui_window_flags);
-      ImGuiX::Checkbox32("disable direct lighting", &it->disable_direct_lighting);
-      ImGuiX::Checkbox32("disable indirect lighting", &it->disable_indirect_lighting);
-      ImGuiX::Checkbox32("disable multiple bounces", &it->disable_multiple_bounces);
-      ImGuiX::Checkbox32("disable sky", &it->disable_sky);
-      ImGuiX::Checkbox32("debug A", &it->debug_A);
-      ImGuiX::Checkbox32("debug B", &it->debug_B);
-      ImGuiX::Checkbox32("debug C", &it->debug_C);
+      ImGuiX::Checkbox32("Disable direct lighting", &it->disable_direct_lighting);
+      ImGuiX::Checkbox32("Disable indirect lighting", &it->disable_indirect_lighting);
+      ImGuiX::Checkbox32("Disable indirect shadows", &it->disable_indirect_shadows);
+      ImGuiX::Checkbox32("Disable indirect bounces", &it->disable_indirect_bounces);
+      ImGuiX::Checkbox32("Disable sky", &it->disable_sky);
+      ImGuiX::Checkbox32("Debug A", &it->debug_A);
+      ImGuiX::Checkbox32("Debug B", &it->debug_B);
+      ImGuiX::Checkbox32("Debug C", &it->debug_C);
       ImGui::VSliderFloat(
         "Y",
         ImVec2(20.0f, 128.0f),

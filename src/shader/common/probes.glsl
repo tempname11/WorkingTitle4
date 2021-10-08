@@ -205,8 +205,8 @@ vec3 get_indirect_luminance(
 
     float weight = 1.0;
 
-    if (false && frame_data.flags.debug_A) {
-      // Not yet convinced these are worth it. Disabled by default.
+    if (!frame_data.flags.disable_indirect_shadows) {
+      // Not yet convinced these are worth it.
 
       // Haven't yet seen results that show that the "normal bias" is helpful.
       // But maybe we're doing something else wrong, so leave it be.
