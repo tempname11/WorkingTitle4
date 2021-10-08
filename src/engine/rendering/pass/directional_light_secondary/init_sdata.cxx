@@ -100,11 +100,13 @@ void init_sdata(
       descriptor_set_layout_frame,
       descriptor_set_layout_light,
     };
+
     VkPipelineLayoutCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
       .setLayoutCount = sizeof(layouts) / sizeof(*layouts),
       .pSetLayouts = layouts,
     };
+
     {
       auto result = vkCreatePipelineLayout(
         core->device,

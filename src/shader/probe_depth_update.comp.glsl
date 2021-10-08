@@ -16,6 +16,11 @@ layout(binding = 1, rg16) uniform image2D probe_depth_map_previous;
 layout(binding = 2) uniform sampler2D zbuffer2_image;
 layout(binding = 3) uniform Frame { FrameData data; } frame;
 
+layout(push_constant) uniform Cascade {
+  vec3 world_position_delta;
+  uint level;
+} cascade;
+
 void main() {
   ivec2 octomap_coord = ivec2(gl_LocalInvocationID.xy);
   uvec3 probe_coord = gl_WorkGroupID;
@@ -25,9 +30,19 @@ void main() {
     probe_coord.z / frame.data.probe.grid_size_z_factors.x
   );
 
+  uvec2 cascade_subcoord = uvec2(
+    cascade.level % frame.data.probe.cascade_count_factors.x,
+    cascade.level / frame.data.probe.cascade_count_factors.x
+  );
+
   uvec2 texel_coord_base = probe_ray_count_factors * (
     probe_coord.xy +
-    z_subcoord * frame.data.probe.grid_size.xy
+    frame.data.probe.grid_size.xy * (
+      z_subcoord +
+      frame.data.probe.grid_size_z_factors * (
+        cascade_subcoord
+      )
+    )
   );
 
   const float border = 1.0;
@@ -57,7 +72,7 @@ void main() {
 
       float weight = max(0.0, dot(octomap_direction, ray_direction));
 
-      float max_distance = length(frame.data.probe.grid_world_position_delta * 0.5);
+      float max_distance = length(cascade.world_position_delta * 0.5);
       if (ray_distance == 0.0) {
         // no hit
         ray_distance = max_distance;
@@ -82,10 +97,13 @@ void main() {
   }
 
   if (frame.data.is_frame_sequential) {
-    ivec3 probe_coord_prev = ivec3(probe_coord) + frame.data.probe.change_from_prev;
+    ivec3 probe_coord_prev = (
+      ivec3(probe_coord)
+      + frame.data.probe.cascades[cascade.level].change_from_prev
+    );
     // @Think: `+` seems wrong here, instead of `-`, but it actually works.
 
-    // Are vector boolean expressions possible in GLSL? if so, this could use them.
+    // @Cleanup: use vector boolean ops?
     bool out_of_bounds = (false
       || probe_coord_prev.x < 0
       || probe_coord_prev.y < 0
@@ -100,9 +118,17 @@ void main() {
         probe_coord_prev.z % frame.data.probe.grid_size_z_factors.x,
         probe_coord_prev.z / frame.data.probe.grid_size_z_factors.x
       );
-      ivec2 texel_coord_prev = octomap_coord + ivec2(octomap_depth_texel_size) * (
-        probe_coord_prev.xy +
-        ivec2(z_subcoord_prev * frame.data.probe.grid_size.xy)
+
+      ivec2 texel_coord_prev = octomap_coord + ivec2(
+        octomap_depth_texel_size * (
+          probe_coord_prev.xy +
+          frame.data.probe.grid_size.xy * (
+            z_subcoord_prev +
+            frame.data.probe.grid_size_z_factors * (
+              cascade_subcoord
+            )
+          )
+        )
       );
 
       vec4 previous = imageLoad(
@@ -115,9 +141,16 @@ void main() {
     }
   }
 
-  ivec2 texel_coord = octomap_coord + ivec2(octomap_depth_texel_size) * (
-    ivec2(probe_coord.xy) +
-    ivec2(z_subcoord * frame.data.probe.grid_size.xy)
+  ivec2 texel_coord = octomap_coord + ivec2(
+    octomap_depth_texel_size * (
+      probe_coord.xy +
+      frame.data.probe.grid_size.xy * (
+        z_subcoord +
+        frame.data.probe.grid_size_z_factors * (
+          cascade_subcoord
+        )
+      )
+    )
   );
 
   imageStore(

@@ -2,6 +2,7 @@
 #include <src/global.hxx>
 #include <src/engine/constants.hxx>
 #include <src/engine/display/data.hxx>
+#include "internal.hxx"
 #include "data.hxx"
 
 namespace engine::rendering::pass::probe_light_update {
@@ -21,11 +22,25 @@ void record(
     0, 1, &ddata->descriptor_sets[frame_info->inflight_index],
     0, nullptr
   );
-  vkCmdDispatch(cmd,
-    PROBE_GRID_SIZE.x,
-    PROBE_GRID_SIZE.y,
-    PROBE_GRID_SIZE.z
-  );
+  for (uint32_t c = 0; c < engine::PROBE_CASCADE_COUNT; c++) {
+    PerCascade per_cascade_data = {
+      .world_position_delta = engine::PROBE_WORLD_DELTA_C0 * powf(2.0f, c),
+      .level = c,
+    };
+    vkCmdPushConstants(
+      cmd,
+      sdata->pipeline_layout,
+      VK_SHADER_STAGE_COMPUTE_BIT,
+      0,
+      sizeof(PerCascade),
+      &per_cascade_data
+    );
+    vkCmdDispatch(cmd,
+      PROBE_GRID_SIZE.x,
+      PROBE_GRID_SIZE.y,
+      PROBE_GRID_SIZE.z
+    );
+  }
 }
 
 } // namespace

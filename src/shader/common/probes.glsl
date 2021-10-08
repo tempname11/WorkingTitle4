@@ -68,19 +68,64 @@ vec3 get_indirect_luminance(
   vec3 pos_world,
   vec3 N,
   FrameData frame_data,
-  vec3 grid_world_position_zero,
-  vec3 grid_world_position_delta,
+  bool is_prev,
   sampler2D probe_light_map,
   sampler2D probe_depth_map,
   vec3 albedo
 ) {
+  bool out_of_bounds = true;
+  uint cascade_level = 0;
+  vec3 cascade_world_position_delta = vec3(0.0);
+  vec3 grid_coord_float = vec3(0.0);
+  ivec3 grid_coord0 = ivec3(0);
+  {
+    // @Performance: this is written to be obviously correct, but the loop is
+    // probably way too slow. Figure out a fast approximation.
+
+    vec3 delta = frame_data.probe.grid_world_position_delta_c0;
+    for (uint c = 0; c < frame_data.probe.cascade_count; c++) {
+      vec3 world_position_zero = (is_prev
+        ? frame_data.probe.cascades[c].world_position_zero_prev
+        : frame_data.probe.cascades[c].world_position_zero
+      );
+      grid_coord_float = (pos_world - world_position_zero) / delta;
+      grid_coord0 = ivec3(floor(grid_coord_float));
+
+      out_of_bounds = (false
+        || grid_coord0.x < 0
+        || grid_coord0.y < 0
+        || grid_coord0.z < 0
+        || grid_coord0.x > frame_data.probe.grid_size.x - 2
+        || grid_coord0.y > frame_data.probe.grid_size.y - 2
+        || grid_coord0.z > frame_data.probe.grid_size.z - 2
+      );
+      
+      if (!out_of_bounds) {
+        cascade_level = c;
+        cascade_world_position_delta = delta;
+        break;
+      }
+
+      delta *= 2.0;
+    }
+  }
+
+  /*
+  vec3 cascade_world_position_delta = (
+    frame_data.probe.grid_world_position_delta_c0 *
+    pow(2.0, cascade_level) // bit shift maybe?
+  );
+
+  vec3 world_position_zero = (is_prev
+    ? frame_data.probe.cascades[cascade_level].world_position_zero_prev
+    : frame_data.probe.cascades[cascade_level].world_position_zero
+  );
   vec3 grid_coord_float = (
-    (pos_world - grid_world_position_zero) /
-    grid_world_position_delta
+    (pos_world - world_position_zero) /
+    cascade_world_position_delta
   );
 
   ivec3 grid_coord0 = ivec3(floor(grid_coord_float)); // needs to be signed to check bounds
-  vec3 grid_cube_coord = fract(grid_coord_float);
   
   // are vector boolean expressions possible in GLSL? if so, this could use them.
   // @Cleanup: yes, see `lessThan`
@@ -92,9 +137,17 @@ vec3 get_indirect_luminance(
     || grid_coord0.y > frame_data.probe.grid_size.y - 2
     || grid_coord0.z > frame_data.probe.grid_size.z - 2
   );
+  */
+
+  vec3 grid_cube_coord = fract(grid_coord_float);
+
+  uvec2 cascade_subcoord = uvec2(
+    cascade_level % frame_data.probe.cascade_count_factors.x,
+    cascade_level / frame_data.probe.cascade_count_factors.x
+  );
 
   if (out_of_bounds) {
-    return vec3(0.0); // vec3(grid_cube_coord);
+    return vec3(0.0);
   }
 
   vec4 sum = vec4(0.0);
@@ -120,12 +173,22 @@ vec3 get_indirect_luminance(
 
     uvec2 light_base_texel_coord = 1 /* border */ + octomap_light_texel_size * (
       grid_coord.xy +
-      frame_data.probe.grid_size.xy * current_z_subcoord
+      frame_data.probe.grid_size.xy * (
+        current_z_subcoord +
+        frame_data.probe.grid_size_z_factors * (
+          cascade_subcoord
+        )
+      )
     );
 
     uvec2 depth_base_texel_coord = 1 /* border */ + octomap_depth_texel_size * (
       grid_coord.xy +
-      frame_data.probe.grid_size.xy * current_z_subcoord
+      frame_data.probe.grid_size.xy * (
+        current_z_subcoord +
+        frame_data.probe.grid_size_z_factors * (
+          cascade_subcoord
+        )
+      )
     );
 
     const float border = 1.0;
@@ -142,13 +205,13 @@ vec3 get_indirect_luminance(
 
     float weight = 1.0;
 
-    if (frame_data.flags.debug_A) {
+    if (false && frame_data.flags.debug_A) {
       // Not yet convinced these are worth it. Disabled by default.
 
       // Haven't yet seen results that show that the "normal bias" is helpful.
       // But maybe we're doing something else wrong, so leave it be.
       vec3 point_to_probe_biased = (
-        frame_data.probe.grid_world_position_delta * 0.5 * (
+        cascade_world_position_delta * 0.5 * (
           grid_cube_vertex_coord - grid_cube_coord
         ) + N * frame_data.probe.normal_bias
       );
@@ -174,18 +237,6 @@ vec3 get_indirect_luminance(
       );
 
       illuminance *= clamp(pow(chebyshev, 3.0), 0.0, 1.0); // @Cleanup :MoveToUniform
-
-      /*
-      if (!frame_data.flags.debug_B && !frame_data.flags.debug_C) {
-        illuminance *= clamp(pow(chebyshev, 3.0), 0.0, 1.0); // @Cleanup :MoveToUniform
-      } else if (frame_data.flags.debug_B && !frame_data.flags.debug_C) {
-        illuminance *= dist;
-      } else if (frame_data.flags.debug_C && !frame_data.flags.debug_B) {
-        illuminance *= mean;
-      } else {
-        illuminance *= dist > mean ? 0.0 : 1.0;
-      }
-      */
     }
 
     // "smooth backface" produced weird grid-like artifacts,

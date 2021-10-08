@@ -20,7 +20,7 @@ layout(binding = 6) uniform Frame { FrameData data; } frame;
 
 void main() {
   if (!frame.data.is_frame_sequential) {
-    result = vec3(0.0);
+    result = vec3(0.0); // @Performance: rather, don't call vkCmdDraw at all!
     return;
   }
 
@@ -32,22 +32,46 @@ void main() {
 
   // @CopyPaste :L2_ProbeCoord
   // @Performance: could do bit operations here if working with powers of 2.
+
+  // Ray.
   uvec2 ray_subcoord = texel_coord % probe_ray_count_factors;
-  uint ray_index = ray_subcoord.x + ray_subcoord.y * probe_ray_count_factors.x;
-  uvec2 combined_coord = texel_coord / probe_ray_count_factors;
+  uint ray_index = (
+    ray_subcoord.x +
+    ray_subcoord.y * probe_ray_count_factors.x
+  );
+  texel_coord /= probe_ray_count_factors;
+
+  // Grid XY.
+  uvec2 probe_grid_coord_xy = texel_coord % frame.data.probe.grid_size.xy;
+  texel_coord /= frame.data.probe.grid_size.xy;
+
+  // Grid Z.
+  uvec2 z_subcoord = texel_coord % frame.data.probe.grid_size_z_factors;
   uvec3 probe_grid_coord = uvec3(
-    combined_coord.xy % frame.data.probe.grid_size.xy,
-    (combined_coord.x / frame.data.probe.grid_size.x) +
+    probe_grid_coord_xy,
     (
-      (combined_coord.y / frame.data.probe.grid_size.y)
-        * frame.data.probe.grid_size_z_factors.x
+      z_subcoord.x +
+      z_subcoord.y * frame.data.probe.grid_size_z_factors.x
     )
+  );
+  texel_coord /= frame.data.probe.grid_size_z_factors;
+
+  // Cascade.
+  uvec2 cascade_subcoord = texel_coord;
+  uint cascade_level = (
+    cascade_subcoord.x +
+    cascade_subcoord.y * frame.data.probe.cascade_count_factors.x
+  );
+
+  vec3 cascade_world_position_delta = (
+    frame.data.probe.grid_world_position_delta_c0 *
+    pow(2.0, cascade_level) // bit shift maybe?
   );
 
   // everything is in world space.
   vec3 probe_origin = (
-    frame.data.probe.grid_world_position_zero +
-    frame.data.probe.grid_world_position_delta * probe_grid_coord
+    frame.data.probe.cascades[cascade_level].world_position_zero +
+    cascade_world_position_delta * probe_grid_coord
   );
   vec3 probe_raydir = get_probe_ray_direction(
     ray_index,
@@ -78,8 +102,7 @@ void main() {
     pos_world,
     N,
     frame.data,
-    frame.data.probe.grid_world_position_zero_prev,
-    frame.data.probe.grid_world_position_delta,
+    true, // prev
     probe_light_map_previous,
     probe_depth_map_previous,
     albedo

@@ -11,14 +11,22 @@ struct FrameFlags {
   bool debug_C;
 };
 
+struct FrameProbeCascade {
+  vec3 world_position_zero;
+  vec3 world_position_zero_prev;
+  ivec3 change_from_prev;
+};
+
+const uint MAX_CASCADE_LEVELS = 8; // :MaxCascadeLevels
+
 struct FrameProbe {
   mat3 random_orientation;
   uvec3 grid_size;
+  uint cascade_count;
   uvec2 grid_size_z_factors;
-  ivec3 change_from_prev;
-  vec3 grid_world_position_zero;
-  vec3 grid_world_position_zero_prev;
-  vec3 grid_world_position_delta;
+  uvec2 cascade_count_factors;
+  FrameProbeCascade cascades[MAX_CASCADE_LEVELS];
+  vec3 grid_world_position_delta_c0;
   vec2 light_map_texel_size;
   vec2 depth_map_texel_size;
   vec2 secondary_gbuffer_texel_size; // @Cleanup move this out of Probe?

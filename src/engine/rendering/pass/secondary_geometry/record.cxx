@@ -4,6 +4,7 @@
 #include <src/engine/misc.hxx>
 #include <src/engine/session.hxx>
 #include <src/engine/display/data.hxx>
+#include "internal.hxx"
 #include "data.hxx"
 
 namespace engine::rendering::pass::secondary_geometry {
@@ -150,11 +151,25 @@ void record(
     1, 2, descriptor_sets_textures,
     0, nullptr
   );
-  vkCmdDispatch(cmd,
-    PROBE_GRID_SIZE.x,
-    PROBE_GRID_SIZE.y,
-    PROBE_GRID_SIZE.z
-  );
+  for (uint32_t c = 0; c < engine::PROBE_CASCADE_COUNT; c++) {
+    PerCascade per_cascade_data = {
+      .world_position_delta = engine::PROBE_WORLD_DELTA_C0 * powf(2.0f, c),
+      .level = c,
+    };
+    vkCmdPushConstants(
+      cmd,
+      sdata->pipeline_layout,
+      VK_SHADER_STAGE_COMPUTE_BIT,
+      0,
+      sizeof(PerCascade),
+      &per_cascade_data
+    );
+    vkCmdDispatch(cmd,
+      PROBE_GRID_SIZE.x,
+      PROBE_GRID_SIZE.y,
+      PROBE_GRID_SIZE.z
+    );
+  }
 }
 
 } // namespace

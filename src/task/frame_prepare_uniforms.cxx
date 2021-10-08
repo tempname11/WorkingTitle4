@@ -39,23 +39,30 @@ TASK_DECL {
     auto some_world_offset = glm::vec3(0.5);
     // @Hack: make sure probes are not in the wall for voxel stuff
 
-    auto grid_world_position_zero = (
-      glm::floor(
+    engine::common::ubo::ProbeCascade cascades[engine::common::ubo::MAX_CASCADE_LEVELS];
+    assert(engine::PROBE_CASCADE_COUNT <= engine::common::ubo::MAX_CASCADE_LEVELS);
+    for (size_t c = 0; c < engine::PROBE_CASCADE_COUNT; c++) {
+      auto delta = engine::PROBE_WORLD_DELTA_C0 * powf(2.0f, c);
+      auto floor_now = glm::floor(
         (session_state->debug_camera.position - some_world_offset)
-          / engine::PROBE_WORLD_DELTA
-      )
-      - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE)
-      + 1.0f
-    ) * engine::PROBE_WORLD_DELTA + some_world_offset;
-
-    auto grid_world_position_zero_prev = (
-      glm::floor(
+          / delta
+      );
+      auto floor_prev = glm::floor(
         (session_state->debug_camera_prev.position - some_world_offset)
-          / engine::PROBE_WORLD_DELTA
-      )
-      - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE)
-      + 1.0f
-    ) * engine::PROBE_WORLD_DELTA + some_world_offset;
+          / delta
+      );
+      cascades[c] = {
+        .world_position_zero = (
+          floor_now - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE) + 1.0f
+        ) * delta + some_world_offset,
+        .world_position_zero_prev = (
+          floor_prev - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE) + 1.0f
+        ) * delta + some_world_offset,
+        .change_from_prev = glm::ivec3(
+          floor_now - floor_prev
+        ),
+      };
+    };
 
     const engine::common::ubo::Frame data = {
       .projection = projection,
@@ -69,16 +76,11 @@ TASK_DECL {
       .probe_info = {
         .random_orientation = lib::gfx::utilities::get_random_rotation(),
         .grid_size = engine::PROBE_GRID_SIZE,
+        .cascade_count = engine::PROBE_CASCADE_COUNT,
         .grid_size_z_factors = engine::PROBE_GRID_SIZE_Z_FACTORS,
-        .change_from_prev = glm::ivec3(
-          glm::round( // deal with float division precision
-            (grid_world_position_zero - grid_world_position_zero_prev) /
-            engine::PROBE_WORLD_DELTA
-          )
-        ),
-        .grid_world_position_zero = grid_world_position_zero,
-        .grid_world_position_zero_prev = grid_world_position_zero_prev,
-        .grid_world_position_delta = engine::PROBE_WORLD_DELTA,
+        .cascade_count_factors = engine::PROBE_CASCADE_COUNT_FACTORS,
+        // .cascades = cascades, // see below
+        .grid_world_position_delta_c0 = engine::PROBE_WORLD_DELTA_C0,
         .light_map_texel_size = glm::vec2(
           engine::rendering::intra::probe_light_map::WIDTH,
           engine::rendering::intra::probe_light_map::HEIGHT
@@ -93,6 +95,13 @@ TASK_DECL {
       },
       .end_marker = 0xDeadBeef,
     };
+    for (size_t c = 0; c < engine::PROBE_CASCADE_COUNT; c++) {
+      memcpy(
+        (void *) &data.probe_info.cascades[c],
+        (void *) &cascades[c],
+        sizeof(engine::common::ubo::ProbeCascade)
+      );
+    }
     auto stake = &common->stakes.ubo_frame[frame_info->inflight_index];
     void * dst;
     vkMapMemory(

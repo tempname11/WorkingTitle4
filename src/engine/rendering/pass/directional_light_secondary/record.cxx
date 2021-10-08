@@ -93,6 +93,7 @@ void record(
 
   size_t light_count = 1; // :ManyLights
 
+  // @Performance: push constants for lights would be better here.
   std::vector<VkDescriptorSet> descriptor_sets(light_count);
   std::vector<VkDescriptorSetLayout> descriptor_set_layouts(light_count);
   for (size_t i = 0; i < light_count; i++) {
@@ -147,17 +148,6 @@ void record(
       0, nullptr
     );
 
-    // @Performance: push constants would be better here.
-    /*
-    vkCmdPushConstants(
-      cmd,
-      sdata->pipeline_layout,
-      VK_SHADER_STAGE_FRAGMENT_BIT,
-      0,
-      sizeof(PerLight),
-      &light_data
-    );
-    */
     vkCmdDraw(cmd, fullscreen_quad->triangle_count * 3, 1, 0, 0);
   }
   vkCmdEndRenderPass(cmd);

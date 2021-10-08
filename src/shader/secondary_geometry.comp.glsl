@@ -49,6 +49,11 @@ layout(binding = 7) uniform sampler albedo_sampler;
 layout(set = 1, binding = 0) uniform texture2D albedo_textures[];
 layout(set = 2, binding = 0) uniform texture2D romeao_textures[];
 
+layout(push_constant) uniform Cascade {
+  vec3 world_position_delta;
+  uint level;
+} cascade;
+
 void main() {
   uvec3 probe_coord = gl_WorkGroupID;
   uint ray_index = gl_LocalInvocationIndex;
@@ -58,19 +63,29 @@ void main() {
     probe_coord.z / frame.data.probe.grid_size_z_factors.x
   );
 
-  ivec2 store_coord = ivec2(
-    gl_GlobalInvocationID.xy +
-    (
+  uvec2 cascade_subcoord = uvec2(
+    cascade.level % frame.data.probe.cascade_count_factors.x,
+    cascade.level / frame.data.probe.cascade_count_factors.x
+  );
+
+  ivec2 store_coord = ivec2(gl_GlobalInvocationID.xy
+    + (
       frame.data.probe.grid_size.xy *
       probe_ray_count_factors *
       z_subcoord
+    )
+    + (
+      frame.data.probe.grid_size.xy *
+      probe_ray_count_factors *
+      frame.data.probe.grid_size_z_factors *
+      cascade_subcoord
     )
   );
 
   rayQueryEXT ray_query;
   vec3 origin_world = (
-    frame.data.probe.grid_world_position_zero +
-    frame.data.probe.grid_world_position_delta * probe_coord
+    frame.data.probe.cascades[cascade.level].world_position_zero +
+    cascade.world_position_delta * probe_coord
   );
   vec3 raydir_world = get_probe_ray_direction(
     ray_index,

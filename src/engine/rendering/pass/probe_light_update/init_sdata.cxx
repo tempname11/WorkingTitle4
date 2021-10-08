@@ -1,6 +1,7 @@
 #include <src/global.hxx>
 #include <src/embedded.hxx>
 #include <src/engine/session.hxx>
+#include "internal.hxx"
 #include "data.hxx"
 
 namespace engine::rendering::pass::probe_light_update {
@@ -39,11 +40,13 @@ void init_sdata(
         .stageFlags = VK_SHADER_STAGE_ALL,
       },
     };
+
     VkDescriptorSetLayoutCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
       .bindingCount = sizeof(layout_bindings) / sizeof(*layout_bindings),
       .pBindings = layout_bindings,
     };
+
     {
       auto result = vkCreateDescriptorSetLayout(
         core->device,
@@ -57,11 +60,22 @@ void init_sdata(
 
   VkPipelineLayout pipeline_layout;
   { ZoneScopedN("pipeline_layout");
+    VkPushConstantRange push_constant_ranges[] = {
+      {
+        .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        .offset = 0,
+        .size = sizeof(PerCascade)
+      },
+    };
+
     VkPipelineLayoutCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
       .setLayoutCount = 1,
       .pSetLayouts = &descriptor_set_layout,
+      .pushConstantRangeCount = sizeof(push_constant_ranges) / sizeof(*push_constant_ranges),
+      .pPushConstantRanges = push_constant_ranges,
     };
+
     {
       auto result = vkCreatePipelineLayout(
         core->device,

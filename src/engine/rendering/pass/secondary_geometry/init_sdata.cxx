@@ -1,6 +1,7 @@
 #include <src/global.hxx>
 #include <src/embedded.hxx>
 #include <src/engine/session.hxx>
+#include "internal.hxx"
 #include "data.hxx"
 
 namespace engine::rendering::pass::secondary_geometry {
@@ -119,16 +120,28 @@ void init_sdata(
 
   VkPipelineLayout pipeline_layout;
   { ZoneScopedN("pipeline_layout");
-    VkDescriptorSetLayout layouts[3] = {
+    VkDescriptorSetLayout layouts[] = {
       descriptor_set_layout_frame,
       descriptor_set_layout_textures,
       descriptor_set_layout_textures,
     };
+
+    VkPushConstantRange push_constant_ranges[] = {
+      {
+        .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        .offset = 0,
+        .size = sizeof(PerCascade)
+      },
+    };
+
     VkPipelineLayoutCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
       .setLayoutCount = sizeof(layouts) / sizeof(*layouts),
       .pSetLayouts = layouts,
+      .pushConstantRangeCount = sizeof(push_constant_ranges) / sizeof(*push_constant_ranges),
+      .pPushConstantRanges = push_constant_ranges,
     };
+
     {
       auto result = vkCreatePipelineLayout(
         core->device,

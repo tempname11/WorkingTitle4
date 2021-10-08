@@ -15,14 +15,22 @@ struct Flags {
   gl_bool debug_C;
 };
 
+constexpr size_t MAX_CASCADE_LEVELS = 8; // :MaxCascadeLevels
+
+struct ProbeCascade {
+  glm::vec3 world_position_zero;
+  alignas(16) glm::vec3 world_position_zero_prev;
+  alignas(16) glm::ivec3 change_from_prev;
+};
+
 struct ProbeInfo {
   glm::mat3x4 random_orientation;
   alignas(16) glm::uvec3 grid_size;
+  glm::uint cascade_count;
   alignas(16) glm::uvec2 grid_size_z_factors;
-  alignas(16) glm::ivec3 change_from_prev;
-  alignas(16) glm::vec3 grid_world_position_zero;
-  alignas(16) glm::vec3 grid_world_position_zero_prev;
-  alignas(16) glm::vec3 grid_world_position_delta;
+  glm::uvec2 cascade_count_factors;
+  alignas(16) ProbeCascade cascades[MAX_CASCADE_LEVELS];
+  alignas(16) glm::vec3 grid_world_position_delta_c0; // put it into ProbeCascade as well?
   alignas(16) glm::vec2 light_map_texel_size;
   glm::vec2 depth_map_texel_size;
   glm::vec2 secondary_gbuffer_texel_size;
