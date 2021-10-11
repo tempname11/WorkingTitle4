@@ -35,6 +35,7 @@ TASK_DECL {
         / swapchain_description->image_extent.height
     );
     auto view = lib::debug_camera::to_view_matrix(&session_state->debug_camera);
+    auto view_prev = lib::debug_camera::to_view_matrix(&session_state->debug_camera_prev);
 
     auto some_world_offset = glm::vec3(0.5);
     // @Hack: make sure probes are not in the wall for voxel stuff
@@ -67,8 +68,10 @@ TASK_DECL {
     const engine::common::ubo::Frame data = {
       .projection = projection,
       .view = view,
+      .view_prev = view_prev,
       .projection_inverse = glm::inverse(projection),
       .view_inverse = glm::inverse(view),
+      .view_prev_inverse = glm::inverse(view_prev),
       .secondary_gbuffer_texel_size = glm::vec2(engine::G2_TEXEL_SIZE),
       .final_image_texel_size = glm::vec2(
         swapchain_description->image_extent.width,

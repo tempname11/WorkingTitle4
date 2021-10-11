@@ -17,6 +17,7 @@ void init_rendering_finalpass(
   engine::display::Data::Finalpass *out,
   engine::display::Data::Common *common,
   engine::display::Data::SwapchainDescription *swapchain_description,
+  engine::display::Data::ZBuffer *zbuffer,
   engine::display::Data::LBuffer *lbuffer,
   engine::display::Data::FinalImage *final_image,
   SessionData::Vulkan::Finalpass *s_finalpass,

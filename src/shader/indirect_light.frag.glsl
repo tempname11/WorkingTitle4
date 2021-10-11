@@ -41,6 +41,7 @@ void main() {
   }
   float perspective_correction = length(target_view_long.xyz);
   vec3 eye_world = (frame.data.view_inverse * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+  // @Cleanup :SimplerWorldSpacePos
   vec3 pos_world = eye_world + target_world * z_linear * perspective_correction;
 
   result = get_indirect_luminance(

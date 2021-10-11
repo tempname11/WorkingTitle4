@@ -7,6 +7,8 @@ struct FrameFlags {
   bool disable_indirect_shadows;
   bool disable_indirect_bounces;
   bool disable_eye_adaptation;
+  bool disable_motion_blur;
+  bool disable_TAA;
   bool disable_sky;
   bool debug_A;
   bool debug_B;
@@ -38,8 +40,10 @@ struct FrameProbe {
 struct FrameData {
   mat4 projection;
   mat4 view;
+  mat4 view_prev;
   mat4 projection_inverse;
   mat4 view_inverse; 
+  mat4 view_prev_inverse; 
   vec2 secondary_gbuffer_texel_size;
   vec2 final_image_texel_size;
   vec3 luminance_average;

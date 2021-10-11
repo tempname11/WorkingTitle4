@@ -513,6 +513,8 @@ TASK_DECL {
         "%.3f",
         ImGuiSliderFlags_Logarithmic
       );
+      ImGuiX::Checkbox32("Disable motion blur", &it->disable_motion_blur);
+      ImGuiX::Checkbox32("Disable TAA", &it->disable_TAA);
       ImGuiX::Checkbox32("Disable sky", &it->disable_sky);
       ImGuiX::Checkbox32("Debug A", &it->debug_A);
       ImGuiX::Checkbox32("Debug B", &it->debug_B);

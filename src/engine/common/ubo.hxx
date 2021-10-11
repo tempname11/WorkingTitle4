@@ -11,6 +11,8 @@ struct Flags {
   gl_bool disable_indirect_shadows;
   gl_bool disable_indirect_bounces;
   gl_bool disable_eye_adaptation;
+  gl_bool disable_motion_blur;
+  gl_bool disable_TAA;
   gl_bool disable_sky;
 
   gl_bool debug_A;
@@ -43,8 +45,10 @@ struct ProbeInfo {
 struct Frame {
   glm::mat4 projection;
   glm::mat4 view;
+  glm::mat4 view_prev;
   glm::mat4 projection_inverse;
   glm::mat4 view_inverse;
+  glm::mat4 view_prev_inverse;
   alignas(16) glm::vec2 secondary_gbuffer_texel_size;
   glm::vec2 final_image_texel_size;
   alignas(16) glm::vec3 luminance_average;

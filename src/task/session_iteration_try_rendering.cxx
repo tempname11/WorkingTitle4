@@ -447,6 +447,7 @@ TASK_DECL {
             .usage = (0
               | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
               | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
+              | VK_IMAGE_USAGE_SAMPLED_BIT
             ),
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -798,6 +799,7 @@ TASK_DECL {
     &rendering->finalpass,
     &rendering->common,
     &rendering->swapchain_description,
+    &rendering->zbuffer,
     &rendering->lbuffer,
     &rendering->final_image,
     &vulkan->finalpass,

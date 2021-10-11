@@ -53,7 +53,7 @@ void readback(
       {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
-        .dstAccessMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
+        .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
         .oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         .newLayout = VK_IMAGE_LAYOUT_GENERAL,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -70,7 +70,7 @@ void readback(
       {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .srcAccessMask = 0,
-        .dstAccessMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
+        .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
         .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
         .newLayout = VK_IMAGE_LAYOUT_GENERAL,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -156,6 +156,38 @@ void readback(
       readback_data->luminance_buffers[frame_info->inflight_index].buffer,
       1,
       &region
+    );
+  }
+
+  { ZoneScopedN("transition_after");
+    VkImageMemoryBarrier barriers[] = {
+      {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
+        .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+        .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = lbuffer->stakes[frame_info->inflight_index].image,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .baseMipLevel = 0,
+          .levelCount = 1,
+          .baseArrayLayer = 0,
+          .layerCount = 1,
+        },
+      },
+    };
+    vkCmdPipelineBarrier(
+      cmd,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, // finalpass on next frame
+      0,
+      0, nullptr,
+      0, nullptr,
+      sizeof(barriers) / sizeof(*barriers),
+      barriers
     );
   }
 

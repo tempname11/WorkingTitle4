@@ -67,6 +67,9 @@
 - not all allocators are displayed in UI :Sensible_GPU_Allocators
 - some file read operations assert on bad input :HandleInputGracefully
 
+- eye adaptation is heavily biased towards edge of viewport
+  (because of vkCmdBlit clamping and non-power-of-2 sizes) 
+
 - When running the Vulkan Configurator overrides, some additional errors pop up.
   (Need to enable their presence by default, and also fix the actual errors.)
 

@@ -55,6 +55,7 @@ void main() {
     accel,
     0,
     0xFF,
+    // @Cleanup :SimplerWorldSpacePos
     eye_world + target_world * z_linear * perspective_correction,
     0.1, // @Cleanup :MoveToUniforms ray_t_min
     -directional_light.direction,

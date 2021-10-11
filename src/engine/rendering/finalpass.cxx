@@ -25,6 +25,24 @@ void init_session_finalpass(
       },
       {
         .binding = 2,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
+      {
+        .binding = 3,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
+      {
+        .binding = 4,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
+      {
+        .binding = 5,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL,
@@ -113,6 +131,8 @@ void init_session_finalpass(
   { ZoneScopedN(".sampler_lbuffer");
     VkSamplerCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+      .addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE,
+      .addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE,
     };
     vkCreateSampler(
       core->device,
@@ -160,6 +180,7 @@ void init_rendering_finalpass(
   engine::display::Data::Finalpass *out,
   engine::display::Data::Common *common,
   engine::display::Data::SwapchainDescription *swapchain_description,
+  engine::display::Data::ZBuffer *zbuffer,
   engine::display::Data::LBuffer *lbuffer,
   engine::display::Data::FinalImage *final_image,
   SessionData::Vulkan::Finalpass *s_finalpass,
@@ -188,13 +209,32 @@ void init_rendering_finalpass(
   }
   {
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
+      auto i_prev = (
+        (i + swapchain_description->image_count - 1) %
+        swapchain_description->image_count
+      );
       VkDescriptorImageInfo final_image_info = {
         .imageView = final_image->views[i],
         .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
       };
-      VkDescriptorImageInfo lbuffer_image_info = {
+      VkDescriptorImageInfo lbuffer_info = {
         .sampler = s_finalpass->sampler_lbuffer,
         .imageView = lbuffer->views[i],
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorImageInfo lbuffer_prev_info = {
+        .sampler = s_finalpass->sampler_lbuffer,
+        .imageView = lbuffer->views[i_prev],
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorImageInfo zbuffer_info = {
+        .sampler = s_finalpass->sampler_lbuffer, // @Cleanup
+        .imageView = zbuffer->views[i],
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorImageInfo zbuffer_prev_info = {
+        .sampler = s_finalpass->sampler_lbuffer, // @Cleanup
+        .imageView = zbuffer->views[i_prev],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
       VkDescriptorBufferInfo ubo_frame_info = {
@@ -219,12 +259,39 @@ void init_rendering_finalpass(
           .dstArrayElement = 0,
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-          .pImageInfo = &lbuffer_image_info,
+          .pImageInfo = &lbuffer_info,
         },
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
           .dstSet = descriptor_sets[i],
           .dstBinding = 2,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .pImageInfo = &lbuffer_prev_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets[i],
+          .dstBinding = 3,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .pImageInfo = &zbuffer_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets[i],
+          .dstBinding = 4,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .pImageInfo = &zbuffer_prev_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets[i],
+          .dstBinding = 5,
           .dstArrayElement = 0,
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
