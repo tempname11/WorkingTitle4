@@ -10,6 +10,7 @@ struct Flags {
   gl_bool disable_indirect_lighting;
   gl_bool disable_indirect_shadows;
   gl_bool disable_indirect_bounces;
+  gl_bool disable_eye_adaptation;
   gl_bool disable_sky;
 
   gl_bool debug_A;
@@ -35,7 +36,6 @@ struct ProbeInfo {
   alignas(16) glm::vec3 grid_world_position_delta_c0; // put it into ProbeCascade as well?
   alignas(16) glm::vec2 light_map_texel_size;
   glm::vec2 depth_map_texel_size;
-  glm::vec2 secondary_gbuffer_texel_size;
   float depth_sharpness;
   float normal_bias;
 };
@@ -45,6 +45,9 @@ struct Frame {
   glm::mat4 view;
   glm::mat4 projection_inverse;
   glm::mat4 view_inverse;
+  alignas(16) glm::vec2 secondary_gbuffer_texel_size;
+  glm::vec2 final_image_texel_size;
+  alignas(16) glm::vec3 luminance_average;
   alignas(16) glm::vec3 sky_sun_direction;
   alignas(16) glm::vec3 sky_intensity;
   uint32_t is_frame_sequential;

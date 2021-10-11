@@ -6,6 +6,7 @@ struct FrameFlags {
   bool disable_indirect_lighting;
   bool disable_indirect_shadows;
   bool disable_indirect_bounces;
+  bool disable_eye_adaptation;
   bool disable_sky;
   bool debug_A;
   bool debug_B;
@@ -30,7 +31,6 @@ struct FrameProbe {
   vec3 grid_world_position_delta_c0;
   vec2 light_map_texel_size;
   vec2 depth_map_texel_size;
-  vec2 secondary_gbuffer_texel_size; // @Cleanup move this out of Probe?
   float depth_sharpness;
   float normal_bias;
 };
@@ -40,6 +40,9 @@ struct FrameData {
   mat4 view;
   mat4 projection_inverse;
   mat4 view_inverse; 
+  vec2 secondary_gbuffer_texel_size;
+  vec2 final_image_texel_size;
+  vec3 luminance_average;
   vec3 sky_sun_direction;
   vec3 sky_intensity;
   bool is_frame_sequential;

@@ -19,7 +19,7 @@ TASK_DECL {
   auto signal = lib::gpu_signal::create(
     gpu_signal_support.ptr,
     core->device,
-    *frame_rendered_semaphore,
+    *frame_finished_semaphore,
     frame_info->timeline_semaphore_value
   );
   auto inflight_index_saved = new uint8_t(frame_info->inflight_index); // frame_info will not be around!

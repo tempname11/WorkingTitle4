@@ -23,6 +23,12 @@ void init_session_finalpass(
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL,
       },
+      {
+        .binding = 2,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
     };
     VkDescriptorSetLayoutCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -191,6 +197,11 @@ void init_rendering_finalpass(
         .imageView = lbuffer->views[i],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
+      VkDescriptorBufferInfo ubo_frame_info = {
+        .buffer = common->stakes.ubo_frame[i].buffer,
+        .offset = 0,
+        .range = VK_WHOLE_SIZE,
+      };
       VkWriteDescriptorSet writes[] = {
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -209,7 +220,16 @@ void init_rendering_finalpass(
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           .pImageInfo = &lbuffer_image_info,
-        }
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets[i],
+          .dstBinding = 2,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .pBufferInfo = &ubo_frame_info,
+        },
       };
       vkUpdateDescriptorSets(
         core->device,

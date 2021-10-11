@@ -24,7 +24,7 @@ layout(set = 1, binding = 0) uniform DirectionalLight {
 
 void main() {
   uvec2 texel_coord = uvec2(
-    (position * 0.5 + 0.5) * frame.data.probe.secondary_gbuffer_texel_size
+    (position * 0.5 + 0.5) * frame.data.secondary_gbuffer_texel_size
   ); // truncated, otherwise would need to subtract 0.5 texels.
 
   // @CopyPaste :L2_ProbeCoord

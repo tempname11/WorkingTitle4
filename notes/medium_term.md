@@ -41,6 +41,15 @@
 - Async running tools, ideally with an in-progress task UI view.
 - All disk paths should be relative to *whatever is referencing them*.
 - Should also normalize disk paths after user input.
+- interactive scene editor (selection, translate-rotate-scale)
+
+### GI: work to be done
+- investigate "self-lighting"
+- shadows still have "bands" which seem related to "seams" in the octomap.
+- use texture LODs
+- reference ray tracer.
+- try "lazy" probe maps.
+- blend cascade levels.
 
 ### general issues
 - Import models with more than 2^16 vertices. :NotEnoughIndices

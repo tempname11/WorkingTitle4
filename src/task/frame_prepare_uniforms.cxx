@@ -69,6 +69,12 @@ TASK_DECL {
       .view = view,
       .projection_inverse = glm::inverse(projection),
       .view_inverse = glm::inverse(view),
+      .secondary_gbuffer_texel_size = glm::vec2(engine::G2_TEXEL_SIZE),
+      .final_image_texel_size = glm::vec2(
+        swapchain_description->image_extent.width,
+        swapchain_description->image_extent.height
+      ),
+      .luminance_average = glm::vec3(session_state->luminance_moving_average),
       .sky_sun_direction = sun_direction,
       .sky_intensity = sun_intensity,
       .is_frame_sequential = frame_info->is_sequential,
@@ -89,7 +95,6 @@ TASK_DECL {
           engine::rendering::intra::probe_depth_map::WIDTH,
           engine::rendering::intra::probe_depth_map::HEIGHT
         ),
-        .secondary_gbuffer_texel_size = glm::vec2(engine::G2_TEXEL_SIZE),
         .depth_sharpness = session_state->probe_depth_sharpness,
         .normal_bias = session_state->probe_normal_bias,
       },

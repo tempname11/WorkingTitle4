@@ -66,7 +66,7 @@ void main() {
         zbuffer2_image,
         (
           (vec2(texel_coord_base + uvec2(x, y)) + 0.5) /
-            frame.data.probe.secondary_gbuffer_texel_size
+            frame.data.secondary_gbuffer_texel_size
         )
       ).r;
 

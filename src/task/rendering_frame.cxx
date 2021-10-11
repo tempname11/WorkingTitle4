@@ -19,6 +19,7 @@
 #include "frame_update.hxx"
 #include "rendering_has_finished.hxx"
 #include "rendering_frame.hxx"
+#include <src/engine/frame/readback.hxx>
 
 #define TRACY_ARTIFICIAL_DELAY 20ms
 
@@ -88,6 +89,7 @@ TASK_DECL {
       frame_update,
       &frame_data->update_data,
       frame_info,
+      &data->readback,
       &session->state
     ),
     task::create(
@@ -219,8 +221,6 @@ TASK_DECL {
       frame_compose_submit,
       &session->vulkan.queue_work,
       &data->presentation,
-      &data->presentation_failure_state,
-      &data->frame_finished_semaphore,
       &data->imgui_finished_semaphore,
       frame_info,
       &frame_data->compose_data
@@ -231,6 +231,18 @@ TASK_DECL {
       &data->presentation_failure_state,
       frame_info,
       &session->vulkan.queue_present
+    ),
+    task::create(
+      engine::frame::readback,
+      &session->vulkan.core,
+      &session->vulkan.queue_work,
+      &data->presentation,
+      &data->frame_finished_semaphore,
+      &data->lbuffer,
+      &data->readback,
+      &data->command_pools,
+      &data->swapchain_description,
+      frame_info
     ),
     task::create(
       frame_loading_dynamic,

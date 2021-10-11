@@ -271,6 +271,7 @@ struct SessionData : lib::task::ParentResource {
     lib::debug_camera::State debug_camera_prev;
     glm::vec3 sun_position_xy;
     float sun_intensity;
+    float luminance_moving_average;
     float probe_depth_sharpness;
     float probe_normal_bias;
     engine::common::ubo::Flags ubo_flags;

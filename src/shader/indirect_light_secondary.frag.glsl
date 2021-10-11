@@ -26,7 +26,7 @@ void main() {
 
   // @Cleanup: share this code with other L2 passes, they have a lot in common.
   uvec2 texel_coord = uvec2(
-    (position * 0.5 + 0.5) * frame.data.probe.secondary_gbuffer_texel_size
+    (position * 0.5 + 0.5) * frame.data.secondary_gbuffer_texel_size
   );
   // Truncated, otherwise would need to subtract 0.5.
 

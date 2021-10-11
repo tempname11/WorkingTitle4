@@ -73,6 +73,7 @@ struct Data : lib::task::ParentResource {
   // we could just skip the protection. does this cost much? something to think about.
   lib::gfx::Allocator allocator_dedicated;
   lib::gfx::Allocator allocator_shared;
+  lib::gfx::Allocator allocator_host;
 
   lib::gfx::multi_alloc::Instance multi_alloc; // now deprecated
 
@@ -149,6 +150,11 @@ struct Data : lib::task::ParentResource {
   struct Finalpass {
     std::vector<VkDescriptorSet> descriptor_sets;
   } finalpass;
+
+  struct Readback {
+    std::vector<lib::gfx::allocator::Buffer> luminance_buffers;
+    std::vector<glm::detail::hdata *> luminance_pointers;
+  } readback;
 };
 
 } // namespace

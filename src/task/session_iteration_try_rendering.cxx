@@ -267,6 +267,17 @@ TASK_DECL {
     "display.allocator_shared"
   );
 
+  lib::gfx::allocator::init(
+    &rendering->allocator_host,
+    &core->properties.memory,
+    VkMemoryPropertyFlagBits(0
+      | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+    ),
+    1024, // this is currently only used for luminance readback, so should be small
+    "display.allocator_host"
+  );
+
   engine::rendering::intra::secondary_zbuffer::init_ddata(
     &rendering->zbuffer2,
     &rendering->swapchain_description,
@@ -457,13 +468,18 @@ TASK_DECL {
               .height = rendering->swapchain_description.image_extent.height,
               .depth = 1,
             },
-            .mipLevels = 1,
+            .mipLevels = lib::gfx::utilities::mip_levels(
+              rendering->swapchain_description.image_extent.width,
+              rendering->swapchain_description.image_extent.height
+            ),
             .arrayLayers = 1,
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .tiling = VK_IMAGE_TILING_OPTIMAL,
             .usage = (0
               | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
               | VK_IMAGE_USAGE_SAMPLED_BIT
+              | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+              | VK_IMAGE_USAGE_TRANSFER_DST_BIT
             ),
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -787,6 +803,31 @@ TASK_DECL {
     &vulkan->finalpass,
     &vulkan->core
   );
+
+  { // luminance readback
+    VkBufferCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = 8, // see LBuffer format
+      .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+    for (size_t i = 0; i < swapchain_image_count; i++) {
+      auto buffer = lib::gfx::allocator::create_buffer(
+        &rendering->allocator_host,
+        core->device,
+        core->allocator,
+        &core->properties.basic,
+        &info
+      );
+      rendering->readback.luminance_buffers.push_back(buffer);
+
+      auto ptr = (glm::detail::hdata *) lib::gfx::allocator::get_host_mapping(
+        &rendering->allocator_host,
+        buffer.id
+      ).mem;
+      rendering->readback.luminance_pointers.push_back(ptr);
+    }
+  }
 
   { ZoneScopedN(".imgui_backend");
     { ZoneScopedN(".setup_command_pool");

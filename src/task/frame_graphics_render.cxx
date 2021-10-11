@@ -340,8 +340,8 @@ void record_finalpass(
     0, nullptr
   );
   vkCmdDispatch(cmd,
-    swapchain_description->image_extent.width,
-    swapchain_description->image_extent.height,
+    swapchain_description->image_extent.width / 8, // :FinalPassWorkGroupSize
+    swapchain_description->image_extent.height / 8,
     1
   );
 }

@@ -503,6 +503,16 @@ TASK_DECL {
       ImGuiX::Checkbox32("Disable indirect lighting", &it->disable_indirect_lighting);
       ImGuiX::Checkbox32("Disable indirect shadows", &it->disable_indirect_shadows);
       ImGuiX::Checkbox32("Disable indirect bounces", &it->disable_indirect_bounces);
+      ImGuiX::Checkbox32("Disable eye adaptation", &it->disable_eye_adaptation);
+      ImGui::SameLine();
+      ImGui::SliderFloat(
+        "Avg.",
+        &state->luminance_moving_average,
+        0.001f,
+        1000.0f,
+        "%.3f",
+        ImGuiSliderFlags_Logarithmic
+      );
       ImGuiX::Checkbox32("Disable sky", &it->disable_sky);
       ImGuiX::Checkbox32("Debug A", &it->debug_A);
       ImGuiX::Checkbox32("Debug B", &it->debug_B);

@@ -9,7 +9,7 @@
   Ref<SessionData> session, \
   Use<SessionData::Vulkan::Core> core, \
   Use<lib::gpu_signal::Support> gpu_signal_support, \
-  Own<VkSemaphore> frame_rendered_semaphore, \
+  Own<VkSemaphore> frame_finished_semaphore, \
   Use<engine::display::Data::FrameInfo> frame_info \
 )
 

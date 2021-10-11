@@ -165,6 +165,12 @@ void cleanup(
     core->allocator
   );
 
+  lib::gfx::allocator::deinit(
+    &data->allocator_host,
+    core->device,
+    core->allocator
+  );
+
   vkDestroyRenderPass(
     core->device,
     data->imgui_backend.render_pass,

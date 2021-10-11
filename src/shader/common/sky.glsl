@@ -141,6 +141,10 @@ vec3 sky(vec3 ray, vec3 sun_direction, vec3 sun_illuminance) {
   );
   result = mix(result, vec3(0.0), nadir_weight);
 
+  if (any(isnan(result)) || any(isinf(result))) {
+    return vec3(0.0);
+  }
+
   return result;
 }
 

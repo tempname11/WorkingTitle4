@@ -5,6 +5,7 @@ TASK_DECL {
   {
     std::scoped_lock lock(presentation_failure_state->mutex);
     if (presentation_failure_state->failure) {
+      data->cmd = VK_NULL_HANDLE;
       return;
     }
   }
