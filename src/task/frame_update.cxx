@@ -23,8 +23,8 @@ TASK_DECL {
       session_state->taa_jitter_offset = glm::vec2(0.0f);
     } else {
       auto t = glm::vec2(
-        halton(frame_info->number, 2),
-        halton(frame_info->number, 3)
+        halton(frame_info->number % 192, 2),
+        halton(frame_info->number % 192, 3)
       );
       session_state->taa_jitter_offset = t - 0.5f;
     }
@@ -46,9 +46,12 @@ TASK_DECL {
     // @Cleanup constants
     auto w = std::min(elapsed_sec / 2.0, 1.0);
     auto p = 4.0;
-    session_state->luminance_moving_average = std::pow((0.0
-      + (1.0 - w) * std::pow(session_state->luminance_moving_average, 1.0 / p)
-      + /*****/ w * std::pow(r * 0.21 + g * 0.72 + b * 0.07, 1.0 / p)
-    ), p);
+    session_state->luminance_moving_average = std::max(
+      0.001,
+      std::pow((0.0
+        + (1.0 - w) * std::pow(session_state->luminance_moving_average, 1.0 / p)
+        + /*****/ w * std::pow(r * 0.21 + g * 0.72 + b * 0.07, 1.0 / p)
+      ), p)
+    );
   }
 }

@@ -61,7 +61,6 @@
 - Over time, performance drops, but swapchain recreation (via window resize) helps.
 
 ### minor issues
-- TAA flickers a bit.
 - r11g11b10 probe_light_map has yellow tint on saturation
 - fullscreen toggle: weird visual jump
 - fullscreen toggle: always primary monitor (want the one which the window "belongs" to)

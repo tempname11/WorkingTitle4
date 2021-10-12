@@ -51,13 +51,13 @@ struct Frame {
   glm::mat4 projection_prev_inverse;
   glm::mat4 view_inverse;
   glm::mat4 view_prev_inverse;
-  alignas(16) glm::vec2 secondary_gbuffer_texel_size;
+  glm::vec2 secondary_gbuffer_texel_size;
   glm::vec2 final_image_texel_size;
-  alignas(16) glm::vec3 luminance_average;
+  float luminance_moving_average;
   alignas(16) glm::vec3 sky_sun_direction;
   alignas(16) glm::vec3 sky_intensity;
   uint32_t is_frame_sequential;
-  alignas(16) Flags flags;
+  Flags flags;
   alignas(16) ProbeInfo probe_info;
   alignas(16) uint32_t end_marker;
 };

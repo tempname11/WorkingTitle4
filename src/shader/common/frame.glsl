@@ -48,7 +48,7 @@ struct FrameData {
   mat4 view_prev_inverse; 
   vec2 secondary_gbuffer_texel_size;
   vec2 final_image_texel_size;
-  vec3 luminance_average;
+  float luminance_moving_average;
   vec3 sky_sun_direction;
   vec3 sky_intensity;
   bool is_frame_sequential;

@@ -39,7 +39,7 @@ TASK_DECL {
     );
     glm::mat4 jitter = glm::translate(
       glm::mat4(1.0),
-      1.0f * glm::vec3(
+      session_state->taa_distance * glm::vec3(
         session_state->taa_jitter_offset.x / swapchain_description->image_extent.width,
         session_state->taa_jitter_offset.y / swapchain_description->image_extent.height,
         0.0
@@ -47,7 +47,7 @@ TASK_DECL {
     );
     glm::mat4 jitter_prev = glm::translate(
       glm::mat4(1.0),
-      1.0f * glm::vec3(
+      session_state->taa_distance * glm::vec3(
         session_state->taa_jitter_offset_prev.x / swapchain_description->image_extent.width,
         session_state->taa_jitter_offset_prev.y / swapchain_description->image_extent.height,
         0.0
@@ -98,7 +98,7 @@ TASK_DECL {
         swapchain_description->image_extent.width,
         swapchain_description->image_extent.height
       ),
-      .luminance_average = glm::vec3(session_state->luminance_moving_average),
+      .luminance_moving_average = session_state->luminance_moving_average,
       .sky_sun_direction = sun_direction,
       .sky_intensity = sun_intensity,
       .is_frame_sequential = frame_info->is_sequential,

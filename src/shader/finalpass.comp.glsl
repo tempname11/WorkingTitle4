@@ -17,19 +17,14 @@ layout(
   local_size_z = 1
 ) in;
 
-const uint N_MOTION_SAMPLES = 16;
-
-const float map_epsilon = 1e-10;
+const uint N_MOTION_SAMPLES = 32;
 
 vec3 map(vec3 l) {
-  return l / (frame.data.luminance_average + l + map_epsilon);
+  return l / (frame.data.luminance_moving_average + l);
 }
 
 vec3 unmap(vec3 p) {
-  float epsilon = 1e-10;
-  vec3 value = p * frame.data.luminance_average / (1.0 - p);
-  value = min(vec3(1.0 / map_epsilon), value);
-  return value;
+  return p * frame.data.luminance_moving_average / (1.0 - p);
 }
 
 void main() {
@@ -42,7 +37,7 @@ void main() {
 
   vec2 position = (
     (vec2(gl_GlobalInvocationID.xy) + 0.5)
-      / (gl_NumWorkGroups.xy * gl_WorkGroupSize.xy)
+      / frame.data.final_image_texel_size
   );
 
   vec3 m = map(imageLoad(
@@ -105,7 +100,7 @@ void main() {
       m_t = min(m_t, 0.5 * (x_max + y_max));
       m_t = max(m_t, 0.5 * (x_min + y_min));
 
-      m = (1.0 * m + 99.0 * m_t) / 100.0; // @Cleanup
+      m = (1.0 * m + 31.0 * m_t) / 32.0; // @Cleanup
 
       imageStore(
         lbuffer,
@@ -118,9 +113,7 @@ void main() {
   memoryBarrierImage();
 
   if (!frame.data.flags.disable_motion_blur) {
-    // In linear color space.
-
-    vec4 sum = vec4(unmap(m), 1.0);
+    vec4 sum = vec4(m, 1.0);
     for (uint i = 1; i <= N_MOTION_SAMPLES; i++) {
       vec2 p = mix(position, position_prev, float(i) / N_MOTION_SAMPLES);
       if (false
@@ -131,13 +124,13 @@ void main() {
       ) {
         break;
       }
-      sum.rgb += imageLoad(
+      sum.rgb += map(imageLoad(
         lbuffer,
         ivec2(p * frame.data.final_image_texel_size)
-      ).rgb;
+      ).rgb);
       sum.w += 1.0;
     }
-    m = map(sum.rgb / sum.w);
+    m = sum.rgb / sum.w;
   }
 
   imageStore(

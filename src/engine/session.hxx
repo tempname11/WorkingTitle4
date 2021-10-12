@@ -275,6 +275,7 @@ struct SessionData : lib::task::ParentResource {
     glm::vec3 sun_position_xy;
     float sun_intensity;
     float luminance_moving_average;
+    float taa_distance;
     float probe_depth_sharpness;
     float probe_normal_bias;
     engine::common::ubo::Flags ubo_flags;

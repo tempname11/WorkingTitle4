@@ -754,6 +754,7 @@ void setup(
     .debug_camera_prev = debug_camera,
     .sun_intensity = 5.0f,
     .luminance_moving_average = 0.3f,
+    .taa_distance = 1.0f,
     .probe_depth_sharpness = 10.0f,
     .probe_normal_bias = 0.001f,
   };
