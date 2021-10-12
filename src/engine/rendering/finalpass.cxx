@@ -19,7 +19,7 @@ void init_session_finalpass(
       },
       {
         .binding = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL,
       },
@@ -35,12 +35,14 @@ void init_session_finalpass(
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL,
       },
+      /*
       {
         .binding = 4,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL,
       },
+      */
       {
         .binding = 5,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -134,7 +136,7 @@ void init_session_finalpass(
       .addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE,
       .addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE,
     };
-    vkCreateSampler(
+    vkCreateSampler( // @Cleanup check result
       core->device,
       &create_info,
       core->allocator,
@@ -218,9 +220,9 @@ void init_rendering_finalpass(
         .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
       };
       VkDescriptorImageInfo lbuffer_info = {
-        .sampler = s_finalpass->sampler_lbuffer,
+        // .sampler = s_finalpass->sampler_lbuffer,
         .imageView = lbuffer->views[i],
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
       };
       VkDescriptorImageInfo lbuffer_prev_info = {
         .sampler = s_finalpass->sampler_lbuffer,
@@ -232,11 +234,13 @@ void init_rendering_finalpass(
         .imageView = zbuffer->views[i],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
+      /*
       VkDescriptorImageInfo zbuffer_prev_info = {
         .sampler = s_finalpass->sampler_lbuffer, // @Cleanup
         .imageView = zbuffer->views[i_prev],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
+      */
       VkDescriptorBufferInfo ubo_frame_info = {
         .buffer = common->stakes.ubo_frame[i].buffer,
         .offset = 0,
@@ -258,7 +262,7 @@ void init_rendering_finalpass(
           .dstBinding = 1,
           .dstArrayElement = 0,
           .descriptorCount = 1,
-          .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
           .pImageInfo = &lbuffer_info,
         },
         {
@@ -279,6 +283,7 @@ void init_rendering_finalpass(
           .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           .pImageInfo = &zbuffer_info,
         },
+        /*
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
           .dstSet = descriptor_sets[i],
@@ -288,6 +293,7 @@ void init_rendering_finalpass(
           .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           .pImageInfo = &zbuffer_prev_info,
         },
+        */
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
           .dstSet = descriptor_sets[i],

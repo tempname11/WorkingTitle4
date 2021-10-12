@@ -136,7 +136,7 @@ void init_sdata(
     VkSamplerCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
     };
-    vkCreateSampler(
+    vkCreateSampler( // @Cleanup check result
       core->device,
       &create_info,
       core->allocator,

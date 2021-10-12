@@ -217,7 +217,8 @@ struct SessionData : lib::task::ParentResource {
       VkPipelineLayout pipeline_layout; // shared with prepass!
       VkRenderPass render_pass;
       VkPipeline pipeline;
-      VkSampler sampler_albedo;
+      VkSampler sampler_normal;
+      VkSampler sampler_biased;
     } gpass;
 
     struct LPass {
@@ -267,6 +268,8 @@ struct SessionData : lib::task::ParentResource {
     bool show_imgui_window_tools;
     bool show_imgui_window_flags;
     bool is_fullscreen;
+    glm::vec2 taa_jitter_offset;
+    glm::vec2 taa_jitter_offset_prev;
     lib::debug_camera::State debug_camera;
     lib::debug_camera::State debug_camera_prev;
     glm::vec3 sun_position_xy;

@@ -19,20 +19,13 @@ layout(push_constant) uniform VertexPushConstants {
   mat4 model;
 } constants;
 
-layout(set = 0, binding = 0) uniform Frame {
-  mat4 projection;
-  mat4 view;
-  mat4 projection_inverse;
-  mat4 view_inverse;
-  FrameFlags flags;
-  uint end_marker;
-} frame;
+layout(binding = 0) uniform Frame { FrameData data; } frame;
 
 void main() {
   // @Performance: combined `viewmodel` would obviously be faster
-  gl_Position = frame.projection * frame.view * constants.model * vec4(position, 1.0);
-  view_space_tangent = (frame.view * constants.model * vec4(tangent, 0.0)).xyz;
-  view_space_bitangent = (frame.view * constants.model * vec4(bitangent, 0.0)).xyz;
-  view_space_normal = (frame.view * constants.model * vec4(normal, 0.0)).xyz;
+  gl_Position = frame.data.projection * frame.data.view * constants.model * vec4(position, 1.0);
+  view_space_tangent = (frame.data.view * constants.model * vec4(tangent, 0.0)).xyz;
+  view_space_bitangent = (frame.data.view * constants.model * vec4(bitangent, 0.0)).xyz;
+  view_space_normal = (frame.data.view * constants.model * vec4(normal, 0.0)).xyz;
   out_uv = uv;
 }

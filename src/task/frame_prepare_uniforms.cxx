@@ -30,12 +30,31 @@ TASK_DECL {
   auto sun_intensity = session_state->sun_intensity * glm::vec3(1.0f);
 
   { ZoneScopedN("frame");
-    auto projection = lib::gfx::utilities::get_projection(
+    auto view = lib::debug_camera::to_view_matrix(&session_state->debug_camera);
+    auto view_prev = lib::debug_camera::to_view_matrix(&session_state->debug_camera_prev);
+
+    auto projection_base = lib::gfx::utilities::get_projection(
       float(swapchain_description->image_extent.width)
         / swapchain_description->image_extent.height
     );
-    auto view = lib::debug_camera::to_view_matrix(&session_state->debug_camera);
-    auto view_prev = lib::debug_camera::to_view_matrix(&session_state->debug_camera_prev);
+    glm::mat4 jitter = glm::translate(
+      glm::mat4(1.0),
+      1.0f * glm::vec3(
+        session_state->taa_jitter_offset.x / swapchain_description->image_extent.width,
+        session_state->taa_jitter_offset.y / swapchain_description->image_extent.height,
+        0.0
+      )
+    );
+    glm::mat4 jitter_prev = glm::translate(
+      glm::mat4(1.0),
+      1.0f * glm::vec3(
+        session_state->taa_jitter_offset_prev.x / swapchain_description->image_extent.width,
+        session_state->taa_jitter_offset_prev.y / swapchain_description->image_extent.height,
+        0.0
+      )
+    );
+    auto projection_prev = jitter_prev * projection_base;
+    auto projection = jitter * projection_base;
 
     auto some_world_offset = glm::vec3(0.5);
     // @Hack: make sure probes are not in the wall for voxel stuff
@@ -67,9 +86,11 @@ TASK_DECL {
 
     const engine::common::ubo::Frame data = {
       .projection = projection,
+      .projection_prev = projection_prev,
       .view = view,
       .view_prev = view_prev,
       .projection_inverse = glm::inverse(projection),
+      .projection_prev_inverse = glm::inverse(projection_prev),
       .view_inverse = glm::inverse(view),
       .view_prev_inverse = glm::inverse(view_prev),
       .secondary_gbuffer_texel_size = glm::vec2(engine::G2_TEXEL_SIZE),
@@ -88,7 +109,7 @@ TASK_DECL {
         .cascade_count = engine::PROBE_CASCADE_COUNT,
         .grid_size_z_factors = engine::PROBE_GRID_SIZE_Z_FACTORS,
         .cascade_count_factors = engine::PROBE_CASCADE_COUNT_FACTORS,
-        // .cascades = cascades, // see below
+        // .cascades = cascades, // this is done below
         .grid_world_position_delta_c0 = engine::PROBE_WORLD_DELTA_C0,
         .light_map_texel_size = glm::vec2(
           engine::rendering::intra::probe_light_map::WIDTH,

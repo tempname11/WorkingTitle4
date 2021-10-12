@@ -44,9 +44,11 @@ struct ProbeInfo {
 
 struct Frame {
   glm::mat4 projection;
+  glm::mat4 projection_prev;
   glm::mat4 view;
   glm::mat4 view_prev;
   glm::mat4 projection_inverse;
+  glm::mat4 projection_prev_inverse;
   glm::mat4 view_inverse;
   glm::mat4 view_prev_inverse;
   alignas(16) glm::vec2 secondary_gbuffer_texel_size;

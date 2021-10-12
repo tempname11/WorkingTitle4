@@ -375,8 +375,9 @@ void init_session_gpass(
       assert(result == VK_SUCCESS);
     }
   }
-  VkSampler sampler_albedo;
-  { ZoneScopedN("sampler_albedo");
+  VkSampler sampler_normal;
+  VkSampler sampler_biased;
+  { ZoneScopedN("samplers");
     VkSamplerCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
       .magFilter = VK_FILTER_LINEAR,
@@ -386,12 +387,25 @@ void init_session_gpass(
       .maxAnisotropy = core->properties.basic.limits.maxSamplerAnisotropy,
       .maxLod = VK_LOD_CLAMP_NONE,
     };
-    vkCreateSampler(
-      core->device,
-      &create_info,
-      core->allocator,
-      &sampler_albedo
-    );
+    {
+      auto result = vkCreateSampler(
+        core->device,
+        &create_info,
+        core->allocator,
+        &sampler_normal
+      );
+      assert(result == VK_SUCCESS);
+    }
+    {
+      create_info.mipLodBias = -1.0f;
+      auto result = vkCreateSampler(
+        core->device,
+        &create_info,
+        core->allocator,
+        &sampler_biased
+      );
+      assert(result == VK_SUCCESS);
+    }
   }
   *out = {
     .descriptor_set_layout_frame = descriptor_set_layout_frame,
@@ -399,7 +413,8 @@ void init_session_gpass(
     .pipeline_layout = pipeline_layout,
     .render_pass = render_pass,
     .pipeline = pipeline,
-    .sampler_albedo = sampler_albedo,
+    .sampler_normal = sampler_normal,
+    .sampler_biased = sampler_biased,
   };
 }
 
@@ -410,7 +425,12 @@ void deinit_session_gpass(
   ZoneScoped;
   vkDestroySampler(
     core->device,
-    it->sampler_albedo,
+    it->sampler_normal,
+    core->allocator
+  );
+  vkDestroySampler(
+    core->device,
+    it->sampler_biased,
     core->allocator
   );
   vkDestroyDescriptorSetLayout(

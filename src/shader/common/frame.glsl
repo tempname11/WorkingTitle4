@@ -39,9 +39,11 @@ struct FrameProbe {
 
 struct FrameData {
   mat4 projection;
+  mat4 projection_prev;
   mat4 view;
   mat4 view_prev;
   mat4 projection_inverse;
+  mat4 projection_prev_inverse;
   mat4 view_inverse; 
   mat4 view_prev_inverse; 
   vec2 secondary_gbuffer_texel_size;

@@ -1,4 +1,15 @@
 #include "frame_update.hxx"
+ 
+float halton(int i, int b) {
+  float f = 1.0;
+  float r = 0.0;
+  while (i > 0) {
+    f = f / float(b);
+    r = r + f * float(i % b);
+    i = i / b;
+  }
+  return r;
+}
 
 TASK_DECL {
   ZoneScoped;
@@ -7,6 +18,17 @@ TASK_DECL {
 
   double elapsed_sec = double(frame_info->elapsed_ns) / (1000.0 * 1000.0 * 1000.0);
   if (elapsed_sec > 0) {
+    session_state->taa_jitter_offset_prev = session_state->taa_jitter_offset;
+    if (session_state->ubo_flags.disable_TAA) {
+      session_state->taa_jitter_offset = glm::vec2(0.0f);
+    } else {
+      auto t = glm::vec2(
+        halton(frame_info->number, 2),
+        halton(frame_info->number, 3)
+      );
+      session_state->taa_jitter_offset = t - 0.5f;
+    }
+
     session_state->debug_camera_prev = session_state->debug_camera;
     lib::debug_camera::update(
       &session_state->debug_camera,

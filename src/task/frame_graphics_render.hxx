@@ -9,6 +9,7 @@
 #define TASK_DECL void frame_graphics_render( \
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx, \
   Ref<SessionData> session, \
+  Use<SessionData::State> session_state, \
   Use<SessionData::Vulkan::Core> core, \
   Use<engine::display::Data::SwapchainDescription> swapchain_description, \
   Use<engine::display::Data::CommandPools> command_pools, \

@@ -15,6 +15,7 @@
 
 void record_geometry_draw_commands(
   VkCommandBuffer cmd,
+  Use<SessionData::State> session_state,
   SessionData::Vulkan::Core *core,
   engine::common::SharedDescriptorPool *descriptor_pool,
   SessionData::Vulkan::GPass* s_gpass,
@@ -47,21 +48,27 @@ void record_geometry_draw_commands(
     }
   }
 
+  auto sampler = (
+    session_state->ubo_flags.debug_A
+      ? s_gpass->sampler_normal
+      : s_gpass->sampler_biased
+  );
+
   for (size_t i = 0; i < render_list->items.size(); i++) {
     auto &item = render_list->items[i];
     auto descriptor_set = descriptor_sets[i];
     VkDescriptorImageInfo albedo_image_info = {
-      .sampler = s_gpass->sampler_albedo,
+      .sampler = sampler,
       .imageView = item.texture_albedo_view,
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
     VkDescriptorImageInfo normal_image_info = {
-      .sampler = s_gpass->sampler_albedo, // same for now
+      .sampler = sampler,
       .imageView = item.texture_normal_view,
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
     VkDescriptorImageInfo romeao_image_info = {
-      .sampler = s_gpass->sampler_albedo, // same for now
+      .sampler = sampler,
       .imageView = item.texture_romeao_view,
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
@@ -123,6 +130,7 @@ void record_geometry_draw_commands(
 
 void record_prepass(
   VkCommandBuffer cmd,
+  Use<SessionData::State> session_state,
   SessionData::Vulkan::Core *core,
   engine::common::SharedDescriptorPool *descriptor_pool,
   engine::display::Data::Prepass *prepass,
@@ -171,6 +179,7 @@ void record_prepass(
   );
   record_geometry_draw_commands(
     cmd,
+    session_state,
     core,
     descriptor_pool,
     s_gpass,
@@ -181,6 +190,7 @@ void record_prepass(
 
 void record_gpass(
   VkCommandBuffer cmd,
+  Use<SessionData::State> session_state,
   SessionData::Vulkan::Core *core,
   engine::common::SharedDescriptorPool *descriptor_pool,
   engine::display::Data::GPass *gpass,
@@ -229,6 +239,7 @@ void record_gpass(
   );
   record_geometry_draw_commands(
     cmd,
+    session_state,
     core,
     descriptor_pool,
     s_gpass,
@@ -634,6 +645,8 @@ void record_barrier_before_lpass(
 void record_barrier_before_finalpass(
   VkCommandBuffer cmd,
   engine::display::Data::FrameInfo *frame_info,
+  engine::display::Data::SwapchainDescription *swapchain_description,
+  engine::display::Data::LBuffer *lbuffer,
   engine::display::Data::FinalImage *final_image
 ) {
   ZoneScoped;
@@ -666,6 +679,43 @@ void record_barrier_before_finalpass(
     sizeof(barriers) / sizeof(*barriers),
     barriers
   );
+
+  if (!frame_info->is_sequential) {
+    auto inflight_index_prev = (
+      (frame_info->inflight_index + swapchain_description->image_count - 1) %
+      swapchain_description->image_count
+    );
+
+    VkImageMemoryBarrier barriers[] = {
+      {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = 0,
+        .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = lbuffer->stakes[inflight_index_prev].image,
+        .subresourceRange = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .baseMipLevel = 0,
+          .levelCount = 1,
+          .baseArrayLayer = 0,
+          .layerCount = 1,
+        },
+      },
+    };
+    vkCmdPipelineBarrier(
+      cmd,
+      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      0,
+      0, nullptr,
+      0, nullptr,
+      sizeof(barriers) / sizeof(*barriers),
+      barriers
+    );
+  }
 }
 
 void record_barrier_lpass_finalpass(
@@ -678,9 +728,9 @@ void record_barrier_lpass_finalpass(
     {
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
       .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-      .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+      .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
       .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-      .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      .newLayout = VK_IMAGE_LAYOUT_GENERAL,
       .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .image = lbuffer->stakes[frame_info->inflight_index].image,
@@ -1246,6 +1296,7 @@ TASK_DECL {
   { TracyVkZone(core->tracy_context, cmd, "prepass");
     record_prepass(
       cmd,
+      session_state,
       core.ptr,
       descriptor_pool,
       prepass.ptr,
@@ -1273,6 +1324,7 @@ TASK_DECL {
   { TracyVkZone(core->tracy_context, cmd, "gpass");
     record_gpass(
       cmd,
+      session_state,
       core.ptr,
       descriptor_pool,
       gpass.ptr,
@@ -1486,6 +1538,8 @@ TASK_DECL {
   record_barrier_before_finalpass(
     cmd,
     frame_info.ptr,
+    swapchain_description.ptr,
+    lbuffer.ptr,
     final_image.ptr
   );
 

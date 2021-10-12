@@ -209,7 +209,7 @@ void init_sdata(
       .maxAnisotropy = core->properties.basic.limits.maxSamplerAnisotropy,
       .maxLod = VK_LOD_CLAMP_NONE,
     };
-    vkCreateSampler(
+    vkCreateSampler( // @Cleanup check result
       core->device,
       &create_info,
       core->allocator,

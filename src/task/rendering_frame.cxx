@@ -127,6 +127,7 @@ TASK_DECL {
     task::create(
       frame_graphics_render,
       session.ptr,
+      &session->state,
       &session->vulkan.core,
       &data->swapchain_description,
       &data->command_pools,

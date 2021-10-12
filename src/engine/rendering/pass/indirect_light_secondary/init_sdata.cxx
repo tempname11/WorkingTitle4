@@ -368,7 +368,7 @@ void init_sdata(
       .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
       .maxLod = VK_LOD_CLAMP_NONE,
     };
-    vkCreateSampler(
+    vkCreateSampler( // @Cleanup check result
       core->device,
       &create_info,
       core->allocator,
