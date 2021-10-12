@@ -236,7 +236,11 @@ vec3 get_indirect_luminance(
         variance / (variance + diff * diff)
       );
 
-      illuminance *= clamp(pow(chebyshev, 3.0), 0.0, 1.0); // @Cleanup :MoveToUniform
+      if (frame_data.flags.debug_A) {
+        illuminance *= clamp(pow(chebyshev, 3.0), 0.0, 1.0); // @Cleanup :MoveToUniform
+      } else {
+        weight *= clamp(pow(chebyshev, 3.0), 0.0, 1.0); // @Cleanup :MoveToUniform
+      }
     }
 
     // "smooth backface" produced weird grid-like artifacts,
