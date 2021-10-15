@@ -1,0 +1,234 @@
+**Working Title**
+
+
+
+Introduction
+===
+
+This is a technical write-up for the project I've been working on in 2021.
+It's intended for three types of readers:
+
+* For friends and anyone else who's curious of what I've been doing lately.
+* For myself, in case I'll forget some of the details later on.
+* For potential colleagues, as "proof-of-competence".
+
+Although I will try my best to explain things in simple terms,
+there's a limit to that. The reader is expected to know,
+or at least be willing to look up some mathematical and programming jargon.
+
+To get you started, here'a short video reel
+highlighting what the project is about:
+
+![??? Demo reel](https://www.youtube.com/watch?v=dQw4w9WgXcQ)
+
+In short, it is a real-time 3D graphics engine in development.
+If that does not tell you much, one could say it's just a bunch of code
+written in C++ and GLSL, that happens to compile into computer programs
+that, when run on appropriate hardware, produce interactive,
+nice-looking output like the one in the video above.
+
+A few technical details
+---
+When talking about graphics engines, it's customary to provide
+some technical information, which I will do here.
+You can freely skip this section if you're not a programmer, these are just
+implementation details.
+
+As stated above, the project is written in (a constrained subset of) C++,
+with GLSL used for GPU shader programs.
+It uses the [Vulkan API](https://www.vulkan.org/) to interface with
+graphics hardware. It also uses various extensions to Vulkan,
+which are well-supported on high-end consumer graphics hardware
+from NVIDIA and AMD.
+
+The source code is currently closed, although I will share it under
+special circumstances.
+It currently compiles under MSVC into x64 Windows executables, but there's
+nothing in principle preventing it from working under Linux.
+(I have not gotten around to that yet)
+
+It also uses some helper libraries:
+
+* [GLM](http://glm.g-truc.net/) for vector math.
+* [GLFW](https://www.glfw.org/) for windowing needs.
+* [Dear ImGui](https://github.com/ocornut/imgui) for UI.
+* [STB](https://github.com/nothings/stb) for working with image formats.
+* [Tracy](https://github.com/wolfpld/tracy) for profiling.
+* [tinygltf](https://github.com/syoyo/tinygltf) to work with the GLTF format.
+
+Furthermore, even though all of the actual rendering code
+is written from scratch, the ideas behind it are well-known.
+It takes inspiration from public talks, papers, and other codebases,
+which I will try to reference where appropriate.
+
+
+This text
+---
+The goal of this text is to convey the ideas and intuition behind the code
+in a lucid, accessible format.
+
+I strive to make the explanations throughout this text as accurate as possible.
+However, it's always possible there are inaccuracies in the text itself,
+or mistakes in my current understanding of the topics.
+Sometimes there may be assumptions I have not made explicit.
+If you notice that something does not make sense,
+email me at ??? and we'll try to figure it out.
+
+Also, note that since different sections are aimed at
+different levels of familiarity with the subject,
+at some point they will likely seem too easy or too hard for the reader.
+This is to be expected.
+
+Finally, [Markdeep](https://casual-effects.com/markdeep/) was used for
+writing and publishing this text. I think it's pretty great, try it out!
+
+
+Problem statement
+---
+Let's talk about what the project is actually trying to accomplish.
+In a perfect world, we'd be aiming for a full simulation of the physics
+of light that produces photorealistic images, as fast as the viewer's eye
+can see them, while responding to their inputs in real time.
+
+Obviously, that's not really possible, so we need to streamline
+the problem quite a bit. There are two main considerations for
+choosing which parts to simplify:
+
+* Will it make a big difference in viewer perception of the result?
+* Is it fast to compute on actual hardware currently available?
+
+In a way, it's a balancing act, trading between accuracy and speed.
+The choices made are discussed in the section Model of Light.
+The implementation of that chosen model with actual computations is discussed
+in the section Anatomy of a Frame.
+
+Finally, there's also an additional consideration:
+
+* How labor-intensive is it to implement?
+
+Since there's always *more stuff* to do, and finite time to do it,
+the scope has to be limited at some point.
+
+
+
+Model of Light
+===
+
+In modern physics, visible light can be most accurately viewed simply as
+electromagnetic radiation with a wavelength in the range to which
+the human eye responds. While there are some effects which can only
+be described by quantum electrodynamics, they are far too small-scale
+and the theory is not very useful for our purposes.
+
+*Classical electrodynamics*, and it's branch of *optics* fare better, being
+suitable to model most of the phenomena we encounter during our everyday lives.
+However, they are still too complex in the general case.
+
+
+Common computer graphics assumptions
+---
+
+One big simplification we will make is informed by the fact that human eye has
+three varieties of cone cells (the receptors responsible for central vision).
+Each of these varieties responds to different ranges of visible light, and are
+perceived by us as red, green and blue light. So, rather than considering a
+continuous spectrum of wavelengths, we pick three values from it,
+and only consider waves with these three wavelengths.
+This prevents us from modeling effects like *dispersion*.
+
+The second big simplification is to disregard effects which
+manifest when the wavelength is comparable in size to structures with which
+light interacts, e.g. *diffraction* or *interference*. Essentially, this allows
+us not to care about the phase of the wave,
+and instead view light propagation as *rays*.
+
+Now, we still haven't talked about anything that light interacts *with*,
+or even why there's any light in our simplified world at all. 
+
+
+Geometry
+---
+
+Let's start with matter. First, we observe that light is always travelling in 
+some medium, and generally may interact with it. Sometimes those interactions
+are major (e.g. scattering in clouds, or even just hitting an obstacle),
+and sometimes we can ignore them (e.g. air, which can in simple cases be
+considered the same as vacuum in terms of light propagation). The most
+significant interaction for the human perception is the boundary
+changes between different materials, where light can reflect (but also
+refract or be absorbed).
+
+The reflection, or light rays "bouncing" off a surface
+is how we see most of the objects in our world. In general, material boundaries
+are not simple geometrical objects, however, for computational purposed, we
+want to model them as such. The most common approaach in CG is to separate the
+macro-level interaction (i.e. the shape of objects), and the micro-level
+interaction.
+
+On the macro level, the dominant CG approach is bulding a triangle mesh that
+follows our surface. If the triangles are sufficiently small, this works well
+for many objects. Essentially, this solves the problem of computing *where*
+our ray hits the surface, but not how it behaves after that.
+
+On the micro level, we can say say that some light will enter the surface
+and scatter, and some light will bounce off. For the first case, the simplest
+approach is to assume some light will be absorbed, and some will exit
+our surface in random directions, uniformly distributed across the hemisphere.
+This is called diffuse, or Lambertian shading, and requires only the knowledge
+of how much light is absorbed (for each wave length).
+
+For the light that bounces off, if the surface was perfectly flat (i.e. a
+mirror), it would reflect light at an angle of incidence equalling
+the angle of reflection. Most materials are not like that, and a good intuitive
+model is microfacets. Essentially, we say that at micro level, the surface
+consists of many small flat sections. Rougher surfaces correspond to a greater
+variance in the facet orientation. The result is outgoing rays being
+distributed non-uniformly across all directions. A popular approximation
+the this distribution is the [Cook-Torrance
+model](https://inst.eecs.berkeley.edu/~cs283/sp13/lectures/cookpaper.pdf).
+For this model, input parameters would be it's *roughness*,
+and if the material is metallic or not.
+
+
+Sources
+---
+
+While in the real world light is generally emitted by matter in some kind of
+energetic state, two kinds of sources are very obvious to modern humans:
+the sun and the electric bulb. In computer graphics, there is a long standing
+tradition of modeling those with the *directional light*,
+and the *point light* respectively. Both don't model the size of the source,
+with point light assuming it to be very small,
+and the directional light it to be very far away. 
+
+One other imporant thing to note is that light is additive
+under our assumptions. That means we can consider each light source
+independently, and sum the results later on.
+
+
+Anatomy of a Frame
+===
+Let's dive into how a single frame is rendered.
+
+??? a big diagram
+
+Geometry
+---
+Direct light
+---
+Indirect light
+---
+Post effects
+---
+??? HDR
+??? TAA
+??? Motion blur
+
+<!-- Markdeep: -->
+<style class="fallback">body{visibility:hidden}</style>
+<style class="fallback">body{white-space:pre}</style>
+<style class="fallback">body{font-family:monospace}</style>
+<script src="markdeep.min.js"></script>
+<script src="https://casual-effects.com/markdeep/latest/markdeep.min.js?">
+</script><script>window.alreadyProcessedMarkdeep
+||(document.body.style.visibility="visible")</script>
