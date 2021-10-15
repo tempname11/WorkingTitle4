@@ -84,7 +84,8 @@ void main() {
     result = sky(
       probe_raydir,
       frame.data.sky_sun_direction,
-      frame.data.sky_intensity
+      frame.data.sky_intensity,
+      false /* show_sun */
     );
     if (frame.data.flags.disable_sky) {
       result *= 0.0;

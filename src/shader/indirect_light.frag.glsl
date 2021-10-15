@@ -32,7 +32,8 @@ void main() {
     result = sky(
       target_world,
       frame.data.sky_sun_direction,
-      frame.data.sky_intensity
+      frame.data.sky_intensity,
+      true /* show_sun */
     );
     if (frame.data.flags.disable_sky) {
       result *= 0.0;

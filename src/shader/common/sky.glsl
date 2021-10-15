@@ -3,18 +3,19 @@
 
 #include "constants.glsl"
 
-vec3 sky(vec3 ray, vec3 sun_direction, vec3 sun_illuminance) {
+vec3 sky(vec3 ray, vec3 sun_direction, vec3 sun_illuminance, bool show_sun) {
   // Ad hoc stuff that looks okay.
 
   vec3 result = (
     (vec3(0.2, 0.2, 0.9) + 0.05 * ray)
-      * sun_illuminance / 5.0
+      * sun_illuminance / 10.0
+      * pow(max(0.0, sun_direction.z), 4.0)
       * (1.5 + dot(ray, sun_direction))
-    + vec3(1.0)
+    + vec3(show_sun ? 1.0 : 0.0)
       * sun_illuminance / 2.0
       * pow(
         max(0.0, dot(ray, sun_direction)),
-        50.0
+        200.0
       )
   );
   return result;
