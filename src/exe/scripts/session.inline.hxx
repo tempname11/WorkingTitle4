@@ -1,0 +1,68 @@
+#pragma once
+#include <semaphore>
+#include <src/lib/task.hxx>
+#include "common.inline.hxx"
+
+void Ctrl::run() {} // ignore
+
+void _quit(
+  lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
+  Ref<SessionData::FrameControl> fc,
+  Own<SessionData::GLFW> glfw
+) {
+  glfwSetWindowShouldClose(glfw->window, 1);
+  {
+    auto lock = std::scoped_lock(fc->mutex);
+    fc->allowed_count = 1;
+    if (fc->signal_allowed != nullptr) {
+      lib::task::signal(ctx->runner, fc->signal_allowed);
+    }
+  }
+}
+
+void _interactive(
+  lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
+  Ref<SessionData::FrameControl> fc,
+  Own<SessionData::State> state,
+  Own<SessionData::GLFW> glfw
+) {
+  state->ignore_glfw_events = false;
+  glfwShowWindow(glfw->window);
+  {
+    auto lock = std::scoped_lock(fc->mutex);
+    fc->allowed_count = SIZE_MAX / 2; // prevent overflow on +=
+    if (fc->signal_allowed != nullptr) {
+      lib::task::signal(ctx->runner, fc->signal_allowed);
+    }
+  }
+}
+
+struct CtrlSession : Ctrl {
+  SessionData *session;
+
+  Waitable allow_frames(size_t count) {
+    auto fc = &session->frame_control;
+    auto lock = std::scoped_lock(fc->mutex);
+    fc->allowed_count += count;
+    if (fc->signal_allowed != nullptr) {
+      lib::task::signal(ctx->runner, fc->signal_allowed);
+      fc->signal_allowed = nullptr;
+    }
+
+    assert(fc->signal_done == nullptr); // @Incomplete
+    fc->signal_done = lib::task::create_yarn_signal();
+
+    return wait_for_signal(fc->signal_done);
+  }
+
+  void run();
+  void run_decorated() {
+    task(engine::session::setup, &session);
+    run();
+    if (1) {
+      task(_interactive, &session->frame_control, &session->state, &session->glfw);
+    } else {
+      task(_quit, &session->frame_control, &session->glfw);
+    }
+  }
+};

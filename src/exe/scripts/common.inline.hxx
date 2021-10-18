@@ -31,7 +31,7 @@ struct Waitable {
   }
 };
 
-void release_semaphore(
+void _release_semaphore(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Own<std::binary_semaphore> semaphore
 ) {
@@ -44,7 +44,7 @@ struct Ctrl {
 
   Waitable wait_for_signal(lib::Task *signal) {
     auto semaphore = new std::binary_semaphore(0);
-    auto after = lib::task::create(release_semaphore, semaphore);
+    auto after = lib::task::create(_release_semaphore, semaphore);
     lib::task::inject(ctx->runner, {}, {
       .new_dependencies = {
         { signal, after },
@@ -53,9 +53,9 @@ struct Ctrl {
     return Waitable(semaphore);
   }
 
-  Waitable add(lib::Task *task) {
+  Waitable task(lib::Task *task) {
     auto semaphore = new std::binary_semaphore(0);
-    auto after = lib::task::create(release_semaphore, semaphore);
+    auto after = lib::task::create(_release_semaphore, semaphore);
     lib::task::inject(ctx->runner, { task }, {
       .new_dependencies = {
         { task, after },
@@ -65,9 +65,9 @@ struct Ctrl {
   }
 
   template <typename... Args>
-  Waitable create(Args... args) {
+  Waitable task(Args... args) {
     auto task = lib::task::create(args...);
-    return add(task);
+    return Ctrl::task(task);
   }
 
   void forget(Waitable& w) {
@@ -79,23 +79,24 @@ struct Ctrl {
   }
 
   void run();
+  void run_decorated() { run(); }
 };
 
-void control(
-  lib::task::Context<QUEUE_INDEX_CONTROL_THREAD_ONLY> *ctx
-) {
-  Ctrl ctrl { ctx };
-  ctrl.run();
-}
-
 #ifdef WINDOWS
-  int WinMain() {
-    engine::startup(control);
-    return 0;
-  }
+  #define MAIN_NAME WinMain
 #else
-  int main() {
-    engine::startup(control);
-    return 0;
-  }
+  #define MAIN_NAME main
 #endif
+
+#define MAIN_MACRO(CTRL) \
+  void control( \
+    lib::task::Context<QUEUE_INDEX_CONTROL_THREAD_ONLY> *ctx \
+  ) { \
+    CTRL ctrl { ctx }; \
+    ctrl.run_decorated(); \
+  } \
+  \
+  int MAIN_NAME() { \
+    engine::startup(control); \
+    return 0; \
+  } \
