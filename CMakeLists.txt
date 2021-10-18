@@ -57,27 +57,9 @@ include_directories (
   ${CMAKE_SOURCE_DIR}
 )
 
-add_executable (
-  embedfile
-  "src/exe/embedfile.cxx"
-)
-
-add_executable (
-  taskmark
-  "src/exe/taskmark.cxx"
-  "src/impl/global_overload.cxx"
-  "src/impl/log.cxx"
-  "src/lib/task.cxx"
-  "${CMAKE_SOURCE_DIR}/submodule/tracy/TracyClient.cpp"
-)
-target_compile_definitions(taskmark PUBLIC TRACY_ENABLE=1)
-target_compile_definitions(taskmark PUBLIC TRACY_NO_EXIT=1)
-target_link_libraries(taskmark fmt::fmt-header-only)
-
-add_executable (
-  engine
-  WIN32
-  "src/exe/engine.cxx"
+add_library (
+  engine_lib
+  STATIC
   "src/impl/global_overload.cxx"
   "src/impl/log.cxx"
   "src/impl/stb_image.cxx"
@@ -99,18 +81,64 @@ add_executable (
   "${CMAKE_SOURCE_DIR}/submodule/imgui/misc/cpp/imgui_stdlib.cpp"
 )
 
-target_compile_definitions(engine PUBLIC -DWINDOWS)
-# target_compile_definitions(engine PUBLIC -DWIN32_LEAN_AND_MEAN)
-target_compile_definitions(engine PUBLIC -DVC_EXTRALEAN)
-target_compile_definitions(engine PUBLIC -DGLFW_INCLUDE_VULKAN)
-target_compile_definitions(engine PUBLIC -DGLM_FORCE_DEPTH_ZERO_TO_ONE)
-target_compile_definitions(engine PUBLIC TRACY_ENABLE=1)
-target_compile_definitions(engine PUBLIC IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
-# target_compile_definitions(engine PUBLIC TRACY_ON_DEMAND=1)
-# target_compile_definitions(engine PUBLIC TRACY_NO_EXIT=1)
-target_link_directories (engine PUBLIC $ENV{CUSTOM_LINK_PATH})
-target_link_directories (engine PUBLIC "${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/build/lib/Release/x64")
-target_link_libraries (engine glfw3)
-target_link_libraries (engine vulkan-1)
-target_link_libraries (engine nfd)
-target_link_libraries(engine fmt::fmt-header-only)
+target_compile_definitions(engine_lib PUBLIC -DWINDOWS)
+# target_compile_definitions(engine_lib PUBLIC -DWIN32_LEAN_AND_MEAN)
+target_compile_definitions(engine_lib PUBLIC -DVC_EXTRALEAN)
+target_compile_definitions(engine_lib PUBLIC -DGLFW_INCLUDE_VULKAN)
+target_compile_definitions(engine_lib PUBLIC -DGLM_FORCE_DEPTH_ZERO_TO_ONE)
+target_compile_definitions(engine_lib PUBLIC TRACY_ENABLE=1)
+target_compile_definitions(engine_lib PUBLIC IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
+# target_compile_definitions(engine_lib PUBLIC TRACY_ON_DEMAND=1)
+# target_compile_definitions(engine_lib PUBLIC TRACY_NO_EXIT=1)
+target_link_directories (engine_lib PUBLIC $ENV{CUSTOM_LINK_PATH})
+target_link_directories (engine_lib PUBLIC "${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/build/lib/Release/x64")
+target_link_libraries (engine_lib glfw3)
+target_link_libraries (engine_lib vulkan-1)
+target_link_libraries (engine_lib nfd)
+target_link_libraries(engine_lib fmt::fmt-header-only)
+
+
+
+# executables
+
+file (GLOB SRC_EXE_SCRIPTS CONFIGURE_DEPENDS "src/exe/scripts/*.cxx")
+foreach (FILE IN LISTS SRC_EXE_SCRIPTS)
+  string (REPLACE ${CMAKE_SOURCE_DIR}/src/exe/scripts/ "" EXE_NAME ${FILE})
+  string (REPLACE ".cxx" "" EXE_NAME ${EXE_NAME})
+
+  add_executable (
+    script_${EXE_NAME}
+    WIN32
+    ${FILE}
+  )
+
+  target_link_libraries(script_${EXE_NAME} engine_lib)
+endforeach()
+
+add_executable (
+  engine
+  WIN32
+  "src/exe/engine.cxx"
+)
+target_link_libraries(engine engine_lib)
+
+add_executable (
+  embedfile
+  "src/exe/embedfile.cxx"
+)
+
+add_executable (
+  taskmark
+  "src/exe/taskmark.cxx"
+  "src/impl/global_overload.cxx"
+  "src/impl/log.cxx"
+  "src/lib/task.cxx"
+  "${CMAKE_SOURCE_DIR}/submodule/tracy/TracyClient.cpp"
+)
+target_compile_definitions(taskmark PUBLIC TRACY_ENABLE=1)
+target_compile_definitions(taskmark PUBLIC TRACY_NO_EXIT=1)
+target_link_libraries(taskmark fmt::fmt-header-only)
+
+set_target_properties(
+    script_sponza PROPERTIES
+    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")

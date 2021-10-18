@@ -1,19 +1,11 @@
-# known bugs
-- Direct light sometimes is "clipped" as if in a view-dependent circular "shadow".
-
-# intermittent bugs
-- `assert( m_head != m_tail );` in TracyVulkan.hpp
-  (seems correlated with number of Vulkan warnings beforehand.)
-  (this is now hidden under TRACY_VULKAN_ENABLE and disabled by default)
-
 ### architectural problems
 - Render passes are not really used, but they should be. :UseRenderPasses
 - Some compute workgroups are size 1 which is not good for perf. :UseComputeLocalSize
 - "lpass" should be split info a few different passes :ManyLights
 - Descriptor pool counts are fixed; can run out of them. :FixedDescriptorPool
-- Uploader seems very rushed, need to come back to it from a performance perspective
-- Also need automatic GPU memory region compacting
-- Also need multi-alloc-like capability for `allocator`
+- Uploader seems very @Rushed, need to come back to it from a performance perspective
+- Need automatic GPU memory region compacting
+- Need multi-alloc-like capability for `allocator`
 - Allocators should be top-level, not nested inside other structures :Sensible_GPU_Allocators
 - Custom CPU allocators (frame, "short-term") :Better_CPU_Allocators
 - Way too many allocations in  `lib::task` implementation.
@@ -73,12 +65,15 @@
 - When running the Vulkan Configurator overrides, some additional errors pop up.
   (Need to enable their presence by default, and also fix the actual errors.)
 
+- intermittent `assert( m_head != m_tail );` in TracyVulkan.hpp
+  (seems correlated with number of Vulkan warnings beforehand.)
+  (this is now hidden under TRACY_VULKAN_ENABLE and disabled by default)
+
 ### refactoring
 - Primary LBuffer: indirect light first. :IndirectFirst
 - Move ad-hoc inline constants to uniform or at least `common/constants.glsl` :MoveToUniform
 - The directory `src/task` should not be there. tasks should be where they logically belong.
 - `session/setup.cxx` does too much and should be split up into smaller files.
-- `worker_count` (and worker flags?) should be accessible from the task `ctx`.
 
 - split off `display::Data` init from the huge `session_iteration_try_rendering`.
   (And use `*data = {...};` init style.)
@@ -86,7 +81,3 @@
 - Error handing for file reads is currently hairy.
   (Consider a set of read helpers that provide zero output on error and go on...)
   (... with the error then checked once at the end.)
-
-### return to this with fresh ideas
-- Direct lighting calibration.
-  (In particular, the gloss on the roof at Sponza is very suspicious.)

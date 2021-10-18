@@ -45,7 +45,7 @@ struct Runner {
   std::vector<Sleeper*> sleepers;
   bool workers_should_stop_on_no_work;
   bool is_running;
-  size_t total_workers;
+  Info info;
 
   // deps
   std::unordered_map<Task *, size_t> dependencies_left; // all values > 0
@@ -491,7 +491,7 @@ void run_task_worker(Runner *r, int worker_index, uint64_t queue_access_bits) {
         stop = true;
       } else if (
         r->unresolved_dependency_external_signals.size() == 0 &&
-        r->sleepers.size() == r->total_workers - 1
+        r->sleepers.size() == r->info.total_threads - 1
       ) {
         // every other thread is sleeping, which means no work is left!
         r->workers_should_stop_on_no_work = true;
@@ -536,8 +536,8 @@ void run(
   std::unique_lock r_lock(r->mutex);
   assert(!r->is_running);
   r->is_running = true;
-  r->total_workers = worker_access_flags.size() + (self_access_flags > 0 ? 1 : 0);
-  r->sleepers.reserve(r->total_workers);
+  size_t total_threads = worker_access_flags.size() + (self_access_flags > 0 ? 1 : 0);
+  r->sleepers.reserve(total_threads);
 
   std::vector<std::thread> threads;
   {
@@ -547,6 +547,13 @@ void run(
       threads.push_back(std::thread(bound_fn));
     }
   }
+
+  r->info.total_threads = total_threads;
+  r->info.thread_access_flags = std::move(worker_access_flags);
+  if (self_access_flags > 0) {
+    r->info.thread_access_flags.push_back(self_access_flags);
+  }
+
   r_lock.unlock();
   if (self_access_flags > 0) {
     run_task_worker(r, 0, self_access_flags);
@@ -564,6 +571,10 @@ void run(
   assert(r->unresolved_dependency_external_signals.size() == 0);
   assert(r->aliasing_children.size() == 0);
   assert(r->aliasing_parents.size() == 0);
+}
+
+Info *get_runner_info(Runner *r) {
+  return &r->info;
 }
 
 void inject(Runner *r, std::vector<Task *> && tasks, Auxiliary && aux) {

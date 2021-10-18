@@ -8,7 +8,7 @@ TASK_DECL {
   if (should_stop) {
     for (auto &item : session->groups.items) {
       auto final = lib::lifetime::deref(&item.second.lifetime, ctx->runner);
-      assert(final);
+      // assert(final); @Think: was this actually necessary?
     }
     lib::lifetime::deref(&session->lifetime, ctx->runner);
     return;

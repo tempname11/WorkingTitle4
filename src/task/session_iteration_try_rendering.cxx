@@ -985,14 +985,10 @@ TASK_DECL {
   }
   auto rendering_yarn_end = lib::task::create_yarn_signal();
   auto task_frame = task::create(
-    rendering_frame,
+    rendering_frame_schedule,
     rendering_yarn_end,
     session.ptr,
-    rendering,
-    &session->glfw,
-    &rendering->presentation_failure_state,
-    &rendering->latest_frame,
-    &rendering->swapchain_description
+    rendering
   );
   auto task_cleanup = defer(
     task::create(

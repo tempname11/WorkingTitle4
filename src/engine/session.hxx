@@ -104,7 +104,7 @@ struct SessionData : lib::task::ParentResource {
 
     enum struct Status {
       Loading,
-      Ready
+      Ready,
     };
 
     struct Item {
@@ -124,7 +124,7 @@ struct SessionData : lib::task::ParentResource {
 
     enum struct Status {
       Loading,
-      Ready
+      Ready,
     };
 
     struct Item {
@@ -259,6 +259,7 @@ struct SessionData : lib::task::ParentResource {
   } info;
 
   struct State {
+    bool ignore_glfw_events;
     bool show_imgui;
     bool show_imgui_window_demo;
     bool show_imgui_window_groups;
@@ -280,6 +281,14 @@ struct SessionData : lib::task::ParentResource {
     float probe_normal_bias;
     engine::common::ubo::Flags ubo_flags;
   } state;
+
+  struct FrameControl {
+    bool enabled;
+    std::mutex mutex;
+    size_t allowed_count;
+    lib::Task *signal_allowed;
+    lib::Task *signal_done;
+  } frame_control;
 };
 
 struct SessionSetupData {

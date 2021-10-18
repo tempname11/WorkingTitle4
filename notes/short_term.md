@@ -1,3 +1,7 @@
-- fix warnings
-- fix frame 0
-- motion blur pass?
+- rendering_frame -> engine::frame::_
+
+- move substructs!
+- use proper namespaces
+- session.hxx -> session/data.hxx
+
+- screenshot

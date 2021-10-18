@@ -596,7 +596,7 @@ void init_vulkan(
 
 void setup(
   task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
-  Use<size_t> worker_count
+  Own<SessionData *> out
 ) {
   ZoneScoped;
   auto session = new SessionData {};
@@ -612,6 +612,9 @@ void setup(
       LOG("GLFW error, code: {}, description: {}", error_code, description);
     });
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // for Vulkan
+    if (out.ptr != nullptr) {
+      glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+    }
     GLFWmonitor *monitor = nullptr;
     int width = DEFAULT_WINDOW_WIDTH;
     int height = DEFAULT_WINDOW_HEIGHT;
@@ -744,12 +747,23 @@ void setup(
     );
   }
 
+  size_t worker_count = 0;
+  for (auto f : lib::task::get_runner_info(ctx->runner)->thread_access_flags) {
+    if (false
+      || (f & (1 << QUEUE_INDEX_HIGH_PRIORITY))
+      || (f & (1 << QUEUE_INDEX_NORMAL_PRIORITY))
+      || (f & (1 << QUEUE_INDEX_LOW_PRIORITY))
+    ) {
+      worker_count++;
+    }
+  }
   session->info = {
-    .worker_count = *worker_count,
+    .worker_count = worker_count,
   };
 
   auto debug_camera = lib::debug_camera::init();
   session->state = {
+    .ignore_glfw_events = (out.ptr != nullptr),
     .debug_camera = debug_camera,
     .debug_camera_prev = debug_camera,
     .sun_intensity = 5.0f,
@@ -758,6 +772,8 @@ void setup(
     .probe_depth_sharpness = 10.0f,
     .probe_normal_bias = 0.001f,
   };
+
+  session->frame_control.enabled = (out.ptr != nullptr);
 
   /*
   task::Task* signal_setup_finished = lib::gpu_signal::create(
@@ -773,7 +789,7 @@ void setup(
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData) - sizeof(SessionData::Vulkan);
-    static_assert(size == 1000);
+    static_assert(size == 1112);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
@@ -817,6 +833,7 @@ void setup(
         &session->gpu_signal_support,
         &session->info,
         &session->state,
+        &session->frame_control,
       },
     },
     {
@@ -855,6 +872,10 @@ void setup(
     */
     { session->lifetime.yarn, task_cleanup.first }
   });
+
+  if (out.ptr != nullptr) {
+    *out = session;
+  }
 }
 
 } // namespace

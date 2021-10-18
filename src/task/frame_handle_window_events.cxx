@@ -3,6 +3,11 @@
 
 TASK_DECL {
   ZoneScoped;
+
+  if (session_state->ignore_glfw_events) {
+    return;
+  }
+
   auto user_data = new engine::misc::GlfwUserData {
     .state = session_state.ptr,
   };

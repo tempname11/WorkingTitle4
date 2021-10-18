@@ -565,14 +565,12 @@ void read_chunk(uint8_t **pCursor, size_t *pBytesLeft, IntermediateData *data) {
   }
   assert(bytes_left >= 12);
   if (0 == memcmp(cursor, "MAIN", 4)) {
-    // DBG("MAIN");
     cursor += 12;
     bytes_left -= 12;
     while(bytes_left > 0) {
       read_chunk(&cursor, &bytes_left, data);
     }
   } else if (0 == memcmp(cursor, "RGBA", 4)) {
-    // DBG("RGBA");
     cursor += 12;
     bytes_left -= 12;
     assert(bytes_left >= 4 * 256);
@@ -583,7 +581,6 @@ void read_chunk(uint8_t **pCursor, size_t *pBytesLeft, IntermediateData *data) {
     cursor += 4 * 256;
     bytes_left -= 4 * 256;
   } else if (0 == memcmp(cursor, "XYZI", 4)) {
-    // DBG("XYZI");
     cursor += 12;
     bytes_left -= 12;
     assert(bytes_left >= 4);
@@ -650,7 +647,6 @@ void voxel_converter(
   IntermediateData data = {};
   read_chunk(&cursor, &bytes_left, &data);
   free(vox_buffer);
-  // DBG("VOXEL COUNT: {}", data.voxels.size());
 
   if (enable_random_voxels) {
     srand(

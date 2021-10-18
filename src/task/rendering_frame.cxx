@@ -23,14 +23,18 @@
 
 #define TRACY_ARTIFICIAL_DELAY 20ms
 
-TASK_DECL {
+void rendering_frame(
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
+  Ref<task::Task> rendering_yarn_end,
+  Ref<SessionData> session,
+  Ref<engine::display::Data> data,
+  Use<SessionData::GLFW> glfw,
+  Use<engine::display::Data::PresentationFailureState> presentation_failure_state,
+  Use<engine::display::Data::SwapchainDescription> swapchain_description,
+  Own<engine::display::Data::FrameInfo> latest_frame
+) {
   ZoneScopedC(0xFF0000);
   FrameMark;
-  if (TracyIsConnected) {
-    ZoneScopedN("artificial_delay");
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(TRACY_ARTIFICIAL_DELAY);
-  }
   bool presentation_has_failed;
   {
     std::scoped_lock lock(presentation_failure_state->mutex);
@@ -259,14 +263,10 @@ TASK_DECL {
       frame_data
     ),
     task::create(
-      rendering_frame,
+      rendering_frame_schedule,
       rendering_yarn_end.ptr,
       session.ptr,
-      data.ptr,
-      glfw.ptr,
-      presentation_failure_state.ptr,
-      latest_frame.ptr,
-      swapchain_description.ptr
+      data.ptr
     ),
   });
   auto task_many = defer_many(frame_tasks);
@@ -297,3 +297,60 @@ TASK_DECL {
     });
   }
 }
+
+void rendering_frame_schedule(
+  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
+  Ref<task::Task> rendering_yarn_end,
+  Ref<SessionData> session,
+  Ref<engine::display::Data> display
+) {
+  ZoneScoped;
+
+  if (TracyIsConnected) {
+    ZoneScopedN("artificial_delay");
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(TRACY_ARTIFICIAL_DELAY);
+  }
+
+  lib::Task *signal = nullptr;
+  if (session->frame_control.enabled) {
+    auto fc = &session->frame_control;
+    auto lock = std::scoped_lock(fc->mutex);
+    if (fc->allowed_count > 0) {
+      fc->allowed_count--;
+    } else {
+      if (fc->signal_done) {
+        lib::task::signal(ctx->runner, fc->signal_done);
+        fc->signal_done = nullptr;
+      }
+      signal = fc->signal_allowed = lib::task::create_yarn_signal();
+    }
+  }
+
+  auto task_frame = lib::task::create(
+    rendering_frame,
+    rendering_yarn_end.ptr,
+    session.ptr,
+    display.ptr,
+    &session->glfw,
+    &display->presentation_failure_state,
+    &display->swapchain_description,
+    &display->latest_frame
+  );
+
+  if (signal != nullptr) {
+    auto deferred_frame = defer(task_frame);
+    ctx->new_tasks.insert(ctx->new_tasks.end(), {
+      deferred_frame.first,
+    });
+
+    ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
+      { signal, deferred_frame.first },
+    });
+  } else {
+    ctx->new_tasks.insert(ctx->new_tasks.end(), {
+      task_frame,
+    });
+  }
+}
+

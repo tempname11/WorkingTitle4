@@ -43,7 +43,7 @@ void save(
   Ref<SessionData> session
 );
 
-void load(
+lib::Task *load(
   lib::task::ContextBase *ctx,
   std::string *path,
   Ref<SessionData> session

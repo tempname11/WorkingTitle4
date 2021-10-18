@@ -104,7 +104,7 @@ void _load(
   lib::lifetime::deref(&session->lifetime, ctx->runner);
 }
 
-void load(
+lib::Task *load(
   lib::task::ContextBase *ctx,
   std::string *path,
   Ref<SessionData> session
@@ -116,13 +116,11 @@ void load(
     .path = *path,
   };
 
-  ctx->new_tasks.insert(ctx->new_tasks.end(), {
-    lib::task::create(
-      _load,
-      session.ptr,
-      data
-    ),
-  });
+  return lib::task::create(
+    _load,
+    session.ptr,
+    data
+  );
 }
 
 } // namespace

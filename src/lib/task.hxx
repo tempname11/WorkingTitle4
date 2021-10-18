@@ -30,6 +30,11 @@ struct ContextBase {
   std::vector<Auxiliary::ParentInfo> changed_parents;
 };
 
+struct Info {
+  size_t total_threads;
+  std::vector<QueueAccessFlags> thread_access_flags;
+};
+
 template<QueueIndex ix>
 struct Context : ContextBase {};
 
@@ -41,6 +46,8 @@ Runner *create_runner(size_t num_queues);
 // including ones generated during the run,
 // have been completed
 void run(Runner *, std::vector<QueueAccessFlags> &&, QueueAccessFlags);
+
+Info *get_runner_info(Runner *);
 
 // free the runner resources.
 // can't call this while running!

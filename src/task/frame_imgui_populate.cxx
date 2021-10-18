@@ -280,11 +280,14 @@ TASK_DECL {
         ImGuiX::InputPath(&path, "Path");
         if (ImGui::Button("OK", ImVec2(120, 0))) {
           ImGui::CloseCurrentPopup();
-          engine::loading::group::load(
+          auto task = engine::loading::group::load(
             ctx,
             &path,
             session
           );
+          ctx->new_tasks.insert(ctx->new_tasks.end(), {
+            task,
+          });
           path = {};
         }
         ImGui::SameLine();
