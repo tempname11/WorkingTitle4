@@ -61,9 +61,9 @@ void interactive(
 
 void end(Ctrl& ctrl, SessionData *session) {
   if (1) {
-    create(interactive, &session->frame_control, &session->state, &session->glfw);
+    ctrl.create(interactive, &session->frame_control, &session->state, &session->glfw);
   } else {
-    create(quit, &session->frame_control, &session->glfw);
+    ctrl.create(quit, &session->frame_control, &session->glfw);
   }
 }
 
