@@ -1,3 +1,12 @@
+### general issues
+- Import models with more than 2^16 vertices. :NotEnoughIndices
+
+- Memory usage seems to increase over time!?
+  (but Tracy profiling shows everything is great!?)
+  (maybe these are external (DLL?) allocations and we don't track them.)
+
+- Over time, performance drops, but swapchain recreation (via window resize) helps.
+
 ### architectural problems
 - Render passes are not really used, but they should be. :UseRenderPasses
 - Some compute workgroups are size 1 which is not good for perf. :UseComputeLocalSize
@@ -25,32 +34,6 @@
 
 - Ref/Use/Own is moot for mutex-protected data, so should use Ref everywhere.
   (Grep "Some<SessionData" and the like.)
-
-### good to have
-- Debug pass (copy user-chosen intermediate data to swapchain).
-- Separate reference raytracing pass.
-- BLAS compaction.
-- Async running tools, ideally with an in-progress task UI view.
-- All disk paths should be relative to *whatever is referencing them*.
-- Should also normalize disk paths after user input.
-- interactive scene editor (selection, translate-rotate-scale)
-
-### GI: work to be done
-- investigate "self-lighting"
-- shadows still have "bands" which seem related to "seams" in the octomap.
-- use texture LODs
-- reference ray tracer.
-- try "lazy" probe maps.
-- blend cascade levels.
-
-### general issues
-- Import models with more than 2^16 vertices. :NotEnoughIndices
-
-- Memory usage seems to increase over time!?
-  (but Tracy profiling shows everything is great!?)
-  (maybe these are external (DLL?) allocations and we don't track them.)
-
-- Over time, performance drops, but swapchain recreation (via window resize) helps.
 
 ### minor issues
 - r11g11b10 probe_light_map has yellow tint on saturation
@@ -81,3 +64,20 @@
 - Error handing for file reads is currently hairy.
   (Consider a set of read helpers that provide zero output on error and go on...)
   (... with the error then checked once at the end.)
+
+### good to have
+- Debug pass (copy user-chosen intermediate data to swapchain).
+- Separate reference raytracing pass.
+- BLAS compaction.
+- Async running tools, ideally with an in-progress task UI view.
+- All disk paths should be relative to *whatever is referencing them*.
+- Should also normalize disk paths after user input.
+- interactive scene editor (selection, translate-rotate-scale)
+
+### GI: work to be done
+- investigate "self-lighting"
+- shadows still have "bands" which seem related to "seams" in the octomap.
+- use texture LODs
+- reference ray tracer.
+- try "lazy" probe maps.
+- blend cascade levels.
