@@ -24,7 +24,7 @@ namespace engine::display {
 void cleanup(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<lib::Task> session_iteration_yarn_end,
-  Use<SessionData> session,
+  Use<engine::session::Data> session,
   Own<engine::display::Data> data
 ) {
   ZoneScoped;

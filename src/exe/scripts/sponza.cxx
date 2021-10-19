@@ -8,7 +8,7 @@
 
 void update_camera(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Own<SessionData::State> state
+  Own<engine::session::Data::State> state
 ) {
   state->debug_camera.position = glm::vec3(5.0f, 0.0f, 5.0f);
   state->debug_camera.lon_lat = glm::vec2(3.0f, 0.0f);

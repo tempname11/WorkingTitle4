@@ -1,16 +1,16 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include "../display/data.hxx"
-#include "../session.hxx"
+#include "../session/data.hxx"
 
 void init_session_finalpass(
-  SessionData::Vulkan::Finalpass *out,
-  SessionData::Vulkan::Core *core
+  engine::session::Vulkan::Finalpass *out,
+  engine::session::Vulkan::Core *core
 );
 
 void deinit_session_finalpass(
-  SessionData::Vulkan::Finalpass *it,
-  SessionData::Vulkan::Core *core
+  engine::session::Vulkan::Finalpass *it,
+  engine::session::Vulkan::Core *core
 );
 
 void init_rendering_finalpass(
@@ -20,11 +20,11 @@ void init_rendering_finalpass(
   engine::display::Data::ZBuffer *zbuffer,
   engine::display::Data::LBuffer *lbuffer,
   engine::display::Data::FinalImage *final_image,
-  SessionData::Vulkan::Finalpass *s_finalpass,
-  SessionData::Vulkan::Core *core
+  engine::session::Vulkan::Finalpass *s_finalpass,
+  engine::session::Vulkan::Core *core
 );
 
 void deinit_rendering_finalpass(
   engine::display::Data::Finalpass *it,
-  SessionData::Vulkan::Core *core
+  engine::session::Vulkan::Core *core
 );

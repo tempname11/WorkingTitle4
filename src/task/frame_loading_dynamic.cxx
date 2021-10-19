@@ -8,7 +8,7 @@ TASK_DECL {
   if (imgui_reactions->reloaded_mesh_id != 0) {
     auto id = imgui_reactions->reloaded_mesh_id;
     auto group = &meta_meshes->items.at(id);
-    if (group->status == SessionData::MetaMeshes::Status::Ready) {
+    if (group->status == engine::session::Data::MetaMeshes::Status::Ready) {
       engine::loading::mesh::reload(
         id,
         ctx,
@@ -21,7 +21,7 @@ TASK_DECL {
   if (imgui_reactions->reloaded_texture_id != 0) {
     auto id = imgui_reactions->reloaded_texture_id;
     auto group = &meta_textures->items.at(id);
-    if (group->status == SessionData::MetaTextures::Status::Ready) {
+    if (group->status == engine::session::Data::MetaTextures::Status::Ready) {
       engine::loading::texture::reload(
         id,
         ctx,

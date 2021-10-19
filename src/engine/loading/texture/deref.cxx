@@ -10,10 +10,10 @@ struct DerefData {
 
 void _deref(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<SessionData> session,
-  Use<SessionData::Vulkan::Core> core,
-  Own<SessionData::Vulkan::Textures> textures,
-  Own<SessionData::MetaTextures> meta_textures,
+  Ref<engine::session::Data> session,
+  Use<engine::session::Vulkan::Core> core,
+  Own<engine::session::Vulkan::Textures> textures,
+  Own<engine::session::Data::MetaTextures> meta_textures,
   Own<DerefData> data
 ) {
   ZoneScoped;
@@ -22,7 +22,7 @@ void _deref(
   assert(meta->ref_count > 0);
 
   // we must have waited for the initial load to finish.
-  assert(meta->status == SessionData::MetaTextures::Status::Ready);
+  assert(meta->status == engine::session::Data::MetaTextures::Status::Ready);
 
   // we must have waited for reload to finish.
   assert(meta->will_have_reloaded == nullptr);
@@ -49,8 +49,8 @@ void _deref(
 void deref(
   lib::GUID texture_id,
   lib::task::ContextBase* ctx,
-  Ref<SessionData> session,
-  Use<SessionData::MetaTextures> meta_textures
+  Ref<engine::session::Data> session,
+  Use<engine::session::Data::MetaTextures> meta_textures
 ) {
   ZoneScoped;
 

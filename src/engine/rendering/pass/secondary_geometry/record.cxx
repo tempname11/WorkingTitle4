@@ -2,7 +2,7 @@
 #include <src/global.hxx>
 #include <src/engine/constants.hxx>
 #include <src/engine/misc.hxx>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include <src/engine/display/data.hxx>
 #include "internal.hxx"
 #include "data.hxx"
@@ -13,7 +13,7 @@ void record(
   Use<DData> ddata,
   Use<SData> sdata,
   Use<engine::display::Data::FrameInfo> frame_info,
-  Use<SessionData::Vulkan::Core> core,
+  Use<engine::session::Vulkan::Core> core,
   Ref<engine::common::SharedDescriptorPool> descriptor_pool,
   VkBuffer geometry_refs,
   Use<engine::misc::RenderList> render_list,

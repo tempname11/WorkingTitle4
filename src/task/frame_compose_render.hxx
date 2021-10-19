@@ -1,5 +1,5 @@
 #pragma once
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include <src/engine/display/data.hxx>
 #include <src/engine/misc.hxx>
 #include "task.hxx"
@@ -7,9 +7,9 @@
 #undef TASK_DECL
 #define TASK_DECL void frame_compose_render( \
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx, \
-  Ref<SessionData> session, \
+  Ref<engine::session::Data> session, \
   Ref<engine::display::Data> display, \
-  usage::Some<SessionData::Vulkan::Core> core, \
+  usage::Some<engine::session::Vulkan::Core> core, \
   usage::Some<engine::display::Data::Presentation> presentation, \
   usage::Some<engine::display::Data::PresentationFailureState> presentation_failure_state, \
   usage::Some<engine::display::Data::SwapchainDescription> swapchain_description, \

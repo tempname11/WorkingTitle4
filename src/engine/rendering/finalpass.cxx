@@ -3,8 +3,8 @@
 #include "lpass.hxx"
 
 void init_session_finalpass(
-  SessionData::Vulkan::Finalpass *out,
-  SessionData::Vulkan::Core *core
+  engine::session::Vulkan::Finalpass *out,
+  engine::session::Vulkan::Core *core
 ) {
   ZoneScoped;
 
@@ -153,8 +153,8 @@ void init_session_finalpass(
 }
 
 void deinit_session_finalpass(
-  SessionData::Vulkan::Finalpass *it,
-  SessionData::Vulkan::Core *core
+  engine::session::Vulkan::Finalpass *it,
+  engine::session::Vulkan::Core *core
 ) {
   vkDestroyPipeline(
     core->device,
@@ -185,8 +185,8 @@ void init_rendering_finalpass(
   engine::display::Data::ZBuffer *zbuffer,
   engine::display::Data::LBuffer *lbuffer,
   engine::display::Data::FinalImage *final_image,
-  SessionData::Vulkan::Finalpass *s_finalpass,
-  SessionData::Vulkan::Core *core
+  engine::session::Vulkan::Finalpass *s_finalpass,
+  engine::session::Vulkan::Core *core
 ) {
   ZoneScoped;
   std::vector<VkDescriptorSet> descriptor_sets;
@@ -319,7 +319,7 @@ void init_rendering_finalpass(
 
 void deinit_rendering_finalpass(
   engine::display::Data::Finalpass *it,
-  SessionData::Vulkan::Core *core
+  engine::session::Vulkan::Core *core
 ) {
  // empty!
 }

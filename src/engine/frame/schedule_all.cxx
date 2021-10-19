@@ -1,34 +1,36 @@
-#include "defer.hxx"
-#include "frame_acquire.hxx"
-#include "frame_cleanup.hxx"
-#include "frame_compose_render.hxx"
-#include "frame_compose_submit.hxx"
-#include "frame_generate_render_list.hxx"
-#include "frame_graphics_render.hxx"
-#include "frame_graphics_submit.hxx"
-#include "frame_handle_window_events.hxx"
-#include "frame_imgui_new_frame.hxx"
-#include "frame_imgui_populate.hxx"
-#include "frame_imgui_render.hxx"
-#include "frame_imgui_submit.hxx"
-#include "frame_loading_dynamic.hxx"
-#include "frame_prepare_uniforms.hxx"
-#include "frame_present.hxx"
-#include "frame_reset_pools.hxx"
-#include "frame_setup_gpu_signal.hxx"
-#include "frame_update.hxx"
-#include "rendering_has_finished.hxx"
-#include "rendering_frame.hxx"
+#include <src/task/defer.hxx>
+#include <src/task/frame_acquire.hxx>
+#include <src/task/frame_cleanup.hxx>
+#include <src/task/frame_compose_render.hxx>
+#include <src/task/frame_compose_submit.hxx>
+#include <src/task/frame_generate_render_list.hxx>
+#include <src/task/frame_graphics_render.hxx>
+#include <src/task/frame_graphics_submit.hxx>
+#include <src/task/frame_handle_window_events.hxx>
+#include <src/task/frame_imgui_new_frame.hxx>
+#include <src/task/frame_imgui_populate.hxx>
+#include <src/task/frame_imgui_render.hxx>
+#include <src/task/frame_imgui_submit.hxx>
+#include <src/task/frame_loading_dynamic.hxx>
+#include <src/task/frame_prepare_uniforms.hxx>
+#include <src/task/frame_present.hxx>
+#include <src/task/frame_reset_pools.hxx>
+#include <src/task/frame_setup_gpu_signal.hxx>
+#include <src/task/frame_update.hxx>
+#include <src/task/rendering_has_finished.hxx>
 #include <src/engine/frame/readback.hxx>
+#include "schedule_all.hxx"
 
 #define TRACY_ARTIFICIAL_DELAY 20ms
 
-void rendering_frame(
+namespace engine::frame {
+
+void _begin(
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   Ref<task::Task> rendering_yarn_end,
-  Ref<SessionData> session,
+  Ref<engine::session::Data> session,
   Ref<engine::display::Data> data,
-  Use<SessionData::GLFW> glfw,
+  Use<engine::session::Data::GLFW> glfw,
   Use<engine::display::Data::PresentationFailureState> presentation_failure_state, // @Cleanup use Ref
   Use<engine::display::Data::SwapchainDescription> swapchain_description, // @Cleanup use ref
   Own<engine::display::Data::FrameInfo> latest_frame
@@ -275,7 +277,7 @@ void rendering_frame(
       frame_data
     ),
     task::create(
-      rendering_frame_schedule,
+      schedule_all,
       rendering_yarn_end.ptr,
       session.ptr,
       data.ptr
@@ -310,10 +312,10 @@ void rendering_frame(
   }
 }
 
-void rendering_frame_schedule(
+void schedule_all(
   task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
   Ref<task::Task> rendering_yarn_end,
-  Ref<SessionData> session,
+  Ref<engine::session::Data> session,
   Ref<engine::display::Data> display
 ) {
   ZoneScoped;
@@ -327,7 +329,7 @@ void rendering_frame_schedule(
   #endif
 
   auto task_frame = lib::task::create(
-    rendering_frame,
+    _begin,
     rendering_yarn_end.ptr,
     session.ptr,
     display.ptr,
@@ -371,3 +373,4 @@ void rendering_frame_schedule(
   #endif
 }
 
+} // namespace

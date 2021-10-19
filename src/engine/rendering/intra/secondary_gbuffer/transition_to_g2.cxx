@@ -1,7 +1,7 @@
 #pragma once
 #include <src/global.hxx>
 #include <src/engine/display/data.hxx>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include "data.hxx"
 
 namespace engine::rendering::intra::secondary_gbuffer {

@@ -4,7 +4,7 @@
 #include <src/lib/task.hxx>
 #include <src/lib/gfx/allocator.hxx>
 #include "uploader.data.hxx"
-#include "session.hxx"
+#include "session/data.hxx"
 
 namespace engine::uploader {
 
@@ -49,9 +49,9 @@ void upload_buffer(
   lib::task::ContextBase *ctx,
   lib::Task *signal,
   Ref<Uploader> it,
-  Ref<SessionData> session,
-  Use<SessionData::Vulkan::Core> core,
-  Use<SessionData::GPU_SignalSupport> gpu_signal_support,
+  Ref<engine::session::Data> session,
+  Use<engine::session::Vulkan::Core> core,
+  Use<engine::session::Data::GPU_SignalSupport> gpu_signal_support,
   Own<VkQueue> queue_work,
   ID id
 );
@@ -60,9 +60,9 @@ void upload_image(
   lib::task::ContextBase *ctx,
   lib::Task *signal,
   Ref<Uploader> it,
-  Ref<SessionData> session,
-  Use<SessionData::Vulkan::Core> core,
-  Use<SessionData::GPU_SignalSupport> gpu_signal_support,
+  Ref<engine::session::Data> session,
+  Use<engine::session::Vulkan::Core> core,
+  Use<engine::session::Data::GPU_SignalSupport> gpu_signal_support,
   Own<VkQueue> queue_work,
   VkImageLayout final_layout,
   ID id
@@ -70,13 +70,13 @@ void upload_image(
 
 void destroy_buffer(
   Ref<Uploader> it,
-  Use<SessionData::Vulkan::Core> core,
+  Use<engine::session::Vulkan::Core> core,
   ID id
 );
 
 void destroy_image(
   Ref<Uploader> it,
-  Use<SessionData::Vulkan::Core> core,
+  Use<engine::session::Vulkan::Core> core,
   ID id
 );
 

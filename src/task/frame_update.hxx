@@ -1,5 +1,5 @@
 #pragma once
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include <src/engine/display/data.hxx>
 #include <src/engine/misc.hxx>
 #include "task.hxx"
@@ -10,7 +10,7 @@
   Use<engine::misc::UpdateData> update, \
   Use<engine::display::Data::FrameInfo> frame_info, \
   Use<engine::display::Data::Readback> readback_data, \
-  Own<SessionData::State> session_state \
+  Own<engine::session::Data::State> session_state \
 )
 
 TASK_DECL;

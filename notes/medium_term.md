@@ -33,7 +33,7 @@
   (Although it would be good to allocate many things without taking mutex every time.)
 
 - Ref/Use/Own is moot for mutex-protected data, so should use Ref everywhere.
-  (Grep "Some<SessionData" and the like.)
+  (Grep "Some<engine::session::Data" and the like.)
 
 ### minor issues
 - r11g11b10 probe_light_map has yellow tint on saturation

@@ -1,5 +1,5 @@
 #include <src/global.hxx>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include <src/engine/display/data.hxx>
 #include "data.hxx"
 
@@ -8,7 +8,7 @@ namespace engine::rendering::pass::indirect_light {
 void init_ddata(
   DData *out,
   SData *sdata,
-  Use<SessionData::Vulkan::Core> core,
+  Use<engine::session::Vulkan::Core> core,
   Own<display::Data::Common> common,
   Use<display::Data::GBuffer> gbuffer,
   Use<display::Data::ZBuffer> zbuffer,

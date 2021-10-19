@@ -1,7 +1,7 @@
 #pragma once
 #include <src/global.hxx>
 #include <src/lib/task.hxx>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 
 namespace engine::loading::group {
 
@@ -19,7 +19,7 @@ struct ItemDescription {
 
 lib::GUID create(
   lib::task::ContextBase *ctx,
-  Ref<SessionData> session,
+  Ref<engine::session::Data> session,
   GroupDescription *desc
 );
 
@@ -27,26 +27,26 @@ void add_item(
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
   ItemDescription *desc,
-  Ref<SessionData> session
+  Ref<engine::session::Data> session
 );
 
 void deref(
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
-  Ref<SessionData> session
+  Ref<engine::session::Data> session
 );
 
 void save(
   lib::task::ContextBase *ctx,
   std::string *path,
   lib::GUID group_id,
-  Ref<SessionData> session
+  Ref<engine::session::Data> session
 );
 
 lib::Task *load(
   lib::task::ContextBase *ctx,
   std::string *path,
-  Ref<SessionData> session
+  Ref<engine::session::Data> session
 );
 
 } // namespace

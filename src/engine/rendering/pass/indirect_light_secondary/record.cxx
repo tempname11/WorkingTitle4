@@ -2,7 +2,7 @@
 #include <src/global.hxx>
 #include <src/engine/constants.hxx>
 #include <src/engine/display/data.hxx>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include "data.hxx"
 
 namespace engine::rendering::pass::indirect_light_secondary {
@@ -12,7 +12,7 @@ void record(
   Use<SData> sdata,
   Use<engine::display::Data::FrameInfo> frame_info,
   Use<engine::display::Data::SwapchainDescription> swapchain_description,
-  Use<SessionData::Vulkan::FullscreenQuad> fullscreen_quad,
+  Use<engine::session::Vulkan::FullscreenQuad> fullscreen_quad,
   VkCommandBuffer cmd
 ) {
   ZoneScoped;

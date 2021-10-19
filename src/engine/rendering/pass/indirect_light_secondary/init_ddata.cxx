@@ -1,6 +1,6 @@
 #include <src/global.hxx>
 #include <src/engine/constants.hxx>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include <src/engine/display/data.hxx>
 #include "data.hxx"
 
@@ -16,7 +16,7 @@ void init_ddata(
   Use<intra::probe_light_map::DData> probe_light_map,
   Use<intra::probe_depth_map::DData> probe_depth_map,
   Use<display::Data::SwapchainDescription> swapchain_description,
-  Use<SessionData::Vulkan::Core> core
+  Use<engine::session::Vulkan::Core> core
 ) {
   ZoneScoped;
 

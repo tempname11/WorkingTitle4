@@ -18,8 +18,8 @@ void _load_read_file(
 
 void _load_init_buffer(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<SessionData> session,
-  Use<SessionData::Vulkan::Core> core,
+  Ref<engine::session::Data> session,
+  Use<engine::session::Vulkan::Core> core,
   Own<VkQueue> queue_work,
   Ref<lib::Task> signal,
   Own<LoadData> data 
@@ -83,8 +83,8 @@ void _load_init_buffer(
 
 void _load_init_blas(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<SessionData> session,
-  Use<SessionData::Vulkan::Core> core,
+  Ref<engine::session::Data> session,
+  Use<engine::session::Vulkan::Core> core,
   Own<VkQueue> queue_work,
   Ref<lib::Task> signal,
   Own<LoadData> data 
@@ -117,16 +117,16 @@ void _load_init_blas(
 
 void _load_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<SessionData> session,
-  Own<SessionData::Vulkan::Meshes> meshes,
-  Own<SessionData::MetaMeshes> meta_meshes,
+  Ref<engine::session::Data> session,
+  Own<engine::session::Vulkan::Meshes> meshes,
+  Own<engine::session::Data::MetaMeshes> meta_meshes,
   Own<LoadData> data
 ) {
   ZoneScoped;
 
   meshes->items.insert({ data->mesh_id, data->mesh_item });
   auto meta = &meta_meshes->items.at(data->mesh_id);
-  meta->status = SessionData::MetaMeshes::Status::Ready;
+  meta->status = engine::session::Data::MetaMeshes::Status::Ready;
   meta->will_have_loaded = nullptr;
   meta->invalid = data->mesh_item.index_count == 0;
 
@@ -140,9 +140,9 @@ void _load_finish(
 lib::Task* load(
   std::string &path,
   lib::task::ContextBase* ctx,
-  Ref<SessionData> session,
-  Own<SessionData::MetaMeshes> meta_meshes,
-  Use<SessionData::GuidCounter> guid_counter,
+  Ref<engine::session::Data> session,
+  Own<engine::session::Data::MetaMeshes> meta_meshes,
+  Use<engine::session::Data::GuidCounter> guid_counter,
   lib::GUID *out_mesh_id
 ) {
   ZoneScoped;
@@ -155,12 +155,12 @@ lib::Task* load(
     auto meta = &meta_meshes->items.at(mesh_id);
     meta->ref_count++;
 
-    if (meta->status == SessionData::MetaMeshes::Status::Loading) {
+    if (meta->status == engine::session::Data::MetaMeshes::Status::Loading) {
       assert(meta->will_have_loaded != nullptr);
       return meta->will_have_loaded;
     }
 
-    if (meta->status == SessionData::MetaMeshes::Status::Ready) {
+    if (meta->status == engine::session::Data::MetaMeshes::Status::Ready) {
       return nullptr;
     }
 
@@ -227,9 +227,9 @@ lib::Task* load(
     { signal_init_blas, task_finish.first },
   });
 
-  SessionData::MetaMeshes::Item meta = {
+  engine::session::Data::MetaMeshes::Item meta = {
     .ref_count = 1, 
-    .status = SessionData::MetaMeshes::Status::Loading,
+    .status = engine::session::Data::MetaMeshes::Status::Loading,
     .will_have_loaded = task_finish.second,
     .path = path,
   };

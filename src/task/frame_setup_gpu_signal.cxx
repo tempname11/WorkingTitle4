@@ -3,7 +3,7 @@
 
 void signal_cleanup (
   task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<SessionData::InflightGPU> inflight_gpu,
+  Ref<engine::session::Data::InflightGPU> inflight_gpu,
   Own<uint8_t> inflight_index_saved
 ) {
   std::scoped_lock lock(inflight_gpu->mutex);

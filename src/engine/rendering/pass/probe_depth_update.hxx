@@ -1,6 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.h>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include <src/engine/display/data.hxx>
 
 namespace engine::rendering::pass::probe_depth_update {
@@ -10,12 +10,12 @@ struct DData;
 
 void init_sdata(
   SData *out,
-  Use<SessionData::Vulkan::Core> core
+  Use<engine::session::Vulkan::Core> core
 );
 
 void deinit_sdata(
   SData *it,
-  Use<SessionData::Vulkan::Core> core
+  Use<engine::session::Vulkan::Core> core
 );
 
 void init_ddata(
@@ -25,12 +25,12 @@ void init_ddata(
   Use<intra::secondary_zbuffer::DData> secondary_zbuffer,
   Use<intra::probe_depth_map::DData> probe_depth_map,
   Use<engine::display::Data::SwapchainDescription> swapchain_description,
-  Use<SessionData::Vulkan::Core> core
+  Use<engine::session::Vulkan::Core> core
 );
 
 void deinit_ddata(
   DData *it,
-  Use<SessionData::Vulkan::Core> core
+  Use<engine::session::Vulkan::Core> core
 );
 
 void record(

@@ -14,11 +14,11 @@ struct DestroyData {
 
 void _remove_scene_items(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<SessionData> session,
-  Use<SessionData::Vulkan::Core> core,
-  Own<SessionData::Scene> scene,
-  Use<SessionData::MetaMeshes> meta_meshes,
-  Use<SessionData::MetaTextures> meta_textures,
+  Ref<engine::session::Data> session,
+  Use<engine::session::Vulkan::Core> core,
+  Own<engine::session::Data::Scene> scene,
+  Use<engine::session::Data::MetaMeshes> meta_meshes,
+  Use<engine::session::Data::MetaTextures> meta_textures,
   Own<DestroyData> data
 ) {
   ZoneScoped;
@@ -67,7 +67,7 @@ void _remove_scene_items(
 
 void _destroy(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<SessionData> session,
+  Ref<engine::session::Data> session,
   Own<DestroyData> data
 ) {
   ZoneScoped;
@@ -100,7 +100,7 @@ void _destroy(
 
 lib::GUID create(
   lib::task::ContextBase *ctx,
-  Ref<SessionData> session,
+  Ref<engine::session::Data> session,
   GroupDescription *desc
 ) {
   ZoneScoped;
@@ -111,7 +111,7 @@ lib::GUID create(
   lib::Task *yarn = nullptr;
   {
     std::unique_lock lock(session->groups.rw_mutex);
-    auto result = session->groups.items.insert({ group_id, SessionData::Groups::Item {
+    auto result = session->groups.items.insert({ group_id, engine::session::Data::Groups::Item {
       .name = desc->name,
     }});
     auto item = &(*result.first).second;

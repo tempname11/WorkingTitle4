@@ -5,8 +5,8 @@
 #include "gpass.hxx"
 
 void init_session_gpass(
-  SessionData::Vulkan::GPass *out,
-  SessionData::Vulkan::Core *core,
+  engine::session::Vulkan::GPass *out,
+  engine::session::Vulkan::Core *core,
   VkShaderModule module_vert,
   VkShaderModule module_frag
 ) {
@@ -419,8 +419,8 @@ void init_session_gpass(
 }
 
 void deinit_session_gpass(
-  SessionData::Vulkan::GPass *it,
-  SessionData::Vulkan::Core *core
+  engine::session::Vulkan::GPass *it,
+  engine::session::Vulkan::Core *core
 ) {
   ZoneScoped;
   vkDestroySampler(
@@ -477,8 +477,8 @@ void init_rendering_gpass(
   engine::display::Data::ZBuffer *zbuffer,
   engine::display::Data::GBuffer *gbuffer,
   engine::display::Data::SwapchainDescription *swapchain_description,
-  SessionData::Vulkan::GPass *s_gpass,
-  SessionData::Vulkan::Core *core
+  engine::session::Vulkan::GPass *s_gpass,
+  engine::session::Vulkan::Core *core
 ) {
   ZoneScoped;
   std::vector<VkDescriptorSet> descriptor_sets_frame;
@@ -568,7 +568,7 @@ void init_rendering_gpass(
 
 void deinit_rendering_gpass(
   engine::display::Data::GPass *it,
-  SessionData::Vulkan::Core *core
+  engine::session::Vulkan::Core *core
 ) {
   ZoneScoped;
   for (auto framebuffer : it->framebuffers) {

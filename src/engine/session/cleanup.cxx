@@ -18,7 +18,7 @@ namespace engine::session {
 
 void cleanup(
   lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
-  Own<SessionData> session
+  Own<engine::session::Data> session
 ) {
   ZoneScoped;
 

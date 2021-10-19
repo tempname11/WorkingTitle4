@@ -7,8 +7,8 @@ void Ctrl::run() {} // ignore
 
 void _quit(
   lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
-  Ref<SessionData::FrameControl> fc,
-  Own<SessionData::GLFW> glfw
+  Ref<engine::session::Data::FrameControl> fc,
+  Own<engine::session::Data::GLFW> glfw
 ) {
   glfwSetWindowShouldClose(glfw->window, 1);
   {
@@ -23,9 +23,9 @@ void _quit(
 
 void _interactive(
   lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
-  Ref<SessionData::FrameControl> fc,
-  Own<SessionData::State> state,
-  Own<SessionData::GLFW> glfw
+  Ref<engine::session::Data::FrameControl> fc,
+  Own<engine::session::Data::State> state,
+  Own<engine::session::Data::GLFW> glfw
 ) {
   state->ignore_glfw_events = false;
   //glfwShowWindow(glfw->window);
@@ -40,7 +40,7 @@ void _interactive(
 }
 
 struct CtrlSession : Ctrl {
-  SessionData *session;
+  engine::session::Data *session;
 
   void screenshot_next_frame(std::string &path) {
     auto fc = &session->frame_control;

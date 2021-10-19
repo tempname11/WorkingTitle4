@@ -2,7 +2,7 @@
 
 void after_inflight(
   task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
-  Ref<SessionData> session,
+  Ref<engine::session::Data> session,
   Ref<task::Task> task
 ) {
   ZoneScoped;

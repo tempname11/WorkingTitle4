@@ -1,6 +1,6 @@
 #pragma once
 #include <src/global.hxx>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include <src/engine/common/texture.hxx>
 #include "../texture.hxx"
 
@@ -12,7 +12,7 @@ struct LoadData {
   VkFormat format;
 
   engine::common::texture::Data<uint8_t> the_texture;
-  SessionData::Vulkan::Textures::Item texture_item;
+  engine::session::Vulkan::Textures::Item texture_item;
 };
 
 void _load_read_file(
@@ -22,8 +22,8 @@ void _load_read_file(
 
 void _load_init_image(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<SessionData> session,
-  Use<SessionData::Vulkan::Core> core,
+  Ref<engine::session::Data> session,
+  Use<engine::session::Vulkan::Core> core,
   Own<VkQueue> queue_work,
   Ref<lib::Task> signal,
   Own<LoadData> data 

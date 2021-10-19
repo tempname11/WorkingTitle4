@@ -21,8 +21,8 @@
 #include <src/engine/rendering/pass/probe_depth_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/lib/gfx/utilities.hxx>
+#include <src/engine/frame/schedule_all.hxx>
 #include "defer.hxx"
-#include "rendering_frame.hxx"
 #include "rendering_imgui_setup_cleanup.hxx"
 #include "session_iteration_try_rendering.hxx"
 
@@ -131,7 +131,7 @@ TASK_DECL {
   rendering->latest_frame.elapsed_ns = 0;
   rendering->latest_frame.number = uint64_t(-1);
   rendering->latest_frame.inflight_index = uint8_t(-1);
-  assert(SessionData::InflightGPU::MAX_COUNT >= swapchain_image_count);
+  assert(engine::session::Data::InflightGPU::MAX_COUNT >= swapchain_image_count);
 
   { ZoneScopedN(".command_pools");
     rendering->command_pools = std::vector<CommandPool2>(swapchain_image_count);
@@ -985,7 +985,7 @@ TASK_DECL {
   }
   auto rendering_yarn_end = lib::task::create_yarn_signal();
   auto task_frame = task::create(
-    rendering_frame_schedule,
+    engine::frame::schedule_all,
     rendering_yarn_end,
     session.ptr,
     rendering

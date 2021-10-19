@@ -1,6 +1,6 @@
 #pragma once
 #include <src/global.hxx>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include <src/engine/display/data.hxx>
 #include <src/engine/misc.hxx>
 #include "task.hxx"
@@ -8,9 +8,9 @@
 #undef TASK_DECL
 #define TASK_DECL void frame_graphics_render( \
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx, \
-  Ref<SessionData> session, \
-  Use<SessionData::State> session_state, \
-  Use<SessionData::Vulkan::Core> core, \
+  Ref<engine::session::Data> session, \
+  Use<engine::session::Data::State> session_state, \
+  Use<engine::session::Vulkan::Core> core, \
   Use<engine::display::Data::SwapchainDescription> swapchain_description, \
   Use<engine::display::Data::CommandPools> command_pools, \
   Use<engine::display::Data::FrameInfo> frame_info, \
@@ -34,17 +34,17 @@
   Use<engine::rendering::intra::probe_light_map::DData> probe_light_map, \
   Use<engine::rendering::intra::probe_depth_map::DData> probe_depth_map, \
   Use<engine::display::Data::FinalImage> final_image, \
-  Use<SessionData::Vulkan::Prepass> s_prepass, \
-  Use<SessionData::Vulkan::GPass> s_gpass, \
-  Use<SessionData::Vulkan::LPass> s_lpass, \
+  Use<engine::session::Vulkan::Prepass> s_prepass, \
+  Use<engine::session::Vulkan::GPass> s_gpass, \
+  Use<engine::session::Vulkan::LPass> s_lpass, \
   Own<engine::rendering::pass::secondary_geometry::SData> secondary_geometry_sdata, \
   Use<engine::rendering::pass::indirect_light_secondary::SData> indirect_light_secondary_sdata, \
   Use<engine::rendering::pass::directional_light_secondary::SData> directional_light_secondary_sdata, \
   Use<engine::rendering::pass::probe_light_update::SData> probe_light_update_sdata, \
   Use<engine::rendering::pass::probe_depth_update::SData> probe_depth_update_sdata, \
   Use<engine::rendering::pass::indirect_light::SData> indirect_light_sdata, \
-  Use<SessionData::Vulkan::Finalpass> s_finalpass, \
-  Use<SessionData::Vulkan::FullscreenQuad> fullscreen_quad, \
+  Use<engine::session::Vulkan::Finalpass> s_finalpass, \
+  Use<engine::session::Vulkan::FullscreenQuad> fullscreen_quad, \
   Use<engine::misc::RenderList> render_list, \
   Own<engine::misc::GraphicsData> data \
 )

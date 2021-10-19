@@ -6,10 +6,10 @@
 #undef TASK_DECL
 #define TASK_DECL void frame_generate_render_list( \
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx, \
-  Ref<SessionData> session, \
-  Use<SessionData::Scene> scene, \
-  Use<SessionData::Vulkan::Meshes> meshes, \
-  Use<SessionData::Vulkan::Textures> textures, \
+  Ref<engine::session::Data> session, \
+  Use<engine::session::Data::Scene> scene, \
+  Use<engine::session::Vulkan::Meshes> meshes, \
+  Use<engine::session::Vulkan::Textures> textures, \
   Own<engine::misc::RenderList> render_list \
 )
 

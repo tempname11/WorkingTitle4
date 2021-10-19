@@ -21,13 +21,13 @@ struct AddItemData {
 
 void _add_item_insert(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<SessionData> session,
-  Own<SessionData::Scene> scene,
+  Ref<engine::session::Data> session,
+  Own<engine::session::Data::Scene> scene,
   Own<AddItemData> data 
 ) {
   ZoneScoped;
 
-  scene->items.push_back(SessionData::Scene::Item {
+  scene->items.push_back(engine::session::Data::Scene::Item {
     .group_id = data->group_id,
     .transform = data->transform,
     .mesh_id = data->mesh_id,
@@ -49,7 +49,7 @@ void add_item(
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
   ItemDescription *desc,
-  Ref<SessionData> session
+  Ref<engine::session::Data> session
 ) {
   ZoneScoped;
   lib::lifetime::ref(&session->lifetime);

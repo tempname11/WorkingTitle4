@@ -1,7 +1,7 @@
 #pragma once
 #include <src/global.hxx>
 #include <src/engine/display/data.hxx>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 
 namespace engine::rendering::intra::probe_depth_map {
 
@@ -11,12 +11,12 @@ void init_ddata(
   DData *out,
   Use<display::Data::SwapchainDescription> swapchain_description,
   Ref<lib::gfx::Allocator> allocator_dedicated,
-  Use<SessionData::Vulkan::Core> core
+  Use<engine::session::Vulkan::Core> core
 );
 
 void deinit_ddata(
   DData *it,
-  Use<SessionData::Vulkan::Core> core
+  Use<engine::session::Vulkan::Core> core
 );
 
 void transition_from_update_into_indirect_light(

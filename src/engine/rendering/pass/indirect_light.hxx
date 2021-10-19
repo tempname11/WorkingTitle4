@@ -1,7 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include <src/global.hxx>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include <src/engine/display/data.hxx>
 
 namespace engine::rendering::pass::indirect_light {
@@ -11,18 +11,18 @@ struct DData;
 
 void init_sdata(
   SData *out,
-  Use<SessionData::Vulkan::Core> core
+  Use<engine::session::Vulkan::Core> core
 );
 
 void deinit_sdata(
   SData *it,
-  Use<SessionData::Vulkan::Core> core
+  Use<engine::session::Vulkan::Core> core
 );
 
 void init_ddata(
   DData *out,
   SData *sdata,
-  Use<SessionData::Vulkan::Core> core,
+  Use<engine::session::Vulkan::Core> core,
   Own<engine::display::Data::Common> common,
   Use<display::Data::GBuffer> gbuffer,
   Use<display::Data::ZBuffer> zbuffer,
@@ -34,7 +34,7 @@ void init_ddata(
 
 void deinit_ddata(
   DData *it,
-  Use<SessionData::Vulkan::Core> core
+  Use<engine::session::Vulkan::Core> core
 );
 
 void record(
@@ -43,7 +43,7 @@ void record(
   Use<SData> sdata,
   Use<display::Data::FrameInfo> frame_info,
   Use<display::Data::SwapchainDescription> swapchain_description,
-  Use<SessionData::Vulkan::FullscreenQuad> fullscreen_quad
+  Use<engine::session::Vulkan::FullscreenQuad> fullscreen_quad
 );
 
 } // namespace

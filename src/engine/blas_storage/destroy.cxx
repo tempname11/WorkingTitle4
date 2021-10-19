@@ -5,7 +5,7 @@ namespace engine::blas_storage {
 
 void destroy(
   Ref<BlasStorage> it,
-  Use<SessionData::Vulkan::Core> core,
+  Use<engine::session::Vulkan::Core> core,
   ID id
 ) {
   ZoneScoped;

@@ -55,8 +55,8 @@ glm::vec2 fullscreen_quad_data[] = { // not a quad now!
 };
 
 void init_vulkan(
-  SessionData::Vulkan *it,
-  SessionData::GLFW *glfw
+  engine::session::Vulkan *it,
+  engine::session::Data::GLFW *glfw
 ) {
   ZoneScoped;
   auto core = &it->core;
@@ -596,10 +596,10 @@ void init_vulkan(
 
 void setup(
   task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
-  Own<SessionData *> out
+  Own<engine::session::Data *> out
 ) {
   ZoneScoped;
-  auto session = new SessionData {};
+  auto session = new engine::session::Data {};
   lib::lifetime::init(&session->lifetime);
 
   { ZoneScopedN(".glfw");
@@ -790,11 +790,11 @@ void setup(
   // remove this when subresources are removed.
   #ifndef NDEBUG
   {
-    const auto size = sizeof(SessionData) - sizeof(SessionData::Vulkan);
+    const auto size = sizeof(engine::session::Data) - sizeof(engine::session::Vulkan);
     static_assert(size == 1160);
   }
   {
-    const auto size = sizeof(SessionData::Vulkan);
+    const auto size = sizeof(engine::session::Vulkan);
     static_assert(size == 2960);
   }
   #endif

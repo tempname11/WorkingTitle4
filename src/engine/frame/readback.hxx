@@ -1,13 +1,13 @@
 #pragma once
 #include <src/global.hxx>
 #include <src/engine/display/data.hxx>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 
 namespace engine::frame {
 
 void readback(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  Use<SessionData::Vulkan::Core> core,
+  Use<engine::session::Vulkan::Core> core,
   Own<VkQueue> queue_work,
   Own<engine::display::Data::Presentation> presentation,
   Use<VkSemaphore> frame_finished_semaphore,

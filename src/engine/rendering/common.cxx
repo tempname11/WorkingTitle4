@@ -36,7 +36,7 @@ void claim_rendering_common(
 void init_rendering_common(
   engine::display::Data::Common::Stakes stakes,
   engine::display::Data::Common *out,
-  SessionData::Vulkan::Core *core
+  engine::session::Vulkan::Core *core
 ) {
   VkDescriptorPool descriptor_pool;
   { ZoneScopedN("descriptor_pool");
@@ -80,7 +80,7 @@ void init_rendering_common(
 
 void deinit_rendering_common(
   engine::display::Data::Common *it,
-  SessionData::Vulkan::Core *core
+  engine::session::Vulkan::Core *core
 ) {
   vkDestroyDescriptorPool(
     core->device,

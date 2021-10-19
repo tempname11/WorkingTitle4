@@ -1,5 +1,5 @@
 #pragma once
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include <src/engine/display/data.hxx>
 #include <src/engine/misc.hxx>
 #include "task.hxx"

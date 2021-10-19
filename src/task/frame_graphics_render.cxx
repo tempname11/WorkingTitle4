@@ -15,10 +15,10 @@
 
 void record_geometry_draw_commands(
   VkCommandBuffer cmd,
-  Use<SessionData::State> session_state,
-  SessionData::Vulkan::Core *core,
+  Use<engine::session::Data::State> session_state,
+  engine::session::Vulkan::Core *core,
   engine::common::SharedDescriptorPool *descriptor_pool,
-  SessionData::Vulkan::GPass* s_gpass,
+  engine::session::Vulkan::GPass* s_gpass,
   engine::misc::RenderList *render_list
 ) {
   if (render_list->items.size() == 0) {
@@ -130,15 +130,15 @@ void record_geometry_draw_commands(
 
 void record_prepass(
   VkCommandBuffer cmd,
-  Use<SessionData::State> session_state,
-  SessionData::Vulkan::Core *core,
+  Use<engine::session::Data::State> session_state,
+  engine::session::Vulkan::Core *core,
   engine::common::SharedDescriptorPool *descriptor_pool,
   engine::display::Data::Prepass *prepass,
   engine::display::Data::GPass *gpass,
   engine::display::Data::SwapchainDescription *swapchain_description,
   engine::display::Data::FrameInfo *frame_info,
-  SessionData::Vulkan::Prepass *s_prepass,
-  SessionData::Vulkan::GPass *s_gpass,
+  engine::session::Vulkan::Prepass *s_prepass,
+  engine::session::Vulkan::GPass *s_gpass,
   engine::misc::RenderList *render_list
 ) {
   VkClearValue clear_values[] = {
@@ -190,13 +190,13 @@ void record_prepass(
 
 void record_gpass(
   VkCommandBuffer cmd,
-  Use<SessionData::State> session_state,
-  SessionData::Vulkan::Core *core,
+  Use<engine::session::Data::State> session_state,
+  engine::session::Vulkan::Core *core,
   engine::common::SharedDescriptorPool *descriptor_pool,
   engine::display::Data::GPass *gpass,
   engine::display::Data::SwapchainDescription *swapchain_description,
   engine::display::Data::FrameInfo *frame_info,
-  SessionData::Vulkan::GPass *s_gpass,
+  engine::session::Vulkan::GPass *s_gpass,
   engine::misc::RenderList *render_list
 ) {
   VkClearValue clear_values[] = {
@@ -250,12 +250,12 @@ void record_gpass(
 
 void record_lpass(
   VkCommandBuffer cmd,
-  SessionData::Vulkan::Core *core,
+  engine::session::Vulkan::Core *core,
   engine::display::Data::LPass *lpass,
   engine::display::Data::SwapchainDescription *swapchain_description,
   engine::display::Data::FrameInfo *frame_info,
-  SessionData::Vulkan::LPass *s_lpass,
-  SessionData::Vulkan::FullscreenQuad *fullscreen_quad,
+  engine::session::Vulkan::LPass *s_lpass,
+  engine::session::Vulkan::FullscreenQuad *fullscreen_quad,
   VkAccelerationStructureKHR accel
 ) {
   VkClearValue clear_value = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -340,7 +340,7 @@ void record_finalpass(
   engine::display::Data::FrameInfo *frame_info,
   engine::display::Data::LBuffer *lbuffer,
   engine::display::Data::FinalImage *final_image,
-  SessionData::Vulkan::Finalpass *s_finalpass
+  engine::session::Vulkan::Finalpass *s_finalpass
 ) {
   ZoneScoped;
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, s_finalpass->pipeline);
@@ -808,9 +808,9 @@ struct PerInstance {
 };
 
 void record_tlas(
-  Use<SessionData::Vulkan::Core> core,
+  Use<engine::session::Vulkan::Core> core,
   Use<engine::misc::RenderList> render_list,
-  Ref<SessionData::Vulkan::Uploader> uploader,
+  Ref<engine::session::Vulkan::Uploader> uploader,
   VkCommandBuffer cmd,
   TlasResult *tlas_result
 ) {
@@ -1170,8 +1170,8 @@ void record_tlas(
 
 void _tlas_cleanup(
   task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<SessionData> session,
-  Use<SessionData::Vulkan::Core> core,
+  Ref<engine::session::Data> session,
+  Use<engine::session::Vulkan::Core> core,
   Own<TlasResult> result
 ) {
   lib::lifetime::deref(&session->lifetime, ctx->runner);

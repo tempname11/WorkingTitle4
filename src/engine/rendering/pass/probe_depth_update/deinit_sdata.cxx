@@ -1,12 +1,12 @@
 #include <src/global.hxx>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include "data.hxx"
 
 namespace engine::rendering::pass::probe_depth_update {
 
 void deinit_sdata(
   SData *it,
-  Use<SessionData::Vulkan::Core> core
+  Use<engine::session::Vulkan::Core> core
 ) {
   ZoneScoped;
 

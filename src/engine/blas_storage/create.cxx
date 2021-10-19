@@ -44,8 +44,8 @@ void _build_submit(
 void _build_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<BlasStorage> it,
-  Ref<SessionData> session,
-  Use<SessionData::Vulkan::Core> core,
+  Ref<engine::session::Data> session,
+  Use<engine::session::Vulkan::Core> core,
   Own<BuildSubmitData> data
 ) {
   ZoneScoped;
@@ -86,8 +86,8 @@ void _build_finish(
   lib::task::ContextBase *ctx,
   BlasStorage *it,
   lib::Task *signal,
-  Ref<SessionData> session,
-  Use<SessionData::Vulkan::Core> core,
+  Ref<engine::session::Data> session,
+  Use<engine::session::Vulkan::Core> core,
   Use<VertexInfo> vertex_info,
   ID id
 ) {
@@ -357,8 +357,8 @@ ID create(
   Ref<BlasStorage> it,
   lib::Task *signal,
   Use<VertexInfo> vertex_info,
-  Ref<SessionData> session,
-  Use<SessionData::Vulkan::Core> core
+  Ref<engine::session::Data> session,
+  Use<engine::session::Vulkan::Core> core
 ) {
   ZoneScoped;
 

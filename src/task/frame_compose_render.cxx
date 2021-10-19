@@ -14,8 +14,8 @@
 
   void _write_screenshot(
     task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-    Ref<SessionData> session,
-    Use<SessionData::Vulkan::Core> core,
+    Ref<engine::session::Data> session,
+    Use<engine::session::Vulkan::Core> core,
     Own<WriteScreenshotData> data
   ) {
     ZoneScoped;

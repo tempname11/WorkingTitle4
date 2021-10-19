@@ -14,10 +14,10 @@ struct SaveData {
 
 void _save(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<SessionData> session,
-  Use<SessionData::Scene> scene,
-  Use<SessionData::MetaMeshes> meta_meshes,
-  Use<SessionData::MetaTextures> meta_textures,
+  Ref<engine::session::Data> session,
+  Use<engine::session::Data::Scene> scene,
+  Use<engine::session::Data::MetaMeshes> meta_meshes,
+  Use<engine::session::Data::MetaTextures> meta_textures,
   Own<SaveData> data
 ) {
   ZoneScoped;
@@ -69,7 +69,7 @@ void save(
   lib::task::ContextBase *ctx,
   std::string *path,
   lib::GUID group_id,
-  Ref<SessionData> session
+  Ref<engine::session::Data> session
 ) {
   ZoneScoped;
   lib::lifetime::ref(&session->lifetime);

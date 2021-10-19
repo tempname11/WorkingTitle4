@@ -1,6 +1,6 @@
 #include <src/global.hxx>
 #include <src/embedded.hxx>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include "internal.hxx"
 #include "data.hxx"
 
@@ -8,7 +8,7 @@ namespace engine::rendering::pass::probe_light_update {
 
 void init_sdata(
   SData *out,
-  Use<SessionData::Vulkan::Core> core
+  Use<engine::session::Vulkan::Core> core
 ) {
   ZoneScoped;
 

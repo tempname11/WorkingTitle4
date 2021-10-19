@@ -321,10 +321,10 @@ TASK_DECL {
         );
 
         ImGui::TableNextColumn();
-        if (item->status == SessionData::MetaMeshes::Status::Loading) {
+        if (item->status == engine::session::Data::MetaMeshes::Status::Loading) {
           ImGui::Text("[loading]");
         }
-        if (item->status == SessionData::MetaMeshes::Status::Ready) {
+        if (item->status == engine::session::Data::MetaMeshes::Status::Ready) {
           if (item->invalid) {
             ImGui::Text("<invalid>");
           } else {
@@ -376,10 +376,10 @@ TASK_DECL {
         );
 
         ImGui::TableNextColumn();
-        if (item->status == SessionData::MetaTextures::Status::Loading) {
+        if (item->status == engine::session::Data::MetaTextures::Status::Loading) {
           ImGui::Text("[loading]");
         }
-        if (item->status == SessionData::MetaTextures::Status::Ready) {
+        if (item->status == engine::session::Data::MetaTextures::Status::Ready) {
           if (item->invalid) {
             ImGui::Text("<invalid>");
           } else {

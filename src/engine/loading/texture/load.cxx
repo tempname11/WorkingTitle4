@@ -2,7 +2,7 @@
 #include <src/global.hxx>
 #include <src/task/defer.hxx>
 #include <src/lib/gfx/utilities.hxx>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include <src/engine/uploader.hxx>
 #include <src/engine/common/texture.hxx>
 #include "../texture.hxx"
@@ -30,7 +30,7 @@ struct LoadData {
   VkFormat format;
 
   engine::common::texture::Data<uint8_t> the_texture;
-  SessionData::Vulkan::Textures::Item texture_item;
+  engine::session::Vulkan::Textures::Item texture_item;
 };
 
 void _load_read_file(
@@ -43,8 +43,8 @@ void _load_read_file(
 
 void _load_init_image(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<SessionData> session,
-  Use<SessionData::Vulkan::Core> core,
+  Ref<engine::session::Data> session,
+  Use<engine::session::Vulkan::Core> core,
   Own<VkQueue> queue_work,
   Ref<lib::Task> signal,
   Own<LoadData> data 
@@ -114,16 +114,16 @@ void _load_init_image(
 
 void _load_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<SessionData> session,
-  Own<SessionData::Vulkan::Textures> textures,
-  Own<SessionData::MetaTextures> meta_textures,
+  Ref<engine::session::Data> session,
+  Own<engine::session::Vulkan::Textures> textures,
+  Own<engine::session::Data::MetaTextures> meta_textures,
   Own<LoadData> data
 ) {
   ZoneScoped;
 
   textures->items.insert({ data->texture_id, data->texture_item });
   auto meta = &meta_textures->items.at(data->texture_id);
-  meta->status = SessionData::MetaTextures::Status::Ready;
+  meta->status = engine::session::Data::MetaTextures::Status::Ready;
   meta->will_have_loaded = nullptr;
   meta->invalid = data->the_texture.data == nullptr;
 
@@ -138,9 +138,9 @@ lib::Task *load(
   std::string &path,
   VkFormat format,
   lib::task::ContextBase* ctx,
-  Ref<SessionData> session,
-  Own<SessionData::MetaTextures> meta_textures,
-  Use<SessionData::GuidCounter> guid_counter,
+  Ref<engine::session::Data> session,
+  Own<engine::session::Data::MetaTextures> meta_textures,
+  Use<engine::session::Data::GuidCounter> guid_counter,
   lib::GUID *out_texture_id
 ) {
   ZoneScoped;
@@ -153,12 +153,12 @@ lib::Task *load(
     auto meta = &meta_textures->items.at(texture_id);
     meta->ref_count++;
 
-    if (meta->status == SessionData::MetaTextures::Status::Loading) {
+    if (meta->status == engine::session::Data::MetaTextures::Status::Loading) {
       assert(meta->will_have_loaded != nullptr);
       return meta->will_have_loaded;
     }
 
-    if (meta->status == SessionData::MetaTextures::Status::Ready) {
+    if (meta->status == engine::session::Data::MetaTextures::Status::Ready) {
       return nullptr;
     }
 
@@ -213,9 +213,9 @@ lib::Task *load(
     { signal_init_image, task_finish.first },
   });
 
-  SessionData::MetaTextures::Item meta = {
+  engine::session::Data::MetaTextures::Item meta = {
     .ref_count = 1,
-    .status = SessionData::MetaTextures::Status::Loading,
+    .status = engine::session::Data::MetaTextures::Status::Loading,
     .will_have_loaded = task_finish.second,
     .path = path,
     .format = format,

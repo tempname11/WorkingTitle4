@@ -9,7 +9,7 @@ namespace engine::loading::group {
 void deref(
   lib::task::ContextBase *ctx,
   lib::GUID group_id,
-  Ref<SessionData> session
+  Ref<engine::session::Data> session
 ) {
   ZoneScoped;
   std::shared_lock lock(session->groups.rw_mutex);

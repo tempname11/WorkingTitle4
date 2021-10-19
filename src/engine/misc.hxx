@@ -22,7 +22,7 @@ struct ImguiData {
 };
 
 struct GlfwUserData {
-  SessionData::State *state;
+  engine::session::Data::State *state;
 };
 
 struct UpdateData {

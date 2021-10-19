@@ -64,7 +64,7 @@ bool _read_file(
 
 void _load(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<SessionData> session,
+  Ref<engine::session::Data> session,
   Own<LoadData> data
 ) {
   // @Bug: should not assert on bad input!
@@ -107,7 +107,7 @@ void _load(
 lib::Task *load(
   lib::task::ContextBase *ctx,
   std::string *path,
-  Ref<SessionData> session
+  Ref<engine::session::Data> session
 ) {
   ZoneScoped;
   lib::lifetime::ref(&session->lifetime);

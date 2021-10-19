@@ -1,6 +1,6 @@
 #include <src/global.hxx>
 #include <src/embedded.hxx>
-#include <src/engine/session.hxx>
+#include <src/engine/session/data.hxx>
 #include "../../image_formats.hxx"
 #include "data.hxx"
 
@@ -8,7 +8,7 @@ namespace engine::rendering::pass::indirect_light {
 
 void init_sdata(
   SData *out,
-  Use<SessionData::Vulkan::Core> core
+  Use<engine::session::Vulkan::Core> core
 ) {
   ZoneScoped;
 
