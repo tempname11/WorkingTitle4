@@ -16,6 +16,7 @@ void _quit(
     fc->allowed_count = 1;
     if (fc->signal_allowed != nullptr) {
       lib::task::signal(ctx->runner, fc->signal_allowed);
+      fc->signal_allowed = nullptr;
     }
   }
 }
@@ -27,12 +28,13 @@ void _interactive(
   Own<SessionData::GLFW> glfw
 ) {
   state->ignore_glfw_events = false;
-  glfwShowWindow(glfw->window);
+  //glfwShowWindow(glfw->window);
   {
     auto lock = std::scoped_lock(fc->mutex);
     fc->allowed_count = SIZE_MAX / 2; // prevent overflow on +=
     if (fc->signal_allowed != nullptr) {
       lib::task::signal(ctx->runner, fc->signal_allowed);
+      fc->signal_allowed = nullptr;
     }
   }
 }
@@ -40,17 +42,25 @@ void _interactive(
 struct CtrlSession : Ctrl {
   SessionData *session;
 
-  Waitable allow_frames(size_t count) {
+  void screenshot_next_frame(std::string &path) {
+    auto fc = &session->frame_control;
+    auto lock = std::scoped_lock(fc->mutex);
+    fc->directives.should_capture_screenshot = true;
+    fc->directives.screenshot_path = path;
+  }
+
+  Waitable advance_frames(size_t count) {
     auto fc = &session->frame_control;
     auto lock = std::scoped_lock(fc->mutex);
     fc->allowed_count += count;
+
+    assert(fc->signal_done == nullptr); // @Incomplete
+    fc->signal_done = lib::task::create_yarn_signal();
+
     if (fc->signal_allowed != nullptr) {
       lib::task::signal(ctx->runner, fc->signal_allowed);
       fc->signal_allowed = nullptr;
     }
-
-    assert(fc->signal_done == nullptr); // @Incomplete
-    fc->signal_done = lib::task::create_yarn_signal();
 
     return wait_for_signal(fc->signal_done);
   }
@@ -59,10 +69,10 @@ struct CtrlSession : Ctrl {
   void run_decorated() {
     task(engine::session::setup, &session);
     run();
-    if (1) {
-      task(_interactive, &session->frame_control, &session->state, &session->glfw);
-    } else {
+    if (getenv("ENGINE_ENV_SILENT")) {
       task(_quit, &session->frame_control, &session->glfw);
+    } else {
+      task(_interactive, &session->frame_control, &session->state, &session->glfw);
     }
   }
 };

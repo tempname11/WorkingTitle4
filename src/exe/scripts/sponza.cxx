@@ -17,16 +17,22 @@ void update_camera(
 }
 
 void CtrlSession::run() {
-  std::string path = "assets/sponza-fixed/index.grup";
-  task(engine::loading::group::load(
-    ctx,
-    &path,
-    session
-  ));
+  {
+    std::string path = "assets/sponza-fixed/index.grup";
+    task(engine::loading::group::load(
+      ctx,
+      &path,
+      session
+    ));
+    task(update_camera, &session->state);
+    advance_frames(100);
+  }
 
-  task(update_camera, &session->state);
-
-  allow_frames(100);
+  {
+    std::string path = "tmp/sponza.bmp";
+    screenshot_next_frame(path);
+    advance_frames(1);
+  }
 }
 
 MAIN_MACRO(CtrlSession);

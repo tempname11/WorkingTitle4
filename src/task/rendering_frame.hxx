@@ -4,7 +4,7 @@
 #include "task.hxx"
 
 void rendering_frame_schedule(
-  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
+  task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
   Ref<task::Task> rendering_yarn_end,
   Ref<SessionData> session,
   Ref<engine::display::Data> display

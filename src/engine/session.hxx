@@ -282,13 +282,20 @@ struct SessionData : lib::task::ParentResource {
     engine::common::ubo::Flags ubo_flags;
   } state;
 
-  struct FrameControl {
-    bool enabled;
-    std::mutex mutex;
-    size_t allowed_count;
-    lib::Task *signal_allowed;
-    lib::Task *signal_done;
-  } frame_control;
+  #ifdef ENGINE_DEVELOPER
+    struct FrameControl {
+      bool enabled;
+      std::mutex mutex;
+      size_t allowed_count;
+      lib::Task *signal_allowed;
+      lib::Task *signal_done;
+
+      struct Directives {
+          bool should_capture_screenshot;
+          std::string screenshot_path;
+      } directives;
+    } frame_control;
+  #endif
 };
 
 struct SessionSetupData {

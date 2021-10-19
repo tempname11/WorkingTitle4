@@ -45,8 +45,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_callback(
   return VK_FALSE;
 }
 
-const int DEFAULT_WINDOW_WIDTH = 1280;
-const int DEFAULT_WINDOW_HEIGHT = 720;
+const int DEFAULT_WINDOW_WIDTH = 1920;
+const int DEFAULT_WINDOW_HEIGHT = 1080;
 
 glm::vec2 fullscreen_quad_data[] = { // not a quad now!
   { -1.0f, -1.0f },
@@ -612,7 +612,7 @@ void setup(
       LOG("GLFW error, code: {}, description: {}", error_code, description);
     });
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // for Vulkan
-    if (out.ptr != nullptr) {
+    if (out.ptr != nullptr && getenv("ENGINE_ENV_SILENT") != nullptr) {
       glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     }
     GLFWmonitor *monitor = nullptr;
@@ -773,7 +773,9 @@ void setup(
     .probe_normal_bias = 0.001f,
   };
 
-  session->frame_control.enabled = (out.ptr != nullptr);
+  #ifdef ENGINE_DEVELOPER
+    session->frame_control.enabled = (out.ptr != nullptr);
+  #endif
 
   /*
   task::Task* signal_setup_finished = lib::gpu_signal::create(
@@ -789,7 +791,7 @@ void setup(
   #ifndef NDEBUG
   {
     const auto size = sizeof(SessionData) - sizeof(SessionData::Vulkan);
-    static_assert(size == 1112);
+    static_assert(size == 1160);
   }
   {
     const auto size = sizeof(SessionData::Vulkan);
@@ -833,7 +835,9 @@ void setup(
         &session->gpu_signal_support,
         &session->info,
         &session->state,
-        &session->frame_control,
+        #ifdef ENGINE_DEVELOPER
+          &session->frame_control,
+        #endif
       },
     },
     {

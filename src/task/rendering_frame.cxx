@@ -29,8 +29,8 @@ void rendering_frame(
   Ref<SessionData> session,
   Ref<engine::display::Data> data,
   Use<SessionData::GLFW> glfw,
-  Use<engine::display::Data::PresentationFailureState> presentation_failure_state,
-  Use<engine::display::Data::SwapchainDescription> swapchain_description,
+  Use<engine::display::Data::PresentationFailureState> presentation_failure_state, // @Cleanup use Ref
+  Use<engine::display::Data::SwapchainDescription> swapchain_description, // @Cleanup use ref
   Own<engine::display::Data::FrameInfo> latest_frame
 ) {
   ZoneScopedC(0xFF0000);
@@ -68,9 +68,19 @@ void rendering_frame(
     latest_frame->number % swapchain_description->image_count
   );
 
-  // @Improvement: should put FrameInfo inside FrameData.
+  // @Cleanup: should put FrameInfo inside FrameData.
   auto frame_info = new engine::display::Data::FrameInfo(*latest_frame);
   auto frame_data = new engine::misc::FrameData {};
+
+  #ifdef ENGINE_DEVELOPER
+    {
+      auto fc = &session->frame_control;
+      auto lock = std::scoped_lock(fc->mutex);
+      frame_info->directives.should_capture_screenshot = fc->directives.should_capture_screenshot;
+      frame_info->directives.screenshot_path = fc->directives.screenshot_path;
+      fc->directives = {};
+    }
+  #endif
 
   auto task_setup_gpu_signal = defer(
     task::create(
@@ -213,6 +223,8 @@ void rendering_frame(
     ),
     task::create(
       frame_compose_render,
+      session.ptr,
+      data.ptr,
       &session->vulkan.core,
       &data->presentation,
       &data->presentation_failure_state,
@@ -299,33 +311,20 @@ void rendering_frame(
 }
 
 void rendering_frame_schedule(
-  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
+  task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
   Ref<task::Task> rendering_yarn_end,
   Ref<SessionData> session,
   Ref<engine::display::Data> display
 ) {
   ZoneScoped;
 
-  if (TracyIsConnected) {
-    ZoneScopedN("artificial_delay");
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(TRACY_ARTIFICIAL_DELAY);
-  }
-
-  lib::Task *signal = nullptr;
-  if (session->frame_control.enabled) {
-    auto fc = &session->frame_control;
-    auto lock = std::scoped_lock(fc->mutex);
-    if (fc->allowed_count > 0) {
-      fc->allowed_count--;
-    } else {
-      if (fc->signal_done) {
-        lib::task::signal(ctx->runner, fc->signal_done);
-        fc->signal_done = nullptr;
-      }
-      signal = fc->signal_allowed = lib::task::create_yarn_signal();
+  #ifdef ENGINE_DEVELOPER
+    if (TracyIsConnected) {
+      ZoneScopedN("artificial_delay");
+      using namespace std::chrono_literals;
+      std::this_thread::sleep_for(TRACY_ARTIFICIAL_DELAY);
     }
-  }
+  #endif
 
   auto task_frame = lib::task::create(
     rendering_frame,
@@ -338,19 +337,37 @@ void rendering_frame_schedule(
     &display->latest_frame
   );
 
-  if (signal != nullptr) {
-    auto deferred_frame = defer(task_frame);
-    ctx->new_tasks.insert(ctx->new_tasks.end(), {
-      deferred_frame.first,
-    });
+  #ifdef ENGINE_DEVELOPER
+    lib::Task *signal = nullptr;
+    if (session->frame_control.enabled) {
+      auto fc = &session->frame_control;
+      auto lock = std::scoped_lock(fc->mutex);
+      if (fc->allowed_count > 0) {
+        fc->allowed_count--;
+      } else {
+        signal = fc->signal_allowed = lib::task::create_yarn_signal();
 
-    ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-      { signal, deferred_frame.first },
-    });
-  } else {
+        if (fc->signal_done) {
+          lib::task::signal(ctx->runner, fc->signal_done);
+          fc->signal_done = nullptr;
+        }
+      }
+
+      auto deferred_frame = defer(task_frame);
+
+      // inject still under the FC mutex
+      lib::task::inject(ctx->runner, {
+        deferred_frame.first,
+      }, {
+        .new_dependencies = {
+          { signal, deferred_frame.first },
+        },
+      });
+    }
+  #else
     ctx->new_tasks.insert(ctx->new_tasks.end(), {
       task_frame,
     });
-  }
+  #endif
 }
 

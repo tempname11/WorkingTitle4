@@ -81,6 +81,7 @@ add_library (
   "${CMAKE_SOURCE_DIR}/submodule/imgui/misc/cpp/imgui_stdlib.cpp"
 )
 
+target_compile_definitions(engine_lib PUBLIC -DENGINE_DEVELOPER)
 target_compile_definitions(engine_lib PUBLIC -DWINDOWS)
 # target_compile_definitions(engine_lib PUBLIC -DWIN32_LEAN_AND_MEAN)
 target_compile_definitions(engine_lib PUBLIC -DVC_EXTRALEAN)

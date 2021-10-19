@@ -57,6 +57,13 @@ struct Data : lib::task::ParentResource {
     uint64_t timeline_semaphore_value;
     uint8_t inflight_index;
     bool is_sequential;
+
+    #ifdef ENGINE_DEVELOPER
+      struct Directives {
+        bool should_capture_screenshot;
+        std::string screenshot_path;
+      } directives;
+    #endif
   } latest_frame;
 
   typedef std::vector<CommandPool2> CommandPools;

@@ -20,4 +20,6 @@ glm::vec3 get_random_unit_vector();
 
 glm::mat3 get_random_rotation();
 
+size_t get_format_byte_size(VkFormat format);
+
 } // namespace

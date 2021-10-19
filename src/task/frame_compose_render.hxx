@@ -7,6 +7,8 @@
 #undef TASK_DECL
 #define TASK_DECL void frame_compose_render( \
   task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx, \
+  Ref<SessionData> session, \
+  Ref<engine::display::Data> display, \
   usage::Some<SessionData::Vulkan::Core> core, \
   usage::Some<engine::display::Data::Presentation> presentation, \
   usage::Some<engine::display::Data::PresentationFailureState> presentation_failure_state, \

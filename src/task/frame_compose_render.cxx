@@ -1,4 +1,57 @@
+#include <stb_image_write.h>
+#include <src/lib/gfx/utilities.hxx>
 #include "frame_compose_render.hxx"
+
+#ifdef ENGINE_DEVELOPER
+  struct WriteScreenshotData {
+    lib::gfx::allocator::Buffer buffer;
+    lib::gfx::allocator::HostMapping mapping;
+    std::string path;
+    VkFormat format;
+    int w;
+    int h;
+  };
+
+  void _write_screenshot(
+    task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
+    Ref<SessionData> session,
+    Use<SessionData::Vulkan::Core> core,
+    Own<WriteScreenshotData> data
+  ) {
+    ZoneScoped;
+
+    assert(data->format == VK_FORMAT_B8G8R8A8_SRGB);
+    for (size_t i = 0; i < data->w * data->h; i++) {
+      auto ptr = (uint8_t *) data->mapping.mem;
+      // swap R <-> B
+      auto r = ptr[4 * i + 0];
+      ptr[4 * i + 0] = ptr[4 * i + 2];
+      ptr[4 * i + 2] = r;
+    }
+
+    auto result = stbi_write_bmp(
+      data->path.c_str(),
+      data->w,
+      data->h,
+      4,
+      data->mapping.mem
+      //data->w * 4
+    );
+
+    assert(result != 0);
+
+    lib::gfx::allocator::destroy_buffer(
+      &session->vulkan.uploader.allocator_host,
+      core->device,
+      core->allocator,
+      data->buffer
+    );
+
+    delete data.ptr;
+
+    lib::lifetime::deref(&session->lifetime, ctx->runner);
+  }
+#endif
 
 TASK_DECL {
   ZoneScoped;
@@ -9,6 +62,7 @@ TASK_DECL {
       return;
     }
   }
+
   auto pool2 = &(*command_pools)[frame_info->inflight_index];
   VkCommandPool pool = command_pool_2_borrow(pool2);
   VkCommandBuffer cmd;
@@ -26,6 +80,7 @@ TASK_DECL {
     );
     assert(result == VK_SUCCESS);
   }
+
   { // begin
     auto info = VkCommandBufferBeginInfo {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -34,6 +89,7 @@ TASK_DECL {
     auto result = vkBeginCommandBuffer(cmd, &info);
     assert(result == VK_SUCCESS);
   }
+
   { TracyVkZone(core->tracy_context, cmd, "compose_render");
     { ZoneScopedN("barriers_before");
       VkImageMemoryBarrier barriers[] = {
@@ -83,6 +139,7 @@ TASK_DECL {
         barriers
       );
     }
+
     { // copy image
       auto region = VkImageCopy {
         .srcSubresource = {
@@ -109,6 +166,81 @@ TASK_DECL {
         &region
       );
     }
+
+    #ifdef ENGINE_DEVELOPER
+    if (frame_info->directives.should_capture_screenshot) { // screenshot
+      VkBufferCreateInfo info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = (lib::gfx::utilities::get_format_byte_size(swapchain_description->image_format)
+          * swapchain_description->image_extent.width
+          * swapchain_description->image_extent.height
+        ),
+        .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+      };
+      auto buffer = lib::gfx::allocator::create_buffer(
+        &session->vulkan.uploader.allocator_host,
+        core->device,
+        core->allocator,
+        &core->properties.basic,
+        &info
+      );
+      auto mapping = lib::gfx::allocator::get_host_mapping(
+        &session->vulkan.uploader.allocator_host,
+        buffer.id
+      );
+      auto region = VkBufferImageCopy {
+        .imageSubresource = {
+          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+          .layerCount = 1,
+        },
+        .imageExtent = {
+          .width = swapchain_description->image_extent.width,
+          .height = swapchain_description->image_extent.height,
+          .depth = 1,
+        },
+      };
+      vkCmdCopyImageToBuffer(
+        cmd,
+        final_image->stakes[frame_info->inflight_index].image,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        buffer.buffer,
+        1,
+        &region
+      );
+
+      auto write_data = new WriteScreenshotData {
+        .buffer = buffer,
+        .mapping = mapping,
+        .path = std::move(frame_info->directives.screenshot_path),
+        .format = swapchain_description->image_format,
+        .w = int(swapchain_description->image_extent.width),
+        .h = int(swapchain_description->image_extent.height),
+          
+      };
+
+      lib::lifetime::ref(&session->lifetime);
+
+      auto task_write_screenshot = lib::task::create(
+        _write_screenshot,
+        session.ptr,
+        core.ptr,
+        write_data
+      );
+
+      ctx->new_tasks.insert(ctx->new_tasks.end(), {
+        task_write_screenshot,
+      });
+
+      auto signal = session->inflight_gpu.signals[frame_info->inflight_index];
+      assert(signal != nullptr);
+
+      ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
+        { signal, task_write_screenshot },
+      });
+    }
+    #endif
+
     { ZoneScopedN("barriers_after");
       // @Note:
       // https://themaister.net/blog/2019/08/14/yet-another-blog-explaining-vulkan-synchronization/

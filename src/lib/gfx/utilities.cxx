@@ -81,4 +81,20 @@ glm::mat3 get_random_rotation() {
   return glm::mat3(u, v, w);
 }
 
+size_t get_format_byte_size(VkFormat format) {
+  switch (format) {
+    case VK_FORMAT_B8G8R8A8_SRGB:
+    case VK_FORMAT_R8G8B8A8_SRGB:
+    case VK_FORMAT_R8G8B8A8_UNORM: {
+      return 4;
+    }
+    default: {
+      // If this asserts, time to add new cases!
+      // Not sure if Vulkan API can do this for us instead?
+      assert(false);
+      return 0;
+    }
+  }
+}
+
 } // namespace

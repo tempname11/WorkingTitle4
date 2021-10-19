@@ -140,21 +140,6 @@ PrepareResult prepare_buffer(
   };
 }
 
-size_t get_texel_size(VkFormat format) {
-  switch (format) {
-    case VK_FORMAT_R8G8B8A8_SRGB:
-    case VK_FORMAT_R8G8B8A8_UNORM: {
-      return 4;
-    }
-    default: {
-      // If this asserts, time to add new cases!
-      // Not sure if Vulkan API can do this for us instead?
-      assert(false);
-      return 0;
-    }
-  }
-}
-
 PrepareResult prepare_image(
   Ref<Uploader> it,
   VkDevice device,
@@ -171,7 +156,7 @@ PrepareResult prepare_image(
     .size = VkDeviceSize(
       info->extent.width *
       info->extent.height *
-      get_texel_size(info->format)
+      lib::gfx::utilities::get_format_byte_size(info->format)
     ),
     .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
