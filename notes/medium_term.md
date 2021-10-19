@@ -53,6 +53,7 @@
   (this is now hidden under TRACY_VULKAN_ENABLE and disabled by default)
 
 ### refactoring
+- split `graphics_render` into smaller parts.
 - Primary LBuffer: indirect light first. :IndirectFirst
 - Move ad-hoc inline constants to uniform or at least `common/constants.glsl` :MoveToUniform
 - The directory `src/task` should not be there. tasks should be where they logically belong.

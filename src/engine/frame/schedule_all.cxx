@@ -1,24 +1,24 @@
 #include <src/task/defer.hxx>
-#include <src/task/frame_acquire.hxx>
-#include <src/task/frame_cleanup.hxx>
-#include <src/task/frame_compose_render.hxx>
-#include <src/task/frame_compose_submit.hxx>
-#include <src/task/frame_generate_render_list.hxx>
-#include <src/task/frame_graphics_render.hxx>
-#include <src/task/frame_graphics_submit.hxx>
-#include <src/task/frame_handle_window_events.hxx>
-#include <src/task/frame_imgui_new_frame.hxx>
-#include <src/task/frame_imgui_populate.hxx>
-#include <src/task/frame_imgui_render.hxx>
-#include <src/task/frame_imgui_submit.hxx>
-#include <src/task/frame_loading_dynamic.hxx>
-#include <src/task/frame_prepare_uniforms.hxx>
-#include <src/task/frame_present.hxx>
-#include <src/task/frame_reset_pools.hxx>
-#include <src/task/frame_setup_gpu_signal.hxx>
-#include <src/task/frame_update.hxx>
 #include <src/task/rendering_has_finished.hxx>
-#include <src/engine/frame/readback.hxx>
+#include "acquire.hxx"
+#include "cleanup.hxx"
+#include "compose_render.hxx"
+#include "compose_submit.hxx"
+#include "generate_render_list.hxx"
+#include "graphics_render.hxx"
+#include "graphics_submit.hxx"
+#include "handle_window_events.hxx"
+#include "imgui_new_frame.hxx"
+#include "imgui_populate.hxx"
+#include "imgui_render.hxx"
+#include "imgui_submit.hxx"
+#include "loading_dynamic.hxx"
+#include "prepare_uniforms.hxx"
+#include "present.hxx"
+#include "readback.hxx"
+#include "reset_pools.hxx"
+#include "setup_gpu_signal.hxx"
+#include "update.hxx"
 #include "schedule_all.hxx"
 
 #define TRACY_ARTIFICIAL_DELAY 20ms
@@ -86,7 +86,7 @@ void _begin(
 
   auto task_setup_gpu_signal = defer(
     task::create(
-      frame_setup_gpu_signal,
+      setup_gpu_signal,
       session.ptr,
       &session->vulkan.core,
       &session->gpu_signal_support,
@@ -96,34 +96,34 @@ void _begin(
   );
   auto frame_tasks = new std::vector<task::Task *>({
     task::create(
-      frame_handle_window_events,
+      handle_window_events,
       &session->glfw,
       &session->state,
       &frame_data->update_data
     ),
     task::create(
-      frame_update,
+      update,
       &frame_data->update_data,
       frame_info,
       &data->readback,
       &session->state
     ),
     task::create(
-      frame_reset_pools,
+      reset_pools,
       &session->vulkan.core,
       &data->command_pools,
       &data->descriptor_pools,
       frame_info
     ),
     task::create(
-      frame_acquire,
+      acquire,
       &session->vulkan.core,
       &data->presentation,
       &data->presentation_failure_state,
       frame_info
     ),
     task::create(
-      frame_prepare_uniforms,
+      prepare_uniforms,
       &session->vulkan.core,
       &data->swapchain_description,
       frame_info,
@@ -133,7 +133,7 @@ void _begin(
       &data->lpass
     ),
     task::create(
-      frame_generate_render_list,
+      generate_render_list,
       session.ptr,
       &session->scene,
       &session->vulkan.meshes,
@@ -141,7 +141,7 @@ void _begin(
       &frame_data->render_list
     ),
     task::create(
-      frame_graphics_render,
+      graphics_render,
       session.ptr,
       &session->state,
       &session->vulkan.core,
@@ -183,20 +183,20 @@ void _begin(
       &frame_data->graphics_data
     ),
     task::create(
-      frame_graphics_submit,
+      graphics_submit,
       &session->vulkan.queue_work,
       &data->graphics_finished_semaphore,
       frame_info,
       &frame_data->graphics_data
     ),
     task::create(
-      frame_imgui_new_frame,
+      imgui_new_frame,
       &session->imgui_context,
       &data->imgui_backend,
       &session->glfw
     ),
     task::create(
-      frame_imgui_populate,
+      imgui_populate,
       session.ptr,
       &session->imgui_context,
       &frame_data->imgui_reactions,
@@ -205,7 +205,7 @@ void _begin(
       &session->state
     ),
     task::create(
-      frame_imgui_render,
+      imgui_render,
       &session->vulkan.core,
       &session->imgui_context,
       &data->imgui_backend,
@@ -216,7 +216,7 @@ void _begin(
       &frame_data->imgui_data
     ),
     task::create(
-      frame_imgui_submit,
+      imgui_submit,
       &session->vulkan.queue_work,
       &data->graphics_finished_semaphore,
       &data->imgui_finished_semaphore,
@@ -224,7 +224,7 @@ void _begin(
       &frame_data->imgui_data
     ),
     task::create(
-      frame_compose_render,
+      compose_render,
       session.ptr,
       data.ptr,
       &session->vulkan.core,
@@ -237,7 +237,7 @@ void _begin(
       &frame_data->compose_data
     ),
     task::create(
-      frame_compose_submit,
+      compose_submit,
       &session->vulkan.queue_work,
       &data->presentation,
       &data->imgui_finished_semaphore,
@@ -245,14 +245,14 @@ void _begin(
       &frame_data->compose_data
     ),
     task::create(
-      frame_present,
+      present,
       &data->presentation,
       &data->presentation_failure_state,
       frame_info,
       &session->vulkan.queue_present
     ),
     task::create(
-      engine::frame::readback,
+      readback,
       &session->vulkan.core,
       &session->vulkan.queue_work,
       &data->presentation,
@@ -264,7 +264,7 @@ void _begin(
       frame_info
     ),
     task::create(
-      frame_loading_dynamic,
+      loading_dynamic,
       session.ptr,
       &session->guid_counter,
       &session->meta_meshes,
@@ -272,7 +272,7 @@ void _begin(
       &frame_data->imgui_reactions
     ),
     task::create(
-      frame_cleanup,
+      cleanup,
       frame_info,
       frame_data
     ),
