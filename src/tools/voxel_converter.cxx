@@ -5,11 +5,12 @@
 #include <chrono>
 #include <string>
 #include <vector>
-#include <unordered_set>
-#include <unordered_map>
+#include <set>
+#include <map>
 #include <glm/glm.hpp>
 #include <glm/gtc/color_space.hpp>
 #include <src/engine/common/mesh.hxx>
+#include <src/lib/io.hxx>
 #include "common/mesh.hxx"
 
 namespace tools {
@@ -298,44 +299,32 @@ const glm::vec3 cube_vertices[] = {
   {-1.0f, -1.0f, -1.0f},
   {+1.0f, -1.0f, -1.0f},
   {+1.0f, +1.0f, -1.0f},
-  {+1.0f, +1.0f, -1.0f},
   {-1.0f, +1.0f, -1.0f},
-  {-1.0f, -1.0f, -1.0f},
   // +XY
   {-1.0f, -1.0f, +1.0f},
   {-1.0f, +1.0f, +1.0f},
   {+1.0f, +1.0f, +1.0f},
-  {+1.0f, +1.0f, +1.0f},
   {+1.0f, -1.0f, +1.0f},
-  {-1.0f, -1.0f, +1.0f},
   // -YZ
   {-1.0f, -1.0f, -1.0f},
   {-1.0f, +1.0f, -1.0f},
   {-1.0f, +1.0f, +1.0f},
-  {-1.0f, +1.0f, +1.0f},
   {-1.0f, -1.0f, +1.0f},
-  {-1.0f, -1.0f, -1.0f},
   // +YZ
   {+1.0f, -1.0f, -1.0f},
   {+1.0f, -1.0f, +1.0f},
   {+1.0f, +1.0f, +1.0f},
-  {+1.0f, +1.0f, +1.0f},
   {+1.0f, +1.0f, -1.0f},
-  {+1.0f, -1.0f, -1.0f},
   // -ZX
   {-1.0f, -1.0f, -1.0f},
   {-1.0f, -1.0f, +1.0f},
   {+1.0f, -1.0f, +1.0f},
-  {+1.0f, -1.0f, +1.0f},
   {+1.0f, -1.0f, -1.0f},
-  {-1.0f, -1.0f, -1.0f},
   // +ZX
   {-1.0f, +1.0f, -1.0f},
   {+1.0f, +1.0f, -1.0f},
   {+1.0f, +1.0f, +1.0f},
-  {+1.0f, +1.0f, +1.0f},
   {-1.0f, +1.0f, +1.0f},
-  {-1.0f, +1.0f, -1.0f},
 };
 
 const glm::vec3 cube_normals[] = {
@@ -364,13 +353,24 @@ union XYZ {
 
 struct IntermediateData {
   bool read_xyzi;
-  std::unordered_map<uint64_t, uint8_t> voxels;
+  std::map<uint64_t, uint8_t> voxels;
   glm::u8vec4 palette[256];
+};
+
+const uint8_t GRUP_VERSION = 1;
+
+struct GrupBuilder {
+  std::vector<common::mesh::T06_Builder> finished_meshes;
+  common::mesh::T06_Builder current_mesh;
 };
 
 const float TEXTURE_MAPPING_SCALE = 1.0f / 8.0f;
 
-void build_cubes(IntermediateData *data, common::mesh::T06_Builder *mesh) {
+void build_cubes(
+  IntermediateData *data,
+  GrupBuilder *builder
+) {
+  std::vector<uint64_t> linear;
   for (auto elem: data->voxels) {
     XYZ voxel = { .value = elem.first };
     for (size_t i = 0; i < 6; i++) { // sides
@@ -382,9 +382,9 @@ void build_cubes(IntermediateData *data, common::mesh::T06_Builder *mesh) {
       if (data->voxels.contains(adjacent.value)) {
         continue;
       }
-      glm::vec3 v[6];
-      for (size_t j = 0; j < 6; j++) { // triangle vertices
-        v[j] = cube_vertices[6 * i + j] * 0.5f + 0.5f + glm::vec3(
+      glm::vec3 v[4];
+      for (size_t j = 0; j < 4; j++) { // triangle vertices
+        v[j] = cube_vertices[4 * i + j] * 0.5f + 0.5f + glm::vec3(
           voxel.xyz.x, voxel.xyz.y, voxel.xyz.z
         );
       }
@@ -400,17 +400,24 @@ void build_cubes(IntermediateData *data, common::mesh::T06_Builder *mesh) {
       );
       auto bitangent = glm::cross(normal, tangent);
       auto scale = TEXTURE_MAPPING_SCALE;
-      for (size_t j = 0; j < 6; j++) { // triangle vertices
-        // @Performance: if this is ever used seriously (which is unlikely),
+      if (
+        builder->current_mesh.vertices.size() + 4 - 1 >
+        std::numeric_limits<engine::common::mesh::IndexT06>::max()
+      ) {
+        builder->finished_meshes.push_back(builder->current_mesh);
+        builder->current_mesh = {};
+      }
+      auto s = builder->current_mesh.vertices.size();
+      builder->current_mesh.indices.push_back(s + 0);
+      builder->current_mesh.indices.push_back(s + 1);
+      builder->current_mesh.indices.push_back(s + 2);
+      builder->current_mesh.indices.push_back(s + 2);
+      builder->current_mesh.indices.push_back(s + 3);
+      builder->current_mesh.indices.push_back(s + 0);
+      for (size_t j = 0; j < 4; j++) { // triangle vertices
+        // @Performance: if this is ever used seriously,
         // we could reuse some of the vertices. For now, don't bother.
-
-        // Also, we currently can't convert more than 2^16 vertex meshes. :NotEnoughIndices
-        assert(
-          mesh->indices.size() <=
-          std::numeric_limits<engine::common::mesh::IndexT06>::max()
-        );
-        mesh->indices.push_back(mesh->indices.size());
-        mesh->vertices.push_back(engine::common::mesh::VertexT06 {
+        builder->current_mesh.vertices.push_back(engine::common::mesh::VertexT06 {
           .position = v[j],
           .tangent = tangent,
           .bitangent = bitangent,
@@ -422,8 +429,11 @@ void build_cubes(IntermediateData *data, common::mesh::T06_Builder *mesh) {
   }
 }
 
-void build_mc(IntermediateData *data, common::mesh::T06_Builder *mesh) {
-  std::unordered_set<uint64_t> candidates;
+void build_mc(
+  IntermediateData *data,
+  GrupBuilder *builder
+) {
+  std::set<uint64_t> candidates;
   for (auto &elem: data->voxels) {
     XYZ voxel = { .value = elem.first };
     for (int16_t dx = -1; dx <= 1; dx++) {
@@ -535,17 +545,22 @@ void build_mc(IntermediateData *data, common::mesh::T06_Builder *mesh) {
       auto bitangent = glm::cross(normal, tangent);
       auto scale = TEXTURE_MAPPING_SCALE;
 
+      if (
+        builder->current_mesh.vertices.size() + 3 - 1 >
+        std::numeric_limits<engine::common::mesh::IndexT06>::max()
+      ) {
+        builder->finished_meshes.push_back(builder->current_mesh);
+        builder->current_mesh = {};
+      }
+      auto s = builder->current_mesh.vertices.size();
+      builder->current_mesh.indices.push_back(s + 0);
+      builder->current_mesh.indices.push_back(s + 1);
+      builder->current_mesh.indices.push_back(s + 2);
       for (size_t j = 0; j < 3; j++) {
-        // @Performance: if this is ever used seriously (which is unlikely),
+        // @Performance: if this is ever used seriously,
         // we could reuse some vertices. For now, don't bother.
 
-        // Also, we currently can't convert more than 2^16 vertex meshes. :NotEnoughIndices
-        assert(
-          mesh->indices.size() <=
-          std::numeric_limits<engine::common::mesh::IndexT06>::max()
-        );
-        mesh->indices.push_back(mesh->indices.size());
-        mesh->vertices.push_back(engine::common::mesh::VertexT06 {
+        builder->current_mesh.vertices.push_back(engine::common::mesh::VertexT06 {
           .position = v[j],
           .tangent = tangent,
           .bitangent = bitangent,
@@ -622,10 +637,12 @@ void read_chunk(uint8_t **pCursor, size_t *pBytesLeft, IntermediateData *data) {
 
 void voxel_converter(
   char const* path_vox,
-  char const* path_t06,
+  char const* path_folder,
   bool enable_marching_cubes,
   bool enable_random_voxels
 ) {
+  char buf[1024];
+
   FILE *in = fopen(path_vox, "rb");
   assert(in != nullptr);
   fseek(in, 0, SEEK_END);
@@ -674,14 +691,79 @@ void voxel_converter(
     }
   }
   
-  common::mesh::T06_Builder mesh = {};
+  GrupBuilder builder = {};
   if (enable_marching_cubes) {
-    build_mc(&data, &mesh);
+    build_mc(&data, &builder);
   } else {
-    build_cubes(&data, &mesh);
+    build_cubes(&data, &builder);
   }
 
-  common::mesh::write(path_t06, &mesh);
+  if (builder.current_mesh.vertices.size() > 0) {
+    builder.finished_meshes.push_back(builder.current_mesh);
+  }
+  size_t mesh_index = 0;
+  for (auto mesh : builder.finished_meshes) {
+    {
+      auto buf_len = snprintf(
+        buf,
+        sizeof(buf),
+        "%s/m%02zu.t06",
+        path_folder,
+        mesh_index
+      );
+      assert(buf_len >= 0);
+      assert(buf_len < sizeof(buf));
+    }
+    common::mesh::write(buf, &mesh);
+
+    mesh_index++;
+  }
+
+  { ZoneScopedN("group");
+    {
+      auto buf_len = snprintf(buf, sizeof(buf), "%s/index.grup", path_folder);
+      assert(buf_len >= 0);
+      assert(buf_len < sizeof(buf));
+    }
+
+    auto file = fopen(buf, "wb");
+    assert(file != nullptr);
+    lib::io::magic::write(file, "GRUP");
+    fwrite(&GRUP_VERSION, 1, sizeof(GRUP_VERSION), file);
+    lib::io::string::write_c(file, path_folder); // name
+       
+    auto item_count_pos = ftell(file);
+    uint32_t item_count = builder.finished_meshes.size();
+    fwrite(&item_count, 1, sizeof(item_count), file);
+
+    glm::mat4 identity = glm::mat4(1.0f);
+
+    size_t mesh_index = 0;
+    for (auto mesh : builder.finished_meshes) {
+      fwrite(&identity, 1, sizeof(glm::mat4), file);
+
+      {
+        auto buf_len = snprintf(
+          buf,
+          sizeof(buf),
+          "%s/m%02zu.t06",
+          path_folder,
+          mesh_index
+        );
+        assert(buf_len >= 0);
+        assert(buf_len < sizeof(buf));
+        lib::io::string::write_c(file, buf, buf_len);
+      }
+      lib::io::string::write_c(file, "assets/texture-1px/albedo.png");
+      lib::io::string::write_c(file, "assets/texture-1px/normal.png");
+      lib::io::string::write_c(file, "assets/texture-1px/romeao.png");
+
+      mesh_index++;
+    }
+
+    assert(ferror(file) == 0);
+    fclose(file);
+  }
 }
 
 } // namespace

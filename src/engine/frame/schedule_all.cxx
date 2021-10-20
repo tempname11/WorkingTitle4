@@ -368,6 +368,10 @@ void schedule_all(
           { signal, deferred_frame.first },
         },
       });
+    } else {
+      ctx->new_tasks.insert(ctx->new_tasks.end(), {
+        task_frame,
+      });
     }
   #else
     ctx->new_tasks.insert(ctx->new_tasks.end(), {

@@ -41,7 +41,8 @@ void update(
     lib::debug_camera::update(
       &session_state->debug_camera,
       &update->debug_camera_input,
-      elapsed_sec
+      elapsed_sec,
+      session_state->movement_speed
     );
   }
 

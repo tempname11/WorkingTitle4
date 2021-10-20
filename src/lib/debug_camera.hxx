@@ -21,7 +21,12 @@ struct Input {
 };
 
 State init();
-void update(State *it, Input *input, double elapsed_sec);
+void update(
+  State *it,
+  Input *input,
+  double elapsed_sec,
+  double movement_speed
+);
 glm::mat4 to_view_matrix(State *it);
 
 } // namespace

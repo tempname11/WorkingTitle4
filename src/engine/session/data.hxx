@@ -174,6 +174,7 @@ struct Data : lib::task::ParentResource {
     bool is_fullscreen;
     glm::vec2 taa_jitter_offset;
     glm::vec2 taa_jitter_offset_prev;
+    float movement_speed;
     lib::debug_camera::State debug_camera;
     lib::debug_camera::State debug_camera_prev;
     glm::vec3 sun_position_xy;

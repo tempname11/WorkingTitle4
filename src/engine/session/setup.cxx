@@ -628,6 +628,19 @@ void setup(
       glfwSetInputMode(it->window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     }
 
+    glfwSetScrollCallback(it->window, [](GLFWwindow *window, double x, double y) {
+      auto ptr = (engine::misc::GlfwUserData *) glfwGetWindowUserPointer(window);
+      if (ptr == nullptr) {
+        return;
+      }
+      if (y > 0.0) {
+        ptr->state->movement_speed *= 2;
+      }
+      if (y < 0.0) {
+        ptr->state->movement_speed *= 0.5;
+      }
+    });
+
     glfwSetKeyCallback(it->window, [](GLFWwindow *window, int key, int scancode, int action, int mods) {
       auto ptr = (engine::misc::GlfwUserData *) glfwGetWindowUserPointer(window);
       if (ptr == nullptr) {
@@ -764,6 +777,7 @@ void setup(
   auto debug_camera = lib::debug_camera::init();
   session->state = {
     .ignore_glfw_events = (out.ptr != nullptr),
+    .movement_speed = 8.0f,
     .debug_camera = debug_camera,
     .debug_camera_prev = debug_camera,
     .sun_intensity = 5.0f,
@@ -791,7 +805,7 @@ void setup(
   #ifndef NDEBUG
   {
     const auto size = sizeof(engine::session::Data) - sizeof(engine::session::Vulkan);
-    static_assert(size == 1160);
+    static_assert(size == 1168);
   }
   {
     const auto size = sizeof(engine::session::Vulkan);

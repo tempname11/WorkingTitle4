@@ -24,8 +24,8 @@ static_assert(
   PROBE_RAY_COUNT_FACTORS.x * PROBE_RAY_COUNT_FACTORS.y
 );
 
-constexpr size_t PROBE_CASCADE_COUNT = 4;
-constexpr auto PROBE_CASCADE_COUNT_FACTORS = glm::uvec2(2, 2);
+constexpr size_t PROBE_CASCADE_COUNT = 8;
+constexpr auto PROBE_CASCADE_COUNT_FACTORS = glm::uvec2(2, 4);
 static_assert(
   PROBE_CASCADE_COUNT ==
   PROBE_CASCADE_COUNT_FACTORS.x * PROBE_CASCADE_COUNT_FACTORS.y

@@ -13,7 +13,7 @@ void update_camera(
   state->debug_camera.position = glm::vec3(5.0f, 0.0f, 5.0f);
   state->debug_camera.lon_lat = glm::vec2(3.0f, 0.0f);
   lib::debug_camera::Input zero_input = {};
-  lib::debug_camera::update(&state->debug_camera, &zero_input, 0.0);
+  lib::debug_camera::update(&state->debug_camera, &zero_input, 0.0, 0.0);
 }
 
 void CtrlSession::run() {

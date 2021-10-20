@@ -486,29 +486,29 @@ void imgui_populate(
       }
       if (ImGui::BeginPopupModal("VOX Converter", NULL, 0)) {
         static std::string path_vox;
-        static std::string path_t06;
+        static std::string path_folder;
         static bool enable_marching_cubes;
         static bool enable_random_voxels;
         ImGuiX::InputPath(&path_vox, "VOX Path");
-        ImGuiX::InputPath(&path_t06, "t06 Path", ImGuiX::DialogType::SaveFile);
+        ImGuiX::InputPath(&path_folder, "Folder Path", ImGuiX::DialogType::PickFolder);
         ImGui::Checkbox("enable marching cubes", &enable_marching_cubes);
         ImGui::Checkbox("enable random voxels", &enable_random_voxels);
         if (ImGui::Button("OK", ImVec2(120, 0))) {
           tools::voxel_converter(
             path_vox.c_str(),
-            path_t06.c_str(),
+            path_folder.c_str(),
             enable_marching_cubes,
             enable_random_voxels
           );
           ImGui::CloseCurrentPopup();
           path_vox = {};
-          path_t06 = {};
+          path_folder = {};
         }
         ImGui::SameLine();
         if (ImGui::Button("Cancel", ImVec2(120, 0))) {
           ImGui::CloseCurrentPopup();
           path_vox = {};
-          path_t06 = {};
+          path_folder = {};
         }
         ImGui::EndPopup();
       }
@@ -585,6 +585,14 @@ void imgui_populate(
         -1.0f,
         1.0f,
         ""
+      );
+      ImGui::SliderFloat(
+        "Movement speed",
+        &state->movement_speed,
+        0.25f,
+        256.0f,
+        "%.2f",
+        ImGuiSliderFlags_Logarithmic
       );
       ImGui::SliderFloat(
         "Sun intensity",

@@ -425,7 +425,7 @@ void gltf_converter(
     assert(file != nullptr);
     lib::io::magic::write(file, "GRUP");
     fwrite(&GRUP_VERSION, 1, sizeof(GRUP_VERSION), file);
-    lib::io::string::write_c(file, path_folder);
+    lib::io::string::write_c(file, path_folder); // name
        
     auto item_count_pos = ftell(file);
     uint32_t item_count = 0; // modified and re-written later

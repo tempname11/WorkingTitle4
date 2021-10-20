@@ -11,10 +11,14 @@ State init() {
   };
 }
 
-static const auto CAMERA_SPEED_PER_SEC = 8.0f;
 static const auto MOUSE_SENSITIVITY = 1.0f;
 
-void update(State *it, Input *input, double elapsed_sec) {
+void update(
+  State *it,
+  Input *input,
+  double elapsed_sec,
+  double movement_speed
+) {
   it->lon_lat += input->cursor_position_delta * MOUSE_SENSITIVITY;
 	it->lon_lat.y = fmaxf(-1.0f, fminf(1.0f, it->lon_lat.y));
 	it->lon_lat.x = fmodf(it->lon_lat.x, 4.0f);
@@ -49,7 +53,7 @@ void update(State *it, Input *input, double elapsed_sec) {
 
   it->position +=
 		(glm::inverse(it->rotation_q) * movement) *
-		float(elapsed_sec * CAMERA_SPEED_PER_SEC);
+		float(elapsed_sec * movement_speed);
 }
 
 glm::mat4 to_view_matrix(State *it) {
