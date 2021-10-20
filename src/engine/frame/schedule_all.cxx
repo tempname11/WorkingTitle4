@@ -21,7 +21,7 @@
 #include "update.hxx"
 #include "schedule_all.hxx"
 
-// #define TRACY_ARTIFICIAL_DELAY 10ms
+#define TRACY_ARTIFICIAL_DELAY 1ms
 
 namespace engine::frame {
 

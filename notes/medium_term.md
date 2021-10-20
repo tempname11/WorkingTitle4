@@ -61,7 +61,6 @@
   (... with the error then checked once at the end.)
 
 ### good to have
-- Debug pass (copy user-chosen intermediate data to swapchain).
 - Separate reference raytracing pass.
 - BLAS compaction.
 - Async running tools, ideally with an in-progress task UI view.

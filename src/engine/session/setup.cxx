@@ -88,7 +88,7 @@ void init_vulkan(
       .apiVersion = VK_API_VERSION_1_2,
     };
     std::vector<const char*> layers = {
-      "VK_LAYER_KHRONOS_validation"
+      "VK_LAYER_KHRONOS_validation" // @Cleanup: use env var
     };
     const auto instance_create_info = VkInstanceCreateInfo {
       .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,

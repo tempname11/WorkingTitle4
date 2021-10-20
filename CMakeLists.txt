@@ -81,17 +81,18 @@ add_library (
   "${CMAKE_SOURCE_DIR}/submodule/imgui/misc/cpp/imgui_stdlib.cpp"
 )
 
-target_compile_definitions(engine_lib PUBLIC -DENGINE_DEVELOPER)
 target_compile_definitions(engine_lib PUBLIC -DWINDOWS)
-# target_compile_definitions(engine_lib PUBLIC -DWIN32_LEAN_AND_MEAN)
 target_compile_definitions(engine_lib PUBLIC -DVC_EXTRALEAN)
 target_compile_definitions(engine_lib PUBLIC -DGLFW_INCLUDE_VULKAN)
 target_compile_definitions(engine_lib PUBLIC -DGLM_FORCE_DEPTH_ZERO_TO_ONE)
-target_compile_definitions(engine_lib PUBLIC TRACY_ENABLE=1)
-target_compile_definitions(engine_lib PUBLIC TRACY_VULKAN_ENABLE=1)
 target_compile_definitions(engine_lib PUBLIC IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
+
+target_compile_definitions(engine_lib PUBLIC -DENGINE_DEVELOPER)
+target_compile_definitions(engine_lib PUBLIC TRACY_ENABLE=1)
+# target_compile_definitions(engine_lib PUBLIC TRACY_VULKAN_ENABLE=1)
 # target_compile_definitions(engine_lib PUBLIC TRACY_ON_DEMAND=1)
 # target_compile_definitions(engine_lib PUBLIC TRACY_NO_EXIT=1)
+
 target_link_directories (engine_lib PUBLIC $ENV{CUSTOM_LINK_PATH})
 target_link_directories (engine_lib PUBLIC "${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/build/lib/Release/x64")
 target_link_libraries (engine_lib glfw3)
