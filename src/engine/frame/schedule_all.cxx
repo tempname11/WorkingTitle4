@@ -21,7 +21,7 @@
 #include "update.hxx"
 #include "schedule_all.hxx"
 
-#define TRACY_ARTIFICIAL_DELAY 20ms
+// #define TRACY_ARTIFICIAL_DELAY 10ms
 
 namespace engine::frame {
 
@@ -198,6 +198,7 @@ void _begin(
     task::create(
       imgui_populate,
       session.ptr,
+      data.ptr,
       &session->imgui_context,
       &frame_data->imgui_reactions,
       &session->meta_meshes,
@@ -321,11 +322,13 @@ void schedule_all(
   ZoneScoped;
 
   #ifdef ENGINE_DEVELOPER
-    if (TracyIsConnected) {
-      ZoneScopedN("artificial_delay");
-      using namespace std::chrono_literals;
-      std::this_thread::sleep_for(TRACY_ARTIFICIAL_DELAY);
-    }
+    #ifdef TRACY_ARTIFICIAL_DELAY
+      if (TracyIsConnected) {
+        ZoneScopedN("artificial_delay");
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(TRACY_ARTIFICIAL_DELAY);
+      }
+    #endif
   #endif
 
   auto task_frame = lib::task::create(

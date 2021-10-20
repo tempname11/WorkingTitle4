@@ -10,27 +10,29 @@ void reset_pools(
   Use<engine::display::Data::FrameInfo> frame_info
 ) {
   ZoneScoped;
-  {
+  { ZoneScopedN("command");
     auto &pool2 = (*command_pools)[frame_info->inflight_index];
     // Skip the lock, we have `Own`!
     // std::scoped_lock lock(pool2.mutex);
     for (auto pool : pool2.pools) {
-      vkResetCommandPool(
+      auto result = vkResetCommandPool(
         core->device,
         pool,
         0
       );
+      assert(result == VK_SUCCESS);
     }
   }
-  {
+  { ZoneScopedN("descriptor");
     auto &pool = (*descriptor_pools)[frame_info->inflight_index];
     // Skip the lock, we have `Own`!
     // std::scoped_lock lock(pool.mutex);
-    vkResetDescriptorPool(
+    auto result = vkResetDescriptorPool(
       core->device,
       pool.pool,
       0
     );
+    assert(result == VK_SUCCESS);
   }
 }
 

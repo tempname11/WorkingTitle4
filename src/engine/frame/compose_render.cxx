@@ -193,14 +193,14 @@ void compose_render(
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
       };
       auto buffer = lib::gfx::allocator::create_buffer(
-        &session->vulkan.uploader.allocator_host,
+        &session->vulkan.uploader.allocator_host, // @Cleanup
         core->device,
         core->allocator,
         &core->properties.basic,
         &info
       );
       auto mapping = lib::gfx::allocator::get_host_mapping(
-        &session->vulkan.uploader.allocator_host,
+        &session->vulkan.uploader.allocator_host, // @Cleanup
         buffer.id
       );
       auto region = VkBufferImageCopy {

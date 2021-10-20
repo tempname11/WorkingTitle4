@@ -1,12 +1,6 @@
 ### general issues
 - Import models with more than 2^16 vertices. :NotEnoughIndices
 
-- Memory usage seems to increase over time!?
-  (but Tracy profiling shows everything is great!?)
-  (maybe these are external (DLL?) allocations and we don't track them.)
-
-- Over time, performance drops, but swapchain recreation (via window resize) helps.
-
 ### architectural problems
 - Render passes are not really used, but they should be. :UseRenderPasses
 - Some compute workgroups are size 1 which is not good for perf. :UseComputeLocalSize

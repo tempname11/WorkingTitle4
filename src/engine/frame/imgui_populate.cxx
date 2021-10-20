@@ -144,6 +144,7 @@ void imgui_allocator(
 void imgui_populate(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
+  Ref<engine::display::Data> display,
   Own<engine::session::Data::ImguiContext> imgui,
   Own<engine::misc::ImguiReactions> imgui_reactions,
   Use<engine::session::Data::MetaMeshes> meta_meshes,
@@ -422,12 +423,32 @@ void imgui_populate(
 
     if (state->show_imgui_window_gpu_memory) {
       ImGui::Begin("GPU memory", &state->show_imgui_window_gpu_memory);
-      if (ImGui::TreeNode("DEVICE")) {
+      if (ImGui::TreeNode("UPLOADER.DEVICE")) {
         imgui_allocator(&session->vulkan.uploader.allocator_device);
         ImGui::TreePop();
       }
-      if (ImGui::TreeNode("HOST")) {
+      if (ImGui::TreeNode("UPLOADER.HOST")) {
         imgui_allocator(&session->vulkan.uploader.allocator_host);
+        ImGui::TreePop();
+      }
+      if (ImGui::TreeNode("BLAS.MAIN")) {
+        imgui_allocator(&session->vulkan.blas_storage.allocator_blas);
+        ImGui::TreePop();
+      }
+      if (ImGui::TreeNode("BLAS.SCRATCH")) {
+        imgui_allocator(&session->vulkan.blas_storage.allocator_scratch);
+        ImGui::TreePop();
+      }
+      if (ImGui::TreeNode("DISPLAY.DEDICATED")) {
+        imgui_allocator(&display->allocator_dedicated);
+        ImGui::TreePop();
+      }
+      if (ImGui::TreeNode("DISPLAY.SHARED")) {
+        imgui_allocator(&display->allocator_shared);
+        ImGui::TreePop();
+      }
+      if (ImGui::TreeNode("DISPLAY.HOST")) {
+        imgui_allocator(&display->allocator_host);
         ImGui::TreePop();
       }
       ImGui::End();

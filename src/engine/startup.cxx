@@ -63,8 +63,7 @@ void startup(StartupFn fn) {
   lib::task::discard_runner(runner);
 
   #ifdef TRACY_NO_EXIT
-    printf("Waiting for profiler...\n");
-    fflush(stdout);
+    LOG("Waiting for profiler...");
   #endif
 }
 
