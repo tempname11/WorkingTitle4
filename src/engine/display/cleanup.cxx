@@ -185,12 +185,13 @@ void cleanup(
   }
   ImGui_ImplVulkan_Shutdown();
   for (auto &pool2 : data->command_pools) {
-    for (auto pool : pool2.pools) {
+    for (auto pool1 : pool2.available) {
       vkDestroyCommandPool(
         core->device,
-        pool,
+        pool1->pool,
         core->allocator
       );
+      delete pool1;
     }
   }
   for (auto &pool : data->descriptor_pools) {

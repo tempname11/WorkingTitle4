@@ -1,15 +1,15 @@
 #include <cassert>
 #include "command_pool_2.hxx"
 
-VkCommandPool command_pool_2_borrow(CommandPool2 *pool2) {
+CommandPool1 *command_pool_2_borrow(CommandPool2 *pool2) {
   std::scoped_lock lock(pool2->mutex);
-  assert(pool2->pools.size() > 0);
-  auto pool = pool2->pools.back();
-  pool2->pools.pop_back();
+  assert(pool2->available.size() > 0);
+  auto pool = pool2->available.back();
+  pool2->available.pop_back();
   return pool;
 }
 
-void command_pool_2_return(CommandPool2 *pool2, VkCommandPool pool) {
+void command_pool_2_return(CommandPool2 *pool2, CommandPool1 *pool1) {
   std::scoped_lock lock(pool2->mutex);
-  pool2->pools.push_back(pool);
+  pool2->available.push_back(pool1);
 }

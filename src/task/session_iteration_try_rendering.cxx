@@ -136,7 +136,7 @@ TASK_DECL {
   { ZoneScopedN(".command_pools");
     rendering->command_pools = std::vector<CommandPool2>(swapchain_image_count);
     for (size_t i = 0; i < swapchain_image_count; i++) {
-      rendering->command_pools[i].pools.resize(session->info.worker_count);
+      rendering->command_pools[i].available.resize(session->info.worker_count);
       for (size_t j = 0; j < session->info.worker_count; j++) {
         VkCommandPool pool;
         {
@@ -152,7 +152,9 @@ TASK_DECL {
           );
           assert(result == VK_SUCCESS);
         }
-        rendering->command_pools[i].pools[j] = pool;
+        rendering->command_pools[i].available[j] = new CommandPool1 {
+          .pool = pool,
+        };
       }
     }
   }

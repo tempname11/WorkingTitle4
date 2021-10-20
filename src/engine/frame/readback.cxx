@@ -23,12 +23,12 @@ void readback(
   );
 
   auto pool2 = &(*command_pools)[frame_info->inflight_index];
-  VkCommandPool pool = command_pool_2_borrow(pool2);
+  auto pool1 = command_pool_2_borrow(pool2);
   VkCommandBuffer cmd;
   { // cmd
     VkCommandBufferAllocateInfo info = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-      .commandPool = pool,
+      .commandPool = pool1->pool,
       .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
       .commandBufferCount = 1,
     };
@@ -195,7 +195,8 @@ void readback(
     auto result = vkEndCommandBuffer(cmd);
     assert(result == VK_SUCCESS);
   }
-  command_pool_2_return(pool2, pool);
+  pool1->used_buffers.push_back(cmd);
+  command_pool_2_return(pool2, pool1);
 
   { ZoneScopedN("submit");
     VkSemaphore wait_semaphores[] = {
