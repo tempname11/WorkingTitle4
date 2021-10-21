@@ -309,12 +309,14 @@ TASK_DECL {
     core
   );
 
-  engine::rendering::intra::probe_depth_map::init_ddata(
-    &rendering->probe_depth_map,
-    &rendering->swapchain_description,
-    &rendering->allocator_dedicated,
-    core
-  );
+  #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
+    engine::rendering::intra::probe_depth_map::init_ddata(
+      &rendering->probe_depth_map,
+      &rendering->swapchain_description,
+      &rendering->allocator_dedicated,
+      core
+    );
+  #endif
 
   engine::rendering::intra::probe_attention::init_ddata(
     &rendering->probe_attention,
@@ -787,16 +789,18 @@ TASK_DECL {
     &session->vulkan.core
   );
 
-  engine::rendering::pass::probe_depth_update::init_ddata(
-    &rendering->pass_probe_depth_update,
-    &session->vulkan.pass_probe_depth_update,
-    &rendering->common,
-    &rendering->zbuffer2,
-    &rendering->probe_depth_map,
-    &rendering->probe_attention,
-    &rendering->swapchain_description,
-    &session->vulkan.core
-  );
+  #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
+    engine::rendering::pass::probe_depth_update::init_ddata(
+      &rendering->pass_probe_depth_update,
+      &session->vulkan.pass_probe_depth_update,
+      &rendering->common,
+      &rendering->zbuffer2,
+      &rendering->probe_depth_map,
+      &rendering->probe_attention,
+      &rendering->swapchain_description,
+      &session->vulkan.core
+    );
+  #endif
 
   engine::rendering::pass::indirect_light::init_ddata(
     &rendering->pass_indirect_light,

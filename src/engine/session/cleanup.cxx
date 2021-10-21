@@ -61,10 +61,12 @@ void cleanup(
       core
     );
 
-    rendering::pass::probe_depth_update::deinit_sdata(
-      &it->pass_probe_depth_update,
-      core
-    );
+    #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
+      rendering::pass::probe_depth_update::deinit_sdata(
+        &it->pass_probe_depth_update,
+        core
+      );
+    #endif
 
     rendering::pass::indirect_light::deinit_sdata(
       &it->pass_indirect_light,

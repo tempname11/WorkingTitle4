@@ -72,11 +72,13 @@ void init_ddata(
         .imageView = probe_light_map->views[i_prev],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
-      VkDescriptorImageInfo probe_depth_map_previous_image_info = {
-        .sampler = sdata->sampler_probe_light_map, // @Cleanup
-        .imageView = probe_depth_map->views[i_prev],
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      };
+      #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
+        VkDescriptorImageInfo probe_depth_map_previous_image_info = {
+          .sampler = sdata->sampler_probe_light_map, // @Cleanup
+          .imageView = probe_depth_map->views[i_prev],
+          .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+      #endif
       VkDescriptorImageInfo probe_attention_image_info = {
         .imageView = probe_attention->views[i],
         .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
@@ -137,7 +139,12 @@ void init_ddata(
           .dstBinding = 5,
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-          .pImageInfo = &probe_depth_map_previous_image_info,
+          #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
+            .pImageInfo = &probe_depth_map_previous_image_info,
+          #else
+            .pImageInfo = &probe_light_map_previous_image_info,
+            // We will never read from it.
+          #endif
         },
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

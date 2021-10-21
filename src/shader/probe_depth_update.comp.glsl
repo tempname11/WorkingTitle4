@@ -23,6 +23,10 @@ layout(push_constant) uniform Cascade {
 } cascade;
 
 void main() {
+  if (frame.data.flags.disable_indirect_shadows) {
+    return;
+  }
+
   ivec2 octomap_coord = ivec2(gl_LocalInvocationID.xy);
   uvec3 probe_coord = gl_WorkGroupID;
 

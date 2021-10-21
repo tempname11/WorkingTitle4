@@ -1470,12 +1470,14 @@ void graphics_render(
     cmd
   );
 
-  engine::rendering::intra::probe_depth_map::transition_previous_into_l2(
-    probe_depth_map,
-    frame_info,
-    swapchain_description,
-    cmd
-  );
+  #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
+    engine::rendering::intra::probe_depth_map::transition_previous_into_l2(
+      probe_depth_map,
+      frame_info,
+      swapchain_description,
+      cmd
+    );
+  #endif
 
   { TracyVkZone(core->tracy_context, cmd, "indirect_light_secondary");
     engine::rendering::pass::indirect_light_secondary::record(
@@ -1551,34 +1553,36 @@ void graphics_render(
   // zbuffer2 has been already transitioned above,
   // in `transiton_from_g2_into_reads`.
 
-  engine::rendering::intra::probe_depth_map::transition_previous_into_update(
-    probe_depth_map,
-    frame_info,
-    swapchain_description,
-    cmd
-  );
+  #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
+    engine::rendering::intra::probe_depth_map::transition_previous_into_update(
+      probe_depth_map,
+      frame_info,
+      swapchain_description,
+      cmd
+    );
 
-  engine::rendering::intra::probe_depth_map::transition_into_update(
-    probe_depth_map,
-    frame_info,
-    swapchain_description,
-    cmd
-  );
+    engine::rendering::intra::probe_depth_map::transition_into_update(
+      probe_depth_map,
+      frame_info,
+      swapchain_description,
+      cmd
+    );
 
-  { TracyVkZone(core->tracy_context, cmd, "probe_depth_update");
-    engine::rendering::pass::probe_depth_update::record(
-      probe_depth_update_ddata,
-      probe_depth_update_sdata,
+    { TracyVkZone(core->tracy_context, cmd, "probe_depth_update");
+      engine::rendering::pass::probe_depth_update::record(
+        probe_depth_update_ddata,
+        probe_depth_update_sdata,
+        frame_info,
+        cmd
+      );
+    }
+
+    engine::rendering::intra::probe_depth_map::transition_from_update_into_indirect_light(
+      probe_depth_map,
       frame_info,
       cmd
     );
-  }
-
-  engine::rendering::intra::probe_depth_map::transition_from_update_into_indirect_light(
-    probe_depth_map,
-    frame_info,
-    cmd
-  );
+  #endif
 
   //
 

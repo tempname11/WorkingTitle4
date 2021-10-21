@@ -108,10 +108,12 @@ void cleanup(
     core
   );
 
-  rendering::pass::probe_depth_update::deinit_ddata(
-    &data->pass_probe_depth_update,
-    core
-  );
+  #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
+    rendering::pass::probe_depth_update::deinit_ddata(
+      &data->pass_probe_depth_update,
+      core
+    );
+  #endif
 
   rendering::pass::indirect_light::deinit_ddata(
     &data->pass_indirect_light,
@@ -149,10 +151,12 @@ void cleanup(
     core
   );
 
-  rendering::intra::probe_depth_map::deinit_ddata(
-    &data->probe_depth_map,
-    core
-  );
+  #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
+    rendering::intra::probe_depth_map::deinit_ddata(
+      &data->probe_depth_map,
+      core
+    );
+  #endif
 
   rendering::intra::probe_attention::deinit_ddata(
     &data->probe_attention,

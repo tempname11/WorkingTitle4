@@ -469,10 +469,13 @@ void init_vulkan(
     &it->core
   );
 
-  rendering::pass::probe_depth_update::init_sdata(
-    &it->pass_probe_depth_update,
-    &it->core
-  );
+
+  #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
+    rendering::pass::probe_depth_update::init_sdata(
+      &it->pass_probe_depth_update,
+      &it->core
+    );
+  #endif
 
   rendering::pass::indirect_light::init_sdata(
     &it->pass_indirect_light,
@@ -786,6 +789,11 @@ void setup(
     .taa_distance = 1.0f,
     .probe_depth_sharpness = 10.0f,
     .probe_normal_bias = 0.001f,
+    .ubo_flags = {
+      #ifndef ENGINE_DEF_ENABLE_PROBE_DEPTH
+        .disable_indirect_shadows = 1,
+      #endif
+    },
   };
 
   #ifdef ENGINE_DEVELOPER
