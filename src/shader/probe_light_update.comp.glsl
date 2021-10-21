@@ -58,10 +58,9 @@ void main() {
   }
 
   uvec2 texel_coord_base = probe_ray_count_factors * combined_coord;
-  const float border = 1.0;
-  vec2 unique_texel_size = octomap_light_texel_size - 2.0 * border;
+  vec2 unique_texel_size = octomap_light_texel_size - 1.0;
   vec3 octomap_direction = octo_decode(
-    mod(octomap_coord - border + 0.5, unique_texel_size) / (0.5 * unique_texel_size) - 1.0
+    (mod(octomap_coord - 0.5, unique_texel_size) / unique_texel_size) * 2.0 - 1.0
   );
 
   vec4 value = vec4(0.0);

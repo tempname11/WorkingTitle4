@@ -61,6 +61,7 @@ void main() {
     }
   }
 
+  // old calculations with border on both sides.
   uvec2 texel_coord_base = probe_ray_count_factors * combined_coord;
   const float border = 1.0;
   vec2 unique_texel_size = octomap_depth_texel_size - 2.0 * border;

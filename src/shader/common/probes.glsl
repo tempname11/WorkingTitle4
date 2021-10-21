@@ -182,25 +182,27 @@ vec3 get_indirect_luminance(
       )
     );
 
-    uint border = 1;
-    uvec2 light_base_texel_coord = border + octomap_light_texel_size * combined_texel_coord;
-    uvec2 depth_base_texel_coord = border + octomap_depth_texel_size * combined_texel_coord;
-
-    const vec2 light_hsize = 0.5 * octomap_light_texel_size - border;
-    const vec2 depth_hsize = 0.5 * octomap_depth_texel_size - border;
-
+    uvec2 light_base_texel_coord = octomap_light_texel_size * combined_texel_coord;
+    const vec2 unique_texel_size = octomap_light_texel_size - 1.0;
     vec3 illuminance = texture(
       probe_light_map,
       (
-        light_base_texel_coord +
-        (light_hsize * (1.0 + octo_encode(N))) // no +0.5
+        light_base_texel_coord + 0.5 + mod(
+          0.5 + unique_texel_size * 0.5 * (1.0 + octo_encode(N)),
+          unique_texel_size
+        )
       ) / frame_data.probe.light_map_texel_size
     ).rgb;
 
     float weight = 1.0;
 
     if (!frame_data.flags.disable_indirect_shadows) {
-      // Not yet convinced these are worth it.
+      // Off by default now. See ENGINE_DEF_ENABLE_PROBE_DEPTH
+
+      // old calculations with border on both sides.
+      uint border = 1;
+      uvec2 depth_base_texel_coord = border + octomap_depth_texel_size * combined_texel_coord;
+      const vec2 depth_hsize = 0.5 * octomap_depth_texel_size - border;
 
       // Haven't yet seen results that show that the "normal bias" is helpful.
       // But maybe we're doing something else wrong, so leave it be.
