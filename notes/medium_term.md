@@ -37,20 +37,6 @@
   (seems correlated with number of Vulkan warnings beforehand.)
   (this is now hidden under TRACY_VULKAN_ENABLE and disabled by default)
 
-### refactoring
-- split `graphics_render` into smaller parts.
-- Primary LBuffer: indirect light first. :IndirectFirst
-- Move ad-hoc inline constants to uniform or at least `common/constants.glsl` :MoveToUniform
-- The directory `src/task` should not be there. tasks should be where they logically belong.
-- `session/setup.cxx` does too much and should be split up into smaller files.
-
-- split off `display::Data` init from the huge `session_iteration_try_rendering`.
-  (And use `*data = {...};` init style.)
-
-- Error handing for file reads is currently hairy.
-  (Consider a set of read helpers that provide zero output on error and go on...)
-  (... with the error then checked once at the end.)
-
 ### good to have
 - Separate reference raytracing pass.
 - BLAS compaction.

@@ -13,6 +13,7 @@ void init_ddata(
   Use<engine::rendering::intra::secondary_zbuffer::DData> zbuffer2,
   Use<engine::rendering::intra::secondary_gbuffer::DData> gbuffer2,
   Use<engine::rendering::intra::secondary_lbuffer::DData> lbuffer2,
+  Use<engine::rendering::intra::probe_attention::DData> probe_attention,
   Use<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<engine::session::Vulkan::Core> core
 ) {
@@ -44,6 +45,10 @@ void init_ddata(
     }
 
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
+      auto i_prev = (
+        (i + swapchain_description->image_count - 1) %
+        swapchain_description->image_count
+      );
       VkDescriptorImageInfo gbuffer_channel0_info = {
         .imageView = gbuffer2->channel0_views[i],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -64,6 +69,10 @@ void init_ddata(
         .buffer = common->stakes.ubo_frame[i].buffer,
         .offset = 0,
         .range = VK_WHOLE_SIZE,
+      };
+      VkDescriptorImageInfo probe_attention_prev_info = {
+        .imageView = probe_attention->views[i_prev],
+        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
       };
       VkWriteDescriptorSet writes[] = {
         {
@@ -110,6 +119,15 @@ void init_ddata(
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           .pBufferInfo = &ubo_frame_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets_frame[i],
+          .dstBinding = 6,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+          .pImageInfo = &probe_attention_prev_info,
         },
       };
       vkUpdateDescriptorSets(

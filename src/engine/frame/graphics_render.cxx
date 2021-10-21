@@ -11,6 +11,7 @@
 #include <src/engine/rendering/intra/secondary_lbuffer.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
 #include <src/engine/rendering/intra/probe_depth_map.hxx>
+#include <src/engine/rendering/intra/probe_attention.hxx>
 #include "graphics_render.hxx"
 
 namespace engine::frame {
@@ -1257,6 +1258,7 @@ void graphics_render(
   Use<engine::rendering::intra::secondary_lbuffer::DData> lbuffer2,
   Use<engine::rendering::intra::probe_light_map::DData> probe_light_map,
   Use<engine::rendering::intra::probe_depth_map::DData> probe_depth_map,
+  Use<engine::rendering::intra::probe_attention::DData> probe_attention,
   Use<engine::display::Data::FinalImage> final_image,
   Use<engine::session::Vulkan::Prepass> s_prepass,
   Use<engine::session::Vulkan::GPass> s_gpass,
@@ -1391,6 +1393,12 @@ void graphics_render(
     gbuffer.ptr
   );
 
+  engine::rendering::intra::probe_attention::clear_and_transition_into_lpass(
+    probe_attention.ptr,
+    frame_info,
+    cmd
+  );
+
   { TracyVkZone(core->tracy_context, cmd, "lpass");
     record_lpass(
       cmd,
@@ -1413,6 +1421,13 @@ void graphics_render(
   engine::rendering::intra::secondary_gbuffer::transition_to_g2(
     gbuffer2,
     frame_info,
+    cmd
+  );
+
+  engine::rendering::intra::probe_attention::transition_previous_from_write_to_read(
+    probe_attention.ptr,
+    frame_info,
+    swapchain_description,
     cmd
   );
 

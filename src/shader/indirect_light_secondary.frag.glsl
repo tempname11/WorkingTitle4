@@ -17,6 +17,8 @@ layout(input_attachment_index = 3, binding = 3) uniform subpassInput zchannel;
 layout(binding = 4) uniform sampler2D probe_light_map_previous;
 layout(binding = 5) uniform sampler2D probe_depth_map_previous;
 layout(binding = 6) uniform Frame { FrameData data; } frame;
+layout(binding = 7) uniform writeonly uimage2D probe_attention;
+layout(binding = 8, r32ui) uniform uimage2D probe_attention_prev;
 
 void main() {
   if (!frame.data.is_frame_sequential) {
@@ -40,6 +42,20 @@ void main() {
     ray_subcoord.y * probe_ray_count_factors.x
   );
   texel_coord /= probe_ray_count_factors;
+
+  // attention!
+  ivec2 combined_coord = ivec2(texel_coord);
+  if (!frame.data.flags.debug_B) {
+    uint attention = imageLoad(
+      probe_attention_prev,
+      combined_coord
+    ).r;
+
+    if (attention == 0) {
+      result = vec3(0.0);
+      return;
+    }
+  }
 
   // Grid XY.
   uvec2 probe_grid_coord_xy = texel_coord % frame.data.probe.grid_size.xy;
@@ -106,6 +122,7 @@ void main() {
     true, // prev
     probe_light_map_previous,
     probe_depth_map_previous,
+    probe_attention,
     albedo
   );
 

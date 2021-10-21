@@ -11,6 +11,7 @@
 #include <src/engine/rendering/intra/secondary_lbuffer/data.hxx>
 #include <src/engine/rendering/intra/probe_light_map/data.hxx>
 #include <src/engine/rendering/intra/probe_depth_map/data.hxx>
+#include <src/engine/rendering/intra/probe_attention/data.hxx>
 #include <src/engine/rendering/pass/secondary_geometry/data.hxx>
 #include <src/engine/rendering/pass/indirect_light_secondary/data.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary/data.hxx>
@@ -108,6 +109,7 @@ struct Data : lib::task::ParentResource {
   rendering::intra::secondary_lbuffer::DData lbuffer2;
   rendering::intra::probe_light_map::DData probe_light_map;
   rendering::intra::probe_depth_map::DData probe_depth_map;
+  rendering::intra::probe_attention::DData probe_attention;
 
   struct FinalImage {
     std::vector<lib::gfx::multi_alloc::StakeImage> stakes;

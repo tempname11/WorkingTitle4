@@ -45,6 +45,7 @@ layout(binding = 4) uniform accelerationStructureEXT accel;
 layout(binding = 5) readonly buffer GeometryRefs { PerInstance data[]; } geometry_refs;
 layout(binding = 6) uniform Frame { FrameData data; } frame;
 layout(binding = 7) uniform sampler albedo_sampler;
+layout(binding = 8, r32ui) uniform uimage2D probe_attention;
 
 layout(set = 1, binding = 0) uniform texture2D albedo_textures[];
 layout(set = 2, binding = 0) uniform texture2D romeao_textures[];
@@ -70,17 +71,34 @@ void main() {
 
   ivec2 store_coord = ivec2(gl_GlobalInvocationID.xy
     + (
-      frame.data.probe.grid_size.xy *
       probe_ray_count_factors *
+      frame.data.probe.grid_size.xy *
       z_subcoord
     )
     + (
-      frame.data.probe.grid_size.xy *
       probe_ray_count_factors *
+      frame.data.probe.grid_size.xy *
       frame.data.probe.grid_size_z_factors *
       cascade_subcoord
     )
   );
+
+  if (!frame.data.flags.debug_B) {
+    ivec2 combined_coord = ivec2(
+      probe_coord.xy +
+      frame.data.probe.grid_size.xy * z_subcoord +
+      frame.data.probe.grid_size.xy * frame.data.probe.grid_size_z_factors * cascade_subcoord
+    );
+    
+    uint attention = imageLoad(
+      probe_attention,
+      combined_coord
+    ).r;
+
+    if (attention == 0) {
+      return;
+    }
+  }
 
   rayQueryEXT ray_query;
   vec3 origin_world = (

@@ -25,6 +25,7 @@ void init_ddata(
   Own<engine::display::Data::Common> common,
   Use<intra::secondary_gbuffer::DData> gbuffer2,
   Use<intra::secondary_zbuffer::DData> zbuffer2,
+  Use<intra::probe_attention::DData> probe_attention,
   Use<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<engine::session::Vulkan::Core> core
 );

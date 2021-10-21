@@ -255,6 +255,7 @@ void init_vulkan(
     */
     VkPhysicalDeviceFeatures device_features = {
       .samplerAnisotropy = VK_TRUE,
+      .shaderStorageImageWriteWithoutFormat = VK_TRUE,
       .shaderInt16 = VK_TRUE,
     };
     const VkDeviceCreateInfo device_create_info = {

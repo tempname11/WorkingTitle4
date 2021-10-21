@@ -12,6 +12,7 @@ void init_ddata(
   Own<display::Data::Common> common,
   Use<intra::secondary_zbuffer::DData> secondary_zbuffer,
   Use<intra::probe_depth_map::DData> probe_depth_map,
+  Use<engine::rendering::intra::probe_attention::DData> probe_attention,
   Use<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<engine::session::Vulkan::Core> core
 ) {
@@ -61,6 +62,10 @@ void init_ddata(
       .offset = 0,
       .range = VK_WHOLE_SIZE,
     };
+    VkDescriptorImageInfo probe_attention_prev_info = {
+      .imageView = probe_attention->views[i_prev],
+      .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
     VkWriteDescriptorSet writes[] = {
       {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -93,6 +98,15 @@ void init_ddata(
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .pBufferInfo = &ubo_frame_info,
+      },
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_sets[i],
+        .dstBinding = 4,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .pImageInfo = &probe_attention_prev_info,
       },
     };
     vkUpdateDescriptorSets(

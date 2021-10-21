@@ -15,6 +15,7 @@ layout(binding = 1, r11f_g11f_b10f) uniform image2D probe_light_map_previous;
 
 layout(binding = 2) uniform sampler2D lbuffer2_image;
 layout(binding = 3) uniform Frame { FrameData data; } frame;
+layout(binding = 4, r32ui) uniform uimage2D probe_attention_prev;
 
 layout(push_constant) uniform Cascade {
   vec3 world_position_delta;
@@ -35,7 +36,7 @@ void main() {
     cascade.level / frame.data.probe.cascade_count_factors.x
   );
 
-  uvec2 texel_coord_base = probe_ray_count_factors * (
+  uvec2 combined_coord = (
     probe_coord.xy +
     frame.data.probe.grid_size.xy * (
       z_subcoord +
@@ -45,6 +46,18 @@ void main() {
     )
   );
 
+  if (!frame.data.flags.debug_B) {
+    uint attention = imageLoad(
+      probe_attention_prev,
+      ivec2(combined_coord)
+    ).r;
+
+    if (attention == 0) {
+      return;
+    }
+  }
+
+  uvec2 texel_coord_base = probe_ray_count_factors * combined_coord;
   const float border = 1.0;
   vec2 unique_texel_size = octomap_light_texel_size - 2.0 * border;
   vec3 octomap_direction = octo_decode(

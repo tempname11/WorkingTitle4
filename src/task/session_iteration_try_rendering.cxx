@@ -14,6 +14,7 @@
 #include <src/engine/rendering/intra/secondary_lbuffer.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
 #include <src/engine/rendering/intra/probe_depth_map.hxx>
+#include <src/engine/rendering/intra/probe_attention.hxx>
 #include <src/engine/rendering/pass/secondary_geometry.hxx>
 #include <src/engine/rendering/pass/indirect_light_secondary.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
@@ -310,6 +311,13 @@ TASK_DECL {
 
   engine::rendering::intra::probe_depth_map::init_ddata(
     &rendering->probe_depth_map,
+    &rendering->swapchain_description,
+    &rendering->allocator_dedicated,
+    core
+  );
+
+  engine::rendering::intra::probe_attention::init_ddata(
+    &rendering->probe_attention,
     &rendering->swapchain_description,
     &rendering->allocator_dedicated,
     core
@@ -737,6 +745,7 @@ TASK_DECL {
     &rendering->common,
     &rendering->gbuffer2,
     &rendering->zbuffer2,
+    &rendering->probe_attention,
     &rendering->swapchain_description,
     &session->vulkan.core
   );
@@ -750,6 +759,7 @@ TASK_DECL {
     &rendering->lbuffer2,
     &rendering->probe_light_map,
     &rendering->probe_depth_map,
+    &rendering->probe_attention,
     &rendering->swapchain_description,
     &session->vulkan.core
   );
@@ -761,6 +771,7 @@ TASK_DECL {
     &rendering->zbuffer2,
     &rendering->gbuffer2,
     &rendering->lbuffer2,
+    &rendering->probe_attention,
     &rendering->swapchain_description,
     &session->vulkan.core
   );
@@ -771,6 +782,7 @@ TASK_DECL {
     &rendering->common,
     &rendering->lbuffer2,
     &rendering->probe_light_map,
+    &rendering->probe_attention,
     &rendering->swapchain_description,
     &session->vulkan.core
   );
@@ -781,6 +793,7 @@ TASK_DECL {
     &rendering->common,
     &rendering->zbuffer2,
     &rendering->probe_depth_map,
+    &rendering->probe_attention,
     &rendering->swapchain_description,
     &session->vulkan.core
   );
@@ -795,6 +808,7 @@ TASK_DECL {
     &rendering->lbuffer,
     &rendering->probe_light_map,
     &rendering->probe_depth_map,
+    &rendering->probe_attention,
     &rendering->swapchain_description
   );
 

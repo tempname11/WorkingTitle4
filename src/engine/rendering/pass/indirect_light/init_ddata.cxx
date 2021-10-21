@@ -15,6 +15,7 @@ void init_ddata(
   Use<display::Data::LBuffer> lbuffer,
   Use<intra::probe_light_map::DData> probe_light_map,
   Use<intra::probe_depth_map::DData> probe_depth_map,
+  Use<intra::probe_attention::DData> probe_attention,
   Use<display::Data::SwapchainDescription> swapchain_description
 ) {
   ZoneScoped;
@@ -61,11 +62,6 @@ void init_ddata(
         .imageView = zbuffer->views[i],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
-      VkDescriptorBufferInfo ubo_frame_info = {
-        .buffer = common->stakes.ubo_frame[i].buffer,
-        .offset = 0,
-        .range = VK_WHOLE_SIZE,
-      };
       VkDescriptorImageInfo probe_light_map_image_info = {
         .sampler = sdata->sampler_probe_light_map,
         .imageView = probe_light_map->views[i],
@@ -75,6 +71,15 @@ void init_ddata(
         .sampler = sdata->sampler_probe_light_map, // @Cleanup
         .imageView = probe_depth_map->views[i],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorImageInfo probe_attention_image_info = {
+        .imageView = probe_attention->views[i],
+        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+      };
+      VkDescriptorBufferInfo ubo_frame_info = {
+        .buffer = common->stakes.ubo_frame[i].buffer,
+        .offset = 0,
+        .range = VK_WHOLE_SIZE,
       };
       VkWriteDescriptorSet writes[] = {
         {
@@ -132,6 +137,14 @@ void init_ddata(
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           .pBufferInfo = &ubo_frame_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets_frame[i],
+          .dstBinding = 7,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+          .pImageInfo = &probe_attention_image_info,
         },
       };
       vkUpdateDescriptorSets(

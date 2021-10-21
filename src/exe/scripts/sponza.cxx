@@ -25,7 +25,7 @@ void CtrlSession::run() {
       session
     ));
     task(update_camera, &session->state);
-    advance_frames(100);
+    advance_frames(20);
   }
 
   {

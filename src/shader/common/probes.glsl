@@ -71,6 +71,7 @@ vec3 get_indirect_luminance(
   bool is_prev,
   sampler2D probe_light_map,
   sampler2D probe_depth_map,
+  writeonly uimage2D probe_attention,
   vec3 albedo
 ) {
   bool out_of_bounds = true;
@@ -171,7 +172,7 @@ vec3 get_indirect_luminance(
       grid_coord.z / frame_data.probe.grid_size_z_factors.x
     );
 
-    uvec2 light_base_texel_coord = 1 /* border */ + octomap_light_texel_size * (
+    uvec2 combined_texel_coord = (
       grid_coord.xy +
       frame_data.probe.grid_size.xy * (
         current_z_subcoord +
@@ -181,17 +182,16 @@ vec3 get_indirect_luminance(
       )
     );
 
-    uvec2 depth_base_texel_coord = 1 /* border */ + octomap_depth_texel_size * (
-      grid_coord.xy +
-      frame_data.probe.grid_size.xy * (
-        current_z_subcoord +
-        frame_data.probe.grid_size_z_factors * (
-          cascade_subcoord
-        )
-      )
+    uint border = 1;
+    uvec2 light_base_texel_coord = border + octomap_light_texel_size * combined_texel_coord;
+    uvec2 depth_base_texel_coord = border + octomap_depth_texel_size * combined_texel_coord;
+
+    imageStore(
+      probe_attention,
+      ivec2(combined_texel_coord),
+      uvec4(1, 0, 0, 0)
     );
 
-    const float border = 1.0;
     const vec2 light_hsize = 0.5 * octomap_light_texel_size - border;
     const vec2 depth_hsize = 0.5 * octomap_depth_texel_size - border;
 

@@ -10,6 +10,7 @@
 #include <src/engine/rendering/intra/secondary_lbuffer.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
 #include <src/engine/rendering/intra/probe_depth_map.hxx>
+#include <src/engine/rendering/intra/probe_attention.hxx>
 #include <src/engine/rendering/pass/secondary_geometry.hxx>
 #include <src/engine/rendering/pass/indirect_light_secondary.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
@@ -150,6 +151,11 @@ void cleanup(
 
   rendering::intra::probe_depth_map::deinit_ddata(
     &data->probe_depth_map,
+    core
+  );
+
+  rendering::intra::probe_attention::deinit_ddata(
+    &data->probe_attention,
     core
   );
 

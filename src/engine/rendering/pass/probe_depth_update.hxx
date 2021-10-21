@@ -24,6 +24,7 @@ void init_ddata(
   Own<engine::display::Data::Common> common,
   Use<intra::secondary_zbuffer::DData> secondary_zbuffer,
   Use<intra::probe_depth_map::DData> probe_depth_map,
+  Use<engine::rendering::intra::probe_attention::DData> probe_attention,
   Use<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<engine::session::Vulkan::Core> core
 );

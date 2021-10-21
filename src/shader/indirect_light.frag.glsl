@@ -15,6 +15,7 @@ layout(input_attachment_index = 3, binding = 3) uniform subpassInput zchannel;
 layout(binding = 4) uniform sampler2D probe_light_map;
 layout(binding = 5) uniform sampler2D probe_depth_map;
 layout(binding = 6) uniform Frame { FrameData data; } frame;
+layout(binding = 7) uniform writeonly uimage2D probe_attention;
 
 void main() {
   vec3 N_view = subpassLoad(gchannel0).rgb;
@@ -52,6 +53,7 @@ void main() {
     false, // is_prev
     probe_light_map,
     probe_depth_map,
+    probe_attention,
     albedo
   );
 

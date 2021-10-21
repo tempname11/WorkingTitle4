@@ -167,6 +167,7 @@ void _begin(
       &data->lbuffer2,
       &data->probe_light_map,
       &data->probe_depth_map,
+      &data->probe_attention,
       &data->final_image,
       &session->vulkan.prepass,
       &session->vulkan.gpass,
