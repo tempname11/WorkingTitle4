@@ -47,12 +47,76 @@ void main() {
   );
 
   if (!frame.data.flags.disable_indirect_attention) {
+
     uint attention = imageLoad(
       probe_attention_prev,
       ivec2(combined_coord)
     ).r;
 
     if (attention == 0) {
+      // @Tmp
+      if (frame.data.flags.debug_A) { return; }
+
+      if (frame.data.is_frame_sequential) {
+        // @Tmp: quick and dirty copy-paste from below...
+
+        ivec3 probe_coord_prev = (
+          ivec3(probe_coord)
+          + frame.data.probe.cascades[cascade.level].change_from_prev
+        );
+
+        bool out_of_bounds = (false
+          || probe_coord_prev.x < 0
+          || probe_coord_prev.y < 0
+          || probe_coord_prev.z < 0
+          || probe_coord_prev.x >= frame.data.probe.grid_size.x
+          || probe_coord_prev.y >= frame.data.probe.grid_size.y
+          || probe_coord_prev.z >= frame.data.probe.grid_size.z
+        );
+
+        if (!out_of_bounds) {
+          uvec2 z_subcoord_prev = uvec2(
+            probe_coord_prev.z % frame.data.probe.grid_size_z_factors.x,
+            probe_coord_prev.z / frame.data.probe.grid_size_z_factors.x
+          );
+
+          ivec2 texel_coord_prev = octomap_coord + ivec2(
+            octomap_light_texel_size * (
+              probe_coord_prev.xy +
+              frame.data.probe.grid_size.xy * (
+                z_subcoord_prev +
+                frame.data.probe.grid_size_z_factors * (
+                  cascade_subcoord
+                )
+              )
+            )
+          );
+
+          vec4 previous = imageLoad(
+            probe_light_map_previous,
+            texel_coord_prev
+          );
+
+          ivec2 texel_coord = octomap_coord + ivec2(
+            octomap_light_texel_size * (
+              probe_coord.xy +
+              frame.data.probe.grid_size.xy * (
+                z_subcoord +
+                frame.data.probe.grid_size_z_factors * (
+                  cascade_subcoord
+                )
+              )
+            )
+          );
+
+          imageStore(
+            probe_light_map,
+            texel_coord,
+            previous
+          );
+        }
+      }
+
       return;
     }
   }
