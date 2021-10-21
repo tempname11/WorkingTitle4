@@ -11,7 +11,7 @@ void imgui_submit(
   Own<engine::misc::ImguiData> data
 ) {
   ZoneScoped;
-  VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
   auto timeline_info = VkTimelineSemaphoreSubmitInfo {
     .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
     .waitSemaphoreValueCount = 1,

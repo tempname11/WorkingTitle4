@@ -204,7 +204,7 @@ void readback(
       presentation->image_rendered[frame_info->inflight_index]
     };
     VkPipelineStageFlags wait_stages[] = {
-      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
     };
 
     VkSemaphore signal_semaphores[] = {
