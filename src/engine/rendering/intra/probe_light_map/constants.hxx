@@ -5,7 +5,7 @@
 namespace engine::rendering::intra::probe_light_map {
 
 // @Note: if we use this format, need to check device compatibility.
-const VkFormat FORMAT = VK_FORMAT_B10G11R11_UFLOAT_PACK32; // :ProbeLightFormat
+const VkFormat FORMAT = VK_FORMAT_R16G16B16A16_SFLOAT; // :ProbeLightFormat
 
 // :ProbeLightOctoSize
 const uint32_t OCTOSIZE = 8;

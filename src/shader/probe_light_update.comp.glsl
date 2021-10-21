@@ -10,8 +10,8 @@ layout(
 ) in;
 
 // :ProbeLightFormat
-layout(binding = 0, r11f_g11f_b10f) uniform image2D probe_light_map;
-layout(binding = 1, r11f_g11f_b10f) uniform image2D probe_light_map_previous;
+layout(binding = 0, rgba16f) uniform image2D probe_light_map;
+layout(binding = 1, rgba16f) uniform image2D probe_light_map_previous;
 
 layout(binding = 2) uniform sampler2D lbuffer2_image;
 layout(binding = 3) uniform Frame { FrameData data; } frame;
