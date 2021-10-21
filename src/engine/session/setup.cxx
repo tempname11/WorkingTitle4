@@ -520,35 +520,51 @@ void init_vulkan(
     );
   }
 
-  { ZoneScopedN(".core.tracy_context");
-    auto gpdctd = (PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT)
-      vkGetInstanceProcAddr(it->instance, "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT");
-    auto gct = (PFN_vkGetCalibratedTimestampsEXT)
-      vkGetInstanceProcAddr(it->instance, "vkGetCalibratedTimestampsEXT");
-    assert(gpdctd != nullptr);
-    assert(gct != nullptr);
-    VkCommandBuffer cmd;
-    {
-      auto info = VkCommandBufferAllocateInfo {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = it->tracy_setup_command_pool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1,
-      };
-      auto result = vkAllocateCommandBuffers(it->core.device, &info, &cmd);
-      assert(result == VK_SUCCESS);
+  #ifdef TRACY_ENABLE
+    { ZoneScopedN(".core.tracy_context");
+      VkCommandBuffer cmd;
+      {
+        auto info = VkCommandBufferAllocateInfo {
+          .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+          .commandPool = it->tracy_setup_command_pool,
+          .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+          .commandBufferCount = 1,
+        };
+        auto result = vkAllocateCommandBuffers(it->core.device, &info, &cmd);
+        assert(result == VK_SUCCESS);
+        ZoneValue(uint64_t(cmd));
+      }
+
+      if (getenv("ENGINE_ENV_TRACY_VK_CALIBRATED")) {
+        auto gpdctd = (PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT)
+          vkGetInstanceProcAddr(it->instance, "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT");
+
+        auto gct = (PFN_vkGetCalibratedTimestampsEXT)
+          vkGetInstanceProcAddr(it->instance, "vkGetCalibratedTimestampsEXT");
+
+        assert(gpdctd != nullptr);
+        assert(gct != nullptr);
+
+        it->core.tracy_context = TracyVkContextCalibrated(
+          it->physical_device,
+          it->core.device,
+          it->queue_work,
+          cmd,
+          gpdctd,
+          gct
+        );
+      } else {
+        it->core.tracy_context = TracyVkContext(
+          it->physical_device,
+          it->core.device,
+          it->queue_work,
+          cmd
+        );
+      }
     }
-    #ifdef TRACY_ENABLE
-      it->core.tracy_context = TracyVkContextCalibrated(
-        it->physical_device,
-        it->core.device,
-        it->queue_work,
-        cmd,
-        gpdctd,
-        gct
-      );
-    #endif
-  }
+  # else
+    it->core.tracy_context = nullptr;
+  #endif
 
   it->ready = true;
 

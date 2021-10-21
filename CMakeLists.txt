@@ -89,9 +89,11 @@ target_compile_definitions(engine_lib PUBLIC IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 
 target_compile_definitions(engine_lib PUBLIC -DENGINE_DEVELOPER)
 target_compile_definitions(engine_lib PUBLIC TRACY_ENABLE=1)
-# target_compile_definitions(engine_lib PUBLIC TRACY_VULKAN_ENABLE=1)
 # target_compile_definitions(engine_lib PUBLIC TRACY_ON_DEMAND=1)
 # target_compile_definitions(engine_lib PUBLIC TRACY_NO_EXIT=1)
+
+# target_compile_definitions(engine_lib PUBLIC TRACY_VULKAN_ENABLE=1)
+# hopefully remove this in favor of ENGINE_ENV_TRACY_VK_CALIBRATED
 
 target_link_directories (engine_lib PUBLIC $ENV{CUSTOM_LINK_PATH})
 target_link_directories (engine_lib PUBLIC "${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/build/lib/Release/x64")

@@ -407,6 +407,8 @@ void upload_buffer(
         &cmd
       );
       assert(result == VK_SUCCESS);
+      ZoneValue(uint64_t(cmd));
+
     }
   }
 
@@ -532,6 +534,7 @@ void upload_image(
         &cmd
       );
       assert(result == VK_SUCCESS);
+      ZoneValue(uint64_t(cmd));
     }
   }
 

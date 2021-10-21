@@ -5,17 +5,6 @@
 #include <unordered_map>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
-#ifdef TRACY_ENABLE
-  #ifndef TRACY_VULKAN_ENABLE
-    #undef TRACY_ENABLE
-    #include <TracyVulkan.hpp>
-    #define TRACY_ENABLE
-  #else
-    #include <TracyVulkan.hpp>
-  #endif
-#else
-  #include <TracyVulkan.hpp>
-#endif
 #include <src/lib/task.hxx>
 #include <src/lib/lifetime.hxx>
 #include <src/lib/guid.hxx>

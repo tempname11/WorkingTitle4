@@ -983,11 +983,15 @@ TASK_DECL {
         .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
         .commandBufferCount = 1,
       };
-      vkAllocateCommandBuffers(
-        session->vulkan.core.device,
-        &alloc_info,
-        &cmd_imgui_setup
-      );
+      {
+        auto result = vkAllocateCommandBuffers(
+          session->vulkan.core.device,
+          &alloc_info,
+          &cmd_imgui_setup
+        );
+        assert(result == VK_SUCCESS);
+        ZoneValue(uint64_t(cmd_imgui_setup));
+      }
       { // begin
         VkCommandBufferBeginInfo begin_info = {
           .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,

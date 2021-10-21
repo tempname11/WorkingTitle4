@@ -33,10 +33,6 @@
 - When running the Vulkan Configurator overrides, some additional errors pop up.
   (Need to enable their presence by default, and also fix the actual errors.)
 
-- intermittent `assert( m_head != m_tail );` in TracyVulkan.hpp
-  (seems correlated with number of Vulkan warnings beforehand.)
-  (this is now hidden under TRACY_VULKAN_ENABLE and disabled by default)
-
 ### good to have
 - Separate reference raytracing pass.
 - BLAS compaction.

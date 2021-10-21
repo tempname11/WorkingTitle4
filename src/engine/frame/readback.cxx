@@ -38,6 +38,7 @@ void readback(
       &cmd
     );
     assert(result == VK_SUCCESS);
+    ZoneValue(uint64_t(cmd));
   }
   { // begin
     auto info = VkCommandBufferBeginInfo {

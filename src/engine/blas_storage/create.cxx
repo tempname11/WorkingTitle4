@@ -239,6 +239,7 @@ void _build_finish(
       );
       assert(result == VK_SUCCESS);
     }
+    ZoneValue(uint64_t(cmd));
   }
 
   {
