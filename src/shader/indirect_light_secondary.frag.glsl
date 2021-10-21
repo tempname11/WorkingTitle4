@@ -18,7 +18,7 @@ layout(binding = 4) uniform sampler2D probe_light_map_previous;
 layout(binding = 5) uniform sampler2D probe_depth_map_previous;
 layout(binding = 6) uniform Frame { FrameData data; } frame;
 layout(binding = 7) uniform writeonly uimage2D probe_attention;
-layout(binding = 8, r32ui) uniform uimage2D probe_attention_prev;
+layout(binding = 8, r32ui) uniform uimage2D probe_attention_prev; // :ProbeAttentionFormat
 
 void main() {
   if (!frame.data.is_frame_sequential) {
@@ -45,7 +45,7 @@ void main() {
 
   // attention!
   ivec2 combined_coord = ivec2(texel_coord);
-  if (!frame.data.flags.debug_B) {
+  if (!frame.data.flags.disable_indirect_attention) {
     uint attention = imageLoad(
       probe_attention_prev,
       combined_coord

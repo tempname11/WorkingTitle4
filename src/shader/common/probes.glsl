@@ -186,12 +186,6 @@ vec3 get_indirect_luminance(
     uvec2 light_base_texel_coord = border + octomap_light_texel_size * combined_texel_coord;
     uvec2 depth_base_texel_coord = border + octomap_depth_texel_size * combined_texel_coord;
 
-    imageStore(
-      probe_attention,
-      ivec2(combined_texel_coord),
-      uvec4(1, 0, 0, 0)
-    );
-
     const vec2 light_hsize = 0.5 * octomap_light_texel_size - border;
     const vec2 depth_hsize = 0.5 * octomap_depth_texel_size - border;
 
@@ -236,11 +230,7 @@ vec3 get_indirect_luminance(
         variance / (variance + diff * diff)
       );
 
-      if (frame_data.flags.debug_A) {
-        illuminance *= clamp(pow(chebyshev, 3.0), 0.0, 1.0); // @Cleanup :MoveToUniform
-      } else {
-        weight *= clamp(pow(chebyshev, 3.0), 0.0, 1.0); // @Cleanup :MoveToUniform
-      }
+      weight *= clamp(pow(chebyshev, 3.0), 0.0, 1.0); // @Cleanup :MoveToUniform
     }
 
     // "smooth backface" produced weird grid-like artifacts,
@@ -248,6 +238,12 @@ vec3 get_indirect_luminance(
     vec3 probe_direction = normalize(grid_cube_vertex_coord - grid_cube_coord);
     float backface = dot(probe_direction, N) >= 0.0 ? 1.0 : 0.0;
     weight *= backface;
+
+    imageStore(
+      probe_attention,
+      ivec2(combined_texel_coord),
+      uvec4(1, 0, 0, 0)
+    );
 
     const float min_weight = 0.000001; // @Cleanup :MoveToUniform
     weight = max(min_weight, weight);

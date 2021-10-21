@@ -15,7 +15,7 @@ layout(binding = 1, rg16) uniform image2D probe_depth_map_previous;
 
 layout(binding = 2) uniform sampler2D zbuffer2_image;
 layout(binding = 3) uniform Frame { FrameData data; } frame;
-layout(binding = 4, r32ui) uniform uimage2D probe_attention_prev;
+layout(binding = 4, r32ui) uniform uimage2D probe_attention_prev; // :ProbeAttentionFormat
 
 layout(push_constant) uniform Cascade {
   vec3 world_position_delta;
@@ -50,7 +50,7 @@ void main() {
     )
   );
 
-  if (!frame.data.flags.debug_B) {
+  if (!frame.data.flags.disable_indirect_attention) {
     uint attention = imageLoad(
       probe_attention_prev,
       ivec2(combined_coord)

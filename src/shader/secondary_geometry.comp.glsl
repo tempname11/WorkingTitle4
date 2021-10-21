@@ -45,7 +45,7 @@ layout(binding = 4) uniform accelerationStructureEXT accel;
 layout(binding = 5) readonly buffer GeometryRefs { PerInstance data[]; } geometry_refs;
 layout(binding = 6) uniform Frame { FrameData data; } frame;
 layout(binding = 7) uniform sampler albedo_sampler;
-layout(binding = 8, r32ui) uniform uimage2D probe_attention;
+layout(binding = 8, r32ui) uniform uimage2D probe_attention; // :ProbeAttentionFormat
 
 layout(set = 1, binding = 0) uniform texture2D albedo_textures[];
 layout(set = 2, binding = 0) uniform texture2D romeao_textures[];
@@ -83,7 +83,7 @@ void main() {
     )
   );
 
-  if (!frame.data.flags.debug_B) {
+  if (!frame.data.flags.disable_indirect_attention) {
     ivec2 combined_coord = ivec2(
       probe_coord.xy +
       frame.data.probe.grid_size.xy * z_subcoord +

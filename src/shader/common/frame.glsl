@@ -6,6 +6,7 @@ struct FrameFlags {
   bool disable_indirect_lighting;
   bool disable_indirect_shadows;
   bool disable_indirect_bounces;
+  bool disable_indirect_attention;
   bool disable_eye_adaptation;
   bool disable_motion_blur;
   bool disable_TAA;

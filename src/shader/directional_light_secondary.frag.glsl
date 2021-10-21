@@ -15,7 +15,7 @@ layout(input_attachment_index = 2, binding = 2) uniform subpassInput gchannel2;
 layout(input_attachment_index = 3, binding = 3) uniform subpassInput zchannel;
 layout(binding = 4) uniform Frame { FrameData data; } frame;
 layout(binding = 5) uniform accelerationStructureEXT accel;
-layout(binding = 6, r32ui) uniform uimage2D probe_attention_prev;
+layout(binding = 6, r32ui) uniform uimage2D probe_attention_prev; // :ProbeAttentionFormat
 
 // @Duplicate :UniformDirLight
 layout(set = 1, binding = 0) uniform DirectionalLight {
@@ -41,7 +41,7 @@ void main() {
 
   // attention!
   ivec2 combined_coord = ivec2(texel_coord);
-  if (!frame.data.flags.debug_B) {
+  if (!frame.data.flags.disable_indirect_attention) {
     uint attention = imageLoad(
       probe_attention_prev,
       combined_coord
