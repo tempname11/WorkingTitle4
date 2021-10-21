@@ -56,7 +56,7 @@ void update(
     auto w = std::min(elapsed_sec / 2.0, 1.0);
     auto p = 4.0;
     session_state->luminance_moving_average = std::max(
-      0.001,
+      0.01,
       std::pow((0.0
         + (1.0 - w) * std::pow(session_state->luminance_moving_average, 1.0 / p)
         + /*****/ w * std::pow(r * 0.21 + g * 0.72 + b * 0.07, 1.0 / p)
