@@ -19,7 +19,7 @@ void generate_render_list(
     auto &normal_uploader_id = textures->items.at(item.texture_normal_id).id;
     auto &romeao_uploader_id = textures->items.at(item.texture_romeao_id).id;
 
-    // @Rushed: this is very badly designed,
+    // this is very badly designed :UploaderMustBeImproved
     // i.e. we'll take multiple mutexes for each item!
     // also, there is double indirection, where there should not be!
     auto pair = engine::uploader::get_buffer(

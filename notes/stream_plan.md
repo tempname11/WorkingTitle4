@@ -1,4 +1,4 @@
-# cleanup before stream
+# Cleanup before stream! OUCH OUCH OUCH
 
 - remove secondary* passes
 - remove g2, z2
@@ -9,6 +9,6 @@
 - rename probe_light_update -> probe_collect
 - rename secondary_gbuffer_texel_size (or even use ImageSize?)
 
-# stream plan
+# Stream plan
 
 - we do not need (inflight-count) of everything. what can we get rid of?
