@@ -1,16 +1,22 @@
 # GI, again
 
-- memory usage is insane
+-> memory usage is insane
+  - don't do deferred!
   - we do not need (inflight-count) of everything. what can we slice?
-  - research sparse textures ???
-  * use queues and buffers, not flags and textures ?
 
-- attentions lags 1 frame behind in terms of coordinates
-- newly-wrapped grid values should be reset and have attention.
-- grid boundaries still look bad.
-- "weird circle" still pops up
+- small improvements
+  - can we use wrapping in probe map, so that we don't need to copy old -> new with no attention?
+  - attention lags 1 frame behind in terms of coordinates.
+  - newly-wrapped grid values should be reset and have attention.
+
+- known bugs
+  - grid boundaries still look bad.
+  - "weird circle" still pops up
 
 * try atomic-based attention strategies:
-  - only add to attention if weight > 0
-  - keep binary value, but pack more into 32 bits
-  - accumulate, and atomic add value based on weight / source
+  - only add to attention if weight > 0 (basic)
+  - accumulate, and atomic add value based on weight / source (promising)
+
+* try compressing attention flags into queues and only processing them.
+
+*** research sparse textures more.

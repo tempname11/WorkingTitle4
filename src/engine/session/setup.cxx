@@ -653,11 +653,14 @@ void setup(
       if (ptr == nullptr) {
         return;
       }
-      if (y > 0.0) {
-        ptr->state->movement_speed *= 2;
-      }
-      if (y < 0.0) {
-        ptr->state->movement_speed *= 0.5;
+      
+      if (!ptr->state->show_imgui) {
+        if (y > 0.0) {
+          ptr->state->movement_speed *= 2;
+        }
+        if (y < 0.0) {
+          ptr->state->movement_speed *= 0.5;
+        }
       }
     });
 

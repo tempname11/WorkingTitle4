@@ -20,7 +20,6 @@
 - `task::inject` seems net harmful. (can we really avoid it?)
 
 ### minor issues
-- r11g11b10 probe_light_map has yellow tint on saturation
 - fullscreen toggle: weird visual jump
 - fullscreen toggle: always primary monitor (want the one which the window "belongs" to)
 - some file read operations assert on bad input :HandleInputGracefully
@@ -32,6 +31,8 @@
 
 - When running the Vulkan Configurator overrides, some additional errors pop up.
   (Need to enable their presence by default, and also fix the actual errors.)
+
+- all VkSubmitInfo `pWaitDstStageMask`-s are conservative, what should they actually be?
 
 ### good to have
 - Separate reference raytracing pass.
