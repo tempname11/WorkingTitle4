@@ -5,14 +5,14 @@ namespace engine::frame {
 void reset_pools(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   Use<engine::session::Vulkan::Core> core,
-  Ref<engine::display::Data::CommandPools> command_pools,
-  Ref<engine::display::Data::DescriptorPools> descriptor_pools,
+  Own<engine::display::Data::CommandPools> command_pools,
+  Own<engine::display::Data::DescriptorPools> descriptor_pools,
   Use<engine::display::Data::FrameInfo> frame_info
 ) {
   ZoneScoped;
   { ZoneScopedN("command");
     auto pool2 = &(*command_pools)[frame_info->inflight_index];
-    std::scoped_lock lock(pool2->mutex);
+    // std::scoped_lock lock(pool2->mutex); we have Own
     for (auto pool1 : pool2->available) {
       {
         auto result = vkResetCommandPool(
@@ -36,7 +36,7 @@ void reset_pools(
   }
   { ZoneScopedN("descriptor");
     auto pool = &(*descriptor_pools)[frame_info->inflight_index];
-    std::scoped_lock lock(pool->mutex);
+    // std::scoped_lock lock(pool->mutex); we have Own
     auto result = vkResetDescriptorPool(
       core->device,
       pool->pool,
