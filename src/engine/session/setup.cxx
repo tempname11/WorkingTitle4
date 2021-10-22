@@ -535,7 +535,7 @@ void init_vulkan(
         ZoneValue(uint64_t(cmd));
       }
 
-      if (getenv("ENGINE_ENV_TRACY_VK_CALIBRATED")) {
+      if (!getenv("ENGINE_ENV_TRACY_VK_UNCALIBRATED")) {
         auto gpdctd = (PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT)
           vkGetInstanceProcAddr(it->instance, "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT");
 
