@@ -37,4 +37,16 @@ void transition_from_l2_into_probe_update(
   VkCommandBuffer cmd
 );
 
+void transition_into_probe_measure(
+  Use<DData> it,
+  Use<engine::display::Data::FrameInfo> frame_info,
+  VkCommandBuffer cmd
+);
+
+void transition_from_probe_measure_into_update(
+  Use<DData> it,
+  Use<engine::display::Data::FrameInfo> frame_info,
+  VkCommandBuffer cmd
+);
+
 } // namespace

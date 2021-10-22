@@ -24,7 +24,7 @@ void init_ddata(
     VkImageCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
       .imageType = VK_IMAGE_TYPE_2D,
-      .format = LBUFFER_FORMAT,
+      .format = LBUFFER2_FORMAT,
       .extent = {
         .width = G2_TEXEL_SIZE.x,
         .height = G2_TEXEL_SIZE.y,
@@ -36,6 +36,7 @@ void init_ddata(
       .tiling = VK_IMAGE_TILING_OPTIMAL,
       .usage = (0
         | VK_IMAGE_USAGE_SAMPLED_BIT
+        | VK_IMAGE_USAGE_STORAGE_BIT
         | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
       ),
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
@@ -62,7 +63,7 @@ void init_ddata(
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = images[i].image,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = LBUFFER_FORMAT,
+        .format = LBUFFER2_FORMAT,
         .subresourceRange = {
           .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
           .levelCount = 1,

@@ -17,12 +17,6 @@
 #include <src/engine/uploader.data.hxx>
 #include <src/engine/blas_storage/data.hxx>
 #include <src/engine/blas_storage/id.hxx>
-#include <src/engine/rendering/pass/secondary_geometry/data.hxx>
-#include <src/engine/rendering/pass/indirect_light_secondary/data.hxx>
-#include <src/engine/rendering/pass/directional_light_secondary/data.hxx>
-#include <src/engine/rendering/pass/probe_light_update/data.hxx>
-#include <src/engine/rendering/pass/probe_depth_update/data.hxx>
-#include <src/engine/rendering/pass/indirect_light/data.hxx>
 #include "vulkan.data.hxx"
 
 namespace engine::session {

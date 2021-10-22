@@ -15,6 +15,7 @@
 #include <src/engine/rendering/intra/probe_light_map.hxx>
 #include <src/engine/rendering/intra/probe_depth_map.hxx>
 #include <src/engine/rendering/intra/probe_attention.hxx>
+#include <src/engine/rendering/pass/probe_measure.hxx>
 #include <src/engine/rendering/pass/secondary_geometry.hxx>
 #include <src/engine/rendering/pass/indirect_light_secondary.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
@@ -738,6 +739,18 @@ TASK_DECL {
     &rendering->gbuffer,
     &rendering->lbuffer,
     &session->vulkan.lpass,
+    &session->vulkan.core
+  );
+
+  engine::rendering::pass::probe_measure::init_ddata(
+    &rendering->pass_probe_measure,
+    &session->vulkan.pass_probe_measure,
+    &rendering->common,
+    &rendering->lpass.stakes,
+    &rendering->lbuffer2,
+    &rendering->probe_light_map,
+    &rendering->probe_attention,
+    &rendering->swapchain_description,
     &session->vulkan.core
   );
 

@@ -70,7 +70,7 @@ vec3 get_indirect_luminance(
   FrameData frame_data,
   bool is_prev,
   sampler2D probe_light_map,
-  sampler2D probe_depth_map,
+  // sampler2D probe_depth_map,
   writeonly uimage2D probe_attention,
   vec3 albedo
 ) {
@@ -196,6 +196,7 @@ vec3 get_indirect_luminance(
 
     float weight = 1.0;
 
+    #if 0
     if (!frame_data.flags.disable_indirect_shadows) {
       // Off by default now. See ENGINE_DEF_ENABLE_PROBE_DEPTH
 
@@ -234,6 +235,7 @@ vec3 get_indirect_luminance(
 
       weight *= clamp(pow(chebyshev, 3.0), 0.0, 1.0); // @Cleanup :MoveToUniform
     }
+    #endif
 
     // "smooth backface" produced weird grid-like artifacts,
     // so we just use a sane one.

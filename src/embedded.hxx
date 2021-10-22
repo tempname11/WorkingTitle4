@@ -3,6 +3,9 @@
 extern "C" const char embedded_secondary_geometry_comp[];
 extern "C" const size_t embedded_secondary_geometry_comp_len;
 
+extern "C" const char embedded_probe_measure_comp[];
+extern "C" const size_t embedded_probe_measure_comp_len;
+
 extern "C" const char embedded_indirect_light_secondary_frag[];
 extern "C" const size_t embedded_indirect_light_secondary_frag_len;
 

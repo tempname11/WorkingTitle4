@@ -121,7 +121,7 @@ void main() {
     frame.data,
     true, // prev
     probe_light_map_previous,
-    probe_depth_map_previous,
+    // probe_depth_map_previous,
     probe_attention,
     albedo
   );

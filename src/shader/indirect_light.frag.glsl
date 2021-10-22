@@ -52,7 +52,7 @@ void main() {
     frame.data,
     false, // is_prev
     probe_light_map,
-    probe_depth_map,
+    // probe_depth_map,
     probe_attention,
     albedo
   );

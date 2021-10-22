@@ -111,7 +111,7 @@ void init_sdata(
   { ZoneScopedN("render_pass");
     VkAttachmentDescription attachment_descriptions[] = {
       {
-        .format = LBUFFER_FORMAT,
+        .format = LBUFFER2_FORMAT,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -380,12 +380,13 @@ void init_sdata(
       .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
       .maxLod = VK_LOD_CLAMP_NONE,
     };
-    vkCreateSampler( // @Cleanup check result
+    auto result = vkCreateSampler(
       core->device,
       &create_info,
       core->allocator,
       &sampler_probe_light_map
     );
+    assert(result == VK_SUCCESS);
   }
 
   *out = {

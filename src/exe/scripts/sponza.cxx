@@ -25,14 +25,12 @@ void CtrlSession::run() {
       session
     ));
     task(update_camera, &session->state);
-    advance_frames(20);
   }
 
-  {
-    std::string path = "tmp/sponza.bmp";
-    screenshot_next_frame(path);
-    advance_frames(1);
-  }
+  //advance_frames(20);
+  //std::string path = "tmp/sponza.bmp";
+  //screenshot_next_frame(path);
+  //advance_frames(1);
 }
 
 MAIN_MACRO(CtrlSession);

@@ -11,6 +11,7 @@
 #include <src/engine/rendering/intra/probe_light_map.hxx>
 #include <src/engine/rendering/intra/probe_depth_map.hxx>
 #include <src/engine/rendering/intra/probe_attention.hxx>
+#include <src/engine/rendering/pass/probe_measure.hxx>
 #include <src/engine/rendering/pass/secondary_geometry.hxx>
 #include <src/engine/rendering/pass/indirect_light_secondary.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
@@ -85,6 +86,11 @@ void cleanup(
 
   deinit_rendering_lpass(
     &data->lpass,
+    core
+  );
+
+  rendering::pass::probe_measure::deinit_ddata(
+    &data->pass_probe_measure,
     core
   );
 

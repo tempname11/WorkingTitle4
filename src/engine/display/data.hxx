@@ -12,6 +12,7 @@
 #include <src/engine/rendering/intra/probe_light_map/data.hxx>
 #include <src/engine/rendering/intra/probe_depth_map/data.hxx>
 #include <src/engine/rendering/intra/probe_attention/data.hxx>
+#include <src/engine/rendering/pass/probe_measure/data.hxx>
 #include <src/engine/rendering/pass/secondary_geometry/data.hxx>
 #include <src/engine/rendering/pass/indirect_light_secondary/data.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary/data.hxx>
@@ -149,6 +150,7 @@ struct Data : lib::task::ParentResource {
     std::vector<VkFramebuffer> framebuffers;
   } lpass;
 
+  engine::rendering::pass::probe_measure::DData pass_probe_measure;
   engine::rendering::pass::secondary_geometry::DData pass_secondary_geometry;
   engine::rendering::pass::indirect_light_secondary::DData pass_indirect_light_secondary;
   engine::rendering::pass::directional_light_secondary::DData pass_directional_light_secondary;

@@ -128,7 +128,7 @@ void init_sdata(
   { ZoneScopedN("render_pass");
     VkAttachmentDescription attachment_descriptions[] = {
       {
-        .format = LBUFFER_FORMAT,
+        .format = LBUFFER2_FORMAT,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,

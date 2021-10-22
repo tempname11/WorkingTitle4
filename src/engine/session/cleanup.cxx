@@ -6,6 +6,7 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/rendering/pass/probe_measure.hxx>
 #include <src/engine/rendering/pass/secondary_geometry.hxx>
 #include <src/engine/rendering/pass/indirect_light_secondary.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
@@ -40,6 +41,11 @@ void cleanup(
     deinit_session_lpass(&it->lpass, core);
 
     deinit_session_finalpass(&it->finalpass, core);
+
+    rendering::pass::probe_measure::deinit_sdata(
+      &it->pass_probe_measure,
+      core
+    );
 
     rendering::pass::secondary_geometry::deinit_sdata(
       &it->pass_secondary_geometry,

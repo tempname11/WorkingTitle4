@@ -47,18 +47,14 @@ void main() {
   );
 
   if (!frame.data.flags.disable_indirect_attention) {
-
     uint attention = imageLoad(
       probe_attention_prev,
       ivec2(combined_coord)
     ).r;
 
     if (attention == 0) {
-      // @Tmp
-      if (frame.data.flags.debug_A) { return; }
-
       if (frame.data.is_frame_sequential) {
-        // @Tmp: quick and dirty copy-paste from below...
+        // @Cleanup: quick and dirty copy-paste from below...
 
         ivec3 probe_coord_prev = (
           ivec3(probe_coord)

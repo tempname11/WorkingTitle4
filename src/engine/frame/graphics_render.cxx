@@ -1,5 +1,6 @@
 #include <src/task/defer.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
+#include <src/engine/rendering/pass/probe_measure.hxx>
 #include <src/engine/rendering/pass/secondary_geometry.hxx>
 #include <src/engine/rendering/pass/indirect_light_secondary.hxx>
 #include <src/engine/rendering/pass/directional_light_secondary.hxx>
@@ -1243,6 +1244,7 @@ void graphics_render(
   Own<engine::display::Data::Prepass> prepass,
   Own<engine::display::Data::GPass> gpass,
   Own<engine::display::Data::LPass> lpass,
+  Own<engine::rendering::pass::probe_measure::DData> probe_measure_ddata,
   Own<engine::rendering::pass::secondary_geometry::DData> secondary_geometry_ddata,
   Own<engine::rendering::pass::indirect_light_secondary::DData> indirect_light_secondary_ddata,
   Own<engine::rendering::pass::directional_light_secondary::DData> directional_light_secondary_ddata,
@@ -1263,6 +1265,7 @@ void graphics_render(
   Use<engine::session::Vulkan::Prepass> s_prepass,
   Use<engine::session::Vulkan::GPass> s_gpass,
   Use<engine::session::Vulkan::LPass> s_lpass,
+  Own<engine::rendering::pass::probe_measure::SData> probe_measure_sdata,
   Own<engine::rendering::pass::secondary_geometry::SData> secondary_geometry_sdata,
   Use<engine::rendering::pass::indirect_light_secondary::SData> indirect_light_secondary_sdata,
   Use<engine::rendering::pass::directional_light_secondary::SData> directional_light_secondary_sdata,
@@ -1432,10 +1435,109 @@ void graphics_render(
     cmd
   );
 
-  { TracyVkZone(core->tracy_context, cmd, "secondary_geometry");
-    engine::rendering::pass::secondary_geometry::record(
-      secondary_geometry_ddata,
-      secondary_geometry_sdata,
+  #if 0
+    { TracyVkZone(core->tracy_context, cmd, "secondary_geometry");
+      engine::rendering::pass::secondary_geometry::record(
+        secondary_geometry_ddata,
+        secondary_geometry_sdata,
+        frame_info,
+        core,
+        descriptor_pool,
+        tlas_result->buffer_geometry_refs.buffer,
+        render_list,
+        tlas_result->accel,
+        cmd
+      );
+    }
+
+    engine::rendering::intra::secondary_zbuffer::transition_from_g2_into_reads(
+      zbuffer2,
+      frame_info,
+      cmd
+    );
+
+    engine::rendering::intra::secondary_gbuffer::transition_g2_to_l2(
+      gbuffer2,
+      frame_info,
+      cmd
+    );
+
+    engine::rendering::intra::secondary_lbuffer::transition_into_l2(
+      lbuffer2,
+      frame_info,
+      cmd
+    );
+
+    engine::rendering::intra::probe_light_map::transition_previous_into_l2(
+      probe_light_map,
+      frame_info,
+      swapchain_description,
+      cmd
+    );
+
+    #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
+      engine::rendering::intra::probe_depth_map::transition_previous_into_l2(
+        probe_depth_map,
+        frame_info,
+        swapchain_description,
+        cmd
+      );
+    #endif
+
+    { TracyVkZone(core->tracy_context, cmd, "indirect_light_secondary");
+      engine::rendering::pass::indirect_light_secondary::record(
+        indirect_light_secondary_ddata,
+        indirect_light_secondary_sdata,
+        frame_info,
+        swapchain_description,
+        fullscreen_quad,
+        cmd
+      );
+    }
+
+    engine::rendering::intra::secondary_lbuffer::transition_inside_l2(
+      lbuffer2,
+      frame_info,
+      cmd
+    );
+
+    { TracyVkZone(core->tracy_context, cmd, "directional_light_secondary");
+      engine::rendering::pass::directional_light_secondary::record(
+        directional_light_secondary_ddata,
+        directional_light_secondary_sdata,
+        frame_info,
+        swapchain_description,
+        fullscreen_quad,
+        descriptor_pool,
+        lpass,
+        core,
+        tlas_result->accel,
+        cmd
+      );
+    }
+  #endif
+  
+  engine::rendering::intra::secondary_lbuffer::transition_into_probe_measure(
+    lbuffer2,
+    frame_info,
+    cmd
+  );
+
+  engine::rendering::intra::probe_light_map::transition_previous_into_probe_measure(
+    probe_light_map,
+    frame_info,
+    swapchain_description,
+    cmd
+  );
+
+  #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
+    assert(false);
+  #endif
+
+  { TracyVkZone(core->tracy_context, cmd, "probe_measure");
+    engine::rendering::pass::probe_measure::record(
+      probe_measure_ddata,
+      probe_measure_sdata,
       frame_info,
       core,
       descriptor_pool,
@@ -1446,75 +1548,7 @@ void graphics_render(
     );
   }
 
-  engine::rendering::intra::secondary_zbuffer::transition_from_g2_into_reads(
-    zbuffer2,
-    frame_info,
-    cmd
-  );
-
-  engine::rendering::intra::secondary_gbuffer::transition_g2_to_l2(
-    gbuffer2,
-    frame_info,
-    cmd
-  );
-
-  engine::rendering::intra::secondary_lbuffer::transition_into_l2(
-    lbuffer2,
-    frame_info,
-    cmd
-  );
-
-  engine::rendering::intra::probe_light_map::transition_previous_into_l2(
-    probe_light_map,
-    frame_info,
-    swapchain_description,
-    cmd
-  );
-
-  #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
-    engine::rendering::intra::probe_depth_map::transition_previous_into_l2(
-      probe_depth_map,
-      frame_info,
-      swapchain_description,
-      cmd
-    );
-  #endif
-
-  { TracyVkZone(core->tracy_context, cmd, "indirect_light_secondary");
-    engine::rendering::pass::indirect_light_secondary::record(
-      indirect_light_secondary_ddata,
-      indirect_light_secondary_sdata,
-      frame_info,
-      swapchain_description,
-      fullscreen_quad,
-      cmd
-    );
-  }
-
-  engine::rendering::intra::secondary_lbuffer::transition_inside_l2(
-    lbuffer2,
-    frame_info,
-    cmd
-  );
-
-  { TracyVkZone(core->tracy_context, cmd, "directional_light_secondary");
-    engine::rendering::pass::directional_light_secondary::record(
-      directional_light_secondary_ddata,
-      directional_light_secondary_sdata,
-      frame_info,
-      swapchain_description,
-      fullscreen_quad,
-      descriptor_pool,
-      lpass,
-      core,
-      tlas_result->accel,
-      cmd
-    );
-  }
-
-  //
-
-  engine::rendering::intra::secondary_lbuffer::transition_from_l2_into_probe_update(
+  engine::rendering::intra::secondary_lbuffer::transition_from_probe_measure_into_update(
     lbuffer2,
     frame_info,
     cmd

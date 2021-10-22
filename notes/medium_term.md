@@ -1,4 +1,5 @@
 ### architectural problems
+- Need `readonly`/`writeonly`/other qualifiers for perf.
 - Need automatic GPU memory region compacting
 - Uploader seems very @Rushed, need to come back to it from a performance perspective
 - Semaphores are used unnecessarily to separate `work` <-> `imgui` <-> `compose`.

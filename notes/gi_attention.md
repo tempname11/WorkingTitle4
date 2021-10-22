@@ -1,8 +1,7 @@
 # GI, again
 
 -> memory usage is insane
-  - don't do deferred!
-  - we do not need (inflight-count) of everything. what can we slice?
+  - see `plan.md`
 
 - small improvements
   - can we use wrapping in probe map, so that we don't need to copy old -> new with no attention?
