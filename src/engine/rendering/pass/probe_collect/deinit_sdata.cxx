@@ -2,7 +2,7 @@
 #include <src/engine/session/data.hxx>
 #include "data.hxx"
 
-namespace engine::rendering::pass::probe_light_update {
+namespace engine::rendering::pass::probe_collect {
 
 void deinit_sdata(
   SData *it,

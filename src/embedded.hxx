@@ -24,5 +24,5 @@ extern "C" const size_t embedded_lpass_sun_vert_len;
 extern "C" const char embedded_finalpass_comp[];
 extern "C" const size_t embedded_finalpass_comp_len;
 
-extern "C" const char embedded_probe_light_update_comp[];
-extern "C" const size_t embedded_probe_light_update_comp_len;
+extern "C" const char embedded_probe_collect_comp[];
+extern "C" const size_t embedded_probe_collect_comp_len;

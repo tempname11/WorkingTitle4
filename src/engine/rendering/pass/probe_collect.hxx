@@ -3,7 +3,7 @@
 #include <src/engine/session/data.hxx>
 #include <src/engine/display/data.hxx>
 
-namespace engine::rendering::pass::probe_light_update {
+namespace engine::rendering::pass::probe_collect {
 
 struct SData;
 struct DData;

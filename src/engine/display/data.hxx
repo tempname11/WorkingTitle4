@@ -10,7 +10,7 @@
 #include <src/engine/rendering/intra/probe_light_map/data.hxx>
 #include <src/engine/rendering/intra/probe_attention/data.hxx>
 #include <src/engine/rendering/pass/probe_measure/data.hxx>
-#include <src/engine/rendering/pass/probe_light_update/data.hxx>
+#include <src/engine/rendering/pass/probe_collect/data.hxx>
 #include <src/engine/rendering/pass/indirect_light/data.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
 
@@ -141,7 +141,7 @@ struct Data : lib::task::ParentResource {
   } lpass;
 
   engine::rendering::pass::probe_measure::DData pass_probe_measure;
-  engine::rendering::pass::probe_light_update::DData pass_probe_light_update;
+  engine::rendering::pass::probe_collect::DData pass_probe_collect;
   engine::rendering::pass::indirect_light::DData pass_indirect_light;
 
   struct Finalpass {

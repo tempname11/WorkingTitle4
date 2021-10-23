@@ -1,7 +1,7 @@
 #include <src/task/defer.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
 #include <src/engine/rendering/pass/probe_measure.hxx>
-#include <src/engine/rendering/pass/probe_light_update.hxx>
+#include <src/engine/rendering/pass/probe_collect.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/engine/rendering/intra/secondary_lbuffer.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
@@ -1238,7 +1238,7 @@ void graphics_render(
   Own<engine::display::Data::GPass> gpass,
   Own<engine::display::Data::LPass> lpass,
   Own<engine::rendering::pass::probe_measure::DData> probe_measure_ddata,
-  Own<engine::rendering::pass::probe_light_update::DData> probe_light_update_ddata,
+  Own<engine::rendering::pass::probe_collect::DData> probe_collect_ddata,
   Own<engine::rendering::pass::indirect_light::DData> indirect_light_ddata,
   Own<engine::display::Data::Finalpass> finalpass,
   Use<engine::display::Data::ZBuffer> zbuffer,
@@ -1252,7 +1252,7 @@ void graphics_render(
   Use<engine::session::Vulkan::GPass> s_gpass,
   Use<engine::session::Vulkan::LPass> s_lpass,
   Own<engine::rendering::pass::probe_measure::SData> probe_measure_sdata,
-  Use<engine::rendering::pass::probe_light_update::SData> probe_light_update_sdata,
+  Use<engine::rendering::pass::probe_collect::SData> probe_collect_sdata,
   Use<engine::rendering::pass::indirect_light::SData> indirect_light_sdata,
   Use<engine::session::Vulkan::Finalpass> s_finalpass,
   Use<engine::session::Vulkan::FullscreenQuad> fullscreen_quad,
@@ -1432,36 +1432,36 @@ void graphics_render(
     );
   }
 
-  engine::rendering::intra::secondary_lbuffer::transition_from_probe_measure_into_update(
+  engine::rendering::intra::secondary_lbuffer::transition_from_probe_measure_into_collect(
     lbuffer2,
     frame_info,
     cmd
   );
 
-  engine::rendering::intra::probe_light_map::transition_previous_from_probe_measure_into_update(
+  engine::rendering::intra::probe_light_map::transition_previous_from_probe_measure_into_collect(
     probe_light_map,
     frame_info,
     swapchain_description,
     cmd
   );
 
-  engine::rendering::intra::probe_light_map::transition_into_update(
+  engine::rendering::intra::probe_light_map::transition_into_probe_collect(
     probe_light_map,
     frame_info,
     swapchain_description,
     cmd
   );
 
-  { TracyVkZone(core->tracy_context, cmd, "probe_light_update");
-    engine::rendering::pass::probe_light_update::record(
-      probe_light_update_ddata,
-      probe_light_update_sdata,
+  { TracyVkZone(core->tracy_context, cmd, "probe_collect");
+    engine::rendering::pass::probe_collect::record(
+      probe_collect_ddata,
+      probe_collect_sdata,
       frame_info,
       cmd
     );
   }
 
-  engine::rendering::intra::probe_light_map::transition_from_update_into_indirect_light(
+  engine::rendering::intra::probe_light_map::transition_from_probe_collect_into_indirect_light(
     probe_light_map,
     frame_info,
     cmd

@@ -5,7 +5,7 @@
 #include "internal.hxx"
 #include "data.hxx"
 
-namespace engine::rendering::pass::probe_light_update {
+namespace engine::rendering::pass::probe_collect {
 
 void record(
   Use<DData> ddata,

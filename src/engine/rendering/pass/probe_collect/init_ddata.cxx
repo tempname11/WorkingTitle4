@@ -4,7 +4,7 @@
 #include <src/engine/display/data.hxx>
 #include "data.hxx"
 
-namespace engine::rendering::pass::probe_light_update {
+namespace engine::rendering::pass::probe_collect {
 
 void init_ddata(
   DData *out,

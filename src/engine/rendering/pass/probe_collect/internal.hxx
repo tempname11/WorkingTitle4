@@ -1,7 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 
-namespace engine::rendering::pass::probe_light_update {
+namespace engine::rendering::pass::probe_collect {
 
 struct PerCascade {
   glm::vec3 world_position_delta;

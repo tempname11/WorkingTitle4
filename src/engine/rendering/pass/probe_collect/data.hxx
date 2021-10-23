@@ -2,7 +2,7 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
-namespace engine::rendering::pass::probe_light_update {
+namespace engine::rendering::pass::probe_collect {
 
 struct SData {
   VkDescriptorSetLayout descriptor_set_layout;

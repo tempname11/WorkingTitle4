@@ -9,7 +9,7 @@
 #include <src/engine/rendering/intra/probe_light_map.hxx>
 #include <src/engine/rendering/intra/probe_attention.hxx>
 #include <src/engine/rendering/pass/probe_measure.hxx>
-#include <src/engine/rendering/pass/probe_light_update.hxx>
+#include <src/engine/rendering/pass/probe_collect.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <backends/imgui_impl_vulkan.h>
 #include "cleanup.hxx"
@@ -87,8 +87,8 @@ void cleanup(
     core
   );
 
-  rendering::pass::probe_light_update::deinit_ddata(
-    &data->pass_probe_light_update,
+  rendering::pass::probe_collect::deinit_ddata(
+    &data->pass_probe_collect,
     core
   );
 

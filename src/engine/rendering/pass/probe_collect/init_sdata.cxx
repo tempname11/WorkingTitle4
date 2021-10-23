@@ -4,7 +4,7 @@
 #include "internal.hxx"
 #include "data.hxx"
 
-namespace engine::rendering::pass::probe_light_update {
+namespace engine::rendering::pass::probe_collect {
 
 void init_sdata(
   SData *out,
@@ -99,8 +99,8 @@ void init_sdata(
     { ZoneScopedN("module_comp");
       VkShaderModuleCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = embedded_probe_light_update_comp_len,
-        .pCode = (const uint32_t*) embedded_probe_light_update_comp,
+        .codeSize = embedded_probe_collect_comp_len,
+        .pCode = (const uint32_t*) embedded_probe_collect_comp,
       };
       auto result = vkCreateShaderModule(
         core->device,

@@ -7,7 +7,7 @@
 
 namespace engine::rendering::intra::probe_light_map {
 
-void transition_previous_from_probe_measure_into_update(
+void transition_previous_from_probe_measure_into_collect(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,
   Use<engine::display::Data::SwapchainDescription> swapchain_description,

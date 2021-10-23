@@ -13,7 +13,7 @@
 #include <src/engine/rendering/intra/probe_light_map.hxx>
 #include <src/engine/rendering/intra/probe_attention.hxx>
 #include <src/engine/rendering/pass/probe_measure.hxx>
-#include <src/engine/rendering/pass/probe_light_update.hxx>
+#include <src/engine/rendering/pass/probe_collect.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include <src/engine/frame/schedule_all.hxx>
@@ -724,9 +724,9 @@ TASK_DECL {
     &session->vulkan.core
   );
 
-  engine::rendering::pass::probe_light_update::init_ddata(
-    &rendering->pass_probe_light_update,
-    &session->vulkan.pass_probe_light_update,
+  engine::rendering::pass::probe_collect::init_ddata(
+    &rendering->pass_probe_collect,
+    &session->vulkan.pass_probe_collect,
     &rendering->common,
     &rendering->lbuffer2,
     &rendering->probe_light_map,

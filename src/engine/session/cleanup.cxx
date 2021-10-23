@@ -7,7 +7,7 @@
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/engine/rendering/pass/probe_measure.hxx>
-#include <src/engine/rendering/pass/probe_light_update.hxx>
+#include <src/engine/rendering/pass/probe_collect.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include "cleanup.hxx"
 
@@ -43,8 +43,8 @@ void cleanup(
       core
     );
 
-    rendering::pass::probe_light_update::deinit_sdata(
-      &it->pass_probe_light_update,
+    rendering::pass::probe_collect::deinit_sdata(
+      &it->pass_probe_collect,
       core
     );
 

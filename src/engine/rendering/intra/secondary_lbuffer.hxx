@@ -25,7 +25,7 @@ void transition_into_probe_measure(
   VkCommandBuffer cmd
 );
 
-void transition_from_probe_measure_into_update(
+void transition_from_probe_measure_into_collect(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd

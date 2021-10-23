@@ -7,7 +7,7 @@
 
 namespace engine::rendering::intra::probe_light_map {
 
-void transition_from_update_into_indirect_light(
+void transition_from_probe_collect_into_indirect_light(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd
