@@ -17,11 +17,7 @@
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/engine/rendering/pass/probe_measure.hxx>
-#include <src/engine/rendering/pass/secondary_geometry.hxx>
-#include <src/engine/rendering/pass/indirect_light_secondary.hxx>
-#include <src/engine/rendering/pass/directional_light_secondary.hxx>
 #include <src/engine/rendering/pass/probe_light_update.hxx>
-#include <src/engine/rendering/pass/probe_depth_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/engine/loading/group.hxx>
 #include <src/engine/constants.hxx>
@@ -455,33 +451,10 @@ void init_vulkan(
     &it->core
   );
 
-  rendering::pass::secondary_geometry::init_sdata(
-    &it->pass_secondary_geometry,
-    &it->core
-  );
-
-  rendering::pass::indirect_light_secondary::init_sdata(
-    &it->pass_indirect_light_secondary,
-    &it->core
-  );
-
-  rendering::pass::directional_light_secondary::init_sdata(
-    &it->pass_directional_light_secondary,
-    &it->core
-  );
-
   rendering::pass::probe_light_update::init_sdata(
     &it->pass_probe_light_update,
     &it->core
   );
-
-
-  #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
-    rendering::pass::probe_depth_update::init_sdata(
-      &it->pass_probe_depth_update,
-      &it->core
-    );
-  #endif
 
   rendering::pass::indirect_light::init_sdata(
     &it->pass_indirect_light,
@@ -812,13 +785,6 @@ void setup(
     .sun_intensity = 5.0f,
     .luminance_moving_average = 0.3f,
     .taa_distance = 1.0f,
-    .probe_depth_sharpness = 10.0f,
-    .probe_normal_bias = 0.001f,
-    .ubo_flags = {
-      #ifndef ENGINE_DEF_ENABLE_PROBE_DEPTH
-        .disable_indirect_shadows = 1,
-      #endif
-    },
   };
 
   #ifdef ENGINE_DEVELOPER
@@ -839,11 +805,11 @@ void setup(
   #ifndef NDEBUG
   {
     const auto size = sizeof(engine::session::Data) - sizeof(engine::session::Vulkan);
-    static_assert(size == 1168);
+    static_assert(size == 1160);
   }
   {
     const auto size = sizeof(engine::session::Vulkan);
-    static_assert(size == 3008);
+    static_assert(size == 2856);
   }
   #endif
 

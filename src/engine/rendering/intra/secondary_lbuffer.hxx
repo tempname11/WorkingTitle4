@@ -19,24 +19,6 @@ void deinit_ddata(
   Use<engine::session::Vulkan::Core> core
 );
 
-void transition_into_l2(
-  Use<DData> it,
-  Use<engine::display::Data::FrameInfo> frame_info,
-  VkCommandBuffer cmd
-);
-
-void transition_inside_l2(
-  Use<DData> it,
-  Use<engine::display::Data::FrameInfo> frame_info,
-  VkCommandBuffer cmd
-);
-
-void transition_from_l2_into_probe_update(
-  Use<DData> it,
-  Use<engine::display::Data::FrameInfo> frame_info,
-  VkCommandBuffer cmd
-);
-
 void transition_into_probe_measure(
   Use<DData> it,
   Use<engine::display::Data::FrameInfo> frame_info,

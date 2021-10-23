@@ -39,14 +39,7 @@ void transition_previous_into_probe_measure(
   VkCommandBuffer cmd
 );
 
-void transition_previous_into_l2(
-  Use<DData> it,
-  Use<display::Data::FrameInfo> frame_info,
-  Use<display::Data::SwapchainDescription> swapchain_description,
-  VkCommandBuffer cmd
-);
-
-void transition_previous_into_update(
+void transition_previous_from_probe_measure_into_update(
   Use<DData> it,
   Use<display::Data::FrameInfo> frame_info,
   Use<display::Data::SwapchainDescription> swapchain_description,

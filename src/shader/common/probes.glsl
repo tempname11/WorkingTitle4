@@ -70,7 +70,6 @@ vec3 get_indirect_luminance(
   FrameData frame_data,
   bool is_prev,
   sampler2D probe_light_map,
-  // sampler2D probe_depth_map,
   writeonly uimage2D probe_attention,
   vec3 albedo
 ) {
@@ -195,47 +194,6 @@ vec3 get_indirect_luminance(
     ).rgb;
 
     float weight = 1.0;
-
-    #if 0
-    if (!frame_data.flags.disable_indirect_shadows) {
-      // Off by default now. See ENGINE_DEF_ENABLE_PROBE_DEPTH
-
-      // old calculations with border on both sides.
-      uint border = 1;
-      uvec2 depth_base_texel_coord = border + octomap_depth_texel_size * combined_texel_coord;
-      const vec2 depth_hsize = 0.5 * octomap_depth_texel_size - border;
-
-      // Haven't yet seen results that show that the "normal bias" is helpful.
-      // But maybe we're doing something else wrong, so leave it be.
-      vec3 point_to_probe_biased = (
-        cascade_world_position_delta * 0.5 * (
-          grid_cube_vertex_coord - grid_cube_coord
-        ) + N * frame_data.probe.normal_bias
-      );
-      float dist = length(point_to_probe_biased);
-      point_to_probe_biased /= dist;
-
-      vec2 values = texture(
-        probe_depth_map,
-        (
-          depth_base_texel_coord +
-          (depth_hsize * (1.0 + octo_encode(-point_to_probe_biased))) // no +0.5
-        ) / frame_data.probe.depth_map_texel_size
-      ).rg;
-
-      float mean = values.x;
-      float mean2 = values.y;
-      float variance = abs(mean * mean - mean2);
-      float diff = max(0.0, dist - mean);
-
-      // see https://http.download.nvidia.com/developer/presentations/2006/gdc/2006-GDC-Variance-Shadow-Maps.pdf
-      float chebyshev = (
-        variance / (variance + diff * diff)
-      );
-
-      weight *= clamp(pow(chebyshev, 3.0), 0.0, 1.0); // @Cleanup :MoveToUniform
-    }
-    #endif
 
     // "smooth backface" produced weird grid-like artifacts,
     // so we just use a sane one.

@@ -37,7 +37,6 @@ void init_ddata(
       .usage = (0
         | VK_IMAGE_USAGE_SAMPLED_BIT
         | VK_IMAGE_USAGE_STORAGE_BIT
-        | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
       ),
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
       .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,

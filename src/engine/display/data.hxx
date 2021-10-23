@@ -6,18 +6,11 @@
 #include <src/lib/task.hxx>
 #include <src/lib/gfx/command_pool_2.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
-#include <src/engine/rendering/intra/secondary_zbuffer/data.hxx>
-#include <src/engine/rendering/intra/secondary_gbuffer/data.hxx>
 #include <src/engine/rendering/intra/secondary_lbuffer/data.hxx>
 #include <src/engine/rendering/intra/probe_light_map/data.hxx>
-#include <src/engine/rendering/intra/probe_depth_map/data.hxx>
 #include <src/engine/rendering/intra/probe_attention/data.hxx>
 #include <src/engine/rendering/pass/probe_measure/data.hxx>
-#include <src/engine/rendering/pass/secondary_geometry/data.hxx>
-#include <src/engine/rendering/pass/indirect_light_secondary/data.hxx>
-#include <src/engine/rendering/pass/directional_light_secondary/data.hxx>
 #include <src/engine/rendering/pass/probe_light_update/data.hxx>
-#include <src/engine/rendering/pass/probe_depth_update/data.hxx>
 #include <src/engine/rendering/pass/indirect_light/data.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
 
@@ -105,11 +98,8 @@ struct Data : lib::task::ParentResource {
     std::vector<VkImageView> views;
   } lbuffer;
 
-  rendering::intra::secondary_zbuffer::DData zbuffer2;
-  rendering::intra::secondary_gbuffer::DData gbuffer2;
   rendering::intra::secondary_lbuffer::DData lbuffer2;
   rendering::intra::probe_light_map::DData probe_light_map;
-  rendering::intra::probe_depth_map::DData probe_depth_map;
   rendering::intra::probe_attention::DData probe_attention;
 
   struct FinalImage {
@@ -151,11 +141,7 @@ struct Data : lib::task::ParentResource {
   } lpass;
 
   engine::rendering::pass::probe_measure::DData pass_probe_measure;
-  engine::rendering::pass::secondary_geometry::DData pass_secondary_geometry;
-  engine::rendering::pass::indirect_light_secondary::DData pass_indirect_light_secondary;
-  engine::rendering::pass::directional_light_secondary::DData pass_directional_light_secondary;
   engine::rendering::pass::probe_light_update::DData pass_probe_light_update;
-  engine::rendering::pass::probe_depth_update::DData pass_probe_depth_update;
   engine::rendering::pass::indirect_light::DData pass_indirect_light;
 
   struct Finalpass {

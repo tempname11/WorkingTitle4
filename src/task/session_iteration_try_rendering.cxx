@@ -9,18 +9,11 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
-#include <src/engine/rendering/intra/secondary_zbuffer.hxx>
-#include <src/engine/rendering/intra/secondary_gbuffer.hxx>
 #include <src/engine/rendering/intra/secondary_lbuffer.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
-#include <src/engine/rendering/intra/probe_depth_map.hxx>
 #include <src/engine/rendering/intra/probe_attention.hxx>
 #include <src/engine/rendering/pass/probe_measure.hxx>
-#include <src/engine/rendering/pass/secondary_geometry.hxx>
-#include <src/engine/rendering/pass/indirect_light_secondary.hxx>
-#include <src/engine/rendering/pass/directional_light_secondary.hxx>
 #include <src/engine/rendering/pass/probe_light_update.hxx>
-#include <src/engine/rendering/pass/probe_depth_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include <src/engine/frame/schedule_all.hxx>
@@ -282,20 +275,6 @@ TASK_DECL {
     "display.allocator_host"
   );
 
-  engine::rendering::intra::secondary_zbuffer::init_ddata(
-    &rendering->zbuffer2,
-    &rendering->swapchain_description,
-    &rendering->allocator_dedicated,
-    core
-  );
-
-  engine::rendering::intra::secondary_gbuffer::init_ddata(
-    &rendering->gbuffer2,
-    &rendering->swapchain_description,
-    &rendering->allocator_dedicated,
-    core
-  );
-
   engine::rendering::intra::secondary_lbuffer::init_ddata(
     &rendering->lbuffer2,
     &rendering->swapchain_description,
@@ -309,15 +288,6 @@ TASK_DECL {
     &rendering->allocator_dedicated,
     core
   );
-
-  #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
-    engine::rendering::intra::probe_depth_map::init_ddata(
-      &rendering->probe_depth_map,
-      &rendering->swapchain_description,
-      &rendering->allocator_dedicated,
-      core
-    );
-  #endif
 
   engine::rendering::intra::probe_attention::init_ddata(
     &rendering->probe_attention,
@@ -754,43 +724,6 @@ TASK_DECL {
     &session->vulkan.core
   );
 
-  engine::rendering::pass::secondary_geometry::init_ddata(
-    &rendering->pass_secondary_geometry,
-    &session->vulkan.pass_secondary_geometry,
-    &rendering->common,
-    &rendering->gbuffer2,
-    &rendering->zbuffer2,
-    &rendering->probe_attention,
-    &rendering->swapchain_description,
-    &session->vulkan.core
-  );
-
-  engine::rendering::pass::indirect_light_secondary::init_ddata(
-    &rendering->pass_indirect_light_secondary,
-    &session->vulkan.pass_indirect_light_secondary,
-    &rendering->common,
-    &rendering->zbuffer2,
-    &rendering->gbuffer2,
-    &rendering->lbuffer2,
-    &rendering->probe_light_map,
-    &rendering->probe_depth_map,
-    &rendering->probe_attention,
-    &rendering->swapchain_description,
-    &session->vulkan.core
-  );
-
-  engine::rendering::pass::directional_light_secondary::init_ddata(
-    &rendering->pass_directional_light_secondary,
-    &session->vulkan.pass_directional_light_secondary,
-    &rendering->common,
-    &rendering->zbuffer2,
-    &rendering->gbuffer2,
-    &rendering->lbuffer2,
-    &rendering->probe_attention,
-    &rendering->swapchain_description,
-    &session->vulkan.core
-  );
-
   engine::rendering::pass::probe_light_update::init_ddata(
     &rendering->pass_probe_light_update,
     &session->vulkan.pass_probe_light_update,
@@ -802,19 +735,6 @@ TASK_DECL {
     &session->vulkan.core
   );
 
-  #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
-    engine::rendering::pass::probe_depth_update::init_ddata(
-      &rendering->pass_probe_depth_update,
-      &session->vulkan.pass_probe_depth_update,
-      &rendering->common,
-      &rendering->zbuffer2,
-      &rendering->probe_depth_map,
-      &rendering->probe_attention,
-      &rendering->swapchain_description,
-      &session->vulkan.core
-    );
-  #endif
-
   engine::rendering::pass::indirect_light::init_ddata(
     &rendering->pass_indirect_light,
     &session->vulkan.pass_indirect_light,
@@ -824,7 +744,6 @@ TASK_DECL {
     &rendering->zbuffer,
     &rendering->lbuffer,
     &rendering->probe_light_map,
-    &rendering->probe_depth_map,
     &rendering->probe_attention,
     &rendering->swapchain_description
   );

@@ -2,7 +2,6 @@
 #include <src/engine/constants.hxx>
 #include <src/engine/common/ubo.hxx>
 #include <src/engine/rendering/intra/probe_light_map/constants.hxx>
-#include <src/engine/rendering/intra/probe_depth_map/constants.hxx>
 #include "prepare_uniforms.hxx"
 
 namespace engine::frame {
@@ -126,12 +125,6 @@ void prepare_uniforms(
           engine::rendering::intra::probe_light_map::WIDTH,
           engine::rendering::intra::probe_light_map::HEIGHT
         ),
-        .depth_map_texel_size = glm::vec2(
-          engine::rendering::intra::probe_depth_map::WIDTH,
-          engine::rendering::intra::probe_depth_map::HEIGHT
-        ),
-        .depth_sharpness = session_state->probe_depth_sharpness,
-        .normal_bias = session_state->probe_normal_bias,
       },
       .end_marker = 0xDeadBeef,
     };

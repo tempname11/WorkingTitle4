@@ -5,18 +5,11 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
-#include <src/engine/rendering/intra/secondary_zbuffer.hxx>
-#include <src/engine/rendering/intra/secondary_gbuffer.hxx>
 #include <src/engine/rendering/intra/secondary_lbuffer.hxx>
 #include <src/engine/rendering/intra/probe_light_map.hxx>
-#include <src/engine/rendering/intra/probe_depth_map.hxx>
 #include <src/engine/rendering/intra/probe_attention.hxx>
 #include <src/engine/rendering/pass/probe_measure.hxx>
-#include <src/engine/rendering/pass/secondary_geometry.hxx>
-#include <src/engine/rendering/pass/indirect_light_secondary.hxx>
-#include <src/engine/rendering/pass/directional_light_secondary.hxx>
 #include <src/engine/rendering/pass/probe_light_update.hxx>
-#include <src/engine/rendering/pass/probe_depth_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include <backends/imgui_impl_vulkan.h>
 #include "cleanup.hxx"
@@ -94,32 +87,10 @@ void cleanup(
     core
   );
 
-  rendering::pass::secondary_geometry::deinit_ddata(
-    &data->pass_secondary_geometry,
-    core
-  );
-
-  rendering::pass::indirect_light_secondary::deinit_ddata(
-    &data->pass_indirect_light_secondary,
-    core
-  );
-
-  rendering::pass::directional_light_secondary::deinit_ddata(
-    &data->pass_directional_light_secondary,
-    core
-  );
-
   rendering::pass::probe_light_update::deinit_ddata(
     &data->pass_probe_light_update,
     core
   );
-
-  #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
-    rendering::pass::probe_depth_update::deinit_ddata(
-      &data->pass_probe_depth_update,
-      core
-    );
-  #endif
 
   rendering::pass::indirect_light::deinit_ddata(
     &data->pass_indirect_light,
@@ -137,16 +108,6 @@ void cleanup(
     core->allocator
   );
 
-  rendering::intra::secondary_zbuffer::deinit_ddata(
-    &data->zbuffer2,
-    core
-  );
-
-  rendering::intra::secondary_gbuffer::deinit_ddata(
-    &data->gbuffer2,
-    core
-  );
-
   rendering::intra::secondary_lbuffer::deinit_ddata(
     &data->lbuffer2,
     core
@@ -156,13 +117,6 @@ void cleanup(
     &data->probe_light_map,
     core
   );
-
-  #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
-    rendering::intra::probe_depth_map::deinit_ddata(
-      &data->probe_depth_map,
-      core
-    );
-  #endif
 
   rendering::intra::probe_attention::deinit_ddata(
     &data->probe_attention,

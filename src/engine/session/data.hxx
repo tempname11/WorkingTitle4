@@ -164,8 +164,6 @@ struct Data : lib::task::ParentResource {
     float sun_intensity;
     float luminance_moving_average;
     float taa_distance;
-    float probe_depth_sharpness;
-    float probe_normal_bias;
     engine::common::ubo::Flags ubo_flags;
   } state;
 

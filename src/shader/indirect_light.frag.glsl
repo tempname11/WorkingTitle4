@@ -13,7 +13,6 @@ layout(input_attachment_index = 1, binding = 1) uniform subpassInput gchannel1;
 layout(input_attachment_index = 2, binding = 2) uniform subpassInput gchannel2;
 layout(input_attachment_index = 3, binding = 3) uniform subpassInput zchannel;
 layout(binding = 4) uniform sampler2D probe_light_map;
-layout(binding = 5) uniform sampler2D probe_depth_map;
 layout(binding = 6) uniform Frame { FrameData data; } frame;
 layout(binding = 7) uniform writeonly uimage2D probe_attention;
 
@@ -52,7 +51,6 @@ void main() {
     frame.data,
     false, // is_prev
     probe_light_map,
-    // probe_depth_map,
     probe_attention,
     albedo
   );

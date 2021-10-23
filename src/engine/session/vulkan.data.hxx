@@ -2,11 +2,7 @@
 #include <vulkan/vulkan.h>
 #include <TracyVulkan.hpp>
 #include <src/engine/rendering/pass/probe_measure/data.hxx>
-#include <src/engine/rendering/pass/secondary_geometry/data.hxx>
-#include <src/engine/rendering/pass/indirect_light_secondary/data.hxx>
-#include <src/engine/rendering/pass/directional_light_secondary/data.hxx>
 #include <src/engine/rendering/pass/probe_light_update/data.hxx>
-#include <src/engine/rendering/pass/probe_depth_update/data.hxx>
 #include <src/engine/rendering/pass/indirect_light/data.hxx>
 
 namespace engine::session {
@@ -101,11 +97,7 @@ struct Vulkan : lib::task::ParentResource {
   } lpass;
 
   engine::rendering::pass::probe_measure::SData pass_probe_measure;
-  engine::rendering::pass::secondary_geometry::SData pass_secondary_geometry;
-  engine::rendering::pass::indirect_light_secondary::SData pass_indirect_light_secondary;
-  engine::rendering::pass::directional_light_secondary::SData pass_directional_light_secondary;
   engine::rendering::pass::probe_light_update::SData pass_probe_light_update;
-  engine::rendering::pass::probe_depth_update::SData pass_probe_depth_update;
   engine::rendering::pass::indirect_light::SData pass_indirect_light;
 
   struct Finalpass {

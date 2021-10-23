@@ -14,7 +14,6 @@ void transition_from_update_into_indirect_light(
 ) {
   ZoneScoped;
 
-  // @Note: should probably import usage patterns from respective pass files as constants!
   VkImageMemoryBarrier barriers[] = {
     {
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,

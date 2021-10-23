@@ -7,11 +7,7 @@
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/engine/rendering/pass/probe_measure.hxx>
-#include <src/engine/rendering/pass/secondary_geometry.hxx>
-#include <src/engine/rendering/pass/indirect_light_secondary.hxx>
-#include <src/engine/rendering/pass/directional_light_secondary.hxx>
 #include <src/engine/rendering/pass/probe_light_update.hxx>
-#include <src/engine/rendering/pass/probe_depth_update.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
 #include "cleanup.hxx"
 
@@ -47,32 +43,10 @@ void cleanup(
       core
     );
 
-    rendering::pass::secondary_geometry::deinit_sdata(
-      &it->pass_secondary_geometry,
-      core
-    );
-
-    rendering::pass::indirect_light_secondary::deinit_sdata(
-      &it->pass_indirect_light_secondary,
-      core
-    );
-
-    rendering::pass::directional_light_secondary::deinit_sdata(
-      &it->pass_directional_light_secondary,
-      core
-    );
-
     rendering::pass::probe_light_update::deinit_sdata(
       &it->pass_probe_light_update,
       core
     );
-
-    #ifdef ENGINE_DEF_ENABLE_PROBE_DEPTH
-      rendering::pass::probe_depth_update::deinit_sdata(
-        &it->pass_probe_depth_update,
-        core
-      );
-    #endif
 
     rendering::pass::indirect_light::deinit_sdata(
       &it->pass_indirect_light,
