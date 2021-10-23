@@ -4,10 +4,6 @@
 - rename _all_ usage::* stuff
 - remove usage::* aliases
 
-## dirs
-- move engine/rendering/intra -> engine/datum
-- move engine/rendering/pass -> engine/step
-
 ## annoyances
 - Move ad-hoc inline constants to uniform or at least `common/constants.glsl` :MoveToUniform
 - The directory `src/task` should not be there. tasks should be where they logically belong.

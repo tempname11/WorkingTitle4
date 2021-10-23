@@ -9,12 +9,12 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
-#include <src/engine/rendering/intra/probe_radiance.hxx>
-#include <src/engine/rendering/intra/probe_irradiance.hxx>
-#include <src/engine/rendering/intra/probe_attention.hxx>
-#include <src/engine/rendering/pass/probe_measure.hxx>
-#include <src/engine/rendering/pass/probe_collect.hxx>
-#include <src/engine/rendering/pass/indirect_light.hxx>
+#include <src/engine/datum/probe_radiance.hxx>
+#include <src/engine/datum/probe_irradiance.hxx>
+#include <src/engine/datum/probe_attention.hxx>
+#include <src/engine/step/probe_measure.hxx>
+#include <src/engine/step/probe_collect.hxx>
+#include <src/engine/step/indirect_light.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include <src/engine/frame/schedule_all.hxx>
 #include "defer.hxx"
@@ -275,21 +275,21 @@ TASK_DECL {
     "display.allocator_host"
   );
 
-  engine::rendering::intra::probe_radiance::init_ddata(
+  engine::datum::probe_radiance::init_ddata(
     &rendering->probe_radiance,
     &rendering->swapchain_description,
     &rendering->allocator_dedicated,
     core
   );
 
-  engine::rendering::intra::probe_irradiance::init_ddata(
+  engine::datum::probe_irradiance::init_ddata(
     &rendering->probe_irradiance,
     &rendering->swapchain_description,
     &rendering->allocator_dedicated,
     core
   );
 
-  engine::rendering::intra::probe_attention::init_ddata(
+  engine::datum::probe_attention::init_ddata(
     &rendering->probe_attention,
     &rendering->swapchain_description,
     &rendering->allocator_dedicated,
@@ -712,9 +712,9 @@ TASK_DECL {
     &session->vulkan.core
   );
 
-  engine::rendering::pass::probe_measure::init_ddata(
-    &rendering->pass_probe_measure,
-    &session->vulkan.pass_probe_measure,
+  engine::step::probe_measure::init_ddata(
+    &rendering->probe_measure,
+    &session->vulkan.probe_measure,
     &rendering->common,
     &rendering->lpass.stakes,
     &rendering->probe_radiance,
@@ -724,9 +724,9 @@ TASK_DECL {
     &session->vulkan.core
   );
 
-  engine::rendering::pass::probe_collect::init_ddata(
-    &rendering->pass_probe_collect,
-    &session->vulkan.pass_probe_collect,
+  engine::step::probe_collect::init_ddata(
+    &rendering->probe_collect,
+    &session->vulkan.probe_collect,
     &rendering->common,
     &rendering->probe_radiance,
     &rendering->probe_irradiance,
@@ -735,9 +735,9 @@ TASK_DECL {
     &session->vulkan.core
   );
 
-  engine::rendering::pass::indirect_light::init_ddata(
-    &rendering->pass_indirect_light,
-    &session->vulkan.pass_indirect_light,
+  engine::step::indirect_light::init_ddata(
+    &rendering->indirect_light,
+    &session->vulkan.indirect_light,
     &session->vulkan.core,
     &rendering->common,
     &rendering->gbuffer,

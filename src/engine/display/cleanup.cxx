@@ -5,12 +5,12 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
-#include <src/engine/rendering/intra/probe_radiance.hxx>
-#include <src/engine/rendering/intra/probe_irradiance.hxx>
-#include <src/engine/rendering/intra/probe_attention.hxx>
-#include <src/engine/rendering/pass/probe_measure.hxx>
-#include <src/engine/rendering/pass/probe_collect.hxx>
-#include <src/engine/rendering/pass/indirect_light.hxx>
+#include <src/engine/datum/probe_radiance.hxx>
+#include <src/engine/datum/probe_irradiance.hxx>
+#include <src/engine/datum/probe_attention.hxx>
+#include <src/engine/step/probe_measure.hxx>
+#include <src/engine/step/probe_collect.hxx>
+#include <src/engine/step/indirect_light.hxx>
 #include <backends/imgui_impl_vulkan.h>
 #include "cleanup.hxx"
 
@@ -82,18 +82,18 @@ void cleanup(
     core
   );
 
-  rendering::pass::probe_measure::deinit_ddata(
-    &data->pass_probe_measure,
+  step::probe_measure::deinit_ddata(
+    &data->probe_measure,
     core
   );
 
-  rendering::pass::probe_collect::deinit_ddata(
-    &data->pass_probe_collect,
+  step::probe_collect::deinit_ddata(
+    &data->probe_collect,
     core
   );
 
-  rendering::pass::indirect_light::deinit_ddata(
-    &data->pass_indirect_light,
+  step::indirect_light::deinit_ddata(
+    &data->indirect_light,
     core
   );
 
@@ -108,17 +108,17 @@ void cleanup(
     core->allocator
   );
 
-  rendering::intra::probe_radiance::deinit_ddata(
+  datum::probe_radiance::deinit_ddata(
     &data->probe_radiance,
     core
   );
 
-  rendering::intra::probe_irradiance::deinit_ddata(
+  datum::probe_irradiance::deinit_ddata(
     &data->probe_irradiance,
     core
   );
 
-  rendering::intra::probe_attention::deinit_ddata(
+  datum::probe_attention::deinit_ddata(
     &data->probe_attention,
     core
   );

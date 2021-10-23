@@ -6,9 +6,9 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
-#include <src/engine/rendering/pass/probe_measure.hxx>
-#include <src/engine/rendering/pass/probe_collect.hxx>
-#include <src/engine/rendering/pass/indirect_light.hxx>
+#include <src/engine/step/probe_measure.hxx>
+#include <src/engine/step/probe_collect.hxx>
+#include <src/engine/step/indirect_light.hxx>
 #include "cleanup.hxx"
 
 namespace engine::session {
@@ -38,18 +38,18 @@ void cleanup(
 
     deinit_session_finalpass(&it->finalpass, core);
 
-    rendering::pass::probe_measure::deinit_sdata(
-      &it->pass_probe_measure,
+    step::probe_measure::deinit_sdata(
+      &it->probe_measure,
       core
     );
 
-    rendering::pass::probe_collect::deinit_sdata(
-      &it->pass_probe_collect,
+    step::probe_collect::deinit_sdata(
+      &it->probe_collect,
       core
     );
 
-    rendering::pass::indirect_light::deinit_sdata(
-      &it->pass_indirect_light,
+    step::indirect_light::deinit_sdata(
+      &it->indirect_light,
       core
     );
 

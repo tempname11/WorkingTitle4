@@ -1,7 +1,7 @@
 #include <src/lib/gfx/utilities.hxx>
 #include <src/engine/constants.hxx>
 #include <src/engine/common/ubo.hxx>
-#include <src/engine/rendering/intra/probe_irradiance/constants.hxx>
+#include <src/engine/datum/probe_irradiance/constants.hxx>
 #include "prepare_uniforms.hxx"
 
 namespace engine::frame {

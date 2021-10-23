@@ -6,7 +6,7 @@
 
 const uint probe_ray_count = 64; // GI_N_Rays
 const uvec2 probe_ray_count_factors = uvec2(8, 8);
-const uvec2 octomap_texel_size = uvec2(8, 8); // :ProbeLightOctoSize
+const uvec2 octomap_texel_size = uvec2(8, 8); // :ProbeOctoSize
 
 float madfrac(float a, float b) {
   return a * b - floor(a * b);

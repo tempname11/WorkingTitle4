@@ -6,12 +6,12 @@
 #include <src/lib/task.hxx>
 #include <src/lib/gfx/command_pool_2.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
-#include <src/engine/rendering/intra/probe_radiance/data.hxx>
-#include <src/engine/rendering/intra/probe_irradiance/data.hxx>
-#include <src/engine/rendering/intra/probe_attention/data.hxx>
-#include <src/engine/rendering/pass/probe_measure/data.hxx>
-#include <src/engine/rendering/pass/probe_collect/data.hxx>
-#include <src/engine/rendering/pass/indirect_light/data.hxx>
+#include <src/engine/datum/probe_radiance/data.hxx>
+#include <src/engine/datum/probe_irradiance/data.hxx>
+#include <src/engine/datum/probe_attention/data.hxx>
+#include <src/engine/step/probe_measure/data.hxx>
+#include <src/engine/step/probe_collect/data.hxx>
+#include <src/engine/step/indirect_light/data.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
 
 namespace engine::display {
@@ -98,9 +98,9 @@ struct Data : lib::task::ParentResource {
     std::vector<VkImageView> views;
   } lbuffer;
 
-  rendering::intra::probe_radiance::DData probe_radiance;
-  rendering::intra::probe_irradiance::DData probe_irradiance;
-  rendering::intra::probe_attention::DData probe_attention;
+  datum::probe_radiance::DData probe_radiance;
+  datum::probe_irradiance::DData probe_irradiance;
+  datum::probe_attention::DData probe_attention;
 
   struct FinalImage {
     std::vector<lib::gfx::multi_alloc::StakeImage> stakes;
@@ -140,9 +140,9 @@ struct Data : lib::task::ParentResource {
     std::vector<VkFramebuffer> framebuffers;
   } lpass;
 
-  engine::rendering::pass::probe_measure::DData pass_probe_measure;
-  engine::rendering::pass::probe_collect::DData pass_probe_collect;
-  engine::rendering::pass::indirect_light::DData pass_indirect_light;
+  engine::step::probe_measure::DData probe_measure;
+  engine::step::probe_collect::DData probe_collect;
+  engine::step::indirect_light::DData indirect_light;
 
   struct Finalpass {
     std::vector<VkDescriptorSet> descriptor_sets;

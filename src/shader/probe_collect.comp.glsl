@@ -9,7 +9,7 @@ layout(
   local_size_z = 1
 ) in;
 
-// :ProbeLightFormat
+// :ProbeIrradianceFormat
 layout(binding = 0, rgba16f) uniform image2D probe_irradiance;
 layout(binding = 1, rgba16f) uniform image2D probe_irradiance_previous;
 

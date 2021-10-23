@@ -1,11 +1,11 @@
 #include <src/task/defer.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
-#include <src/engine/rendering/pass/probe_measure.hxx>
-#include <src/engine/rendering/pass/probe_collect.hxx>
-#include <src/engine/rendering/pass/indirect_light.hxx>
-#include <src/engine/rendering/intra/probe_radiance.hxx>
-#include <src/engine/rendering/intra/probe_irradiance.hxx>
-#include <src/engine/rendering/intra/probe_attention.hxx>
+#include <src/engine/step/probe_measure.hxx>
+#include <src/engine/step/probe_collect.hxx>
+#include <src/engine/step/indirect_light.hxx>
+#include <src/engine/datum/probe_radiance.hxx>
+#include <src/engine/datum/probe_irradiance.hxx>
+#include <src/engine/datum/probe_attention.hxx>
 #include "graphics_render.hxx"
 
 namespace engine::frame {
@@ -1237,23 +1237,23 @@ void graphics_render(
   Own<engine::display::Data::Prepass> prepass,
   Own<engine::display::Data::GPass> gpass,
   Own<engine::display::Data::LPass> lpass,
-  Own<engine::rendering::pass::probe_measure::DData> probe_measure_ddata,
-  Own<engine::rendering::pass::probe_collect::DData> probe_collect_ddata,
-  Own<engine::rendering::pass::indirect_light::DData> indirect_light_ddata,
+  Own<engine::step::probe_measure::DData> probe_measure_ddata,
+  Own<engine::step::probe_collect::DData> probe_collect_ddata,
+  Own<engine::step::indirect_light::DData> indirect_light_ddata,
   Own<engine::display::Data::Finalpass> finalpass,
   Use<engine::display::Data::ZBuffer> zbuffer,
   Use<engine::display::Data::GBuffer> gbuffer,
   Use<engine::display::Data::LBuffer> lbuffer,
-  Use<engine::rendering::intra::probe_radiance::DData> probe_radiance,
-  Use<engine::rendering::intra::probe_irradiance::DData> probe_irradiance,
-  Use<engine::rendering::intra::probe_attention::DData> probe_attention,
+  Use<engine::datum::probe_radiance::DData> probe_radiance,
+  Use<engine::datum::probe_irradiance::DData> probe_irradiance,
+  Use<engine::datum::probe_attention::DData> probe_attention,
   Use<engine::display::Data::FinalImage> final_image,
   Use<engine::session::Vulkan::Prepass> s_prepass,
   Use<engine::session::Vulkan::GPass> s_gpass,
   Use<engine::session::Vulkan::LPass> s_lpass,
-  Own<engine::rendering::pass::probe_measure::SData> probe_measure_sdata,
-  Use<engine::rendering::pass::probe_collect::SData> probe_collect_sdata,
-  Use<engine::rendering::pass::indirect_light::SData> indirect_light_sdata,
+  Own<engine::step::probe_measure::SData> probe_measure_sdata,
+  Use<engine::step::probe_collect::SData> probe_collect_sdata,
+  Use<engine::step::indirect_light::SData> indirect_light_sdata,
   Use<engine::session::Vulkan::Finalpass> s_finalpass,
   Use<engine::session::Vulkan::FullscreenQuad> fullscreen_quad,
   Use<engine::misc::RenderList> render_list,
@@ -1379,7 +1379,7 @@ void graphics_render(
     gbuffer.ptr
   );
 
-  engine::rendering::intra::probe_attention::clear_and_transition_into_lpass(
+  datum::probe_attention::clear_and_transition_into_lpass(
     probe_attention.ptr,
     frame_info,
     cmd
@@ -1398,20 +1398,20 @@ void graphics_render(
     );
   }
 
-  engine::rendering::intra::probe_attention::transition_previous_from_write_to_read(
+  datum::probe_attention::transition_previous_from_write_to_read(
     probe_attention.ptr,
     frame_info,
     swapchain_description,
     cmd
   );
 
-  engine::rendering::intra::probe_radiance::transition_into_probe_measure(
+  datum::probe_radiance::transition_into_probe_measure(
     probe_radiance,
     frame_info,
     cmd
   );
 
-  engine::rendering::intra::probe_irradiance::transition_previous_into_probe_measure(
+  datum::probe_irradiance::transition_previous_into_probe_measure(
     probe_irradiance,
     frame_info,
     swapchain_description,
@@ -1419,7 +1419,7 @@ void graphics_render(
   );
 
   { TracyVkZone(core->tracy_context, cmd, "probe_measure");
-    engine::rendering::pass::probe_measure::record(
+    step::probe_measure::record(
       probe_measure_ddata,
       probe_measure_sdata,
       frame_info,
@@ -1432,20 +1432,20 @@ void graphics_render(
     );
   }
 
-  engine::rendering::intra::probe_radiance::transition_from_probe_measure_into_collect(
+  datum::probe_radiance::transition_from_probe_measure_into_collect(
     probe_radiance,
     frame_info,
     cmd
   );
 
-  engine::rendering::intra::probe_irradiance::transition_previous_from_probe_measure_into_collect(
+  datum::probe_irradiance::transition_previous_from_probe_measure_into_collect(
     probe_irradiance,
     frame_info,
     swapchain_description,
     cmd
   );
 
-  engine::rendering::intra::probe_irradiance::transition_into_probe_collect(
+  datum::probe_irradiance::transition_into_probe_collect(
     probe_irradiance,
     frame_info,
     swapchain_description,
@@ -1453,7 +1453,7 @@ void graphics_render(
   );
 
   { TracyVkZone(core->tracy_context, cmd, "probe_collect");
-    engine::rendering::pass::probe_collect::record(
+    step::probe_collect::record(
       probe_collect_ddata,
       probe_collect_sdata,
       frame_info,
@@ -1461,14 +1461,14 @@ void graphics_render(
     );
   }
 
-  engine::rendering::intra::probe_irradiance::transition_from_probe_collect_into_indirect_light(
+  datum::probe_irradiance::transition_from_probe_collect_into_indirect_light(
     probe_irradiance,
     frame_info,
     cmd
   );
 
   { TracyVkZone(core->tracy_context, cmd, "indirect_light");
-    engine::rendering::pass::indirect_light::record(
+    step::indirect_light::record(
       cmd,
       indirect_light_ddata,
       indirect_light_sdata,

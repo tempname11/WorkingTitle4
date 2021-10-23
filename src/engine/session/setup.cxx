@@ -16,9 +16,9 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
-#include <src/engine/rendering/pass/probe_measure.hxx>
-#include <src/engine/rendering/pass/probe_collect.hxx>
-#include <src/engine/rendering/pass/indirect_light.hxx>
+#include <src/engine/step/probe_measure.hxx>
+#include <src/engine/step/probe_collect.hxx>
+#include <src/engine/step/indirect_light.hxx>
 #include <src/engine/loading/group.hxx>
 #include <src/engine/constants.hxx>
 #include <src/engine/misc.hxx>
@@ -446,18 +446,18 @@ void init_vulkan(
     &it->core
   );
 
-  rendering::pass::probe_measure::init_sdata(
-    &it->pass_probe_measure,
+  step::probe_measure::init_sdata(
+    &it->probe_measure,
     &it->core
   );
 
-  rendering::pass::probe_collect::init_sdata(
-    &it->pass_probe_collect,
+  step::probe_collect::init_sdata(
+    &it->probe_collect,
     &it->core
   );
 
-  rendering::pass::indirect_light::init_sdata(
-    &it->pass_indirect_light,
+  step::indirect_light::init_sdata(
+    &it->indirect_light,
     &it->core
   );
 

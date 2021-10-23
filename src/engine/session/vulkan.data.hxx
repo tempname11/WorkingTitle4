@@ -1,9 +1,9 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include <TracyVulkan.hpp>
-#include <src/engine/rendering/pass/probe_measure/data.hxx>
-#include <src/engine/rendering/pass/probe_collect/data.hxx>
-#include <src/engine/rendering/pass/indirect_light/data.hxx>
+#include <src/engine/step/probe_measure/data.hxx>
+#include <src/engine/step/probe_collect/data.hxx>
+#include <src/engine/step/indirect_light/data.hxx>
 
 namespace engine::session {
 
@@ -96,9 +96,9 @@ struct Vulkan : lib::task::ParentResource {
     VkPipeline pipeline_sun;
   } lpass;
 
-  engine::rendering::pass::probe_measure::SData pass_probe_measure;
-  engine::rendering::pass::probe_collect::SData pass_probe_collect;
-  engine::rendering::pass::indirect_light::SData pass_indirect_light;
+  engine::step::probe_measure::SData probe_measure;
+  engine::step::probe_collect::SData probe_collect;
+  engine::step::indirect_light::SData indirect_light;
 
   struct Finalpass {
     VkDescriptorSetLayout descriptor_set_layout;
