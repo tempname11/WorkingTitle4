@@ -30,14 +30,14 @@ vec3 unmap(vec3 p) {
 void main() {
   if (any(greaterThanEqual(
     gl_GlobalInvocationID.xy,
-    frame.data.final_image_texel_size
+    imageSize(final_image)
   ))) {
     return;
   }
 
   vec2 position = (
     (vec2(gl_GlobalInvocationID.xy) + 0.5)
-      / frame.data.final_image_texel_size
+      / imageSize(final_image)
   );
 
   vec3 m = map(imageLoad(
@@ -110,7 +110,7 @@ void main() {
     }
   }
 
-  memoryBarrierImage();
+  memoryBarrierImage(); // not really sure if this works right.
 
   if (!frame.data.flags.disable_motion_blur) {
     vec4 sum = vec4(m, 1.0);
@@ -126,7 +126,7 @@ void main() {
       }
       sum.rgb += map(imageLoad(
         lbuffer,
-        ivec2(p * frame.data.final_image_texel_size)
+        ivec2(p * imageSize(final_image))
       ).rgb);
       sum.w += 1.0;
     }

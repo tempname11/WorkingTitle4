@@ -7,7 +7,7 @@
 #include <src/engine/rendering/image_formats.hxx>
 #include "data.hxx"
 
-namespace engine::rendering::intra::secondary_lbuffer {
+namespace engine::rendering::intra::probe_radiance {
 
 void init_ddata(
   DData *out,

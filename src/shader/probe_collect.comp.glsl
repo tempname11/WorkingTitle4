@@ -4,16 +4,16 @@
 #include "common/probes.glsl"
 
 layout(
-  local_size_x = octomap_light_texel_size.x,
-  local_size_y = octomap_light_texel_size.y,
+  local_size_x = octomap_texel_size.x,
+  local_size_y = octomap_texel_size.y,
   local_size_z = 1
 ) in;
 
 // :ProbeLightFormat
-layout(binding = 0, rgba16f) uniform image2D probe_light_map;
-layout(binding = 1, rgba16f) uniform image2D probe_light_map_previous;
+layout(binding = 0, rgba16f) uniform image2D probe_irradiance;
+layout(binding = 1, rgba16f) uniform image2D probe_irradiance_previous;
 
-layout(binding = 2) uniform sampler2D lbuffer2_image;
+layout(binding = 2) uniform sampler2D probe_radiance;
 layout(binding = 3) uniform Frame { FrameData data; } frame;
 layout(binding = 4, r32ui) uniform uimage2D probe_attention_prev; // :ProbeAttentionFormat
 
@@ -77,7 +77,7 @@ void main() {
           );
 
           ivec2 texel_coord_prev = octomap_coord + ivec2(
-            octomap_light_texel_size * (
+            octomap_texel_size * (
               probe_coord_prev.xy +
               frame.data.probe.grid_size.xy * (
                 z_subcoord_prev +
@@ -89,12 +89,12 @@ void main() {
           );
 
           vec4 previous = imageLoad(
-            probe_light_map_previous,
+            probe_irradiance_previous,
             texel_coord_prev
           );
 
           ivec2 texel_coord = octomap_coord + ivec2(
-            octomap_light_texel_size * (
+            octomap_texel_size * (
               probe_coord.xy +
               frame.data.probe.grid_size.xy * (
                 z_subcoord +
@@ -106,7 +106,7 @@ void main() {
           );
 
           imageStore(
-            probe_light_map,
+            probe_irradiance,
             texel_coord,
             previous
           );
@@ -118,7 +118,7 @@ void main() {
   }
 
   uvec2 texel_coord_base = probe_ray_count_factors * combined_coord;
-  vec2 unique_texel_size = octomap_light_texel_size - 1.0;
+  vec2 unique_texel_size = octomap_texel_size - 1.0;
   vec3 octomap_direction = octo_decode(
     (mod(octomap_coord - 0.5, unique_texel_size) / unique_texel_size) * 2.0 - 1.0
   );
@@ -134,17 +134,17 @@ void main() {
         frame.data.probe.random_orientation
       );
 
-      vec3 ray_luminance = texture(
-        lbuffer2_image,
+      vec3 ray_radiance = texture(
+        probe_radiance,
         (
           (vec2(texel_coord_base + uvec2(x, y)) + 0.5) /
-            frame.data.secondary_gbuffer_texel_size
+            textureSize(probe_radiance, 0)
         )
       ).rgb;
 
       float weight = max(0.0, dot(octomap_direction, ray_direction));
 
-      value += vec4(ray_luminance * weight, weight);
+      value += vec4(ray_radiance * weight, weight);
     }
   }
   if (value.w > 0.0) {
@@ -175,7 +175,7 @@ void main() {
       );
 
       ivec2 texel_coord_prev = octomap_coord + ivec2(
-        octomap_light_texel_size * (
+        octomap_texel_size * (
           probe_coord_prev.xy +
           frame.data.probe.grid_size.xy * (
             z_subcoord_prev +
@@ -187,7 +187,7 @@ void main() {
       );
 
       vec4 previous = imageLoad(
-        probe_light_map_previous,
+        probe_irradiance_previous,
         texel_coord_prev
       );
 
@@ -197,7 +197,7 @@ void main() {
   }
 
   ivec2 texel_coord = octomap_coord + ivec2(
-    octomap_light_texel_size * (
+    octomap_texel_size * (
       probe_coord.xy +
       frame.data.probe.grid_size.xy * (
         z_subcoord +
@@ -209,7 +209,7 @@ void main() {
   );
 
   imageStore(
-    probe_light_map,
+    probe_irradiance,
     texel_coord,
     value
   );

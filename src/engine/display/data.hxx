@@ -6,8 +6,8 @@
 #include <src/lib/task.hxx>
 #include <src/lib/gfx/command_pool_2.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
-#include <src/engine/rendering/intra/secondary_lbuffer/data.hxx>
-#include <src/engine/rendering/intra/probe_light_map/data.hxx>
+#include <src/engine/rendering/intra/probe_radiance/data.hxx>
+#include <src/engine/rendering/intra/probe_irradiance/data.hxx>
 #include <src/engine/rendering/intra/probe_attention/data.hxx>
 #include <src/engine/rendering/pass/probe_measure/data.hxx>
 #include <src/engine/rendering/pass/probe_collect/data.hxx>
@@ -98,8 +98,8 @@ struct Data : lib::task::ParentResource {
     std::vector<VkImageView> views;
   } lbuffer;
 
-  rendering::intra::secondary_lbuffer::DData lbuffer2;
-  rendering::intra::probe_light_map::DData probe_light_map;
+  rendering::intra::probe_radiance::DData probe_radiance;
+  rendering::intra::probe_irradiance::DData probe_irradiance;
   rendering::intra::probe_attention::DData probe_attention;
 
   struct FinalImage {
@@ -149,8 +149,8 @@ struct Data : lib::task::ParentResource {
   } finalpass;
 
   struct Readback {
-    std::vector<lib::gfx::allocator::Buffer> luminance_buffers;
-    std::vector<glm::detail::hdata *> luminance_pointers;
+    std::vector<lib::gfx::allocator::Buffer> radiance_buffers;
+    std::vector<glm::detail::hdata *> radiance_pointers;
   } readback;
 };
 

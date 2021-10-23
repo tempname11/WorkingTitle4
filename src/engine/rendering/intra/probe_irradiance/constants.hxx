@@ -2,7 +2,7 @@
 #include <vulkan/vulkan.h>
 #include <src/engine/constants.hxx>
 
-namespace engine::rendering::intra::probe_light_map {
+namespace engine::rendering::intra::probe_irradiance {
 
 // @Note: if we use this format, need to check device compatibility.
 const VkFormat FORMAT = VK_FORMAT_R16G16B16A16_SFLOAT; // :ProbeLightFormat

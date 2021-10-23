@@ -4,7 +4,7 @@
 #include <src/engine/session/data.hxx>
 #include "data.hxx"
 
-namespace engine::rendering::intra::secondary_lbuffer {
+namespace engine::rendering::intra::probe_radiance {
 
 void deinit_ddata(
   DData *it,

@@ -13,7 +13,7 @@ void init_ddata(
   Use<display::Data::GBuffer> gbuffer,
   Use<display::Data::ZBuffer> zbuffer,
   Use<display::Data::LBuffer> lbuffer,
-  Use<intra::probe_light_map::DData> probe_light_map,
+  Use<intra::probe_irradiance::DData> probe_irradiance,
   Use<intra::probe_attention::DData> probe_attention,
   Use<display::Data::SwapchainDescription> swapchain_description
 ) {
@@ -61,9 +61,9 @@ void init_ddata(
         .imageView = zbuffer->views[i],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
-      VkDescriptorImageInfo probe_light_map_image_info = {
-        .sampler = sdata->sampler_probe_light_map,
-        .imageView = probe_light_map->views[i],
+      VkDescriptorImageInfo probe_irradiance_image_info = {
+        .sampler = sdata->sampler_probe_irradiance,
+        .imageView = probe_irradiance->views[i],
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
       VkDescriptorImageInfo probe_attention_image_info = {
@@ -114,7 +114,7 @@ void init_ddata(
           .dstBinding = 4,
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-          .pImageInfo = &probe_light_map_image_info,
+          .pImageInfo = &probe_irradiance_image_info,
         },
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

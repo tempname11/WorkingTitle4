@@ -215,16 +215,17 @@ void init_sdata(
       .maxAnisotropy = core->properties.basic.limits.maxSamplerAnisotropy,
       .maxLod = VK_LOD_CLAMP_NONE,
     };
-    vkCreateSampler( // @Cleanup check result
+    auto result = vkCreateSampler(
       core->device,
       &create_info,
       core->allocator,
       &sampler_albedo
     );
+    assert(result == VK_SUCCESS);
   }
 
-  VkSampler sampler_probe_light_map;
-  { ZoneScopedN("sampler_probe_light_map");
+  VkSampler sampler_probe_irradiance;
+  { ZoneScopedN("sampler_probe_irradiance");
     VkSamplerCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
       .magFilter = VK_FILTER_LINEAR,
@@ -236,7 +237,7 @@ void init_sdata(
       core->device,
       &create_info,
       core->allocator,
-      &sampler_probe_light_map
+      &sampler_probe_irradiance
     );
     assert(result == VK_SUCCESS);
   }
@@ -247,7 +248,7 @@ void init_sdata(
     .pipeline_layout = pipeline_layout,
     .pipeline = pipeline,
     .sampler_albedo = sampler_albedo,
-    .sampler_probe_light_map = sampler_probe_light_map,
+    .sampler_probe_irradiance = sampler_probe_irradiance,
   };
 }
 

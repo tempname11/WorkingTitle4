@@ -11,8 +11,8 @@ void init_ddata(
   Use<SData> sdata,
   Own<display::Data::Common> common,
   engine::display::Data::LPass::Stakes* lpass_stakes,
-  Use<intra::secondary_lbuffer::DData> lbuffer,
-  Use<intra::probe_light_map::DData> probe_light_map,
+  Use<intra::probe_radiance::DData> lbuffer,
+  Use<intra::probe_irradiance::DData> probe_irradiance,
   Use<intra::probe_attention::DData> probe_attention,
   Use<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<engine::session::Vulkan::Core> core
@@ -49,9 +49,9 @@ void init_ddata(
       .imageView = lbuffer->views[i],
       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
     };
-    VkDescriptorImageInfo probe_light_map_prev_image_info = {
-      .sampler = sdata->sampler_probe_light_map,
-      .imageView = probe_light_map->views[i_prev],
+    VkDescriptorImageInfo probe_irradiance_prev_image_info = {
+      .sampler = sdata->sampler_probe_irradiance,
+      .imageView = probe_irradiance->views[i_prev],
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
     VkDescriptorImageInfo probe_attention_info = {
@@ -90,7 +90,7 @@ void init_ddata(
         .dstBinding = 1,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .pImageInfo = &probe_light_map_prev_image_info,
+        .pImageInfo = &probe_irradiance_prev_image_info,
       },
       {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

@@ -3,8 +3,8 @@
 #include <src/engine/rendering/pass/probe_measure.hxx>
 #include <src/engine/rendering/pass/probe_collect.hxx>
 #include <src/engine/rendering/pass/indirect_light.hxx>
-#include <src/engine/rendering/intra/secondary_lbuffer.hxx>
-#include <src/engine/rendering/intra/probe_light_map.hxx>
+#include <src/engine/rendering/intra/probe_radiance.hxx>
+#include <src/engine/rendering/intra/probe_irradiance.hxx>
 #include <src/engine/rendering/intra/probe_attention.hxx>
 #include "graphics_render.hxx"
 
@@ -1244,8 +1244,8 @@ void graphics_render(
   Use<engine::display::Data::ZBuffer> zbuffer,
   Use<engine::display::Data::GBuffer> gbuffer,
   Use<engine::display::Data::LBuffer> lbuffer,
-  Use<engine::rendering::intra::secondary_lbuffer::DData> lbuffer2,
-  Use<engine::rendering::intra::probe_light_map::DData> probe_light_map,
+  Use<engine::rendering::intra::probe_radiance::DData> probe_radiance,
+  Use<engine::rendering::intra::probe_irradiance::DData> probe_irradiance,
   Use<engine::rendering::intra::probe_attention::DData> probe_attention,
   Use<engine::display::Data::FinalImage> final_image,
   Use<engine::session::Vulkan::Prepass> s_prepass,
@@ -1405,14 +1405,14 @@ void graphics_render(
     cmd
   );
 
-  engine::rendering::intra::secondary_lbuffer::transition_into_probe_measure(
-    lbuffer2,
+  engine::rendering::intra::probe_radiance::transition_into_probe_measure(
+    probe_radiance,
     frame_info,
     cmd
   );
 
-  engine::rendering::intra::probe_light_map::transition_previous_into_probe_measure(
-    probe_light_map,
+  engine::rendering::intra::probe_irradiance::transition_previous_into_probe_measure(
+    probe_irradiance,
     frame_info,
     swapchain_description,
     cmd
@@ -1432,21 +1432,21 @@ void graphics_render(
     );
   }
 
-  engine::rendering::intra::secondary_lbuffer::transition_from_probe_measure_into_collect(
-    lbuffer2,
+  engine::rendering::intra::probe_radiance::transition_from_probe_measure_into_collect(
+    probe_radiance,
     frame_info,
     cmd
   );
 
-  engine::rendering::intra::probe_light_map::transition_previous_from_probe_measure_into_collect(
-    probe_light_map,
+  engine::rendering::intra::probe_irradiance::transition_previous_from_probe_measure_into_collect(
+    probe_irradiance,
     frame_info,
     swapchain_description,
     cmd
   );
 
-  engine::rendering::intra::probe_light_map::transition_into_probe_collect(
-    probe_light_map,
+  engine::rendering::intra::probe_irradiance::transition_into_probe_collect(
+    probe_irradiance,
     frame_info,
     swapchain_description,
     cmd
@@ -1461,8 +1461,8 @@ void graphics_render(
     );
   }
 
-  engine::rendering::intra::probe_light_map::transition_from_probe_collect_into_indirect_light(
-    probe_light_map,
+  engine::rendering::intra::probe_irradiance::transition_from_probe_collect_into_indirect_light(
+    probe_irradiance,
     frame_info,
     cmd
   );

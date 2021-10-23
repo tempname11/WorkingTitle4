@@ -5,7 +5,7 @@
 #include <src/engine/session/data.hxx>
 #include "data.hxx"
 
-namespace engine::rendering::intra::probe_light_map {
+namespace engine::rendering::intra::probe_irradiance {
 
 void transition_from_probe_collect_into_indirect_light(
   Use<DData> it,

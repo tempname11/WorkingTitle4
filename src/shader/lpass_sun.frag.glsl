@@ -19,7 +19,7 @@ layout(binding = 5) uniform accelerationStructureEXT accel;
 // @Duplicate :UniformDirLight
 layout(set = 1, binding = 0) uniform DirectionalLight {
   vec3 direction;
-  vec3 intensity; // @Cleanup :ShouldBeIlluminance
+  vec3 intensity; // @Cleanup :ShouldBeIrradiance
 } directional_light;
 
 void main() {
@@ -78,7 +78,7 @@ void main() {
   vec3 albedo = subpassLoad(gchannel1).rgb;
   vec3 romeao = subpassLoad(gchannel2).rgb;
 
-  result = get_luminance_outgoing(
+  result = get_radiance_outgoing(
     albedo,
     romeao,
     NdotV,

@@ -27,7 +27,7 @@ void init_ddata(
   Use<display::Data::GBuffer> gbuffer,
   Use<display::Data::ZBuffer> zbuffer,
   Use<display::Data::LBuffer> lbuffer,
-  Use<intra::probe_light_map::DData> probe_light_map,
+  Use<intra::probe_irradiance::DData> probe_irradiance,
   Use<intra::probe_attention::DData> probe_attention,
   Use<display::Data::SwapchainDescription> swapchain_description
 );

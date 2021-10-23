@@ -10,8 +10,8 @@ void init_ddata(
   DData *out,
   Use<SData> sdata,
   Own<display::Data::Common> common,
-  Use<intra::secondary_lbuffer::DData> secondary_lbuffer,
-  Use<intra::probe_light_map::DData> probe_light_map,
+  Use<intra::probe_radiance::DData> probe_radiance,
+  Use<intra::probe_irradiance::DData> probe_irradiance,
   Use<engine::rendering::intra::probe_attention::DData> probe_attention,
   Use<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<engine::session::Vulkan::Core> core
@@ -44,17 +44,17 @@ void init_ddata(
       (i + swapchain_description->image_count - 1) %
       swapchain_description->image_count
     );
-    VkDescriptorImageInfo secondary_lbuffer_info = {
+    VkDescriptorImageInfo probe_radiance_info = {
       .sampler = sdata->sampler_lbuffer,
-      .imageView = secondary_lbuffer->views[i],
+      .imageView = probe_radiance->views[i],
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
-    VkDescriptorImageInfo probe_light_map_info = {
-      .imageView = probe_light_map->views[i],
+    VkDescriptorImageInfo probe_irradiance_info = {
+      .imageView = probe_irradiance->views[i],
       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
     };
-    VkDescriptorImageInfo probe_light_map_info_previous = {
-      .imageView = probe_light_map->views[i_prev],
+    VkDescriptorImageInfo probe_irradiance_info_previous = {
+      .imageView = probe_irradiance->views[i_prev],
       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
     };
     VkDescriptorBufferInfo ubo_frame_info = {
@@ -73,7 +73,7 @@ void init_ddata(
         .dstBinding = 0,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .pImageInfo = &probe_light_map_info,
+        .pImageInfo = &probe_irradiance_info,
       },
       {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -81,7 +81,7 @@ void init_ddata(
         .dstBinding = 1,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .pImageInfo = &probe_light_map_info_previous,
+        .pImageInfo = &probe_irradiance_info_previous,
       },
       {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -89,7 +89,7 @@ void init_ddata(
         .dstBinding = 2,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .pImageInfo = &secondary_lbuffer_info,
+        .pImageInfo = &probe_radiance_info,
       },
       {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

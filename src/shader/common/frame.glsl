@@ -31,8 +31,6 @@ struct FrameProbe {
   uvec2 cascade_count_factors;
   FrameProbeCascade cascades[MAX_CASCADE_LEVELS];
   vec3 grid_world_position_delta_c0;
-  vec2 light_map_texel_size;
-  vec2 depth_map_texel_size;
   float depth_sharpness;
   float normal_bias;
 };
@@ -46,8 +44,6 @@ struct FrameData {
   mat4 projection_prev_inverse;
   mat4 view_inverse; 
   mat4 view_prev_inverse; 
-  vec2 secondary_gbuffer_texel_size;
-  vec2 final_image_texel_size;
   float luminance_moving_average;
   vec3 sky_sun_direction;
   vec3 sky_intensity;

@@ -6,7 +6,7 @@
 #include "constants.hxx"
 #include "data.hxx"
 
-namespace engine::rendering::intra::probe_light_map {
+namespace engine::rendering::intra::probe_irradiance {
 
 void init_ddata(
   DData *out,

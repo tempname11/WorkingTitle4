@@ -36,8 +36,6 @@ struct ProbeInfo {
   glm::uvec2 cascade_count_factors;
   alignas(16) ProbeCascade cascades[MAX_CASCADE_LEVELS];
   alignas(16) glm::vec3 grid_world_position_delta_c0; // put it into ProbeCascade as well?
-  alignas(16) glm::vec2 light_map_texel_size;
-  glm::vec2 depth_map_texel_size;
   float depth_sharpness;
   float normal_bias;
 };
@@ -51,8 +49,6 @@ struct Frame {
   glm::mat4 projection_prev_inverse;
   glm::mat4 view_inverse;
   glm::mat4 view_prev_inverse;
-  glm::vec2 secondary_gbuffer_texel_size;
-  glm::vec2 final_image_texel_size;
   float luminance_moving_average;
   alignas(16) glm::vec3 sky_sun_direction;
   alignas(16) glm::vec3 sky_intensity;

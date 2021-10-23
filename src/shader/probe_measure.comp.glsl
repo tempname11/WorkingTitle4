@@ -40,7 +40,7 @@ struct PerInstance {
 };
 
 layout(binding = 0, rgba16f) uniform image2D lbuffer; // :LBuffer2_Format
-layout(binding = 1) uniform sampler2D probe_light_map_previous;
+layout(binding = 1) uniform sampler2D probe_irradiance_previous;
 layout(binding = 3) uniform writeonly uimage2D probe_attention_write;
 layout(binding = 4, r32ui) uniform uimage2D probe_attention_prev; // :ProbeAttentionFormat
 layout(binding = 5) uniform accelerationStructureEXT accel;
@@ -203,12 +203,12 @@ void main() {
   vec3 H = normalize(V + L);
   vec3 pos_world = origin_world + t_intersection * raydir_world;
 
-  vec3 result = get_indirect_luminance(
+  vec3 result = get_indirect_radiance(
     pos_world,
     N,
     frame.data,
     true, // prev
-    probe_light_map_previous,
+    probe_irradiance_previous,
     probe_attention_write,
     albedo
   );
@@ -232,7 +232,7 @@ void main() {
     rayQueryProceedEXT(ray_query_shadow);
     float t_intersection_shadow = rayQueryGetIntersectionTEXT(ray_query_shadow, false);
     if (t_intersection_shadow == 0.0) {
-      result += get_luminance_outgoing(
+      result += get_radiance_outgoing(
         albedo,
         romeao,
         NdotV,

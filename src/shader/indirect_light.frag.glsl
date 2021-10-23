@@ -12,7 +12,7 @@ layout(input_attachment_index = 0, binding = 0) uniform subpassInput gchannel0;
 layout(input_attachment_index = 1, binding = 1) uniform subpassInput gchannel1;
 layout(input_attachment_index = 2, binding = 2) uniform subpassInput gchannel2;
 layout(input_attachment_index = 3, binding = 3) uniform subpassInput zchannel;
-layout(binding = 4) uniform sampler2D probe_light_map;
+layout(binding = 4) uniform sampler2D probe_irradiance;
 layout(binding = 6) uniform Frame { FrameData data; } frame;
 layout(binding = 7) uniform writeonly uimage2D probe_attention;
 
@@ -45,12 +45,12 @@ void main() {
   // @Cleanup :SimplerWorldSpacePos
   vec3 pos_world = eye_world + target_world * z_linear * perspective_correction;
 
-  result = get_indirect_luminance(
+  result = get_indirect_radiance(
     pos_world,
     N,
     frame.data,
     false, // is_prev
-    probe_light_map,
+    probe_irradiance,
     probe_attention,
     albedo
   );

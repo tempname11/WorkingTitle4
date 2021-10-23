@@ -3,7 +3,7 @@
 #include <src/engine/display/data.hxx>
 #include <src/engine/session/data.hxx>
 
-namespace engine::rendering::intra::secondary_lbuffer {
+namespace engine::rendering::intra::probe_radiance {
 
 struct DData;
 

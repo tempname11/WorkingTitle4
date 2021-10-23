@@ -24,8 +24,8 @@ void init_ddata(
   Use<SData> sdata,
   Own<display::Data::Common> common,
   engine::display::Data::LPass::Stakes* lpass_stakes,
-  Use<intra::secondary_lbuffer::DData> lbuffer,
-  Use<intra::probe_light_map::DData> probe_light_map,
+  Use<intra::probe_radiance::DData> lbuffer,
+  Use<intra::probe_irradiance::DData> probe_irradiance,
   Use<intra::probe_attention::DData> probe_attention,
   Use<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<engine::session::Vulkan::Core> core

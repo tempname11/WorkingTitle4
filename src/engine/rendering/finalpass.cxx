@@ -136,12 +136,13 @@ void init_session_finalpass(
       .addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE,
       .addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE,
     };
-    vkCreateSampler( // @Cleanup check result
+    auto result = vkCreateSampler(
       core->device,
       &create_info,
       core->allocator,
       &sampler_lbuffer
     );
+    assert(result == VK_SUCCESS);
   }
 
   *out = {

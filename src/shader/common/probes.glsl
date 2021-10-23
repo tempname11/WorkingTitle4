@@ -6,8 +6,7 @@
 
 const uint probe_ray_count = 64; // GI_N_Rays
 const uvec2 probe_ray_count_factors = uvec2(8, 8);
-const uvec2 octomap_light_texel_size = uvec2(8, 8); // :ProbeLightOctoSize
-const uvec2 octomap_depth_texel_size = uvec2(16, 16); // :ProbeDepthOctoSize
+const uvec2 octomap_texel_size = uvec2(8, 8); // :ProbeLightOctoSize
 
 float madfrac(float a, float b) {
   return a * b - floor(a * b);
@@ -64,12 +63,12 @@ vec3 octo_decode(vec2 o) {
   return normalize(v);
 }
 
-vec3 get_indirect_luminance(
+vec3 get_indirect_radiance(
   vec3 pos_world,
   vec3 N,
   FrameData frame_data,
   bool is_prev,
-  sampler2D probe_light_map,
+  sampler2D probe_irradiance,
   writeonly uimage2D probe_attention,
   vec3 albedo
 ) {
@@ -181,16 +180,16 @@ vec3 get_indirect_luminance(
       )
     );
 
-    uvec2 light_base_texel_coord = octomap_light_texel_size * combined_texel_coord;
-    const vec2 unique_texel_size = octomap_light_texel_size - 1.0;
-    vec3 illuminance = texture(
-      probe_light_map,
+    uvec2 base_texel_coord = octomap_texel_size * combined_texel_coord;
+    const vec2 unique_texel_size = octomap_texel_size - 1.0;
+    vec3 irradiance = texture(
+      probe_irradiance,
       (
-        light_base_texel_coord + 0.5 + mod(
+        base_texel_coord + 0.5 + mod(
           0.5 + unique_texel_size * 0.5 * (1.0 + octo_encode(N)),
           unique_texel_size
         )
-      ) / frame_data.probe.light_map_texel_size
+      ) / textureSize(probe_irradiance, 0)
     ).rgb;
 
     float weight = 1.0;
@@ -211,7 +210,7 @@ vec3 get_indirect_luminance(
     weight = max(min_weight, weight);
     weight *= trilinear.x * trilinear.y * trilinear.z;
 
-    sum += vec4(illuminance * weight, weight);
+    sum += vec4(irradiance * weight, weight);
   }
 
   sum /= sum.a;

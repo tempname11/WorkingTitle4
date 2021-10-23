@@ -37,7 +37,7 @@ void deinit_sdata(
   );
   vkDestroySampler(
     core->device,
-    it->sampler_probe_light_map,
+    it->sampler_probe_irradiance,
     core->allocator
   );
 }

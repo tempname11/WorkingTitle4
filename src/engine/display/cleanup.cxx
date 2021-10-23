@@ -5,8 +5,8 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
-#include <src/engine/rendering/intra/secondary_lbuffer.hxx>
-#include <src/engine/rendering/intra/probe_light_map.hxx>
+#include <src/engine/rendering/intra/probe_radiance.hxx>
+#include <src/engine/rendering/intra/probe_irradiance.hxx>
 #include <src/engine/rendering/intra/probe_attention.hxx>
 #include <src/engine/rendering/pass/probe_measure.hxx>
 #include <src/engine/rendering/pass/probe_collect.hxx>
@@ -108,13 +108,13 @@ void cleanup(
     core->allocator
   );
 
-  rendering::intra::secondary_lbuffer::deinit_ddata(
-    &data->lbuffer2,
+  rendering::intra::probe_radiance::deinit_ddata(
+    &data->probe_radiance,
     core
   );
 
-  rendering::intra::probe_light_map::deinit_ddata(
-    &data->probe_light_map,
+  rendering::intra::probe_irradiance::deinit_ddata(
+    &data->probe_irradiance,
     core
   );
 

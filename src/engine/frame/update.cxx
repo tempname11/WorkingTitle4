@@ -47,7 +47,7 @@ void update(
   }
 
   if (!session_state->ubo_flags.disable_eye_adaptation) {
-    auto ptr = readback_data->luminance_pointers[frame_info->inflight_index];
+    auto ptr = readback_data->radiance_pointers[frame_info->inflight_index];
     auto r = glm::detail::toFloat32(ptr[0]);
     auto g = glm::detail::toFloat32(ptr[1]);
     auto b = glm::detail::toFloat32(ptr[2]);

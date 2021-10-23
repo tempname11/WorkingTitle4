@@ -143,12 +143,13 @@ void init_sdata(
     VkSamplerCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
     };
-    vkCreateSampler( // @Cleanup check result
+    auto result = vkCreateSampler(
       core->device,
       &create_info,
       core->allocator,
       &sampler_lbuffer
     );
+    assert(result == VK_SUCCESS);
   }
 
   *out = {

@@ -31,7 +31,7 @@ float G_Smith(float N_dot_V, float N_dot_L, float roughness) {
   return g1 * g2;
 }
 
-vec3 get_luminance_outgoing(
+vec3 get_radiance_outgoing(
   vec3 albedo,
   vec3 romeao,
   float NdotV,
@@ -39,13 +39,12 @@ vec3 get_luminance_outgoing(
   float HdotV,
   vec3 N,
   vec3 H,
-  vec3 luminance_incoming
+  vec3 radiance_incoming
 ) {
   float roughness = romeao.r;
   float metallic = romeao.g;
   float ao = romeao.b; // unused?
 
-  // light model
   vec3 F0 = mix(F0_dielectric, albedo, metallic);
   vec3 F = F_fresnelSchlick(HdotV, F0);
   float D = D_GGX(N, H, roughness);
@@ -53,10 +52,7 @@ vec3 get_luminance_outgoing(
   vec3 specular = D * G * F / max(0.001, 4.0 * NdotV * NdotL);
   vec3 kD = (1.0 - F) * (1.0 - metallic);
 
-  // @Think: is "luminance_incoming" the corrent term here?
-  vec3 luminance_outgoing = (kD * albedo / PI + specular) * luminance_incoming * NdotL;
-
-  return luminance_outgoing;
+  return (kD * albedo / PI + specular) * radiance_incoming * NdotL;
 }
 
 #endif // _COMMON_LIGHT_MODEL_GLSL_

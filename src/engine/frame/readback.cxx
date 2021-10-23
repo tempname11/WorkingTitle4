@@ -154,7 +154,7 @@ void readback(
       cmd,
       lbuffer->stakes[frame_info->inflight_index].image,
       VK_IMAGE_LAYOUT_GENERAL,
-      readback_data->luminance_buffers[frame_info->inflight_index].buffer,
+      readback_data->radiance_buffers[frame_info->inflight_index].buffer,
       1,
       &region
     );

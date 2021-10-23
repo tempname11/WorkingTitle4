@@ -368,8 +368,8 @@ void init_sdata(
     vkDestroyShaderModule(core->device, module_vert, core->allocator);
   }
 
-  VkSampler sampler_probe_light_map;
-  { ZoneScopedN("sampler_probe_light_map");
+  VkSampler sampler_probe_irradiance;
+  { ZoneScopedN("sampler_probe_irradiance");
     VkSamplerCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
       .magFilter = VK_FILTER_LINEAR,
@@ -377,12 +377,13 @@ void init_sdata(
       .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
       .maxLod = VK_LOD_CLAMP_NONE,
     };
-    vkCreateSampler( // @Cleanup check result
+    auto result = vkCreateSampler(
       core->device,
       &create_info,
       core->allocator,
-      &sampler_probe_light_map
+      &sampler_probe_irradiance
     );
+    assert(result == VK_SUCCESS);
   }
 
   *out = {
@@ -390,7 +391,7 @@ void init_sdata(
     .pipeline_layout = pipeline_layout,
     .render_pass = render_pass,
     .pipeline = pipeline,
-    .sampler_probe_light_map = sampler_probe_light_map,
+    .sampler_probe_irradiance = sampler_probe_irradiance,
   };
 }
 

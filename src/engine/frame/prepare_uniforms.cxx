@@ -1,7 +1,7 @@
 #include <src/lib/gfx/utilities.hxx>
 #include <src/engine/constants.hxx>
 #include <src/engine/common/ubo.hxx>
-#include <src/engine/rendering/intra/probe_light_map/constants.hxx>
+#include <src/engine/rendering/intra/probe_irradiance/constants.hxx>
 #include "prepare_uniforms.hxx"
 
 namespace engine::frame {
@@ -103,11 +103,6 @@ void prepare_uniforms(
       .projection_prev_inverse = glm::inverse(projection_prev),
       .view_inverse = glm::inverse(view),
       .view_prev_inverse = glm::inverse(view_prev),
-      .secondary_gbuffer_texel_size = glm::vec2(engine::G2_TEXEL_SIZE),
-      .final_image_texel_size = glm::vec2(
-        swapchain_description->image_extent.width,
-        swapchain_description->image_extent.height
-      ),
       .luminance_moving_average = session_state->luminance_moving_average,
       .sky_sun_direction = sun_direction,
       .sky_intensity = sun_intensity,
@@ -121,10 +116,6 @@ void prepare_uniforms(
         .cascade_count_factors = engine::PROBE_CASCADE_COUNT_FACTORS,
         // .cascades = cascades, // this is done below
         .grid_world_position_delta_c0 = engine::PROBE_WORLD_DELTA_C0,
-        .light_map_texel_size = glm::vec2(
-          engine::rendering::intra::probe_light_map::WIDTH,
-          engine::rendering::intra::probe_light_map::HEIGHT
-        ),
       },
       .end_marker = 0xDeadBeef,
     };

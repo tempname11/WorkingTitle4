@@ -9,8 +9,8 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
-#include <src/engine/rendering/intra/secondary_lbuffer.hxx>
-#include <src/engine/rendering/intra/probe_light_map.hxx>
+#include <src/engine/rendering/intra/probe_radiance.hxx>
+#include <src/engine/rendering/intra/probe_irradiance.hxx>
 #include <src/engine/rendering/intra/probe_attention.hxx>
 #include <src/engine/rendering/pass/probe_measure.hxx>
 #include <src/engine/rendering/pass/probe_collect.hxx>
@@ -271,19 +271,19 @@ TASK_DECL {
       | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
     ),
-    1024, // this is currently only used for luminance readback, so should be small
+    1024, // this is currently only used for radiance readback, so should be small
     "display.allocator_host"
   );
 
-  engine::rendering::intra::secondary_lbuffer::init_ddata(
-    &rendering->lbuffer2,
+  engine::rendering::intra::probe_radiance::init_ddata(
+    &rendering->probe_radiance,
     &rendering->swapchain_description,
     &rendering->allocator_dedicated,
     core
   );
 
-  engine::rendering::intra::probe_light_map::init_ddata(
-    &rendering->probe_light_map,
+  engine::rendering::intra::probe_irradiance::init_ddata(
+    &rendering->probe_irradiance,
     &rendering->swapchain_description,
     &rendering->allocator_dedicated,
     core
@@ -717,8 +717,8 @@ TASK_DECL {
     &session->vulkan.pass_probe_measure,
     &rendering->common,
     &rendering->lpass.stakes,
-    &rendering->lbuffer2,
-    &rendering->probe_light_map,
+    &rendering->probe_radiance,
+    &rendering->probe_irradiance,
     &rendering->probe_attention,
     &rendering->swapchain_description,
     &session->vulkan.core
@@ -728,8 +728,8 @@ TASK_DECL {
     &rendering->pass_probe_collect,
     &session->vulkan.pass_probe_collect,
     &rendering->common,
-    &rendering->lbuffer2,
-    &rendering->probe_light_map,
+    &rendering->probe_radiance,
+    &rendering->probe_irradiance,
     &rendering->probe_attention,
     &rendering->swapchain_description,
     &session->vulkan.core
@@ -743,7 +743,7 @@ TASK_DECL {
     &rendering->gbuffer,
     &rendering->zbuffer,
     &rendering->lbuffer,
-    &rendering->probe_light_map,
+    &rendering->probe_irradiance,
     &rendering->probe_attention,
     &rendering->swapchain_description
   );
@@ -759,7 +759,7 @@ TASK_DECL {
     &vulkan->core
   );
 
-  { // luminance readback
+  { // radiance readback
     VkBufferCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
       .size = 8, // see LBuffer format
@@ -774,13 +774,13 @@ TASK_DECL {
         &core->properties.basic,
         &info
       );
-      rendering->readback.luminance_buffers.push_back(buffer);
+      rendering->readback.radiance_buffers.push_back(buffer);
 
       auto ptr = (glm::detail::hdata *) lib::gfx::allocator::get_host_mapping(
         &rendering->allocator_host,
         buffer.id
       ).mem;
-      rendering->readback.luminance_pointers.push_back(ptr);
+      rendering->readback.radiance_pointers.push_back(ptr);
     }
   }
 

@@ -1,8 +1,7 @@
 # Cleanup before stream! OUCH OUCH OUCH
 
-- rename probe_light_map -> probe_???
-- rename secondary_gbuffer_texel_size (or even use ImageSize?)
-- rename secondary_lbuffer -> ???
+- rename engine/rendering/pass -> engine/step !
+- rename engine/rendering/intra -> engine/datum !
 
 # Stream plan
 
