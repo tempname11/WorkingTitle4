@@ -89,6 +89,7 @@ vec3 get_indirect_radiance(
       );
       grid_coord_float = (pos_world - world_position_zero) / delta;
       grid_coord0 = ivec3(floor(grid_coord_float));
+      // :ProbeWrapping
 
       out_of_bounds = (false
         || grid_coord0.x < 0

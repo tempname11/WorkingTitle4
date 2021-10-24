@@ -105,6 +105,7 @@ void main() {
     }
   }
 
+  // :ProbeWrapping
   rayQueryEXT ray_query;
   vec3 origin_world = (
     frame.data.probe.cascades[cascade.level].world_position_zero +

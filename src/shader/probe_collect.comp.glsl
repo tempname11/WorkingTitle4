@@ -52,9 +52,11 @@ void main() {
       ivec2(combined_coord)
     ).r;
 
+    // :ProbeWrapping invalidate nodes that just spawned. (set to 0)
+
     if (attention == 0) {
       if (frame.data.is_frame_sequential) {
-        // @Cleanup: quick and dirty copy-paste from below...
+        // :ProbeWrapping delete this
 
         ivec3 probe_coord_prev = (
           ivec3(probe_coord)
@@ -152,6 +154,9 @@ void main() {
   }
 
   if (frame.data.is_frame_sequential) {
+    // :ProbeWrapping instead of adding change_from_prev,
+    // use it to understand if invalidation is needed
+
     ivec3 probe_coord_prev = (
       ivec3(probe_coord)
       + frame.data.probe.cascades[cascade.level].change_from_prev

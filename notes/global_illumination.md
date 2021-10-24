@@ -1,24 +1,18 @@
 # Global Illumination TODO
 
-## memory usage is insane
-  - see `stream_plan.md`
-
-## small improvements
-- can we use wrapping in probe map, so that we don't need to copy old -> new with no attention?
-- attention lags 1 frame behind in terms of coordinates.
-- newly-wrapped grid values should be reset and have attention.
-- no texture LODs, will probably affect performance most.
-
 ## known bugs
-- grid boundaries still look bad.
+- memory usage is too big (see stream_plan.md)
+- grid boundaries still look bad. (see stream_plan.md)
 - "weird circle" still pops up
 - [minor] "self-lighting"
+- no texture LODs, will probably affect performance most.
 
 ## harder tasks
 * try atomic-based attention strategies:
-  - only add to attention if weight > 0 (basic)
-  - accumulate, and atomic add value based on weight / source (promising)
+  - [basic] only add to attention if weight > 0
+  - [promising] accumulate, and atomic add value based on weight / source
 
+* try to make use of "confidence" in A16? (but it must decay over time)
 * try compressing attention flags into queues and only processing them.
 
 *** research sparse textures more.

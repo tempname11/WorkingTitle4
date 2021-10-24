@@ -1,10 +1,10 @@
 # Performance Tools TODO
 
 - Measure performance
-  - Display frame time charts
+  - Storage for frame stats (rolling N frames)
   - Record GPU frame time
   - Record CPU frame time
-  - Storage for frame stats (?)
+  - Display frame time charts
 
 - Organize GPU memory allocation
   - fix ImGui view

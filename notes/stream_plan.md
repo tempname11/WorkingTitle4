@@ -1,3 +1,8 @@
+- how to invalidate?
+
 # Stream plan
 
-- we do not need (inflight-count) of everything. what can we get rid of?
+- we do not need (inflight-count) of everything
+- :ProbeWrapping
+- @Cleanup in 3 shaders
+- @Performance in 3 shaders
