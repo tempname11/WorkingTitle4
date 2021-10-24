@@ -12,8 +12,8 @@ namespace engine::step::probe_measure {
 void record(
   Use<DData> ddata,
   Use<SData> sdata,
-  Use<engine::display::Data::FrameInfo> frame_info,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::display::Data::FrameInfo> frame_info,
+  Ref<engine::session::Vulkan::Core> core,
   Ref<engine::common::SharedDescriptorPool> descriptor_pool,
   VkBuffer geometry_refs,
   Use<engine::misc::RenderList> render_list,

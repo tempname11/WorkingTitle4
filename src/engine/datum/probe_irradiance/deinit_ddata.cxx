@@ -8,7 +8,7 @@ namespace engine::datum::probe_irradiance {
 
 void deinit_ddata(
   DData *it,
-  Use<engine::session::Vulkan::Core> core
+  Ref<engine::session::Vulkan::Core> core
 ) {
   ZoneScoped;
 

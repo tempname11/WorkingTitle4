@@ -10,8 +10,8 @@ void record(
   VkCommandBuffer cmd,
   Own<DData> ddata, // @Think: why Own?
   Use<SData> sdata,
-  Use<engine::display::Data::FrameInfo> frame_info,
-  Use<engine::display::Data::SwapchainDescription> swapchain_description,
+  Ref<engine::display::Data::FrameInfo> frame_info,
+  Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<engine::session::Vulkan::FullscreenQuad> fullscreen_quad
 ) {
   ZoneScoped;

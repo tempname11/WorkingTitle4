@@ -9,7 +9,7 @@ namespace engine::datum::probe_radiance {
 
 void transition_from_probe_measure_into_collect(
   Use<DData> it,
-  Use<engine::display::Data::FrameInfo> frame_info,
+  Ref<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd
 ) {
   ZoneScoped;

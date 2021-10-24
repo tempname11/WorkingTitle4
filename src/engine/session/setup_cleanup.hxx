@@ -4,5 +4,5 @@
 void session_setup_cleanup(
   lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   Own<engine::session::SetupData> data,
-  Use<engine::session::Vulkan::Core> core
+  Ref<engine::session::Vulkan::Core> core
 );

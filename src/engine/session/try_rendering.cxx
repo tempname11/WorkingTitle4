@@ -22,7 +22,7 @@
 
 void _imgui_setup_cleanup(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Own<engine::display::Data::ImguiBackend> imgui_backend
 ) {
   ZoneScoped;

@@ -10,9 +10,9 @@ namespace engine::datum::probe_attention {
 
 void init_ddata(
   DData *out,
-  Use<display::Data::SwapchainDescription> swapchain_description,
+  Ref<display::Data::SwapchainDescription> swapchain_description,
   Ref<lib::gfx::Allocator> allocator_dedicated,
-  Use<engine::session::Vulkan::Core> core
+  Ref<engine::session::Vulkan::Core> core
 ) {
   ZoneScoped;
 

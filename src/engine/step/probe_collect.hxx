@@ -10,12 +10,12 @@ struct DData;
 
 void init_sdata(
   SData *out,
-  Use<engine::session::Vulkan::Core> core
+  Ref<engine::session::Vulkan::Core> core
 );
 
 void deinit_sdata(
   SData *it,
-  Use<engine::session::Vulkan::Core> core
+  Ref<engine::session::Vulkan::Core> core
 );
 
 void init_ddata(
@@ -25,19 +25,19 @@ void init_ddata(
   Use<datum::probe_radiance::DData> probe_radiance,
   Use<datum::probe_irradiance::DData> probe_irradiance,
   Use<datum::probe_attention::DData> probe_attention,
-  Use<engine::display::Data::SwapchainDescription> swapchain_description,
-  Use<engine::session::Vulkan::Core> core
+  Ref<engine::display::Data::SwapchainDescription> swapchain_description,
+  Ref<engine::session::Vulkan::Core> core
 );
 
 void deinit_ddata(
   DData *it,
-  Use<engine::session::Vulkan::Core> core
+  Ref<engine::session::Vulkan::Core> core
 );
 
 void record(
   Use<DData> ddata,
   Use<SData> sdata,
-  Use<engine::display::Data::FrameInfo> frame_info,
+  Ref<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd
 );
 

@@ -6,7 +6,7 @@ namespace engine::step::indirect_light {
 
 void deinit_ddata(
   DData *it,
-  Use<engine::session::Vulkan::Core> core
+  Ref<engine::session::Vulkan::Core> core
 ) {
   ZoneScoped;
 

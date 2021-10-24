@@ -17,10 +17,10 @@ void _signal_cleanup (
 void setup_gpu_signal(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Use<lib::gpu_signal::Support> gpu_signal_support,
   Own<VkSemaphore> frame_finished_semaphore,
-  Use<engine::display::Data::FrameInfo> frame_info
+  Ref<engine::display::Data::FrameInfo> frame_info
 ) {
   ZoneScoped;
 

@@ -8,14 +8,14 @@ namespace engine::step::indirect_light {
 void init_ddata(
   DData *out,
   SData *sdata,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Own<display::Data::Common> common,
   Use<display::Data::GBuffer> gbuffer,
   Use<display::Data::ZBuffer> zbuffer,
   Use<display::Data::LBuffer> lbuffer,
   Use<datum::probe_irradiance::DData> probe_irradiance,
   Use<datum::probe_attention::DData> probe_attention,
-  Use<display::Data::SwapchainDescription> swapchain_description
+  Ref<display::Data::SwapchainDescription> swapchain_description
 ) {
   ZoneScoped;
 

@@ -245,7 +245,7 @@ void _upload_buffer_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<Uploader> it,
   Ref<engine::session::Data> session,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Own<UploadData> data
 ) {
   ZoneScoped;
@@ -287,7 +287,7 @@ void _upload_image_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<Uploader> it,
   Ref<engine::session::Data> session,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Own<UploadData> data
 ) {
   ZoneScoped;
@@ -360,7 +360,7 @@ void upload_buffer(
   lib::Task *signal,
   Ref<Uploader> it,
   Ref<engine::session::Data> session,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Use<engine::session::Data::GPU_SignalSupport> gpu_signal_support,
   Own<VkQueue> queue_work,
   ID id
@@ -486,7 +486,7 @@ void upload_image(
   lib::Task *signal,
   Ref<Uploader> it,
   Ref<engine::session::Data> session,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Use<engine::session::Data::GPU_SignalSupport> gpu_signal_support,
   Own<VkQueue> queue_work,
   VkImageLayout final_layout,
@@ -718,7 +718,7 @@ void upload_image(
 
 void destroy_buffer(
   Ref<Uploader> it,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   ID id
 ) {
   ZoneScoped;
@@ -746,7 +746,7 @@ void destroy_buffer(
 
 void destroy_image(
   Ref<Uploader> it,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   ID id
 ) {
   ZoneScoped;

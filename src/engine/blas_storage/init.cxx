@@ -5,7 +5,7 @@ namespace engine::blas_storage {
 
 void init(
   BlasStorage *it,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   size_t size_region
 ) {
   ZoneScoped;

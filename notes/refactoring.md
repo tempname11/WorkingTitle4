@@ -8,6 +8,8 @@
 - Ref/Use/Own is moot for mutex-protected data, so should use Ref where possible.
   (Go through frame tasks and try to reduce these.)
 
+- Ref<Core> is now probably better served by Ref<Session>
+
 ## big chunks
 - engine::step::* and engine::datum::* for older stuff
 - split `graphics_render` into smaller parts.

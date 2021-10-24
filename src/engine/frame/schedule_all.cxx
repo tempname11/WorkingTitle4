@@ -39,7 +39,7 @@ void _begin(
   Ref<engine::display::Data> data,
   Use<engine::session::Data::GLFW> glfw,
   Use<engine::display::Data::PresentationFailureState> presentation_failure_state, // @Cleanup use Ref
-  Use<engine::display::Data::SwapchainDescription> swapchain_description, // @Cleanup use ref
+  Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Own<engine::display::Data::FrameInfo> latest_frame
 ) {
   ZoneScopedC(0xFF0000);
@@ -271,18 +271,18 @@ void _begin(
       &session->meta_textures,
       &frame_data->imgui_reactions
     ),
-    lib::task::create(
-      cleanup,
-      frame_info,
-      frame_data
-    ),
-    lib::task::create(
-      schedule_all,
-      display_end_yarn.ptr,
-      session.ptr,
-      data.ptr
-    ),
   });
+  auto task_cleanup = lib::task::create(
+    cleanup,
+    frame_info,
+    frame_data
+  );
+  auto task_schedule_next_frame = lib::task::create(
+    schedule_all,
+    display_end_yarn.ptr,
+    session.ptr,
+    data.ptr
+  );
   auto task_many = lib::defer_many(frame_tasks);
   { // inject under inflight mutex
     std::scoped_lock lock(session->inflight_gpu.mutex);
@@ -290,10 +290,14 @@ void _begin(
     lib::task::inject(ctx->runner, {
       task_setup_gpu_signal.first,
       task_many.first,
+      task_cleanup,
+      task_schedule_next_frame,
     }, {
       .new_dependencies = {
         { signal, task_setup_gpu_signal.first },
         { task_setup_gpu_signal.second, task_many.first },
+        { task_many.second, task_cleanup },
+        { task_cleanup, task_schedule_next_frame },
       },
       .changed_parents = {
         {

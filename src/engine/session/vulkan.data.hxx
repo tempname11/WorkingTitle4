@@ -15,6 +15,8 @@ struct Vulkan : lib::task::ParentResource {
   VkPhysicalDevice physical_device;
 
   struct Core {
+    // Read-only structure.
+
     VkDevice device;
     const VkAllocationCallbacks *allocator;
     TracyVkCtx tracy_context;

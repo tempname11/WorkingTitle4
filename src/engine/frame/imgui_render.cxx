@@ -6,13 +6,13 @@ namespace engine::frame {
 
 void imgui_render(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Own<engine::session::Data::ImguiContext> imgui_context,
   Own<engine::display::Data::ImguiBackend> imgui_backend,
   Own<engine::session::Data::GLFW> glfw, /* hacky way to prevent KeyMods bug. */
-  Use<engine::display::Data::SwapchainDescription> swapchain_description,
+  Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<engine::display::Data::CommandPools> command_pools,
-  Use<engine::display::Data::FrameInfo> frame_info,
+  Ref<engine::display::Data::FrameInfo> frame_info,
   Own<engine::misc::ImguiData> data
 ) {
   ZoneScoped;

@@ -6,7 +6,7 @@ namespace engine::step::probe_measure {
 
 void deinit_sdata(
   SData *it,
-  Use<engine::session::Vulkan::Core> core
+  Ref<engine::session::Vulkan::Core> core
 ) {
   ZoneScoped;
 

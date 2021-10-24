@@ -7,7 +7,7 @@ void imgui_submit(
   Own<VkQueue> queue_work,
   Use<VkSemaphore> graphics_finished_semaphore,
   Use<VkSemaphore> imgui_finished_semaphore,
-  Use<engine::display::Data::FrameInfo> frame_info,
+  Ref<engine::display::Data::FrameInfo> frame_info,
   Own<engine::misc::ImguiData> data
 ) {
   ZoneScoped;

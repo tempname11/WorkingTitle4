@@ -9,8 +9,8 @@ namespace engine::datum::probe_irradiance {
 
 void transition_into_probe_collect(
   Use<DData> it,
-  Use<engine::display::Data::FrameInfo> frame_info,
-  Use<engine::display::Data::SwapchainDescription> swapchain_description,
+  Ref<engine::display::Data::FrameInfo> frame_info,
+  Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   VkCommandBuffer cmd
 ) {
   ZoneScoped;

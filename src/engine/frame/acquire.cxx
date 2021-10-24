@@ -4,10 +4,10 @@ namespace engine::frame {
 
 void acquire(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Own<engine::display::Data::Presentation> presentation,
   Use<engine::display::Data::PresentationFailureState> presentation_failure_state,
-  Use<engine::display::Data::FrameInfo> frame_info
+  Ref<engine::display::Data::FrameInfo> frame_info
 ) {
   ZoneScoped;
   uint32_t image_index;

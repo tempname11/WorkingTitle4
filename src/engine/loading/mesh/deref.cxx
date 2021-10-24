@@ -13,7 +13,7 @@ struct DerefData {
 void _deref(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Own<engine::session::Vulkan::Meshes> meshes,
   Own<engine::session::Data::MetaMeshes> meta_meshes,
   Own<DerefData> data

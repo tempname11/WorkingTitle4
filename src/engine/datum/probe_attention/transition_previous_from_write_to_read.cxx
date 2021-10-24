@@ -9,8 +9,8 @@ namespace engine::datum::probe_attention {
 
 void transition_previous_from_write_to_read(
   DData *it,
-  Use<engine::display::Data::FrameInfo> frame_info,
-  Use<engine::display::Data::SwapchainDescription> swapchain_description,
+  Ref<engine::display::Data::FrameInfo> frame_info,
+  Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   VkCommandBuffer cmd
 ) {
   ZoneScoped;

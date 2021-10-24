@@ -31,6 +31,8 @@ struct Data : lib::task::ParentResource {
   } presentation_failure_state;
 
   struct SwapchainDescription {
+    // Read-only structure.
+
     uint8_t image_count;
     VkExtent2D image_extent;
     VkFormat image_format;
@@ -45,6 +47,9 @@ struct Data : lib::task::ParentResource {
   } imgui_backend;
 
   struct FrameInfo {
+    // When used inside Data as latest_fram: mutable.
+    // When used standalone: read-only structure.
+
     uint64_t timestamp_ns;
     uint64_t elapsed_ns;
 

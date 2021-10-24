@@ -15,7 +15,7 @@ struct DestroyData {
 void _remove_scene_items(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Own<engine::session::Data::Scene> scene,
   Use<engine::session::Data::MetaMeshes> meta_meshes,
   Use<engine::session::Data::MetaTextures> meta_textures,

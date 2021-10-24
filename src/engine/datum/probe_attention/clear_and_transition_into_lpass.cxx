@@ -9,7 +9,7 @@ namespace engine::datum::probe_attention {
 
 void clear_and_transition_into_lpass(
   DData *it,
-  Use<engine::display::Data::FrameInfo> frame_info,
+  Ref<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd
 ) {
   ZoneScoped;

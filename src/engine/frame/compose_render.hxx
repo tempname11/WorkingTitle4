@@ -9,12 +9,12 @@ void compose_render(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
   Ref<engine::display::Data> display,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Use<engine::display::Data::Presentation> presentation,
   Use<engine::display::Data::PresentationFailureState> presentation_failure_state,
-  Use<engine::display::Data::SwapchainDescription> swapchain_description,
+  Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<engine::display::Data::CommandPools> command_pools,
-  Use<engine::display::Data::FrameInfo> frame_info,
+  Ref<engine::display::Data::FrameInfo> frame_info,
   Use<engine::display::Data::FinalImage> final_image,
   Own<engine::misc::ComposeData> data
 );

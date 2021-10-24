@@ -23,7 +23,7 @@ void _load_read_file(
 void _load_init_image(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Own<VkQueue> queue_work,
   Ref<lib::Task> signal,
   Own<LoadData> data 

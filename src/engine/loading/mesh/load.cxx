@@ -19,7 +19,7 @@ void _load_read_file(
 void _load_init_buffer(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Own<VkQueue> queue_work,
   Ref<lib::Task> signal,
   Own<LoadData> data 
@@ -84,7 +84,7 @@ void _load_init_buffer(
 void _load_init_blas(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Own<VkQueue> queue_work,
   Ref<lib::Task> signal,
   Own<LoadData> data 

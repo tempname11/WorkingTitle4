@@ -805,7 +805,7 @@ struct PerInstance {
 };
 
 void record_tlas(
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Use<engine::misc::RenderList> render_list,
   Ref<engine::session::Vulkan::Uploader> uploader,
   VkCommandBuffer cmd,
@@ -1168,7 +1168,7 @@ void record_tlas(
 void _tlas_cleanup(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Use<engine::session::Vulkan::Core> core,
+  Ref<engine::session::Vulkan::Core> core,
   Own<TlasResult> result
 ) {
   lib::lifetime::deref(&session->lifetime, ctx->runner);
@@ -1229,10 +1229,10 @@ void graphics_render(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
   Use<engine::session::Data::State> session_state,
-  Use<engine::session::Vulkan::Core> core,
-  Use<engine::display::Data::SwapchainDescription> swapchain_description,
+  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<engine::display::Data::CommandPools> command_pools,
-  Use<engine::display::Data::FrameInfo> frame_info,
+  Ref<engine::display::Data::FrameInfo> frame_info,
   Use<engine::display::Data::DescriptorPools> descriptor_pools,
   Own<engine::display::Data::Prepass> prepass,
   Own<engine::display::Data::GPass> gpass,

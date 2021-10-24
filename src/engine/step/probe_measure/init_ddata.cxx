@@ -14,8 +14,8 @@ void init_ddata(
   Use<datum::probe_radiance::DData> lbuffer,
   Use<datum::probe_irradiance::DData> probe_irradiance,
   Use<datum::probe_attention::DData> probe_attention,
-  Use<engine::display::Data::SwapchainDescription> swapchain_description,
-  Use<engine::session::Vulkan::Core> core
+  Ref<engine::display::Data::SwapchainDescription> swapchain_description,
+  Ref<engine::session::Vulkan::Core> core
 ) {
   ZoneScoped;
 

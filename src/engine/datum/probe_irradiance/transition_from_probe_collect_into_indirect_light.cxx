@@ -9,7 +9,7 @@ namespace engine::datum::probe_irradiance {
 
 void transition_from_probe_collect_into_indirect_light(
   Use<DData> it,
-  Use<engine::display::Data::FrameInfo> frame_info,
+  Ref<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd
 ) {
   ZoneScoped;

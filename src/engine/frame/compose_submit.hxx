@@ -9,7 +9,7 @@ void compose_submit(
   Own<VkQueue> queue_work,
   Own<engine::display::Data::Presentation> presentation,
   Use<VkSemaphore> imgui_finished_semaphore,
-  Use<engine::display::Data::FrameInfo> frame_info,
+  Ref<engine::display::Data::FrameInfo> frame_info,
   Own<engine::misc::ComposeData> data
 );
 

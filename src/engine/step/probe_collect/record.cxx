@@ -10,7 +10,7 @@ namespace engine::step::probe_collect {
 void record(
   Use<DData> ddata,
   Use<SData> sdata,
-  Use<engine::display::Data::FrameInfo> frame_info,
+  Ref<engine::display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd
 ) {
   ZoneScoped;
