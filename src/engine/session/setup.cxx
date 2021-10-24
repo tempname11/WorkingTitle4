@@ -594,7 +594,7 @@ void init_vulkan(
 
 
 void setup(
-  task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
+  lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   Own<engine::session::Data *> out
 ) {
   ZoneScoped;
@@ -813,13 +813,13 @@ void setup(
   }
   #endif
 
-  auto task_iteration = task::create(
+  auto task_iteration = lib::task::create(
     session_iteration,
     session
   );
 
   /*
-  auto task_setup_cleanup = task::create(
+  auto task_setup_cleanup = lib::task::create(
     session_setup_cleanup,
     session_setup_data,
     &session->vulkan.core

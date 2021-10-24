@@ -2,7 +2,10 @@
 #include "session_iteration_try_rendering.hxx"
 #include "session_iteration.hxx"
 
-TASK_DECL {
+void session_iteration(
+  lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
+  Use<engine::session::Data> session
+) {
   ZoneScoped;
   bool should_stop = glfwWindowShouldClose(session->glfw.window);
   if (should_stop) {
@@ -14,17 +17,17 @@ TASK_DECL {
     return;
   } else {
     glfwWaitEvents();
-    auto session_iteration_yarn_end = task::create_yarn_signal();
-    auto task_try_rendering = task::create(
+    auto session_iteration_yarn_end = lib::task::create_yarn_signal();
+    auto task_try_rendering = lib::task::create(
       session_iteration_try_rendering,
       session_iteration_yarn_end,
       session.ptr
     );
-    auto task_repeat = defer(task::create(
+    auto task_repeat = defer(lib::task::create(
       session_iteration,
       session.ptr
     ));
-    task::inject(ctx->runner, {
+    lib::task::inject(ctx->runner, {
       task_try_rendering,
       task_repeat.first
     }, {

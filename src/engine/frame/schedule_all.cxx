@@ -26,8 +26,8 @@
 namespace engine::frame {
 
 void _begin(
-  task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  Ref<task::Task> rendering_yarn_end,
+  lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
+  Ref<lib::Task> rendering_yarn_end,
   Ref<engine::session::Data> session,
   Ref<engine::display::Data> data,
   Use<engine::session::Data::GLFW> glfw,
@@ -45,12 +45,12 @@ void _begin(
   bool should_stop = glfwWindowShouldClose(glfw->window);
   if (should_stop || presentation_has_failed) {
     std::scoped_lock lock(session->inflight_gpu.mutex);
-    auto task_has_finished = task::create(rendering_has_finished, rendering_yarn_end.ptr);
-    task::Auxiliary aux;
+    auto task_has_finished = lib::task::create(rendering_has_finished, rendering_yarn_end.ptr);
+    lib::task::Auxiliary aux;
     for (auto signal : session->inflight_gpu.signals) {
       aux.new_dependencies.push_back({ signal, task_has_finished });
     }
-    task::inject(ctx->runner, { task_has_finished }, std::move(aux));
+    lib::task::inject(ctx->runner, { task_has_finished }, std::move(aux));
     return;
   }
   { // timing
@@ -85,7 +85,7 @@ void _begin(
   #endif
 
   auto task_setup_gpu_signal = defer(
-    task::create(
+    lib::task::create(
       setup_gpu_signal,
       session.ptr,
       &session->vulkan.core,
@@ -94,35 +94,35 @@ void _begin(
       frame_info
     )
   );
-  auto frame_tasks = new std::vector<task::Task *>({
-    task::create(
+  auto frame_tasks = new std::vector<lib::Task *>({
+    lib::task::create(
       handle_window_events,
       &session->glfw,
       &session->state,
       &frame_data->update_data
     ),
-    task::create(
+    lib::task::create(
       update,
       &frame_data->update_data,
       frame_info,
       &data->readback,
       &session->state
     ),
-    task::create(
+    lib::task::create(
       reset_pools,
       &session->vulkan.core,
       &data->command_pools,
       &data->descriptor_pools,
       frame_info
     ),
-    task::create(
+    lib::task::create(
       acquire,
       &session->vulkan.core,
       &data->presentation,
       &data->presentation_failure_state,
       frame_info
     ),
-    task::create(
+    lib::task::create(
       prepare_uniforms,
       &session->vulkan.core,
       &data->swapchain_description,
@@ -132,7 +132,7 @@ void _begin(
       &data->gpass,
       &data->lpass
     ),
-    task::create(
+    lib::task::create(
       generate_render_list,
       session.ptr,
       &session->scene,
@@ -140,7 +140,7 @@ void _begin(
       &session->vulkan.textures,
       &frame_data->render_list
     ),
-    task::create(
+    lib::task::create(
       graphics_render,
       session.ptr,
       &session->state,
@@ -174,20 +174,20 @@ void _begin(
       &frame_data->render_list,
       &frame_data->graphics_data
     ),
-    task::create(
+    lib::task::create(
       graphics_submit,
       &session->vulkan.queue_work,
       &data->graphics_finished_semaphore,
       frame_info,
       &frame_data->graphics_data
     ),
-    task::create(
+    lib::task::create(
       imgui_new_frame,
       &session->imgui_context,
       &data->imgui_backend,
       &session->glfw
     ),
-    task::create(
+    lib::task::create(
       imgui_populate,
       session.ptr,
       data.ptr,
@@ -197,7 +197,7 @@ void _begin(
       &session->meta_textures,
       &session->state
     ),
-    task::create(
+    lib::task::create(
       imgui_render,
       &session->vulkan.core,
       &session->imgui_context,
@@ -208,7 +208,7 @@ void _begin(
       frame_info,
       &frame_data->imgui_data
     ),
-    task::create(
+    lib::task::create(
       imgui_submit,
       &session->vulkan.queue_work,
       &data->graphics_finished_semaphore,
@@ -216,7 +216,7 @@ void _begin(
       frame_info,
       &frame_data->imgui_data
     ),
-    task::create(
+    lib::task::create(
       compose_render,
       session.ptr,
       data.ptr,
@@ -229,7 +229,7 @@ void _begin(
       &data->final_image,
       &frame_data->compose_data
     ),
-    task::create(
+    lib::task::create(
       compose_submit,
       &session->vulkan.queue_work,
       &data->presentation,
@@ -237,14 +237,14 @@ void _begin(
       frame_info,
       &frame_data->compose_data
     ),
-    task::create(
+    lib::task::create(
       present,
       &data->presentation,
       &data->presentation_failure_state,
       frame_info,
       &session->vulkan.queue_present
     ),
-    task::create(
+    lib::task::create(
       readback,
       &session->vulkan.core,
       &session->vulkan.queue_work,
@@ -256,7 +256,7 @@ void _begin(
       &data->swapchain_description,
       frame_info
     ),
-    task::create(
+    lib::task::create(
       loading_dynamic,
       session.ptr,
       &session->guid_counter,
@@ -264,12 +264,12 @@ void _begin(
       &session->meta_textures,
       &frame_data->imgui_reactions
     ),
-    task::create(
+    lib::task::create(
       cleanup,
       frame_info,
       frame_data
     ),
-    task::create(
+    lib::task::create(
       schedule_all,
       rendering_yarn_end.ptr,
       session.ptr,
@@ -280,7 +280,7 @@ void _begin(
   { // inject under inflight mutex
     std::scoped_lock lock(session->inflight_gpu.mutex);
     auto signal = session->inflight_gpu.signals[latest_frame->inflight_index];
-    task::inject(ctx->runner, {
+    lib::task::inject(ctx->runner, {
       task_setup_gpu_signal.first,
       task_many.first,
     }, {
@@ -306,8 +306,8 @@ void _begin(
 }
 
 void schedule_all(
-  task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
-  Ref<task::Task> rendering_yarn_end,
+  lib::task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
+  Ref<lib::Task> rendering_yarn_end,
   Ref<engine::session::Data> session,
   Ref<engine::display::Data> display
 ) {

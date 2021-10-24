@@ -1,9 +1,5 @@
 # Refactoring TODO
 
-## usage
-- rename _all_ usage::* stuff
-- remove usage::* aliases
-
 ## annoyances
 - Move ad-hoc inline constants to uniform or at least `common/constants.glsl` :MoveToUniform
 - The directory `src/task` should not be there. tasks should be where they logically belong.

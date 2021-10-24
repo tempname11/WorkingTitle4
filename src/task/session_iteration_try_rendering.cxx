@@ -21,10 +21,14 @@
 #include "rendering_imgui_setup_cleanup.hxx"
 #include "session_iteration_try_rendering.hxx"
 
-TASK_DECL {
+void session_iteration_try_rendering(
+  lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
+  Ref<lib::Task> session_iteration_yarn_end,
+  Own<engine::session::Data> session
+) {
   ZoneScoped;
   VkCommandBuffer cmd_imgui_setup = VK_NULL_HANDLE;
-  task::Task* signal_imgui_setup_finished = nullptr;
+  lib::Task* signal_imgui_setup_finished = nullptr;
   auto vulkan = &session->vulkan;
   VkSurfaceCapabilitiesKHR surface_capabilities;
   { // get capabilities
@@ -940,14 +944,14 @@ TASK_DECL {
     }
   }
   auto rendering_yarn_end = lib::task::create_yarn_signal();
-  auto task_frame = task::create(
+  auto task_frame = lib::task::create(
     engine::frame::schedule_all,
     rendering_yarn_end,
     session.ptr,
     rendering
   );
   auto task_cleanup = defer(
-    task::create(
+    lib::task::create(
       engine::display::cleanup,
       session_iteration_yarn_end.ptr,
       session.ptr,
@@ -955,13 +959,13 @@ TASK_DECL {
     )
   );
   auto task_imgui_setup_cleanup = defer(
-    task::create(
+    lib::task::create(
       rendering_imgui_setup_cleanup,
       &session->vulkan.core,
       &rendering->imgui_backend
     )
   );
-  task::inject(ctx->runner, {
+  lib::task::inject(ctx->runner, {
     task_frame,
     task_imgui_setup_cleanup.first,
     task_cleanup.first,

@@ -2,7 +2,7 @@
 #define FMT_USE_NONTYPE_TEMPLATE_PARAMETERS 0
 #include <fmt/format.h>
 #include <Tracy.hpp>
-#include <src/lib/usage.hxx>
+#include <src/lib/task.hxx>
 
 enum QueueIndex {
   QUEUE_INDEX_MAIN_THREAD_ONLY,
@@ -33,10 +33,10 @@ template<typename R, typename T> R checked_integer_cast(T value) {
 }
 
 template<typename T>
-using Ref = lib::usage::None<T>;
+using Ref = lib::task::Ref<T>;
 
 template<typename T>
-using Use = lib::usage::Some<T>;
+using Use = lib::task::Use<T>;
 
 template<typename T>
-using Own = lib::usage::Full<T>;
+using Own = lib::task::Own<T>;

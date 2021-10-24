@@ -1,9 +1,30 @@
 #pragma once
 #include <functional>
 #include <vector>
-#include "usage.hxx"
 
 namespace lib::task {
+
+namespace _ {
+  template<typename T>
+  struct UsageBase {
+    T *ptr;
+    T &operator *() { return *ptr; }
+    T *operator ->() { return ptr; }
+  };
+}
+
+template<typename T> struct Own : _::UsageBase<T> {
+  Own(T *_ptr) { this->ptr = _ptr; }
+};
+template<typename T> struct Use : _::UsageBase<T> {
+  Use(T *_ptr) { this->ptr = _ptr; }
+  Use(Own<T> other) { this->ptr = other.ptr; }
+};
+template<typename T> struct Ref : _::UsageBase<T> {
+  Ref(T *_ptr) { this->ptr = _ptr; }
+  Ref(Own<T> other) { this->ptr = other.ptr; }
+  Ref(Use<T> other) { this->ptr = other.ptr; }
+};
 
 struct Task;
 struct Runner;

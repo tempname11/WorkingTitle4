@@ -2,10 +2,6 @@
 #include <mutex>
 #include <vector>
 #include <src/global.hxx>
-#include <src/lib/task.hxx>
-
-namespace task = lib::task;
-namespace usage = lib::usage;
 
 struct Counter {
   std::mutex mutex;
@@ -23,10 +19,10 @@ struct Session {
 };
 
 void mutate(
-  task::Context<0> *ctx,
-  usage::Some<Session> session,
-  usage::Full<Counter> counter_f,
-  usage::Some<Counter> counter_s
+  lib::task::Context<0> *ctx,
+  Use<Session> session,
+  Own<Counter> counter_f,
+  Use<Counter> counter_s
 ) {
   ZoneScopedC(0x00FF00);
   auto f_value = counter_f->value.load();
@@ -51,8 +47,8 @@ void mutate(
 }
 
 void session(
-  task::Context<0> *ctx,
-  usage::Full<Session> data
+  lib::task::Context<0> *ctx,
+  Own<Session> data
 ) {
   ZoneScopedC(0xFF0000);
   if (data->iterations_left == 0) {
@@ -61,35 +57,35 @@ void session(
   data->iterations_left--;
   assert(data->p >= 2);
   assert(RAND_MAX >= data->p);
-  std::vector<task::Task *> tasks;
+  std::vector<lib::Task *> tasks;
   for (size_t i = 0; i < data->q; i++) {
     auto p0 = rand() % data->p;
     auto p1 = rand() % data->p;
     if (p0 == p1) {
       p1 = (p1 + 1) % data->p;
     }
-    tasks.push_back(task::create(
+    tasks.push_back(lib::task::create(
       mutate,
       data.ptr,
       &data->counters[p0],
       &data->counters[p1]
     ));
   }
-  tasks.push_back(task::create(
+  tasks.push_back(lib::task::create(
     session,
     data.ptr
   ));
-  task::inject(ctx->runner, std::move(tasks));
+  lib::task::inject(ctx->runner, std::move(tasks));
 }
 
 int main() {
   const size_t num_queues = 1;
-  const task::QueueAccessFlags all_queue_access_flags = (1 << 0);
+  const lib::task::QueueAccessFlags all_queue_access_flags = (1 << 0);
 
   auto num_threads = 8;
   size_t worker_count = num_threads - 1;
-  std::vector<task::QueueAccessFlags> worker_access_flags(worker_count, all_queue_access_flags);
-  auto runner = task::create_runner(1);
+  std::vector<lib::task::QueueAccessFlags> worker_access_flags(worker_count, all_queue_access_flags);
+  auto runner = lib::task::create_runner(1);
 
   size_t p = 80;
   size_t q = 800;
@@ -102,8 +98,8 @@ int main() {
     .counters = std::vector<Counter>(p),
   };
 
-  task::inject(runner, {
-    task::create(session, &session_data),
+  lib::task::inject(runner, {
+    lib::task::create(session, &session_data),
   });
   
   int64_t old_sum = 0;
@@ -115,8 +111,8 @@ int main() {
   LOG("old sum: {}", old_sum);
   LOG("old abs sum: {}", old_abs_sum);
 
-  task::run(runner, std::move(worker_access_flags), all_queue_access_flags);
-  task::discard_runner(runner);
+  lib::task::run(runner, std::move(worker_access_flags), all_queue_access_flags);
+  lib::task::discard_runner(runner);
 
   int64_t new_sum = 0;
   int64_t new_abs_sum = 0;

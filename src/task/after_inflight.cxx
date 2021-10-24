@@ -1,9 +1,9 @@
 #include "after_inflight.hxx"
 
 void after_inflight(
-  task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
+  lib::task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Ref<task::Task> task
+  Ref<lib::Task> task
 ) {
   ZoneScoped;
 
@@ -13,7 +13,7 @@ void after_inflight(
     dependencies.push_back({ signal, task.ptr });
   }
 
-  task::inject(ctx->runner, {
+  lib::task::inject(ctx->runner, {
     task.ptr
   }, {
     .new_dependencies = dependencies,
