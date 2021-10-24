@@ -5,6 +5,9 @@
 #include "common/frame.glsl"
 #include "common/probes.glsl"
 
+const float Z_NEAR = 0.1;
+const float Z_FAR = 10000.0;
+
 layout(location = 0) in vec2 position;
 layout(location = 0) out vec3 result; 
 
@@ -23,9 +26,8 @@ void main() {
 
   // @Cleanup share this logic with other L1 passes
   float depth = subpassLoad(zchannel).r;
-  float z_near = 0.1; // @Cleanup :MoveToUniforms
-  float z_far = 10000.0; // @Cleanup :MoveToUniforms
-  float z_linear = z_near * z_far / (z_far + depth * (z_near - z_far));
+  float z_linear = Z_NEAR * Z_FAR / (Z_FAR + depth * (Z_NEAR - Z_FAR));
+  // @Cleanup :SimplerWorldSpacePos
   vec4 target_view_long = frame.data.projection_inverse * vec4(position, 1.0, 1.0);
   vec3 target_world = normalize((frame.data.view_inverse * target_view_long).xyz);
   if (depth == 1.0) {

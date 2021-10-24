@@ -22,6 +22,12 @@ layout(set = 1, binding = 0) uniform DirectionalLight {
   vec3 intensity; // @Cleanup :ShouldBeIrradiance
 } directional_light;
 
+const float Z_NEAR = 0.1;
+const float Z_FAR = 10000.0;
+
+const float RAY_T_MIN = 0.1;
+const float RAY_T_MAX = 10000.0;
+
 void main() {
   #ifndef NDEBUG
     // @Cleanup: move this sanity check somewhere?
@@ -32,9 +38,8 @@ void main() {
   #endif
 
   float depth = subpassLoad(zchannel).r;
-  float z_near = 0.1; // @Cleanup :MoveToUniforms
-  float z_far = 10000.0; // @Cleanup :MoveToUniforms
-  float z_linear = z_near * z_far / (z_far + depth * (z_near - z_far));
+  float z_linear = Z_NEAR * Z_FAR / (Z_FAR + depth * (Z_NEAR - Z_FAR));
+  // @Cleanup :SimplerWorldSpacePos
 
   vec4 target_view_long = frame.data.projection_inverse * vec4(position, 1.0, 1.0);
   vec3 target_world = normalize((frame.data.view_inverse * target_view_long).xyz);
@@ -57,9 +62,9 @@ void main() {
     0xFF,
     // @Cleanup :SimplerWorldSpacePos
     eye_world + target_world * z_linear * perspective_correction,
-    0.1, // @Cleanup :MoveToUniforms ray_t_min
+    RAY_T_MIN,
     -directional_light.direction,
-    1000.0 // @Cleanup :MoveToUniforms ray_t_max
+    RAY_T_MAX
   );
   rayQueryProceedEXT(ray_query); // should we use the result here?
   float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);

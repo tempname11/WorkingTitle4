@@ -4,8 +4,8 @@
 #include "common/probes.glsl"
 
 layout(
-  local_size_x = octomap_texel_size.x,
-  local_size_y = octomap_texel_size.y,
+  local_size_x = OCTOMAP_TEXEL_SIZE.x,
+  local_size_y = OCTOMAP_TEXEL_SIZE.y,
   local_size_z = 1
 ) in;
 
@@ -21,6 +21,8 @@ layout(push_constant) uniform Cascade {
   vec3 world_position_delta;
   uint level;
 } cascade;
+
+const float HYSTERESIS_PER_FRAME = 0.98; // @Incomplete: should be per unit of time!
 
 void main() {
   ivec2 octomap_coord = ivec2(gl_LocalInvocationID.xy);
@@ -79,7 +81,7 @@ void main() {
           );
 
           ivec2 texel_coord_prev = octomap_coord + ivec2(
-            octomap_texel_size * (
+            OCTOMAP_TEXEL_SIZE * (
               probe_coord_prev.xy +
               frame.data.probe.grid_size.xy * (
                 z_subcoord_prev +
@@ -96,7 +98,7 @@ void main() {
           );
 
           ivec2 texel_coord = octomap_coord + ivec2(
-            octomap_texel_size * (
+            OCTOMAP_TEXEL_SIZE * (
               probe_coord.xy +
               frame.data.probe.grid_size.xy * (
                 z_subcoord +
@@ -119,20 +121,20 @@ void main() {
     }
   }
 
-  uvec2 texel_coord_base = probe_ray_count_factors * combined_coord;
-  vec2 unique_texel_size = octomap_texel_size - 1.0;
+  uvec2 texel_coord_base = PROBE_RAY_COUNT_FACTORS * combined_coord;
+  vec2 unique_texel_size = OCTOMAP_TEXEL_SIZE - 1.0;
   vec3 octomap_direction = octo_decode(
     (mod(octomap_coord - 0.5, unique_texel_size) / unique_texel_size) * 2.0 - 1.0
   );
 
   vec4 value = vec4(0.0);
-  for (uint x = 0; x < probe_ray_count_factors.x; x++) {
-    for (uint y = 0; y < probe_ray_count_factors.y; y++) {
-      uint ray_index = x + y * probe_ray_count_factors.x;
+  for (uint x = 0; x < PROBE_RAY_COUNT_FACTORS.x; x++) {
+    for (uint y = 0; y < PROBE_RAY_COUNT_FACTORS.y; y++) {
+      uint ray_index = x + y * PROBE_RAY_COUNT_FACTORS.x;
 
       vec3 ray_direction = get_probe_ray_direction(
         ray_index,
-        probe_ray_count,
+        PROBE_RAY_COUNT,
         frame.data.probe.random_orientation
       );
 
@@ -180,7 +182,7 @@ void main() {
       );
 
       ivec2 texel_coord_prev = octomap_coord + ivec2(
-        octomap_texel_size * (
+        OCTOMAP_TEXEL_SIZE * (
           probe_coord_prev.xy +
           frame.data.probe.grid_size.xy * (
             z_subcoord_prev +
@@ -196,13 +198,12 @@ void main() {
         texel_coord_prev
       );
 
-      value = previous * 0.98 + 0.02 * value;
-      // @Cleanup :MoveToUniform hysteresis_thing
+      value = previous * HYSTERESIS_PER_FRAME + (1.0 - HYSTERESIS_PER_FRAME) * value;
     }
   }
 
   ivec2 texel_coord = octomap_coord + ivec2(
-    octomap_texel_size * (
+    OCTOMAP_TEXEL_SIZE * (
       probe_coord.xy +
       frame.data.probe.grid_size.xy * (
         z_subcoord +

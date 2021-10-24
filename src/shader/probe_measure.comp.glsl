@@ -13,8 +13,8 @@
 #include "common/light_model.glsl"
 
 layout(
-  local_size_x = probe_ray_count_factors.x,
-  local_size_y = probe_ray_count_factors.y,
+  local_size_x = PROBE_RAY_COUNT_FACTORS.x,
+  local_size_y = PROBE_RAY_COUNT_FACTORS.y,
   local_size_z = 1
 ) in;
 
@@ -60,6 +60,9 @@ layout(push_constant) uniform Cascade {
   uint level;
 } cascade;
 
+const float RAY_T_MIN = 0.1;
+const float RAY_T_MAX = 10000.0;
+
 void main() {
   uvec3 probe_coord = gl_WorkGroupID;
   uint ray_index = gl_LocalInvocationIndex;
@@ -76,12 +79,12 @@ void main() {
 
   ivec2 store_coord = ivec2(gl_GlobalInvocationID.xy
     + (
-      probe_ray_count_factors *
+      PROBE_RAY_COUNT_FACTORS *
       frame.data.probe.grid_size.xy *
       z_subcoord
     )
     + (
-      probe_ray_count_factors *
+      PROBE_RAY_COUNT_FACTORS *
       frame.data.probe.grid_size.xy *
       frame.data.probe.grid_size_z_factors *
       cascade_subcoord
@@ -113,7 +116,7 @@ void main() {
   );
   vec3 raydir_world = get_probe_ray_direction(
     ray_index,
-    probe_ray_count,
+    PROBE_RAY_COUNT,
     frame.data.probe.random_orientation
   );
   rayQueryInitializeEXT(
@@ -122,9 +125,9 @@ void main() {
     0,
     0xFF,
     origin_world,
-    0.01, // @Cleanup :MoveToUniforms ray_t_min
+    RAY_T_MIN,
     raydir_world,
-    1000.0 // @Cleanup :MoveToUniforms ray_t_max
+    RAY_T_MAX
   );
   rayQueryProceedEXT(ray_query);
   float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);
@@ -226,9 +229,9 @@ void main() {
       0,
       0xFF,
       pos_world,
-      0.01, // @Cleanup :MoveToUniform ray_t_min
+      RAY_T_MIN,
       -directional_light.direction,
-      1000.0 // @Cleanup :MoveToUniform ray_t_max
+      RAY_T_MAX
     );
     rayQueryProceedEXT(ray_query_shadow);
     float t_intersection_shadow = rayQueryGetIntersectionTEXT(ray_query_shadow, false);

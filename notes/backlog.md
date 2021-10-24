@@ -1,5 +1,5 @@
 # need to check
-- Do we also need barriers across synchronised submits, i.e. different frames?!
+- Why is nSight hanging when trying to profile?
 - When running the Vulkan Configurator overrides, some additional errors/warnings
     pop up. Need to enable their presence by default, and also fix them.
 

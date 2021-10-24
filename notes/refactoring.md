@@ -1,8 +1,5 @@
 # Refactoring TODO
 
-## annoyances
-- Move ad-hoc inline constants to uniform or at least `common/constants.glsl` :MoveToUniform
-
 ## resource granularity
 - go through graphics_render and see if any of Vulkan objects really need Own or Use.
   (they probably don't, and then the signature will become much lighter)

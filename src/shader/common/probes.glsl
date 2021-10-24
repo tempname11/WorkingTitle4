@@ -4,9 +4,11 @@
 #include "constants.glsl"
 #include "frame.glsl"
 
-const uint probe_ray_count = 64; // GI_N_Rays
-const uvec2 probe_ray_count_factors = uvec2(8, 8);
-const uvec2 octomap_texel_size = uvec2(8, 8); // :ProbeOctoSize
+const uint PROBE_RAY_COUNT = 64; // GI_N_Rays
+const uvec2 PROBE_RAY_COUNT_FACTORS = uvec2(8, 8);
+
+const uvec2 OCTOMAP_TEXEL_SIZE = uvec2(8, 8); // :ProbeOctoSize
+const float MIN_PROBE_WEIGHT = 0.000001;
 
 float madfrac(float a, float b) {
   return a * b - floor(a * b);
@@ -181,8 +183,8 @@ vec3 get_indirect_radiance(
       )
     );
 
-    uvec2 base_texel_coord = octomap_texel_size * combined_texel_coord;
-    const vec2 unique_texel_size = octomap_texel_size - 1.0;
+    uvec2 base_texel_coord = OCTOMAP_TEXEL_SIZE * combined_texel_coord;
+    const vec2 unique_texel_size = OCTOMAP_TEXEL_SIZE - 1.0;
     vec3 irradiance = texture(
       probe_irradiance,
       (
@@ -207,7 +209,7 @@ vec3 get_indirect_radiance(
       uvec4(1, 0, 0, 0)
     );
 
-    const float min_weight = 0.000001; // @Cleanup :MoveToUniform
+    const float min_weight = MIN_PROBE_WEIGHT;
     weight = max(min_weight, weight);
     weight *= trilinear.x * trilinear.y * trilinear.z;
 
