@@ -1,8 +1,10 @@
 #include <src/lib/defer.hxx>
-#include "session_iteration_try_rendering.hxx"
-#include "session_iteration.hxx"
+#include "try_rendering.hxx"
+#include "iteration.hxx"
 
-void session_iteration(
+namespace engine::session {
+
+void iteration(
   lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   Use<engine::session::Data> session
 ) {
@@ -19,12 +21,12 @@ void session_iteration(
     glfwWaitEvents();
     auto session_iteration_yarn_end = lib::task::create_yarn_signal();
     auto task_try_rendering = lib::task::create(
-      session_iteration_try_rendering,
+      try_rendering,
       session_iteration_yarn_end,
       session.ptr
     );
     auto task_repeat = lib::defer(lib::task::create(
-      session_iteration,
+      iteration,
       session.ptr
     ));
     lib::task::inject(ctx->runner, {
@@ -37,3 +39,5 @@ void session_iteration(
     });
   }
 }
+
+} // namespace

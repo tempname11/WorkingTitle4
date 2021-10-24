@@ -13,7 +13,7 @@
 #include <src/lib/io.hxx>
 #include "common/mesh.hxx"
 
-namespace tools {
+namespace engine::tools {
 
 #define X 255
 uint8_t mc_table[256][16] = {

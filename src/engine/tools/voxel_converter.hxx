@@ -1,6 +1,6 @@
 #pragma once
 
-namespace tools {
+namespace engine::tools {
 
 void voxel_converter(
   char const* path_vox,

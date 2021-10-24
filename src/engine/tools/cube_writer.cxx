@@ -5,7 +5,7 @@
 #include <cassert>
 #include <src/engine/common/mesh.hxx>
 
-namespace tools {
+namespace engine::tools {
 
 const glm::vec3 cube_vertices[36] = {
   // -XY

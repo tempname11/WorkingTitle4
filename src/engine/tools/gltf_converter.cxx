@@ -13,7 +13,7 @@
 
 const uint8_t GRUP_VERSION = 1;
 
-namespace tools {
+namespace engine::tools {
 
 void traverse_nodes(
   tinygltf::Model *model,

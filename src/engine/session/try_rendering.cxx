@@ -18,10 +18,28 @@
 #include <src/engine/step/probe_collect.hxx>
 #include <src/engine/step/indirect_light.hxx>
 #include <src/engine/frame/schedule_all.hxx>
-#include "rendering_imgui_setup_cleanup.hxx"
-#include "session_iteration_try_rendering.hxx"
+#include "try_rendering.hxx"
 
-void session_iteration_try_rendering(
+void _imgui_setup_cleanup(
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Use<engine::session::Vulkan::Core> core,
+  Own<engine::display::Data::ImguiBackend> imgui_backend
+) {
+  ZoneScoped;
+
+  ImGui_ImplVulkan_DestroyFontUploadObjects();
+  vkDestroyCommandPool(
+    core->device,
+    imgui_backend->setup_command_pool,
+    core->allocator
+  );
+  vkDestroySemaphore(
+    core->device,
+    imgui_backend->setup_semaphore,
+    core->allocator
+  );
+}
+void try_rendering(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   Ref<lib::Task> session_iteration_yarn_end,
   Own<engine::session::Data> session
@@ -48,7 +66,7 @@ void session_iteration_try_rendering(
     return;
   }
   
-  auto rendering = new engine::display::Data {};
+  auto display = new engine::display::Data {};
   // how many images are in swapchain?
   uint32_t swapchain_image_count;
 
@@ -74,31 +92,31 @@ void session_iteration_try_rendering(
         vulkan->core.device,
         &swapchain_create_info,
         vulkan->core.allocator,
-        &rendering->presentation.swapchain
+        &display->presentation.swapchain
       );
       assert(result == VK_SUCCESS);
     }
     {
       auto result = vkGetSwapchainImagesKHR(
         session->vulkan.core.device,
-        rendering->presentation.swapchain,
+        display->presentation.swapchain,
         &swapchain_image_count,
         nullptr
       );
       assert(result == VK_SUCCESS);
     }
-    rendering->presentation.swapchain_images.resize(swapchain_image_count);
+    display->presentation.swapchain_images.resize(swapchain_image_count);
     {
       auto result = vkGetSwapchainImagesKHR(
         session->vulkan.core.device,
-        rendering->presentation.swapchain,
+        display->presentation.swapchain,
         &swapchain_image_count,
-        rendering->presentation.swapchain_images.data()
+        display->presentation.swapchain_images.data()
       );
       assert(result == VK_SUCCESS);
     }
-    rendering->presentation.image_acquired.resize(swapchain_image_count);
-    rendering->presentation.image_rendered.resize(swapchain_image_count);
+    display->presentation.image_acquired.resize(swapchain_image_count);
+    display->presentation.image_rendered.resize(swapchain_image_count);
     for (uint32_t i = 0; i < swapchain_image_count; i++) {
       VkSemaphoreCreateInfo info = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
       {
@@ -106,7 +124,7 @@ void session_iteration_try_rendering(
           session->vulkan.core.device,
           &info,
           session->vulkan.core.allocator,
-          &rendering->presentation.image_acquired[i]
+          &display->presentation.image_acquired[i]
         );
         assert(result == VK_SUCCESS);
       }
@@ -115,27 +133,27 @@ void session_iteration_try_rendering(
           session->vulkan.core.device,
           &info,
           session->vulkan.core.allocator,
-          &rendering->presentation.image_rendered[i]
+          &display->presentation.image_rendered[i]
         );
         assert(result == VK_SUCCESS);
       }
     }
-    rendering->presentation.latest_image_index = uint32_t(-1);
+    display->presentation.latest_image_index = uint32_t(-1);
   }
-  rendering->presentation_failure_state.failure = false;
-  rendering->swapchain_description.image_count = checked_integer_cast<uint8_t>(swapchain_image_count);
-  rendering->swapchain_description.image_extent = surface_capabilities.currentExtent;
-  rendering->swapchain_description.image_format = SWAPCHAIN_FORMAT;
-  rendering->latest_frame.timestamp_ns = 0;
-  rendering->latest_frame.elapsed_ns = 0;
-  rendering->latest_frame.number = uint64_t(-1);
-  rendering->latest_frame.inflight_index = uint8_t(-1);
+  display->presentation_failure_state.failure = false;
+  display->swapchain_description.image_count = checked_integer_cast<uint8_t>(swapchain_image_count);
+  display->swapchain_description.image_extent = surface_capabilities.currentExtent;
+  display->swapchain_description.image_format = SWAPCHAIN_FORMAT;
+  display->latest_frame.timestamp_ns = 0;
+  display->latest_frame.elapsed_ns = 0;
+  display->latest_frame.number = uint64_t(-1);
+  display->latest_frame.inflight_index = uint8_t(-1);
   assert(engine::session::Data::InflightGPU::MAX_COUNT >= swapchain_image_count);
 
   { ZoneScopedN(".command_pools");
-    rendering->command_pools = std::vector<CommandPool2>(swapchain_image_count);
+    display->command_pools = std::vector<CommandPool2>(swapchain_image_count);
     for (size_t i = 0; i < swapchain_image_count; i++) {
-      rendering->command_pools[i].available.resize(session->info.worker_count);
+      display->command_pools[i].available.resize(session->info.worker_count);
       for (size_t j = 0; j < session->info.worker_count; j++) {
         VkCommandPool pool;
         {
@@ -151,7 +169,7 @@ void session_iteration_try_rendering(
           );
           assert(result == VK_SUCCESS);
         }
-        rendering->command_pools[i].available[j] = new CommandPool1 {
+        display->command_pools[i].available[j] = new CommandPool1 {
           .pool = pool,
         };
       }
@@ -159,10 +177,10 @@ void session_iteration_try_rendering(
   }
 
   { ZoneScopedN(".descriptor_pools");
-    rendering->descriptor_pools = std::vector<engine::common::SharedDescriptorPool>(
+    display->descriptor_pools = std::vector<engine::common::SharedDescriptorPool>(
       swapchain_image_count
     );
-    for (auto &pool : rendering->descriptor_pools) {
+    for (auto &pool : display->descriptor_pools) {
       // "large enough" :FixedDescriptorPool
       const uint32_t COMMON_DESCRIPTOR_COUNT = 4096;
       const uint32_t COMMON_DESCRIPTOR_MAX_SETS = 4096;
@@ -209,7 +227,7 @@ void session_iteration_try_rendering(
       session->vulkan.core.device,
       &create_info,
       session->vulkan.core.allocator,
-      &rendering->frame_finished_semaphore
+      &display->frame_finished_semaphore
     );
     assert(result == VK_SUCCESS);
   }
@@ -227,7 +245,7 @@ void session_iteration_try_rendering(
       session->vulkan.core.device,
       &create_info,
       session->vulkan.core.allocator,
-      &rendering->graphics_finished_semaphore
+      &display->graphics_finished_semaphore
     );
     assert(result == VK_SUCCESS);
   }
@@ -245,7 +263,7 @@ void session_iteration_try_rendering(
       session->vulkan.core.device,
       &create_info,
       session->vulkan.core.allocator,
-      &rendering->imgui_finished_semaphore
+      &display->imgui_finished_semaphore
     );
     assert(result == VK_SUCCESS);
   }
@@ -253,7 +271,7 @@ void session_iteration_try_rendering(
   auto core = &session->vulkan.core;
 
   lib::gfx::allocator::init(
-    &rendering->allocator_dedicated,
+    &display->allocator_dedicated,
     &core->properties.memory,
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     0, // always a new region
@@ -261,7 +279,7 @@ void session_iteration_try_rendering(
   );
 
   lib::gfx::allocator::init(
-    &rendering->allocator_shared,
+    &display->allocator_shared,
     &core->properties.memory,
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     engine::ALLOCATOR_GPU_LOCAL_REGION_SIZE,
@@ -269,7 +287,7 @@ void session_iteration_try_rendering(
   );
 
   lib::gfx::allocator::init(
-    &rendering->allocator_host,
+    &display->allocator_host,
     &core->properties.memory,
     VkMemoryPropertyFlagBits(0
       | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
@@ -280,23 +298,23 @@ void session_iteration_try_rendering(
   );
 
   engine::datum::probe_radiance::init_ddata(
-    &rendering->probe_radiance,
-    &rendering->swapchain_description,
-    &rendering->allocator_dedicated,
+    &display->probe_radiance,
+    &display->swapchain_description,
+    &display->allocator_dedicated,
     core
   );
 
   engine::datum::probe_irradiance::init_ddata(
-    &rendering->probe_irradiance,
-    &rendering->swapchain_description,
-    &rendering->allocator_dedicated,
+    &display->probe_irradiance,
+    &display->swapchain_description,
+    &display->allocator_dedicated,
     core
   );
 
   engine::datum::probe_attention::init_ddata(
-    &rendering->probe_attention,
-    &rendering->swapchain_description,
-    &rendering->allocator_dedicated,
+    &display->probe_attention,
+    &display->swapchain_description,
+    &display->allocator_dedicated,
     core
   );
 
@@ -306,12 +324,12 @@ void session_iteration_try_rendering(
   { ZoneScopedN(".multi_alloc");
     std::vector<lib::gfx::multi_alloc::Claim> claims;
 
-    rendering->gbuffer.channel0_stakes.resize(swapchain_image_count);
-    rendering->gbuffer.channel1_stakes.resize(swapchain_image_count);
-    rendering->gbuffer.channel2_stakes.resize(swapchain_image_count);
-    rendering->zbuffer.stakes.resize(swapchain_image_count);
-    rendering->lbuffer.stakes.resize(swapchain_image_count);
-    rendering->final_image.stakes.resize(swapchain_image_count);
+    display->gbuffer.channel0_stakes.resize(swapchain_image_count);
+    display->gbuffer.channel1_stakes.resize(swapchain_image_count);
+    display->gbuffer.channel2_stakes.resize(swapchain_image_count);
+    display->zbuffer.stakes.resize(swapchain_image_count);
+    display->lbuffer.stakes.resize(swapchain_image_count);
+    display->final_image.stakes.resize(swapchain_image_count);
 
     claim_rendering_common(
       swapchain_image_count,
@@ -331,7 +349,7 @@ void session_iteration_try_rendering(
       &lpass_stakes
     );
 
-    for (auto &stake : rendering->gbuffer.channel0_stakes) {
+    for (auto &stake : display->gbuffer.channel0_stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -339,8 +357,8 @@ void session_iteration_try_rendering(
             .imageType = VK_IMAGE_TYPE_2D,
             .format = GBUFFER_CHANNEL0_FORMAT,
             .extent = {
-              .width = rendering->swapchain_description.image_extent.width,
-              .height = rendering->swapchain_description.image_extent.height,
+              .width = display->swapchain_description.image_extent.width,
+              .height = display->swapchain_description.image_extent.height,
               .depth = 1,
             },
             .mipLevels = 1,
@@ -359,7 +377,7 @@ void session_iteration_try_rendering(
         .p_stake_image = &stake,
       });
     }
-    for (auto &stake : rendering->gbuffer.channel1_stakes) {
+    for (auto &stake : display->gbuffer.channel1_stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -367,8 +385,8 @@ void session_iteration_try_rendering(
             .imageType = VK_IMAGE_TYPE_2D,
             .format = GBUFFER_CHANNEL1_FORMAT,
             .extent = {
-              .width = rendering->swapchain_description.image_extent.width,
-              .height = rendering->swapchain_description.image_extent.height,
+              .width = display->swapchain_description.image_extent.width,
+              .height = display->swapchain_description.image_extent.height,
               .depth = 1,
             },
             .mipLevels = 1,
@@ -387,7 +405,7 @@ void session_iteration_try_rendering(
         .p_stake_image = &stake,
       });
     }
-    for (auto &stake : rendering->gbuffer.channel2_stakes) {
+    for (auto &stake : display->gbuffer.channel2_stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -395,8 +413,8 @@ void session_iteration_try_rendering(
             .imageType = VK_IMAGE_TYPE_2D,
             .format = GBUFFER_CHANNEL2_FORMAT,
             .extent = {
-              .width = rendering->swapchain_description.image_extent.width,
-              .height = rendering->swapchain_description.image_extent.height,
+              .width = display->swapchain_description.image_extent.width,
+              .height = display->swapchain_description.image_extent.height,
               .depth = 1,
             },
             .mipLevels = 1,
@@ -415,7 +433,7 @@ void session_iteration_try_rendering(
         .p_stake_image = &stake,
       });
     }
-    for (auto &stake : rendering->zbuffer.stakes) {
+    for (auto &stake : display->zbuffer.stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -423,8 +441,8 @@ void session_iteration_try_rendering(
             .imageType = VK_IMAGE_TYPE_2D,
             .format = ZBUFFER_FORMAT,
             .extent = {
-              .width = rendering->swapchain_description.image_extent.width,
-              .height = rendering->swapchain_description.image_extent.height,
+              .width = display->swapchain_description.image_extent.width,
+              .height = display->swapchain_description.image_extent.height,
               .depth = 1,
             },
             .mipLevels = 1,
@@ -444,7 +462,7 @@ void session_iteration_try_rendering(
         .p_stake_image = &stake,
       });
     }
-    for (auto &stake : rendering->lbuffer.stakes) {
+    for (auto &stake : display->lbuffer.stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -452,13 +470,13 @@ void session_iteration_try_rendering(
             .imageType = VK_IMAGE_TYPE_2D,
             .format = LBUFFER_FORMAT,
             .extent = {
-              .width = rendering->swapchain_description.image_extent.width,
-              .height = rendering->swapchain_description.image_extent.height,
+              .width = display->swapchain_description.image_extent.width,
+              .height = display->swapchain_description.image_extent.height,
               .depth = 1,
             },
             .mipLevels = lib::gfx::utilities::mip_levels(
-              rendering->swapchain_description.image_extent.width,
-              rendering->swapchain_description.image_extent.height
+              display->swapchain_description.image_extent.width,
+              display->swapchain_description.image_extent.height
             ),
             .arrayLayers = 1,
             .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -478,7 +496,7 @@ void session_iteration_try_rendering(
         .p_stake_image = &stake,
       });
     }
-    for (auto &stake : rendering->final_image.stakes) {
+    for (auto &stake : display->final_image.stakes) {
       claims.push_back({
         .info = {
           .image = {
@@ -486,8 +504,8 @@ void session_iteration_try_rendering(
             .imageType = VK_IMAGE_TYPE_2D,
             .format = FINAL_IMAGE_FORMAT,
             .extent = {
-              .width = rendering->swapchain_description.image_extent.width,
-              .height = rendering->swapchain_description.image_extent.height,
+              .width = display->swapchain_description.image_extent.width,
+              .height = display->swapchain_description.image_extent.height,
               .depth = 1,
             },
             .mipLevels = 1,
@@ -508,7 +526,7 @@ void session_iteration_try_rendering(
       });
     }
     lib::gfx::multi_alloc::init(
-      &rendering->multi_alloc,
+      &display->multi_alloc,
       std::move(claims),
       session->vulkan.core.device,
       session->vulkan.core.allocator,
@@ -518,7 +536,7 @@ void session_iteration_try_rendering(
   }
 
   { ZoneScopedN(".final_image_views");
-    for (auto stake : rendering->final_image.stakes) {
+    for (auto stake : display->final_image.stakes) {
       VkImageView image_view;
       VkImageViewCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -540,12 +558,12 @@ void session_iteration_try_rendering(
         );
         assert(result == VK_SUCCESS);
       }
-      rendering->final_image.views.push_back(image_view);
+      display->final_image.views.push_back(image_view);
     }
   }
 
   { ZoneScopedN(".gbuffer.channel0_views");
-    for (auto stake : rendering->gbuffer.channel0_stakes) {
+    for (auto stake : display->gbuffer.channel0_stakes) {
       VkImageView image_view;
       VkImageViewCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -567,12 +585,12 @@ void session_iteration_try_rendering(
         );
         assert(result == VK_SUCCESS);
       }
-      rendering->gbuffer.channel0_views.push_back(image_view);
+      display->gbuffer.channel0_views.push_back(image_view);
     }
   }
 
   { ZoneScopedN(".gbuffer.channel1_views");
-    for (auto stake : rendering->gbuffer.channel1_stakes) {
+    for (auto stake : display->gbuffer.channel1_stakes) {
       VkImageView image_view;
       VkImageViewCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -594,12 +612,12 @@ void session_iteration_try_rendering(
         );
         assert(result == VK_SUCCESS);
       }
-      rendering->gbuffer.channel1_views.push_back(image_view);
+      display->gbuffer.channel1_views.push_back(image_view);
     }
   }
 
   { ZoneScopedN(".gbuffer.channel2_views");
-    for (auto stake : rendering->gbuffer.channel2_stakes) {
+    for (auto stake : display->gbuffer.channel2_stakes) {
       VkImageView image_view;
       VkImageViewCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -621,12 +639,12 @@ void session_iteration_try_rendering(
         );
         assert(result == VK_SUCCESS);
       }
-      rendering->gbuffer.channel2_views.push_back(image_view);
+      display->gbuffer.channel2_views.push_back(image_view);
     }
   }
 
   { ZoneScopedN(".zbuffer.views");
-    for (auto stake : rendering->zbuffer.stakes) {
+    for (auto stake : display->zbuffer.stakes) {
       VkImageView depth_view;
       VkImageViewCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -648,12 +666,12 @@ void session_iteration_try_rendering(
         );
         assert(result == VK_SUCCESS);
       }
-      rendering->zbuffer.views.push_back(depth_view);
+      display->zbuffer.views.push_back(depth_view);
     }
   }
 
   { ZoneScopedN(".lbuffer.views");
-    for (auto stake : rendering->lbuffer.stakes) {
+    for (auto stake : display->lbuffer.stakes) {
       VkImageView image_view;
       VkImageViewCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -675,90 +693,90 @@ void session_iteration_try_rendering(
         );
         assert(result == VK_SUCCESS);
       }
-      rendering->lbuffer.views.push_back(image_view);
+      display->lbuffer.views.push_back(image_view);
     }
   }
 
   init_rendering_common(
     common_stakes,
-    &rendering->common,
+    &display->common,
     &vulkan->core
   );
 
   init_rendering_prepass(
-    &rendering->prepass,
-    &rendering->zbuffer,
-    &rendering->swapchain_description,
+    &display->prepass,
+    &display->zbuffer,
+    &display->swapchain_description,
     &vulkan->prepass,
     &vulkan->core
   );
 
   init_rendering_gpass(
-    &rendering->gpass,
-    &rendering->common,
+    &display->gpass,
+    &display->common,
     gpass_stakes,
-    &rendering->zbuffer,
-    &rendering->gbuffer,
-    &rendering->swapchain_description,
+    &display->zbuffer,
+    &display->gbuffer,
+    &display->swapchain_description,
     &vulkan->gpass,
     &vulkan->core
   );
 
   init_rendering_lpass(
-    &rendering->lpass,
+    &display->lpass,
     lpass_stakes,
-    &rendering->common,
-    &rendering->swapchain_description,
-    &rendering->zbuffer,
-    &rendering->gbuffer,
-    &rendering->lbuffer,
+    &display->common,
+    &display->swapchain_description,
+    &display->zbuffer,
+    &display->gbuffer,
+    &display->lbuffer,
     &session->vulkan.lpass,
     &session->vulkan.core
   );
 
   engine::step::probe_measure::init_ddata(
-    &rendering->probe_measure,
+    &display->probe_measure,
     &session->vulkan.probe_measure,
-    &rendering->common,
-    &rendering->lpass.stakes,
-    &rendering->probe_radiance,
-    &rendering->probe_irradiance,
-    &rendering->probe_attention,
-    &rendering->swapchain_description,
+    &display->common,
+    &display->lpass.stakes,
+    &display->probe_radiance,
+    &display->probe_irradiance,
+    &display->probe_attention,
+    &display->swapchain_description,
     &session->vulkan.core
   );
 
   engine::step::probe_collect::init_ddata(
-    &rendering->probe_collect,
+    &display->probe_collect,
     &session->vulkan.probe_collect,
-    &rendering->common,
-    &rendering->probe_radiance,
-    &rendering->probe_irradiance,
-    &rendering->probe_attention,
-    &rendering->swapchain_description,
+    &display->common,
+    &display->probe_radiance,
+    &display->probe_irradiance,
+    &display->probe_attention,
+    &display->swapchain_description,
     &session->vulkan.core
   );
 
   engine::step::indirect_light::init_ddata(
-    &rendering->indirect_light,
+    &display->indirect_light,
     &session->vulkan.indirect_light,
     &session->vulkan.core,
-    &rendering->common,
-    &rendering->gbuffer,
-    &rendering->zbuffer,
-    &rendering->lbuffer,
-    &rendering->probe_irradiance,
-    &rendering->probe_attention,
-    &rendering->swapchain_description
+    &display->common,
+    &display->gbuffer,
+    &display->zbuffer,
+    &display->lbuffer,
+    &display->probe_irradiance,
+    &display->probe_attention,
+    &display->swapchain_description
   );
 
   init_rendering_finalpass(
-    &rendering->finalpass,
-    &rendering->common,
-    &rendering->swapchain_description,
-    &rendering->zbuffer,
-    &rendering->lbuffer,
-    &rendering->final_image,
+    &display->finalpass,
+    &display->common,
+    &display->swapchain_description,
+    &display->zbuffer,
+    &display->lbuffer,
+    &display->final_image,
     &vulkan->finalpass,
     &vulkan->core
   );
@@ -772,19 +790,19 @@ void session_iteration_try_rendering(
     };
     for (size_t i = 0; i < swapchain_image_count; i++) {
       auto buffer = lib::gfx::allocator::create_buffer(
-        &rendering->allocator_host,
+        &display->allocator_host,
         core->device,
         core->allocator,
         &core->properties.basic,
         &info
       );
-      rendering->readback.radiance_buffers.push_back(buffer);
+      display->readback.radiance_buffers.push_back(buffer);
 
       auto ptr = (glm::detail::hdata *) lib::gfx::allocator::get_host_mapping(
-        &rendering->allocator_host,
+        &display->allocator_host,
         buffer.id
       ).mem;
-      rendering->readback.radiance_pointers.push_back(ptr);
+      display->readback.radiance_pointers.push_back(ptr);
     }
   }
 
@@ -798,7 +816,7 @@ void session_iteration_try_rendering(
         session->vulkan.core.device,
         &create_info,
         session->vulkan.core.allocator,
-        &rendering->imgui_backend.setup_command_pool
+        &display->imgui_backend.setup_command_pool
       );
       assert(result == VK_SUCCESS);
     }
@@ -816,7 +834,7 @@ void session_iteration_try_rendering(
         session->vulkan.core.device,
         &create_info,
         session->vulkan.core.allocator,
-        &rendering->imgui_backend.setup_semaphore
+        &display->imgui_backend.setup_semaphore
       );
       assert(result == VK_SUCCESS);
     }
@@ -824,7 +842,7 @@ void session_iteration_try_rendering(
     signal_imgui_setup_finished = lib::gpu_signal::create(
       &session->gpu_signal_support,
       session->vulkan.core.device,
-      rendering->imgui_backend.setup_semaphore,
+      display->imgui_backend.setup_semaphore,
       1
     );
 
@@ -861,25 +879,25 @@ void session_iteration_try_rendering(
           session->vulkan.core.device,
           &create_info,
           session->vulkan.core.allocator,
-          &rendering->imgui_backend.render_pass
+          &display->imgui_backend.render_pass
         );
         assert(result == VK_SUCCESS);
       }
     }
 
     { ZoneScopedN(".framebuffers");
-      for (size_t i = 0; i < rendering->final_image.views.size(); i++) {
+      for (size_t i = 0; i < display->final_image.views.size(); i++) {
         VkImageView attachments[] = {
-          rendering->final_image.views[i],
+          display->final_image.views[i],
         };
         VkFramebuffer framebuffer;
         VkFramebufferCreateInfo create_info = {
           .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-          .renderPass = rendering->imgui_backend.render_pass,
+          .renderPass = display->imgui_backend.render_pass,
           .attachmentCount = sizeof(attachments) / sizeof(*attachments),
           .pAttachments = attachments,
-          .width = rendering->swapchain_description.image_extent.width,
-          .height = rendering->swapchain_description.image_extent.height,
+          .width = display->swapchain_description.image_extent.width,
+          .height = display->swapchain_description.image_extent.height,
           .layers = 1,
         };
         {
@@ -891,7 +909,7 @@ void session_iteration_try_rendering(
           );
           assert(result == VK_SUCCESS);
         }
-        rendering->imgui_backend.framebuffers.push_back(framebuffer);
+        display->imgui_backend.framebuffers.push_back(framebuffer);
       }
     }
 
@@ -902,20 +920,20 @@ void session_iteration_try_rendering(
         .Device = session->vulkan.core.device,
         .QueueFamily = session->vulkan.core.queue_family_index,
         .Queue = session->vulkan.queue_work,
-        .DescriptorPool = rendering->common.descriptor_pool,
+        .DescriptorPool = display->common.descriptor_pool,
         .Subpass = 0,
-        .MinImageCount = rendering->swapchain_description.image_count,
-        .ImageCount = rendering->swapchain_description.image_count,
+        .MinImageCount = display->swapchain_description.image_count,
+        .ImageCount = display->swapchain_description.image_count,
         .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
         .Allocator = session->vulkan.core.allocator,
       };
-      ImGui_ImplVulkan_Init(&info, rendering->imgui_backend.render_pass);
+      ImGui_ImplVulkan_Init(&info, display->imgui_backend.render_pass);
     }
 
     { ZoneScopedN("fonts_texture");
       auto alloc_info = VkCommandBufferAllocateInfo {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = rendering->imgui_backend.setup_command_pool,
+        .commandPool = display->imgui_backend.setup_command_pool,
         .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
         .commandBufferCount = 1,
       };
@@ -943,26 +961,26 @@ void session_iteration_try_rendering(
       }
     }
   }
-  auto rendering_yarn_end = lib::task::create_yarn_signal();
+  auto display_end_yarn = lib::task::create_yarn_signal();
   auto task_frame = lib::task::create(
     engine::frame::schedule_all,
-    rendering_yarn_end,
+    display_end_yarn,
     session.ptr,
-    rendering
+    display
   );
   auto task_cleanup = lib::defer(
     lib::task::create(
       engine::display::cleanup,
       session_iteration_yarn_end.ptr,
       session.ptr,
-      rendering
+      display
     )
   );
   auto task_imgui_setup_cleanup = lib::defer(
     lib::task::create(
-      rendering_imgui_setup_cleanup,
+      _imgui_setup_cleanup,
       &session->vulkan.core,
-      &rendering->imgui_backend
+      &display->imgui_backend
     )
   );
   lib::task::inject(ctx->runner, {
@@ -973,29 +991,29 @@ void session_iteration_try_rendering(
     .new_dependencies = {
       { signal_imgui_setup_finished, task_frame },
       { signal_imgui_setup_finished, task_imgui_setup_cleanup.first },
-      { rendering_yarn_end, task_cleanup.first }
+      { display_end_yarn, task_cleanup.first }
     },
-    .changed_parents = { { .ptr = rendering, .children = {
-      &rendering->presentation,
-      &rendering->presentation_failure_state,
-      &rendering->swapchain_description,
-      &rendering->imgui_backend,
-      &rendering->latest_frame,
-      &rendering->command_pools,
-      &rendering->descriptor_pools,
-      &rendering->graphics_finished_semaphore,
-      &rendering->imgui_finished_semaphore,
-      &rendering->frame_finished_semaphore,
-      &rendering->multi_alloc,
-      &rendering->zbuffer,
-      &rendering->gbuffer,
-      &rendering->lbuffer,
-      &rendering->final_image,
-      &rendering->common,
-      &rendering->prepass,
-      &rendering->gpass,
-      &rendering->lpass,
-      &rendering->finalpass,
+    .changed_parents = { { .ptr = display, .children = {
+      &display->presentation,
+      &display->presentation_failure_state,
+      &display->swapchain_description,
+      &display->imgui_backend,
+      &display->latest_frame,
+      &display->command_pools,
+      &display->descriptor_pools,
+      &display->graphics_finished_semaphore,
+      &display->imgui_finished_semaphore,
+      &display->frame_finished_semaphore,
+      &display->multi_alloc,
+      &display->zbuffer,
+      &display->gbuffer,
+      &display->lbuffer,
+      &display->final_image,
+      &display->common,
+      &display->prepass,
+      &display->gpass,
+      &display->lpass,
+      &display->finalpass,
     } } },
   });
   { ZoneScopedN("submit_imgui_setup");
@@ -1018,7 +1036,7 @@ void session_iteration_try_rendering(
       .commandBufferCount = 1,
       .pCommandBuffers = &cmd_imgui_setup,
       .signalSemaphoreCount = 1,
-      .pSignalSemaphores = &rendering->imgui_backend.setup_semaphore,
+      .pSignalSemaphores = &display->imgui_backend.setup_semaphore,
     };
     auto result = vkQueueSubmit(
       session->vulkan.queue_work,

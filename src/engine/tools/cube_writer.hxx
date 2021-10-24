@@ -1,6 +1,6 @@
 #pragma once
 
-namespace tools {
+namespace engine::tools {
 
 void cube_writer(
   char const *path_t06

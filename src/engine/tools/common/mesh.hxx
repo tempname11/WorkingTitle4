@@ -1,7 +1,7 @@
 #include <vector>
 #include <src/engine/common/mesh.hxx>
 
-namespace tools::common::mesh {
+namespace engine::tools::common::mesh {
 
 struct T06_Builder {
   std::vector<engine::common::mesh::IndexT06> indices;

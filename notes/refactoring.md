@@ -2,7 +2,6 @@
 
 ## annoyances
 - Move ad-hoc inline constants to uniform or at least `common/constants.glsl` :MoveToUniform
-- The directory `src/task` should not be there. tasks should be where they logically belong.
 
 ## resource granularity
 - go through graphics_render and see if any of Vulkan objects really need Own or Use.
@@ -17,8 +16,8 @@
 - split `graphics_render` into smaller parts.
 - `session/setup.cxx` does too much and should be split up.
 
-- split off `display::Data` init from the huge `session_iteration_try_rendering`.
-  (And also try to use `*data = {...};` init style.)
+- split off `display::init` from `try_rendering`.
+  (And also try to use `*data = {...};` style there.)
 
 ## files
 

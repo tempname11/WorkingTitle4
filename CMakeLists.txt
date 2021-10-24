@@ -37,8 +37,6 @@ list (TRANSFORM ALL_EMBEDDED_GLSL REPLACE ${CMAKE_SOURCE_DIR}/src/shader ${CMAKE
 
 file (GLOB_RECURSE SRC_LIB CONFIGURE_DEPENDS "src/lib/*.cxx")
 file (GLOB_RECURSE SRC_ENGINE CONFIGURE_DEPENDS "src/engine/*.cxx")
-file (GLOB_RECURSE SRC_TASK CONFIGURE_DEPENDS "src/task/*.cxx")
-file (GLOB_RECURSE SRC_TOOLS CONFIGURE_DEPENDS "src/tools/*.cxx")
 
 add_subdirectory(submodule/fmt)
 
@@ -67,7 +65,6 @@ add_library (
   "src/impl/tinygltf.cxx"
   ${SRC_LIB}
   ${SRC_ENGINE}
-  ${SRC_TASK}
   ${SRC_TOOLS}
   ${ALL_EMBEDDED_GLSL}
   "${CMAKE_SOURCE_DIR}/submodule/tracy/TracyClient.cpp"

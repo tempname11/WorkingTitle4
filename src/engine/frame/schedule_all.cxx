@@ -1,5 +1,4 @@
 #include <src/lib/defer.hxx>
-#include <src/task/rendering_has_finished.hxx>
 #include "acquire.hxx"
 #include "cleanup.hxx"
 #include "compose_render.hxx"
@@ -25,9 +24,17 @@
 
 namespace engine::frame {
 
+void _signal_display_end(
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<lib::Task> display_end_yarn
+) {
+  ZoneScoped;
+  lib::task::signal(ctx->runner, display_end_yarn.ptr);
+}
+
 void _begin(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  Ref<lib::Task> rendering_yarn_end,
+  Ref<lib::Task> display_end_yarn,
   Ref<engine::session::Data> session,
   Ref<engine::display::Data> data,
   Use<engine::session::Data::GLFW> glfw,
@@ -45,12 +52,12 @@ void _begin(
   bool should_stop = glfwWindowShouldClose(glfw->window);
   if (should_stop || presentation_has_failed) {
     std::scoped_lock lock(session->inflight_gpu.mutex);
-    auto task_has_finished = lib::task::create(rendering_has_finished, rendering_yarn_end.ptr);
+    auto task_signal_display_end = lib::task::create(_signal_display_end, display_end_yarn.ptr);
     lib::task::Auxiliary aux;
     for (auto signal : session->inflight_gpu.signals) {
-      aux.new_dependencies.push_back({ signal, task_has_finished });
+      aux.new_dependencies.push_back({ signal, task_signal_display_end });
     }
-    lib::task::inject(ctx->runner, { task_has_finished }, std::move(aux));
+    lib::task::inject(ctx->runner, { task_signal_display_end }, std::move(aux));
     return;
   }
   { // timing
@@ -271,7 +278,7 @@ void _begin(
     ),
     lib::task::create(
       schedule_all,
-      rendering_yarn_end.ptr,
+      display_end_yarn.ptr,
       session.ptr,
       data.ptr
     ),
@@ -307,7 +314,7 @@ void _begin(
 
 void schedule_all(
   lib::task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
-  Ref<lib::Task> rendering_yarn_end,
+  Ref<lib::Task> display_end_yarn,
   Ref<engine::session::Data> session,
   Ref<engine::display::Data> display
 ) {
@@ -325,7 +332,7 @@ void schedule_all(
 
   auto task_frame = lib::task::create(
     _begin,
-    rendering_yarn_end.ptr,
+    display_end_yarn.ptr,
     session.ptr,
     display.ptr,
     &session->glfw,

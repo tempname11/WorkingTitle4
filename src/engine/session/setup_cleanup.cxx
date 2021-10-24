@@ -1,6 +1,8 @@
-#include "session_setup_cleanup.hxx"
+#include "setup_cleanup.hxx"
 
-void session_setup_cleanup(
+namespace engine::session {
+
+void setup_cleanup(
   lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   Own<engine::session::SetupData> data,
   Use<engine::session::Vulkan::Core> core
@@ -21,3 +23,5 @@ void session_setup_cleanup(
 
   delete data.ptr;
 }
+
+} // namespace

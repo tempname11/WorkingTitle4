@@ -5,8 +5,6 @@
 #include <src/embedded.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include <src/lib/defer.hxx>
-#include <src/task/session_iteration.hxx>
-#include <src/task/session_setup_cleanup.hxx>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/uploader.hxx>
 #include <src/engine/blas_storage.hxx>
@@ -22,6 +20,8 @@
 #include <src/engine/loading/group.hxx>
 #include <src/engine/constants.hxx>
 #include <src/engine/misc.hxx>
+#include "setup_cleanup.hxx"
+#include "iteration.hxx"
 #include "cleanup.hxx"
 
 namespace engine::session {
@@ -814,7 +814,7 @@ void setup(
   #endif
 
   auto task_iteration = lib::task::create(
-    session_iteration,
+    iteration,
     session
   );
 

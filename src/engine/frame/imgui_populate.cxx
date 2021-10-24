@@ -8,9 +8,9 @@
 #endif
 #include <misc/cpp/imgui_stdlib.h>
 #include <src/engine/loading/group.hxx>
-#include <src/tools/cube_writer.hxx>
-#include <src/tools/gltf_converter.hxx>
-#include <src/tools/voxel_converter.hxx>
+#include <src/engine/tools/cube_writer.hxx>
+#include <src/engine/tools/gltf_converter.hxx>
+#include <src/engine/tools/voxel_converter.hxx>
 #include "imgui_populate.hxx"
 
 namespace engine::frame {

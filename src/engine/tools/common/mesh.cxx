@@ -1,7 +1,7 @@
 #include <src/lib/gfx/utilities.hxx>
 #include "mesh.hxx"
 
-namespace tools::common::mesh {
+namespace engine::tools::common::mesh {
 
 void write(const char *out_filename, T06_Builder *mesh) {
   FILE *out = fopen(out_filename, "wb");
