@@ -1,7 +1,7 @@
 #include <src/global.hxx>
 #include <src/lib/task.hxx>
 #include <src/lib/guid.hxx>
-#include <src/task/defer.hxx>
+#include <src/lib/defer.hxx>
 #include <src/engine/common/texture.hxx>
 #include "../mesh.hxx"
 #include "../texture.hxx"
@@ -109,7 +109,7 @@ void add_item(
     .romeao_id = romeao_id,
   };
 
-  auto task_insert_items = defer(
+  auto task_insert_items = lib::defer(
     lib::task::create(
       _add_item_insert,
       session.ptr,

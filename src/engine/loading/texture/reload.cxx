@@ -1,7 +1,7 @@
 #include <stb_image.h>
-#include <src/task/after_inflight.hxx>
-#include <src/task/defer.hxx>
+#include <src/lib/defer.hxx>
 #include <src/engine/uploader.hxx>
+#include <src/engine/common/after_inflight.hxx>
 #include "../texture.hxx"
 #include "load.hxx"
 
@@ -67,7 +67,7 @@ void reload(
     data
   );
   auto signal_init_image = lib::task::create_external_signal();
-  auto task_init_image = defer(
+  auto task_init_image = lib::defer(
     lib::task::create(
       _load_init_image,
       session.ptr,
@@ -78,7 +78,7 @@ void reload(
     )
   );
   auto task_finish = lib::task::create(
-    after_inflight,
+    common::after_inflight,
     session.ptr,
     lib::task::create(
       _reload_finish,

@@ -4,7 +4,7 @@
 #include <backends/imgui_impl_glfw.h>
 #include <src/embedded.hxx>
 #include <src/lib/gfx/utilities.hxx>
-#include <src/task/defer.hxx>
+#include <src/lib/defer.hxx>
 #include <src/task/session_iteration.hxx>
 #include <src/task/session_setup_cleanup.hxx>
 #include <src/engine/common/texture.hxx>
@@ -826,7 +826,7 @@ void setup(
   );
   */
 
-  auto task_cleanup = defer(
+  auto task_cleanup = lib::defer(
     lib::task::create(
       session::cleanup,
       session

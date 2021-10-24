@@ -1,4 +1,6 @@
 #include <backends/imgui_impl_vulkan.h>
+#include <src/lib/gfx/utilities.hxx>
+#include <src/lib/defer.hxx>
 #include <src/embedded.hxx>
 #include <src/engine/constants.hxx>
 #include <src/engine/common/mesh.hxx>
@@ -15,9 +17,7 @@
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
 #include <src/engine/step/indirect_light.hxx>
-#include <src/lib/gfx/utilities.hxx>
 #include <src/engine/frame/schedule_all.hxx>
-#include "defer.hxx"
 #include "rendering_imgui_setup_cleanup.hxx"
 #include "session_iteration_try_rendering.hxx"
 
@@ -950,7 +950,7 @@ void session_iteration_try_rendering(
     session.ptr,
     rendering
   );
-  auto task_cleanup = defer(
+  auto task_cleanup = lib::defer(
     lib::task::create(
       engine::display::cleanup,
       session_iteration_yarn_end.ptr,
@@ -958,7 +958,7 @@ void session_iteration_try_rendering(
       rendering
     )
   );
-  auto task_imgui_setup_cleanup = defer(
+  auto task_imgui_setup_cleanup = lib::defer(
     lib::task::create(
       rendering_imgui_setup_cleanup,
       &session->vulkan.core,

@@ -1,6 +1,6 @@
 #include <stb_image.h>
 #include <src/global.hxx>
-#include <src/task/defer.hxx>
+#include <src/lib/defer.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include <src/engine/session/data.hxx>
 #include <src/engine/uploader.hxx>
@@ -182,7 +182,7 @@ lib::Task *load(
     data
   );
   auto signal_init_image = lib::task::create_external_signal();
-  auto task_init_image = defer(
+  auto task_init_image = lib::defer(
     lib::task::create(
       _load_init_image,
       session.ptr,
@@ -192,7 +192,7 @@ lib::Task *load(
       data
     )
   );
-  auto task_finish = defer(
+  auto task_finish = lib::defer(
     lib::task::create(
       _load_finish,
       session.ptr,

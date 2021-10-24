@@ -1,4 +1,4 @@
-#include <src/task/defer.hxx>
+#include <src/lib/defer.hxx>
 #include "setup_gpu_signal.hxx"
 
 namespace engine::frame {
@@ -33,7 +33,7 @@ void setup_gpu_signal(
     frame_info->timeline_semaphore_value
   );
   auto inflight_index_saved = new uint8_t(frame_info->inflight_index); // frame_info will not be around!
-  auto task_cleanup = defer(
+  auto task_cleanup = lib::defer(
     lib::task::create(
       _signal_cleanup,
       &session->inflight_gpu,

@@ -1,5 +1,5 @@
-#include <src/task/after_inflight.hxx>
 #include <src/engine/uploader.hxx>
+#include <src/engine/common/after_inflight.hxx>
 #include "../mesh.hxx"
 
 namespace engine::loading::texture {
@@ -61,7 +61,7 @@ void deref(
     .texture_id = texture_id,
   };
   auto task_deref = lib::task::create(
-    after_inflight,
+    common::after_inflight,
     session.ptr,
     lib::task::create(
       _deref,

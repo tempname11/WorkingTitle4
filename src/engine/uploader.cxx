@@ -3,7 +3,7 @@
 #include <src/global.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include <src/lib/gpu_signal.hxx>
-#include <src/task/defer.hxx>
+#include <src/lib/defer.hxx>
 #include "uploader.hxx"
 
 namespace engine::uploader {
@@ -462,7 +462,7 @@ void upload_buffer(
   // Which is how it is currently used, but there's no rule or convention
   // preventing it to be used separately.
   lib::lifetime::ref(&session->lifetime);
-  auto task_finish = defer(
+  auto task_finish = lib::defer(
     lib::task::create(
       _upload_buffer_finish,
       it.ptr,
@@ -695,7 +695,7 @@ void upload_image(
     data
   );
 
-  auto task_finish = defer(
+  auto task_finish = lib::defer(
     lib::task::create(
       _upload_image_finish,
       it.ptr,

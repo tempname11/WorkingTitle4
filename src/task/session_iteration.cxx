@@ -1,4 +1,4 @@
-#include "defer.hxx"
+#include <src/lib/defer.hxx>
 #include "session_iteration_try_rendering.hxx"
 #include "session_iteration.hxx"
 
@@ -23,7 +23,7 @@ void session_iteration(
       session_iteration_yarn_end,
       session.ptr
     );
-    auto task_repeat = defer(lib::task::create(
+    auto task_repeat = lib::defer(lib::task::create(
       session_iteration,
       session.ptr
     ));

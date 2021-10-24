@@ -1,4 +1,4 @@
-#include <src/task/defer.hxx>
+#include <src/lib/defer.hxx>
 #include "../blas_storage.hxx"
 #include "data.hxx"
 
@@ -315,7 +315,7 @@ void _build_finish(
   // Which is how it is currently used, but there's no rule or convention
   // preventing it to be used separately.
   lib::lifetime::ref(&session->lifetime);
-  auto task_build_finish = defer(
+  auto task_build_finish = lib::defer(
     lib::task::create(
       _build_finish,
       it,

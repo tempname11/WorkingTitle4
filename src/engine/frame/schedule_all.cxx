@@ -1,4 +1,4 @@
-#include <src/task/defer.hxx>
+#include <src/lib/defer.hxx>
 #include <src/task/rendering_has_finished.hxx>
 #include "acquire.hxx"
 #include "cleanup.hxx"
@@ -84,7 +84,7 @@ void _begin(
     }
   #endif
 
-  auto task_setup_gpu_signal = defer(
+  auto task_setup_gpu_signal = lib::defer(
     lib::task::create(
       setup_gpu_signal,
       session.ptr,
@@ -276,7 +276,7 @@ void _begin(
       data.ptr
     ),
   });
-  auto task_many = defer_many(frame_tasks);
+  auto task_many = lib::defer_many(frame_tasks);
   { // inject under inflight mutex
     std::scoped_lock lock(session->inflight_gpu.mutex);
     auto signal = session->inflight_gpu.signals[latest_frame->inflight_index];
@@ -350,7 +350,7 @@ void schedule_all(
         }
       }
 
-      auto deferred_frame = defer(task_frame);
+      auto deferred_frame = lib::defer(task_frame);
 
       // inject still under the FC mutex
       lib::task::inject(ctx->runner, {

@@ -1,4 +1,4 @@
-#include <src/task/defer.hxx>
+#include <src/lib/defer.hxx>
 #include <src/engine/uploader.hxx>
 #include <src/engine/blas_storage.hxx>
 #include <src/lib/gfx/utilities.hxx>
@@ -183,7 +183,7 @@ lib::Task* load(
     data
   );
   auto signal_init_buffer = lib::task::create_external_signal();
-  auto task_init_buffer = defer(
+  auto task_init_buffer = lib::defer(
     lib::task::create(
       _load_init_buffer,
       session.ptr,
@@ -194,7 +194,7 @@ lib::Task* load(
     )
   );
   auto signal_init_blas = lib::task::create_external_signal();
-  auto task_init_blas = defer(
+  auto task_init_blas = lib::defer(
     lib::task::create(
       _load_init_blas,
       session.ptr,
@@ -204,7 +204,7 @@ lib::Task* load(
       data
     )
   );
-  auto task_finish = defer(
+  auto task_finish = lib::defer(
     lib::task::create(
       _load_finish,
       session.ptr,

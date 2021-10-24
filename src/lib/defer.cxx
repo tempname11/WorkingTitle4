@@ -1,6 +1,8 @@
 #include <src/global.hxx>
 #include "defer.hxx"
 
+namespace lib {
+
 void _defer(
   lib::task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
   Ref<lib::Task> task
@@ -27,3 +29,5 @@ std::pair<lib::Task *, nullptr_t> defer_many(std::vector<lib::Task *> *tasks) {
   auto task_defer = lib::task::create(_defer_many, tasks);
   return { task_defer, nullptr };
 }
+
+} // namespace

@@ -1,4 +1,4 @@
-#include <src/task/defer.hxx>
+#include <src/lib/defer.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
@@ -1297,7 +1297,7 @@ void graphics_render(
   );
 
   { ZoneScopedN("tlas_cleanup_schedule");
-    auto task_tlas_cleanup = defer(
+    auto task_tlas_cleanup = lib::defer(
       lib::task::create(
         _tlas_cleanup,
         session.ptr,

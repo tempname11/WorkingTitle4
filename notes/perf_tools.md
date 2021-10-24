@@ -7,11 +7,12 @@
   - Display frame time charts
 
 - Organize GPU memory allocation
-  - fix ImGui view
-  - migrate multi_alloc
-  - migrate allocator
+  - heap trackers at session level.
   - "Arena"
     - with multi-alloc-like capability
     - mutexes where really needed
     - tracked at top level
-  - heap trackers at session level.
+  - migrate allocator
+  - migrate multi_alloc
+  - fix ImGui view
+  - add ImGui graphs!

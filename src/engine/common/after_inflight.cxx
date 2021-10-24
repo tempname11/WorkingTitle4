@@ -1,5 +1,7 @@
 #include "after_inflight.hxx"
 
+namespace engine::common {
+
 void after_inflight(
   lib::task::Context<QUEUE_INDEX_HIGH_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
@@ -19,3 +21,5 @@ void after_inflight(
     .new_dependencies = dependencies,
   });
 }
+
+} // namespace

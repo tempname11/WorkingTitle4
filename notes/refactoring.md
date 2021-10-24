@@ -13,11 +13,12 @@
   (Go through frame tasks and try to reduce these.)
 
 ## big chunks
+- engine::step::* and engine::datum::* for older stuff
 - split `graphics_render` into smaller parts.
-- `session/setup.cxx` does too much and should be split up into smaller files.
+- `session/setup.cxx` does too much and should be split up.
 
 - split off `display::Data` init from the huge `session_iteration_try_rendering`.
-  (And use `*data = {...};` init style.)
+  (And also try to use `*data = {...};` init style.)
 
 ## files
 
