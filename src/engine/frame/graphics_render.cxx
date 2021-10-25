@@ -1287,7 +1287,7 @@ void prepare_uniforms(
     auto projection_prev = jitter_prev * projection_base;
     auto projection = jitter * projection_base;
 
-    auto some_world_offset = glm::vec3(0.5);
+    auto some_world_offset = glm::vec3(0.5f);
     // @Hack: make sure probes are not in the wall for voxel stuff
 
     engine::common::ubo::ProbeCascade cascades[engine::common::ubo::MAX_CASCADE_LEVELS];
@@ -1365,7 +1365,7 @@ void prepare_uniforms(
   { ZoneScopedN("directional_light");
     const engine::common::ubo::DirectionalLight data = {
       .direction = -sun_direction, // we have it backwards here
-      .intensity = sun_irradiance,
+      .irradiance = sun_irradiance,
     };
     auto stake = &lpass->stakes.ubo_directional_light[frame_info->inflight_index];
     void * dst;

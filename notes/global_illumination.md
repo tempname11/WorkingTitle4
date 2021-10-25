@@ -1,7 +1,8 @@
 # Global Illumination TODO
 
 ## Known bugs
-- Grid boundaries still look bad. :ProbeWrapping
+- Grid boundaries still jump too much. :ProbeWrapping
+- Cascade boundaries are clearly visible.
 - No texture LODs, will manifest in aliasing and perf.
 
 ## Harder tasks
