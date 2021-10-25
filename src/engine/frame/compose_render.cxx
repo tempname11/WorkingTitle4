@@ -17,10 +17,11 @@ namespace engine::frame {
   void _write_screenshot(
     lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
     Ref<engine::session::Data> session,
-    Ref<engine::session::Vulkan::Core> core,
     Own<WriteScreenshotData> data
   ) {
     ZoneScoped;
+
+    auto core = &session->vulkan.core;
 
     assert(data->format == VK_FORMAT_B8G8R8A8_SRGB);
     for (size_t i = 0; i < data->w * data->h; i++) {
@@ -59,15 +60,17 @@ void compose_render(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
   Ref<engine::display::Data> display,
-  Ref<engine::session::Vulkan::Core> core,
   Use<engine::display::Data::Presentation> presentation,
-  Use<engine::display::Data::PresentationFailureState> presentation_failure_state,
+  Ref<engine::display::Data::PresentationFailureState> presentation_failure_state,
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<engine::display::Data::CommandPools> command_pools,
   Ref<engine::display::Data::FrameInfo> frame_info,
   Own<engine::misc::ComposeData> data
 ) {
   ZoneScoped;
+
+  auto core = &session->vulkan.core;
+
   {
     std::scoped_lock lock(presentation_failure_state->mutex);
     if (presentation_failure_state->failure) {
@@ -238,7 +241,6 @@ void compose_render(
       auto task_write_screenshot = lib::task::create(
         _write_screenshot,
         session.ptr,
-        core.ptr,
         write_data
       );
 

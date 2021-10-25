@@ -104,8 +104,6 @@ void _load_init_image(
     signal.ptr,
     &session->vulkan.uploader,
     session.ptr,
-    &session->vulkan.core,
-    &session->gpu_signal_support,
     queue_work,
     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     result.id

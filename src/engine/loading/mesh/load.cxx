@@ -74,8 +74,6 @@ void _load_init_buffer(
     signal.ptr,
     &session->vulkan.uploader,
     session.ptr,
-    &session->vulkan.core,
-    &session->gpu_signal_support,
     queue_work,
     result.id
   );

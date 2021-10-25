@@ -37,7 +37,7 @@ void _begin(
   Ref<engine::session::Data> session,
   Ref<engine::display::Data> data,
   Use<engine::session::Data::GLFW> glfw,
-  Use<engine::display::Data::PresentationFailureState> presentation_failure_state, // @Cleanup use Ref
+  Ref<engine::display::Data::PresentationFailureState> presentation_failure_state,
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Own<engine::display::Data::FrameInfo> latest_frame
 ) {
@@ -94,8 +94,6 @@ void _begin(
     lib::task::create(
       setup_gpu_signal,
       session.ptr,
-      &session->vulkan.core,
-      &session->gpu_signal_support,
       &data->frame_finished_semaphore,
       frame_info
     )
@@ -194,7 +192,6 @@ void _begin(
       compose_render,
       session.ptr,
       data.ptr,
-      &session->vulkan.core,
       &data->presentation,
       &data->presentation_failure_state,
       &data->swapchain_description,

@@ -50,8 +50,6 @@ void upload_buffer(
   lib::Task *signal,
   Ref<Uploader> it,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
-  Use<engine::session::Data::GPU_SignalSupport> gpu_signal_support,
   Own<VkQueue> queue_work,
   ID id
 );
@@ -61,8 +59,6 @@ void upload_image(
   lib::Task *signal,
   Ref<Uploader> it,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
-  Use<engine::session::Data::GPU_SignalSupport> gpu_signal_support,
   Own<VkQueue> queue_work,
   VkImageLayout final_layout,
   ID id

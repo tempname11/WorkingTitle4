@@ -8,7 +8,7 @@ void readback(
   Ref<engine::session::Vulkan::Core> core,
   Own<VkQueue> queue_work,
   Own<engine::display::Data::Presentation> presentation,
-  Use<VkSemaphore> frame_finished_semaphore,
+  Ref<VkSemaphore> frame_finished_semaphore,
   Use<engine::display::Data::LBuffer> lbuffer,
   Use<engine::display::Data::Readback> readback_data,
   Use<engine::display::Data::CommandPools> command_pools,

@@ -17,17 +17,17 @@ void _signal_cleanup (
 void setup_gpu_signal(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
-  Use<lib::gpu_signal::Support> gpu_signal_support,
-  Own<VkSemaphore> frame_finished_semaphore,
+  Ref<VkSemaphore> frame_finished_semaphore,
   Ref<engine::display::Data::FrameInfo> frame_info
 ) {
   ZoneScoped;
 
+  auto core = &session->vulkan.core;
+
   // don't use inflight_gpu->mutex, since out signal slot is currently unused
   assert(session->inflight_gpu.signals[frame_info->inflight_index] == nullptr);
   auto signal = lib::gpu_signal::create(
-    gpu_signal_support.ptr,
+    &session->gpu_signal_support,
     core->device,
     *frame_finished_semaphore,
     frame_info->timeline_semaphore_value
