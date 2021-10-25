@@ -49,7 +49,7 @@ layout(binding = 7) uniform Frame { FrameData data; } frame;
 layout(binding = 8) uniform sampler albedo_sampler;
 layout(binding = 9) uniform DirectionalLight {
   vec3 direction;
-  vec3 intensity;
+  vec3 irradiance;
 } directional_light; // @Incomplete :ManyLights
 
 layout(set = 1, binding = 0) uniform texture2D albedo_textures[];
@@ -244,7 +244,7 @@ void main() {
         HdotV,
         N,
         H,
-        directional_light.intensity
+        directional_light.irradiance
       );
     }
   }

@@ -1,10 +1,8 @@
 # Global Illumination TODO
 
 ## Known bugs
-- Memory usage is too big (see stream_plan.md)
-- Grid boundaries still look bad. (see stream_plan.md)
-- The "weird circle" still pops up.
-- No texture LODs, will potentially manifest in aliasing and perf.
+- Grid boundaries still look bad. :ProbeWrapping
+- No texture LODs, will manifest in aliasing and perf.
 
 ## Harder tasks
 * Try atomic-based attention strategies:

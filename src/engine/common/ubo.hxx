@@ -60,7 +60,7 @@ struct Frame {
 
 struct DirectionalLight {
   glm::vec3 direction;
-  alignas(16) glm::vec3 intensity;
+  alignas(16) glm::vec3 irradiance;
 };
 
 } // namespace

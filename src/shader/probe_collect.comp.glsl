@@ -165,14 +165,9 @@ void main() {
     );
     // @Think: `+` seems wrong here, instead of `-`, but it actually works.
 
-    // @Cleanup: use vector boolean ops?
     bool out_of_bounds = (false
-      || probe_coord_prev.x < 0
-      || probe_coord_prev.y < 0
-      || probe_coord_prev.z < 0
-      || probe_coord_prev.x >= frame.data.probe.grid_size.x
-      || probe_coord_prev.y >= frame.data.probe.grid_size.y
-      || probe_coord_prev.z >= frame.data.probe.grid_size.z
+      || any(lessThan(probe_coord_prev, ivec3(0)))
+      || any(greaterThanEqual(probe_coord_prev, frame.data.probe.grid_size))
     );
 
     if (!out_of_bounds) {

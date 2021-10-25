@@ -161,7 +161,7 @@ struct Data : lib::task::ParentResource {
     lib::debug_camera::State debug_camera;
     lib::debug_camera::State debug_camera_prev;
     glm::vec3 sun_position_xy;
-    float sun_intensity;
+    float sun_irradiance;
     float luminance_moving_average;
     float taa_distance;
     engine::common::ubo::Flags ubo_flags;

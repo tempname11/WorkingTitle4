@@ -9,6 +9,7 @@
 - Need automatic GPU memory region compacting.
 - Uploader need a performance-oriented overhaul :UploaderMustBeImproved
 - Semaphores are used unnecessarily to separate `work` <-> `imgui` <-> `compose`.
+- We do not need (inflight-count) of every datum.
 - Descriptor pool counts are fixed; can run out of them. :FixedDescriptorPool
 - Custom CPU allocators (frame, "short-term") :Better_CPU_Allocators
 - Way too many allocations in  `lib::task` implementation.

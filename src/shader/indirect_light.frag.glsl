@@ -20,32 +20,39 @@ layout(binding = 6) uniform Frame { FrameData data; } frame;
 layout(binding = 7) uniform writeonly uimage2D probe_attention;
 
 void main() {
-  vec3 N_view = subpassLoad(gchannel0).rgb;
-  vec3 albedo = subpassLoad(gchannel1).rgb;
-  vec3 N = (frame.data.view_inverse * vec4(N_view, 0.0)).xyz;
+  // Sanity check for frame data.
+  #ifndef NDEBUG
+    if (frame.data.end_marker != 0xDeadBeef) {
+      result = vec3(1.0, 0.0, 0.0);
+      return;
+    }
+  #endif
 
-  // @Cleanup share this logic with other L1 passes
   float depth = subpassLoad(zchannel).r;
-  float z_linear = Z_NEAR * Z_FAR / (Z_FAR + depth * (Z_NEAR - Z_FAR));
-  // @Cleanup :SimplerWorldSpacePos
-  vec4 target_view_long = frame.data.projection_inverse * vec4(position, 1.0, 1.0);
-  vec3 target_world = normalize((frame.data.view_inverse * target_view_long).xyz);
+  vec3 N = subpassLoad(gchannel0).rgb;
+  vec3 albedo = subpassLoad(gchannel1).rgb;
+
+  vec4 ndc = vec4(position, depth, 1.0);
+  vec4 pos_world_projective = ( // @Performance: precompute matrices
+    frame.data.view_inverse
+      * frame.data.projection_inverse
+      * ndc
+  );
+
   if (depth == 1.0) {
     result = sky(
-      target_world,
+      normalize(pos_world_projective.xyz),
       frame.data.sky_sun_direction,
       frame.data.sky_intensity,
       true /* show_sun */
     );
     if (frame.data.flags.disable_sky) {
-      result *= 0.0;
+      result = vec3(0.0);
     }
     return;
   }
-  float perspective_correction = length(target_view_long.xyz);
-  vec3 eye_world = (frame.data.view_inverse * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-  // @Cleanup :SimplerWorldSpacePos
-  vec3 pos_world = eye_world + target_world * z_linear * perspective_correction;
+
+  vec3 pos_world = pos_world_projective.xyz / pos_world_projective.w;
 
   result = get_indirect_radiance(
     pos_world,

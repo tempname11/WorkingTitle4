@@ -18,6 +18,7 @@ layout(
 ) in;
 
 const uint N_MOTION_SAMPLES = 32;
+const float TAA_HYSTERESIS_PER_FRAME = 31.0 / 32.0;
 
 vec3 map(vec3 l) {
   return l / (frame.data.luminance_moving_average + l);
@@ -50,7 +51,7 @@ void main() {
     position
   ).r;
 
-  // @Performance: can fold 4 matrices into one!
+  // @Performance: premultiply matrices.
   vec4 ndc = vec4(2.0 * position - 1.0, depth, 1.0);
   vec4 pos_world_projective = (
     frame.data.view_inverse
@@ -100,7 +101,7 @@ void main() {
       m_t = min(m_t, 0.5 * (x_max + y_max));
       m_t = max(m_t, 0.5 * (x_min + y_min));
 
-      m = (1.0 * m + 31.0 * m_t) / 32.0; // @Cleanup
+      m = (1.0 - TAA_HYSTERESIS_PER_FRAME) * m + TAA_HYSTERESIS_PER_FRAME * m_t;
 
       imageStore(
         lbuffer,
@@ -110,7 +111,7 @@ void main() {
     }
   }
 
-  memoryBarrierImage(); // not really sure if this works right.
+  memoryBarrierImage(); // @Think: not really sure if this works right.
 
   if (!frame.data.flags.disable_motion_blur) {
     vec4 sum = vec4(m, 1.0);

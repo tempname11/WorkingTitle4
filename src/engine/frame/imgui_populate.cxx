@@ -595,8 +595,8 @@ void imgui_populate(
         ImGuiSliderFlags_Logarithmic
       );
       ImGui::SliderFloat(
-        "Sun intensity",
-        &state->sun_intensity,
+        "Sun irradiance",
+        &state->sun_irradiance,
         0.005f,
         5000.0f,
         "%.3f",

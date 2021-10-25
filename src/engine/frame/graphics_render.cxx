@@ -1258,7 +1258,7 @@ void prepare_uniforms(
       )
     )
   );
-  auto sun_intensity = session_state->sun_intensity * glm::vec3(1.0f);
+  auto sun_irradiance = session_state->sun_irradiance * glm::vec3(1.0f);
 
   { ZoneScopedN("frame");
     auto view = lib::debug_camera::to_view_matrix(&session_state->debug_camera);
@@ -1326,7 +1326,7 @@ void prepare_uniforms(
       .view_prev_inverse = glm::inverse(view_prev),
       .luminance_moving_average = session_state->luminance_moving_average,
       .sky_sun_direction = sun_direction,
-      .sky_intensity = sun_intensity,
+      .sky_intensity = sun_irradiance,
       .is_frame_sequential = frame_info->is_sequential,
       .flags = session_state->ubo_flags,
       .probe_info = {
@@ -1365,7 +1365,7 @@ void prepare_uniforms(
   { ZoneScopedN("directional_light");
     const engine::common::ubo::DirectionalLight data = {
       .direction = -sun_direction, // we have it backwards here
-      .intensity = sun_intensity,
+      .intensity = sun_irradiance,
     };
     auto stake = &lpass->stakes.ubo_directional_light[frame_info->inflight_index];
     void * dst;

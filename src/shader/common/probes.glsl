@@ -94,12 +94,8 @@ vec3 get_indirect_radiance(
       // :ProbeWrapping
 
       out_of_bounds = (false
-        || grid_coord0.x < 0
-        || grid_coord0.y < 0
-        || grid_coord0.z < 0
-        || grid_coord0.x > frame_data.probe.grid_size.x - 2
-        || grid_coord0.y > frame_data.probe.grid_size.y - 2
-        || grid_coord0.z > frame_data.probe.grid_size.z - 2
+        || any(lessThan(grid_coord0, ivec3(0)))
+        || any(greaterThan(grid_coord0, frame_data.probe.grid_size - 2))
       );
       
       if (!out_of_bounds) {
@@ -129,15 +125,9 @@ vec3 get_indirect_radiance(
 
   ivec3 grid_coord0 = ivec3(floor(grid_coord_float)); // needs to be signed to check bounds
   
-  // are vector boolean expressions possible in GLSL? if so, this could use them.
-  // @Cleanup: yes, see `lessThan`
-  bool out_of_bounds = (false
-    || grid_coord0.x < 0
-    || grid_coord0.y < 0
-    || grid_coord0.z < 0
-    || grid_coord0.x > frame_data.probe.grid_size.x - 2
-    || grid_coord0.y > frame_data.probe.grid_size.y - 2
-    || grid_coord0.z > frame_data.probe.grid_size.z - 2
+  out_of_bounds = (false
+    || any(lessThan(grid_coord0, ivec3(0)))
+    || any(greaterThan(grid_coord0, frame_data.probe.grid_size - 2))
   );
   */
 

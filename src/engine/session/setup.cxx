@@ -782,7 +782,7 @@ void setup(
     .movement_speed = 8.0f,
     .debug_camera = debug_camera,
     .debug_camera_prev = debug_camera,
-    .sun_intensity = 5.0f,
+    .sun_irradiance = 5.0f,
     .luminance_moving_average = 0.3f,
     .taa_distance = 1.0f,
   };
