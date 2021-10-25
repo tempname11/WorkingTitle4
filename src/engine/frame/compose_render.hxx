@@ -15,7 +15,6 @@ void compose_render(
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<engine::display::Data::CommandPools> command_pools,
   Ref<engine::display::Data::FrameInfo> frame_info,
-  Use<engine::display::Data::FinalImage> final_image,
   Own<engine::misc::ComposeData> data
 );
 

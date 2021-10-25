@@ -1,10 +1,6 @@
 # Refactoring TODO
 
 ## resource granularity
-- go through graphics_render and see if any of Vulkan objects really need Own or Use.
-  (they probably don't, and then the signature will become much lighter)
-  (but mind how task dependencies might change!)
-
 - Ref/Use/Own is moot for mutex-protected data, so should use Ref where possible.
   (Go through frame tasks and try to reduce these.)
 

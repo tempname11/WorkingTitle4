@@ -1172,10 +1172,11 @@ void record_tlas(
 void _tlas_cleanup(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
   Own<TlasResult> result
 ) {
-  lib::lifetime::deref(&session->lifetime, ctx->runner);
+  ZoneScoped;
+
+  auto core = &session->vulkan.core;
 
   lib::gfx::allocator::destroy_buffer(
     &session->vulkan.uploader.allocator_device,
@@ -1226,6 +1227,7 @@ void _tlas_cleanup(
     core->allocator
   );
 
+  lib::lifetime::deref(&session->lifetime, ctx->runner);
   delete result.ptr;
 }
 
@@ -1379,42 +1381,24 @@ void prepare_uniforms(
     vkUnmapMemory(core->device, stake->memory);
   }
 }
+
 void graphics_render(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Use<engine::session::Data::State> session_state,
-  Ref<engine::session::Vulkan::Core> core,
-  Ref<engine::display::Data::SwapchainDescription> swapchain_description,
-  Use<engine::display::Data::CommandPools> command_pools,
+  Ref<engine::display::Data> display,
   Ref<engine::display::Data::FrameInfo> frame_info,
+  Use<engine::session::Data::State> session_state,
+  Use<engine::display::Data::CommandPools> command_pools,
   Use<engine::display::Data::DescriptorPools> descriptor_pools,
-  Own<engine::display::Data::Prepass> prepass,
-  Own<engine::display::Data::GPass> gpass,
-  Own<engine::display::Data::LPass> lpass,
   Own<engine::display::Data::Common> common,
-  Own<engine::step::probe_measure::DData> probe_measure_ddata,
-  Own<engine::step::probe_collect::DData> probe_collect_ddata,
-  Own<engine::step::indirect_light::DData> indirect_light_ddata,
-  Own<engine::display::Data::Finalpass> finalpass,
-  Use<engine::display::Data::ZBuffer> zbuffer,
-  Use<engine::display::Data::GBuffer> gbuffer,
-  Use<engine::display::Data::LBuffer> lbuffer,
-  Use<engine::datum::probe_radiance::DData> probe_radiance,
-  Use<engine::datum::probe_irradiance::DData> probe_irradiance,
-  Use<engine::datum::probe_attention::DData> probe_attention,
-  Use<engine::display::Data::FinalImage> final_image,
-  Use<engine::session::Vulkan::Prepass> s_prepass,
-  Use<engine::session::Vulkan::GPass> s_gpass,
-  Use<engine::session::Vulkan::LPass> s_lpass,
-  Own<engine::step::probe_measure::SData> probe_measure_sdata,
-  Use<engine::step::probe_collect::SData> probe_collect_sdata,
-  Use<engine::step::indirect_light::SData> indirect_light_sdata,
-  Use<engine::session::Vulkan::Finalpass> s_finalpass,
-  Use<engine::session::Vulkan::FullscreenQuad> fullscreen_quad,
   Use<engine::misc::RenderList> render_list,
   Own<engine::misc::GraphicsData> data
 ) {
   ZoneScoped;
+
+  auto core = &session->vulkan.core;
+  auto swapchain_description = &display->swapchain_description;
+
   auto pool2 = &(*command_pools)[frame_info->inflight_index];
   auto pool1 = command_pool_2_borrow(pool2);
   VkCommandBuffer cmd;
@@ -1448,8 +1432,8 @@ void graphics_render(
     frame_info,
     session_state,
     common,
-    gpass,
-    lpass
+    &display->gpass,
+    &display->lpass
   );
 
   auto tlas_result = new TlasResult;
@@ -1466,7 +1450,6 @@ void graphics_render(
       lib::task::create(
         _tlas_cleanup,
         session.ptr,
-        core.ptr,
         tlas_result
       )
     );
@@ -1484,7 +1467,7 @@ void graphics_render(
   record_barrier_before_prepass(
     cmd,
     frame_info.ptr,
-    zbuffer.ptr
+    &display->zbuffer
   );
 
   auto descriptor_pool = &(*descriptor_pools)[frame_info->inflight_index];
@@ -1493,14 +1476,14 @@ void graphics_render(
     record_prepass(
       cmd,
       session_state,
-      core.ptr,
+      core,
       descriptor_pool,
-      prepass.ptr,
-      gpass.ptr,
-      swapchain_description.ptr,
+      &display->prepass,
+      &display->gpass,
+      swapchain_description,
       frame_info.ptr,
-      s_prepass.ptr,
-      s_gpass.ptr,
+      &session->vulkan.prepass,
+      &session->vulkan.gpass,
       render_list.ptr
     );
   }
@@ -1508,25 +1491,25 @@ void graphics_render(
   record_barrier_prepass_gpass(
     cmd,
     frame_info.ptr,
-    zbuffer.ptr
+    &display->zbuffer
   );
 
   record_barrier_before_gpass(
     cmd,
     frame_info.ptr,
-    gbuffer.ptr
+    &display->gbuffer
   );
 
   { TracyVkZone(core->tracy_context, cmd, "gpass");
     record_gpass(
       cmd,
       session_state,
-      core.ptr,
+      core,
       descriptor_pool,
-      gpass.ptr,
-      swapchain_description.ptr,
+      &display->gpass,
+      swapchain_description,
       frame_info.ptr,
-      s_gpass.ptr,
+      &session->vulkan.gpass,
       render_list.ptr
     );
   }
@@ -1534,18 +1517,18 @@ void graphics_render(
   record_barrier_before_lpass(
     cmd,
     frame_info.ptr,
-    lbuffer.ptr
+    &display->lbuffer
   );
 
   record_barrier_gpass_lpass(
     cmd,
     frame_info.ptr,
-    zbuffer.ptr,
-    gbuffer.ptr
+    &display->zbuffer,
+    &display->gbuffer
   );
 
   datum::probe_attention::clear_and_transition_into_lpass(
-    probe_attention.ptr,
+    &display->probe_attention,
     frame_info,
     cmd
   );
@@ -1553,31 +1536,31 @@ void graphics_render(
   { TracyVkZone(core->tracy_context, cmd, "lpass");
     record_lpass(
       cmd,
-      core.ptr,
-      lpass.ptr,
-      swapchain_description.ptr,
+      core,
+      &display->lpass,
+      swapchain_description,
       frame_info.ptr,
-      s_lpass.ptr,
-      fullscreen_quad.ptr,
+      &session->vulkan.lpass,
+      &session->vulkan.fullscreen_quad,
       tlas_result->accel
     );
   }
 
   datum::probe_attention::transition_previous_from_write_to_read(
-    probe_attention.ptr,
+    &display->probe_attention,
     frame_info,
     swapchain_description,
     cmd
   );
 
   datum::probe_radiance::transition_into_probe_measure(
-    probe_radiance,
+    &display->probe_radiance,
     frame_info,
     cmd
   );
 
   datum::probe_irradiance::transition_previous_into_probe_measure(
-    probe_irradiance,
+    &display->probe_irradiance,
     frame_info,
     swapchain_description,
     cmd
@@ -1585,8 +1568,8 @@ void graphics_render(
 
   { TracyVkZone(core->tracy_context, cmd, "probe_measure");
     step::probe_measure::record(
-      probe_measure_ddata,
-      probe_measure_sdata,
+      &display->probe_measure,
+      &session->vulkan.probe_measure,
       frame_info,
       core,
       descriptor_pool,
@@ -1598,20 +1581,20 @@ void graphics_render(
   }
 
   datum::probe_radiance::transition_from_probe_measure_into_collect(
-    probe_radiance,
+    &display->probe_radiance,
     frame_info,
     cmd
   );
 
   datum::probe_irradiance::transition_previous_from_probe_measure_into_collect(
-    probe_irradiance,
+    &display->probe_irradiance,
     frame_info,
     swapchain_description,
     cmd
   );
 
   datum::probe_irradiance::transition_into_probe_collect(
-    probe_irradiance,
+    &display->probe_irradiance,
     frame_info,
     swapchain_description,
     cmd
@@ -1619,15 +1602,15 @@ void graphics_render(
 
   { TracyVkZone(core->tracy_context, cmd, "probe_collect");
     step::probe_collect::record(
-      probe_collect_ddata,
-      probe_collect_sdata,
+      &display->probe_collect,
+      &session->vulkan.probe_collect,
       frame_info,
       cmd
     );
   }
 
   datum::probe_irradiance::transition_from_probe_collect_into_indirect_light(
-    probe_irradiance,
+    &display->probe_irradiance,
     frame_info,
     cmd
   );
@@ -1635,37 +1618,37 @@ void graphics_render(
   { TracyVkZone(core->tracy_context, cmd, "indirect_light");
     step::indirect_light::record(
       cmd,
-      indirect_light_ddata,
-      indirect_light_sdata,
+      &display->indirect_light,
+      &session->vulkan.indirect_light,
       frame_info,
       swapchain_description,
-      fullscreen_quad
+      &session->vulkan.fullscreen_quad
     );
   }
 
   record_barrier_before_finalpass(
     cmd,
     frame_info.ptr,
-    swapchain_description.ptr,
-    lbuffer.ptr,
-    final_image.ptr
+    swapchain_description,
+    &display->lbuffer,
+    &display->final_image
   );
 
   record_barrier_lpass_finalpass(
     cmd,
     frame_info.ptr,
-    lbuffer.ptr
+    &display->lbuffer
   );
 
   { TracyVkZone(core->tracy_context, cmd, "finalpass");
     record_finalpass(
       cmd,
-      finalpass.ptr,
-      swapchain_description.ptr,
+      &display->finalpass,
+      swapchain_description,
       frame_info.ptr,
-      lbuffer.ptr,
-      final_image.ptr,
-      s_finalpass.ptr
+      &display->lbuffer,
+      &display->final_image,
+      &session->vulkan.finalpass
     );
   }
 
@@ -1673,7 +1656,7 @@ void graphics_render(
   record_barrier_finalpass_imgui(
     cmd,
     frame_info.ptr,
-    final_image.ptr
+    &display->final_image
   );
 
   { // end

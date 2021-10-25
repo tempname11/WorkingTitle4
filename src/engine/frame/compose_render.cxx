@@ -65,7 +65,6 @@ void compose_render(
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Use<engine::display::Data::CommandPools> command_pools,
   Ref<engine::display::Data::FrameInfo> frame_info,
-  Use<engine::display::Data::FinalImage> final_image,
   Own<engine::misc::ComposeData> data
 ) {
   ZoneScoped;
@@ -133,7 +132,7 @@ void compose_render(
           .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
           .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
           .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-          .image = final_image->stakes[frame_info->inflight_index].image,
+          .image = display->final_image.stakes[frame_info->inflight_index].image,
           .subresourceRange = {
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
             .baseMipLevel = 0,
@@ -173,7 +172,7 @@ void compose_render(
       };
       vkCmdCopyImage(
         cmd,
-        final_image->stakes[frame_info->inflight_index].image,
+        display->final_image.stakes[frame_info->inflight_index].image,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         presentation->swapchain_images[presentation->latest_image_index],
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -217,7 +216,7 @@ void compose_render(
       };
       vkCmdCopyImageToBuffer(
         cmd,
-        final_image->stakes[frame_info->inflight_index].image,
+        display->final_image.stakes[frame_info->inflight_index].image,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         buffer.buffer,
         1,
