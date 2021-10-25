@@ -234,10 +234,8 @@ void gltf_converter(
       { ZoneScopedN("vertices");
         assert(primitive.attributes.contains("POSITION"));
         assert(primitive.attributes.contains("NORMAL"));
-        assert(primitive.attributes.contains("TEXCOORD_0"));
 
         auto accessor_position = &model.accessors[primitive.attributes["POSITION"]];
-        auto accessor_texcoord = &model.accessors[primitive.attributes["TEXCOORD_0"]];
         auto accessor_normal = &model.accessors[primitive.attributes["NORMAL"]];
         auto accessor_tangent = (primitive.attributes.contains("TANGENT")
           ? &model.accessors[primitive.attributes["TANGENT"]]
@@ -245,7 +243,6 @@ void gltf_converter(
         );
 
         auto count = accessor_position->count;
-        assert(accessor_position->count == accessor_texcoord->count);
         assert(accessor_position->count == accessor_normal->count);
         assert(accessor_position->count == accessor_tangent->count);
 
@@ -254,10 +251,17 @@ void gltf_converter(
         auto buffer_view_position = &model.bufferViews[accessor_position->bufferView];
         auto buffer_position = &model.buffers[buffer_view_position->buffer];
 
-        assert(accessor_texcoord->type == TINYGLTF_TYPE_VEC2);
-        assert(accessor_texcoord->componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
-        auto buffer_view_texcoord = &model.bufferViews[accessor_texcoord->bufferView];
-        auto buffer_texcoord = &model.buffers[buffer_view_texcoord->buffer];
+        tinygltf::Accessor *accessor_texcoord = nullptr;
+        tinygltf::BufferView *buffer_view_texcoord = nullptr;
+        tinygltf::Buffer *buffer_texcoord = nullptr;
+        if (primitive.attributes.contains("TEXCOORD_0")) {
+          auto accessor_texcoord = &model.accessors[primitive.attributes["TEXCOORD_0"]];
+          assert(accessor_position->count == accessor_texcoord->count);
+          assert(accessor_texcoord->type == TINYGLTF_TYPE_VEC2);
+          assert(accessor_texcoord->componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
+          auto buffer_view_texcoord = &model.bufferViews[accessor_texcoord->bufferView];
+          auto buffer_texcoord = &model.buffers[buffer_view_texcoord->buffer];
+        }
 
         assert(accessor_normal->type == TINYGLTF_TYPE_VEC3);
         assert(accessor_normal->componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
@@ -285,17 +289,20 @@ void gltf_converter(
           );
           assert(offset_position + sizeof(glm::vec3) <= buffer_position->data.size());
 
-          auto stride_texcoord = (
-            buffer_view_texcoord->byteStride > 0
-              ? buffer_view_texcoord->byteStride
-              : sizeof(glm::vec2)
-          );
-          auto offset_texcoord = (0
-            + accessor_texcoord->byteOffset
-            + buffer_view_texcoord->byteOffset
-            + i * stride_texcoord
-          );
-          assert(offset_texcoord + sizeof(glm::vec2) <= buffer_texcoord->data.size());
+          uint64_t offset_texcoord = 0;
+          if (buffer_view_texcoord && accessor_texcoord && buffer_texcoord) {
+            auto stride_texcoord = (
+              buffer_view_texcoord->byteStride > 0
+                ? buffer_view_texcoord->byteStride
+                : sizeof(glm::vec2)
+            );
+            offset_texcoord = (0
+              + accessor_texcoord->byteOffset
+              + buffer_view_texcoord->byteOffset
+              + i * stride_texcoord
+            );
+            assert(offset_texcoord + sizeof(glm::vec2) <= buffer_texcoord->data.size());
+          }
 
           auto stride_normal = (
             buffer_view_normal->byteStride > 0
@@ -326,12 +333,16 @@ void gltf_converter(
           auto normal = *((glm::vec3 *) (&buffer_normal->data[offset_normal]));
           auto tangent = *((glm::vec3 *) (&buffer_tangent->data[offset_tangent]));
 
+          auto uv = buffer_texcoord
+            ? *((glm::vec2 *) (&buffer_texcoord->data[offset_texcoord]))
+            : glm::vec2(0.0f);
+
           engine::common::mesh::VertexT06 vertex = {
             .position = *((glm::vec3 *) (&buffer_position->data[offset_position])),
             .tangent = tangent,
             .bitangent = glm::cross(normal, tangent),
             .normal = normal,
-            .uv = *((glm::vec2 *) (&buffer_texcoord->data[offset_texcoord])),
+            .uv = uv,
           };
           float epsilon = 1e-3;
           assert(vertex.position.x + epsilon >= accessor_position->minValues[0]);
