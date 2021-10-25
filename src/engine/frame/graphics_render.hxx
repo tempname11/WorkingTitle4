@@ -18,6 +18,7 @@ void graphics_render(
   Own<engine::display::Data::Prepass> prepass,
   Own<engine::display::Data::GPass> gpass,
   Own<engine::display::Data::LPass> lpass,
+  Own<engine::display::Data::Common> common,
   Own<engine::step::probe_measure::DData> probe_measure_ddata,
   Own<engine::step::probe_collect::DData> probe_collect_ddata,
   Own<engine::step::indirect_light::DData> indirect_light_ddata,

@@ -12,7 +12,6 @@
 #include "imgui_render.hxx"
 #include "imgui_submit.hxx"
 #include "loading_dynamic.hxx"
-#include "prepare_uniforms.hxx"
 #include "present.hxx"
 #include "readback.hxx"
 #include "reset_pools.hxx"
@@ -130,16 +129,6 @@ void _begin(
       frame_info
     ),
     lib::task::create(
-      prepare_uniforms,
-      &session->vulkan.core,
-      &data->swapchain_description,
-      frame_info,
-      &session->state,
-      &data->common,
-      &data->gpass,
-      &data->lpass
-    ),
-    lib::task::create(
       generate_render_list,
       session.ptr,
       &session->scene,
@@ -159,6 +148,7 @@ void _begin(
       &data->prepass,
       &data->gpass,
       &data->lpass,
+      &data->common,
       &data->probe_measure,
       &data->probe_collect,
       &data->indirect_light,
