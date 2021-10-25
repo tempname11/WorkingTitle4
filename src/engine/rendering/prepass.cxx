@@ -1,6 +1,6 @@
 #include <src/global.hxx>
 #include <src/engine/common/mesh.hxx>
-#include "image_formats.hxx"
+#include "../image_formats.hxx"
 #include "prepass.hxx"
 
 void init_session_prepass(

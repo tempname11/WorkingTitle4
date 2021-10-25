@@ -1,7 +1,7 @@
 #include <src/global.hxx>
 #include <src/embedded.hxx>
 #include <src/engine/common/ubo.hxx>
-#include "image_formats.hxx"
+#include "../image_formats.hxx"
 #include "lpass.hxx"
 
 void init_session_lpass(
@@ -468,7 +468,7 @@ void claim_rendering_lpass(
 void init_rendering_lpass(
   engine::display::Data::LPass *out,
   engine::display::Data::LPass::Stakes stakes,
-  engine::display::Data::Common *common,
+  engine::display::Data::Helpers *helpers,
   engine::display::Data::SwapchainDescription *swapchain_description,
   engine::display::Data::ZBuffer *zbuffer,
   engine::display::Data::GBuffer *gbuffer,
@@ -487,7 +487,7 @@ void init_rendering_lpass(
     }
     VkDescriptorSetAllocateInfo allocate_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = common->descriptor_pool,
+      .descriptorPool = helpers->descriptor_pool,
       .descriptorSetCount = swapchain_description->image_count,
       .pSetLayouts = layouts.data(),
     };
@@ -518,7 +518,7 @@ void init_rendering_lpass(
           .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
         VkDescriptorBufferInfo ubo_frame_info = {
-          .buffer = common->stakes.ubo_frame[i].buffer,
+          .buffer = helpers->stakes.ubo_frame[i].buffer,
           .offset = 0,
           .range = VK_WHOLE_SIZE,
         };
@@ -587,7 +587,7 @@ void init_rendering_lpass(
     }
     VkDescriptorSetAllocateInfo allocate_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = common->descriptor_pool,
+      .descriptorPool = helpers->descriptor_pool,
       .descriptorSetCount = swapchain_description->image_count,
       .pSetLayouts = layouts.data(),
     };

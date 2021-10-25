@@ -1,12 +1,14 @@
 #include <src/global.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/common/ubo.hxx>
-#include "gpass.hxx"
+#include "rendering/gpass.hxx"
 
-void claim_rendering_common(
+namespace engine::helpers {
+
+void claim(
   size_t swapchain_image_count,
   std::vector<lib::gfx::multi_alloc::Claim> &claims,
-  engine::display::Data::Common::Stakes *out
+  engine::display::Data::Helpers::Stakes *out
 ) {
   ZoneScoped;
   *out = {};
@@ -33,9 +35,9 @@ void claim_rendering_common(
   }
 }
 
-void init_rendering_common(
-  engine::display::Data::Common::Stakes stakes,
-  engine::display::Data::Common *out,
+void init(
+  engine::display::Data::Helpers::Stakes stakes,
+  engine::display::Data::Helpers *out,
   engine::session::Vulkan::Core *core
 ) {
   VkDescriptorPool descriptor_pool;
@@ -78,8 +80,8 @@ void init_rendering_common(
   };
 }
 
-void deinit_rendering_common(
-  engine::display::Data::Common *it,
+void deinit(
+  engine::display::Data::Helpers *it,
   engine::session::Vulkan::Core *core
 ) {
   vkDestroyDescriptorPool(
@@ -88,3 +90,5 @@ void deinit_rendering_common(
     core->allocator
   );
 }
+
+} // namespace

@@ -181,7 +181,7 @@ void deinit_session_finalpass(
 
 void init_rendering_finalpass(
   engine::display::Data::Finalpass *out,
-  engine::display::Data::Common *common,
+  engine::display::Data::Helpers *helpers,
   engine::display::Data::SwapchainDescription *swapchain_description,
   engine::display::Data::ZBuffer *zbuffer,
   engine::display::Data::LBuffer *lbuffer,
@@ -199,7 +199,7 @@ void init_rendering_finalpass(
   {
     VkDescriptorSetAllocateInfo allocate_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = common->descriptor_pool,
+      .descriptorPool = helpers->descriptor_pool,
       .descriptorSetCount = swapchain_description->image_count,
       .pSetLayouts = layouts.data(),
     };
@@ -243,7 +243,7 @@ void init_rendering_finalpass(
       };
       */
       VkDescriptorBufferInfo ubo_frame_info = {
-        .buffer = common->stakes.ubo_frame[i].buffer,
+        .buffer = helpers->stakes.ubo_frame[i].buffer,
         .offset = 0,
         .range = VK_WHOLE_SIZE,
       };

@@ -9,7 +9,7 @@ namespace engine::step::probe_measure {
 void init_ddata(
   DData *out,
   Use<SData> sdata,
-  Own<display::Data::Common> common,
+  Own<display::Data::Helpers> helpers,
   engine::display::Data::LPass::Stakes* lpass_stakes,
   Use<datum::probe_radiance::DData> lbuffer,
   Use<datum::probe_irradiance::DData> probe_irradiance,
@@ -28,7 +28,7 @@ void init_ddata(
   {
     VkDescriptorSetAllocateInfo allocate_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = common->descriptor_pool,
+      .descriptorPool = helpers->descriptor_pool,
       .descriptorSetCount = swapchain_description->image_count,
       .pSetLayouts = layouts.data(),
     };
@@ -66,7 +66,7 @@ void init_ddata(
       .sampler = sdata->sampler_albedo,
     };
     VkDescriptorBufferInfo ubo_frame_info = {
-      .buffer = common->stakes.ubo_frame[i].buffer,
+      .buffer = helpers->stakes.ubo_frame[i].buffer,
       .offset = 0,
       .range = VK_WHOLE_SIZE,
     };

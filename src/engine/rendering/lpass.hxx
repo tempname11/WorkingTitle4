@@ -22,7 +22,7 @@ void claim_rendering_lpass(
 void init_rendering_lpass(
   engine::display::Data::LPass *out,
   engine::display::Data::LPass::Stakes stakes,
-  engine::display::Data::Common *common,
+  engine::display::Data::Helpers *helpers,
   engine::display::Data::SwapchainDescription *swapchain_description,
   engine::display::Data::ZBuffer *zbuffer,
   engine::display::Data::GBuffer *gbuffer,

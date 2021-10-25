@@ -3,19 +3,23 @@
 #include "../display/data.hxx"
 #include "../session/data.hxx"
 
-void claim_rendering_common(
+namespace engine::helpers {
+
+void claim(
   size_t swapchain_image_count,
   std::vector<lib::gfx::multi_alloc::Claim> &claims,
-  engine::display::Data::Common::Stakes *out
+  engine::display::Data::Helpers::Stakes *out
 );
 
-void init_rendering_common(
-  engine::display::Data::Common::Stakes stakes,
-  engine::display::Data::Common *out,
+void init(
+  engine::display::Data::Helpers::Stakes stakes,
+  engine::display::Data::Helpers *out,
   engine::session::Vulkan::Core *core
 );
 
-void deinit_rendering_common(
-  engine::display::Data::Common *it,
+void deinit(
+  engine::display::Data::Helpers *it,
   engine::session::Vulkan::Core *core
 );
+
+} // namespace

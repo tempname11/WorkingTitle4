@@ -142,7 +142,7 @@ void _begin(
       &session->state,
       &data->command_pools,
       &data->descriptor_pools,
-      &data->common,
+      &data->helpers,
       &frame_data->render_list,
       &frame_data->graphics_data
     ),

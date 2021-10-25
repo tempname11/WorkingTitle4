@@ -9,7 +9,7 @@ namespace engine::step::probe_collect {
 void init_ddata(
   DData *out,
   Use<SData> sdata,
-  Own<display::Data::Common> common,
+  Own<display::Data::Helpers> helpers,
   Use<datum::probe_radiance::DData> probe_radiance,
   Use<datum::probe_irradiance::DData> probe_irradiance,
   Use<datum::probe_attention::DData> probe_attention,
@@ -27,7 +27,7 @@ void init_ddata(
   {
     VkDescriptorSetAllocateInfo allocate_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = common->descriptor_pool,
+      .descriptorPool = helpers->descriptor_pool,
       .descriptorSetCount = swapchain_description->image_count,
       .pSetLayouts = layouts.data(),
     };
@@ -58,7 +58,7 @@ void init_ddata(
       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
     };
     VkDescriptorBufferInfo ubo_frame_info = {
-      .buffer = common->stakes.ubo_frame[i].buffer,
+      .buffer = helpers->stakes.ubo_frame[i].buffer,
       .offset = 0,
       .range = VK_WHOLE_SIZE,
     };

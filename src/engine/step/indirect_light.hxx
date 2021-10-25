@@ -23,7 +23,7 @@ void init_ddata(
   DData *out,
   SData *sdata,
   Ref<engine::session::Vulkan::Core> core,
-  Own<engine::display::Data::Common> common,
+  Own<engine::display::Data::Helpers> helpers,
   Use<display::Data::GBuffer> gbuffer,
   Use<display::Data::ZBuffer> zbuffer,
   Use<display::Data::LBuffer> lbuffer,

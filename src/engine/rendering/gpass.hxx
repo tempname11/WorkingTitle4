@@ -29,7 +29,7 @@ void claim_rendering_gpass(
 
 void init_rendering_gpass(
   engine::display::Data::GPass *out,
-  engine::display::Data::Common *common,
+  engine::display::Data::Helpers *helpers,
   engine::display::Data::GPass::Stakes stakes,
   engine::display::Data::ZBuffer *zbuffer,
   engine::display::Data::GBuffer *gbuffer,

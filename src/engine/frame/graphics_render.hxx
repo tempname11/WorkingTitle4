@@ -14,7 +14,7 @@ void graphics_render(
   Use<engine::session::Data::State> session_state,
   Use<engine::display::Data::CommandPools> command_pools,
   Use<engine::display::Data::DescriptorPools> descriptor_pools,
-  Own<engine::display::Data::Common> common,
+  Own<engine::display::Data::Helpers> helpers,
   Use<engine::misc::RenderList> render_list,
   Own<engine::misc::GraphicsData> data
 );

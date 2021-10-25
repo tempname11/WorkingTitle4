@@ -21,7 +21,7 @@ void deinit_sdata(
 void init_ddata(
   DData *out,
   Use<SData> sdata,
-  Own<engine::display::Data::Common> common,
+  Own<engine::display::Data::Helpers> helpers,
   Use<datum::probe_radiance::DData> probe_radiance,
   Use<datum::probe_irradiance::DData> probe_irradiance,
   Use<datum::probe_attention::DData> probe_attention,

@@ -1236,7 +1236,7 @@ void prepare_uniforms(
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Ref<engine::display::Data::FrameInfo> frame_info,
   Use<engine::session::Data::State> session_state,
-  Own<engine::display::Data::Common> common,
+  Own<engine::display::Data::Helpers> helpers,
   Own<engine::display::Data::GPass> gpass,
   Own<engine::display::Data::LPass> lpass
 ) {
@@ -1347,7 +1347,7 @@ void prepare_uniforms(
         sizeof(engine::common::ubo::ProbeCascade)
       );
     }
-    auto stake = &common->stakes.ubo_frame[frame_info->inflight_index];
+    auto stake = &helpers->stakes.ubo_frame[frame_info->inflight_index];
     void * dst;
     auto result = vkMapMemory(
       core->device,
@@ -1390,7 +1390,7 @@ void graphics_render(
   Use<engine::session::Data::State> session_state,
   Use<engine::display::Data::CommandPools> command_pools,
   Use<engine::display::Data::DescriptorPools> descriptor_pools,
-  Own<engine::display::Data::Common> common,
+  Own<engine::display::Data::Helpers> helpers,
   Use<engine::misc::RenderList> render_list,
   Own<engine::misc::GraphicsData> data
 ) {
@@ -1431,7 +1431,7 @@ void graphics_render(
     swapchain_description,
     frame_info,
     session_state,
-    common,
+    helpers,
     &display->gpass,
     &display->lpass
   );

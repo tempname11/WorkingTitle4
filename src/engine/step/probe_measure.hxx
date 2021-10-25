@@ -22,7 +22,7 @@ void deinit_sdata(
 void init_ddata(
   DData *out,
   Use<SData> sdata,
-  Own<display::Data::Common> common,
+  Own<display::Data::Helpers> helpers,
   engine::display::Data::LPass::Stakes* lpass_stakes,
   Use<datum::probe_radiance::DData> lbuffer,
   Use<datum::probe_irradiance::DData> probe_irradiance,

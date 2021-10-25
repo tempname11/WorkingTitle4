@@ -15,7 +15,7 @@ void deinit_session_finalpass(
 
 void init_rendering_finalpass(
   engine::display::Data::Finalpass *out,
-  engine::display::Data::Common *common,
+  engine::display::Data::Helpers *helpers,
   engine::display::Data::SwapchainDescription *swapchain_description,
   engine::display::Data::ZBuffer *zbuffer,
   engine::display::Data::LBuffer *lbuffer,

@@ -5,8 +5,8 @@
 #include <src/engine/constants.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/display/cleanup.hxx>
-#include <src/engine/rendering/common.hxx>
-#include <src/engine/rendering/image_formats.hxx>
+#include <src/engine/helpers.hxx>
+#include <src/engine/image_formats.hxx>
 #include <src/engine/rendering/prepass.hxx>
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
@@ -318,7 +318,7 @@ void try_rendering(
     core
   );
 
-  engine::display::Data::Common::Stakes common_stakes;
+  engine::display::Data::Helpers::Stakes helpers_stakes;
   engine::display::Data::GPass::Stakes gpass_stakes;
   engine::display::Data::LPass::Stakes lpass_stakes;
   { ZoneScopedN(".multi_alloc");
@@ -331,10 +331,10 @@ void try_rendering(
     display->lbuffer.stakes.resize(swapchain_image_count);
     display->final_image.stakes.resize(swapchain_image_count);
 
-    claim_rendering_common(
+    engine::helpers::claim(
       swapchain_image_count,
       claims,
-      &common_stakes
+      &helpers_stakes
     );
 
     claim_rendering_gpass(
@@ -697,9 +697,9 @@ void try_rendering(
     }
   }
 
-  init_rendering_common(
-    common_stakes,
-    &display->common,
+  engine::helpers::init(
+    helpers_stakes,
+    &display->helpers,
     &vulkan->core
   );
 
@@ -713,7 +713,7 @@ void try_rendering(
 
   init_rendering_gpass(
     &display->gpass,
-    &display->common,
+    &display->helpers,
     gpass_stakes,
     &display->zbuffer,
     &display->gbuffer,
@@ -725,7 +725,7 @@ void try_rendering(
   init_rendering_lpass(
     &display->lpass,
     lpass_stakes,
-    &display->common,
+    &display->helpers,
     &display->swapchain_description,
     &display->zbuffer,
     &display->gbuffer,
@@ -737,7 +737,7 @@ void try_rendering(
   engine::step::probe_measure::init_ddata(
     &display->probe_measure,
     &session->vulkan.probe_measure,
-    &display->common,
+    &display->helpers,
     &display->lpass.stakes,
     &display->probe_radiance,
     &display->probe_irradiance,
@@ -749,7 +749,7 @@ void try_rendering(
   engine::step::probe_collect::init_ddata(
     &display->probe_collect,
     &session->vulkan.probe_collect,
-    &display->common,
+    &display->helpers,
     &display->probe_radiance,
     &display->probe_irradiance,
     &display->probe_attention,
@@ -761,7 +761,7 @@ void try_rendering(
     &display->indirect_light,
     &session->vulkan.indirect_light,
     &session->vulkan.core,
-    &display->common,
+    &display->helpers,
     &display->gbuffer,
     &display->zbuffer,
     &display->lbuffer,
@@ -772,7 +772,7 @@ void try_rendering(
 
   init_rendering_finalpass(
     &display->finalpass,
-    &display->common,
+    &display->helpers,
     &display->swapchain_description,
     &display->zbuffer,
     &display->lbuffer,
@@ -920,7 +920,7 @@ void try_rendering(
         .Device = session->vulkan.core.device,
         .QueueFamily = session->vulkan.core.queue_family_index,
         .Queue = session->vulkan.queue_work,
-        .DescriptorPool = display->common.descriptor_pool,
+        .DescriptorPool = display->helpers.descriptor_pool,
         .Subpass = 0,
         .MinImageCount = display->swapchain_description.image_count,
         .ImageCount = display->swapchain_description.image_count,
@@ -1009,7 +1009,7 @@ void try_rendering(
       &display->gbuffer,
       &display->lbuffer,
       &display->final_image,
-      &display->common,
+      &display->helpers,
       &display->prepass,
       &display->gpass,
       &display->lpass,

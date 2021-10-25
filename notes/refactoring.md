@@ -1,12 +1,12 @@
 # Refactoring TODO
 
+- split off `display::init` from `try_rendering`.
+  (And also try to use `*data = {...};` style there.)
+
 ## big chunks
 - engine::step::* and engine::datum::* for older stuff
 - split `graphics_render` into smaller parts.
 - `session/setup.cxx` does too much and should be split up.
-
-- split off `display::init` from `try_rendering`.
-  (And also try to use `*data = {...};` style there.)
 
 ## files
 

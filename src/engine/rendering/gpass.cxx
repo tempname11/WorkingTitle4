@@ -1,7 +1,7 @@
 #include <src/global.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/common/ubo.hxx>
-#include "image_formats.hxx"
+#include "../image_formats.hxx"
 #include "gpass.hxx"
 
 void init_session_gpass(
@@ -472,7 +472,7 @@ void claim_rendering_gpass(
 
 void init_rendering_gpass(
   engine::display::Data::GPass *out,
-  engine::display::Data::Common *common,
+  engine::display::Data::Helpers *helpers,
   engine::display::Data::GPass::Stakes stakes,
   engine::display::Data::ZBuffer *zbuffer,
   engine::display::Data::GBuffer *gbuffer,
@@ -490,7 +490,7 @@ void init_rendering_gpass(
     }
     VkDescriptorSetAllocateInfo allocate_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = common->descriptor_pool,
+      .descriptorPool = helpers->descriptor_pool,
       .descriptorSetCount = swapchain_description->image_count,
       .pSetLayouts = layouts.data(),
     };
@@ -504,7 +504,7 @@ void init_rendering_gpass(
     }
     for (size_t i = 0; i < swapchain_description->image_count; i++) {
       VkDescriptorBufferInfo ubo_frame_info = {
-        .buffer = common->stakes.ubo_frame[i].buffer,
+        .buffer = helpers->stakes.ubo_frame[i].buffer,
         .offset = 0,
         .range = VK_WHOLE_SIZE,
       };

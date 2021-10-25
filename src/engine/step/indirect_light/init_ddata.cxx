@@ -9,7 +9,7 @@ void init_ddata(
   DData *out,
   SData *sdata,
   Ref<engine::session::Vulkan::Core> core,
-  Own<display::Data::Common> common,
+  Own<display::Data::Helpers> helpers,
   Use<display::Data::GBuffer> gbuffer,
   Use<display::Data::ZBuffer> zbuffer,
   Use<display::Data::LBuffer> lbuffer,
@@ -30,7 +30,7 @@ void init_ddata(
 
     VkDescriptorSetAllocateInfo allocate_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool = common->descriptor_pool,
+      .descriptorPool = helpers->descriptor_pool,
       .descriptorSetCount = swapchain_description->image_count,
       .pSetLayouts = layouts.data(),
     };
@@ -71,7 +71,7 @@ void init_ddata(
         .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
       };
       VkDescriptorBufferInfo ubo_frame_info = {
-        .buffer = common->stakes.ubo_frame[i].buffer,
+        .buffer = helpers->stakes.ubo_frame[i].buffer,
         .offset = 0,
         .range = VK_WHOLE_SIZE,
       };

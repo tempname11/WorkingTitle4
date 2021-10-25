@@ -1,6 +1,6 @@
 #include <vulkan/vulkan.h>
 #include <src/lib/gfx/multi_alloc.hxx>
-#include <src/engine/rendering/common.hxx>
+#include <src/engine/helpers.hxx>
 #include <src/engine/rendering/prepass.hxx>
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
@@ -62,8 +62,8 @@ void cleanup(
     );
   }
 
-  deinit_rendering_common(
-    &data->common,
+  engine::helpers::deinit(
+    &data->helpers,
     core
   );
 

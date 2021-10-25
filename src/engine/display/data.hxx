@@ -112,13 +112,13 @@ struct Data : lib::task::ParentResource {
     std::vector<VkImageView> views;
   } final_image;
 
-  struct Common {
+  struct Helpers {
     VkDescriptorPool descriptor_pool;
 
     struct Stakes {
       std::vector<lib::gfx::multi_alloc::StakeBuffer> ubo_frame;
     } stakes;
-  } common;
+  } helpers;
 
   struct Prepass {
     std::vector<VkFramebuffer> framebuffers;
