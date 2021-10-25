@@ -18,7 +18,8 @@
 #include <src/engine/step/probe_collect.hxx>
 #include <src/engine/step/indirect_light.hxx>
 #include <src/engine/frame/schedule_all.hxx>
-#include "try_rendering.hxx"
+
+namespace engine::display {
 
 void _imgui_setup_cleanup(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
@@ -39,33 +40,16 @@ void _imgui_setup_cleanup(
     core->allocator
   );
 }
-void try_rendering(
-  lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
+
+void setup(
+  lib::task::ContextBase *ctx,
   Ref<lib::Task> session_iteration_yarn_end,
-  Own<engine::session::Data> session
+  Ref<engine::session::Data> session,
+  VkSurfaceCapabilitiesKHR *surface_capabilities
 ) {
   ZoneScoped;
-  VkCommandBuffer cmd_imgui_setup = VK_NULL_HANDLE;
-  lib::Task* signal_imgui_setup_finished = nullptr;
-  auto vulkan = &session->vulkan;
-  VkSurfaceCapabilitiesKHR surface_capabilities;
-  { // get capabilities
-    auto result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-      vulkan->physical_device,
-      vulkan->window_surface,
-      &surface_capabilities
-    );
-    assert(result == VK_SUCCESS);
-  }
 
-  if (
-    surface_capabilities.currentExtent.width == 0 ||
-    surface_capabilities.currentExtent.height == 0
-  ) {
-    lib::task::signal(ctx->runner, session_iteration_yarn_end.ptr);
-    return;
-  }
-  
+  auto vulkan = &session->vulkan;
   auto display = new engine::display::Data {};
   // how many images are in swapchain?
   uint32_t swapchain_image_count;
@@ -74,14 +58,14 @@ void try_rendering(
     VkSwapchainCreateInfoKHR swapchain_create_info = {
       .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
       .surface = vulkan->window_surface,
-      .minImageCount = surface_capabilities.minImageCount,
+      .minImageCount = surface_capabilities->minImageCount,
       .imageFormat = SWAPCHAIN_FORMAT,
       .imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
-      .imageExtent = surface_capabilities.currentExtent,
+      .imageExtent = surface_capabilities->currentExtent,
       .imageArrayLayers = 1,
       .imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
       .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
-      .preTransform = surface_capabilities.currentTransform,
+      .preTransform = surface_capabilities->currentTransform,
       .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
       .presentMode = VK_PRESENT_MODE_MAILBOX_KHR,
       .clipped = VK_TRUE,
@@ -142,7 +126,7 @@ void try_rendering(
   }
   display->presentation_failure_state.failure = false;
   display->swapchain_description.image_count = checked_integer_cast<uint8_t>(swapchain_image_count);
-  display->swapchain_description.image_extent = surface_capabilities.currentExtent;
+  display->swapchain_description.image_extent = surface_capabilities->currentExtent;
   display->swapchain_description.image_format = SWAPCHAIN_FORMAT;
   display->latest_frame.timestamp_ns = 0;
   display->latest_frame.elapsed_ns = 0;
@@ -806,6 +790,9 @@ void try_rendering(
     }
   }
 
+  VkCommandBuffer cmd_imgui_setup = VK_NULL_HANDLE;
+  lib::Task* signal_imgui_setup_finished = nullptr;
+
   { ZoneScopedN(".imgui_backend");
     { ZoneScopedN(".setup_command_pool");
       VkCommandPoolCreateInfo create_info = {
@@ -961,6 +948,7 @@ void try_rendering(
       }
     }
   }
+
   auto display_end_yarn = lib::task::create_yarn_signal();
   auto task_frame = lib::task::create(
     engine::frame::schedule_all,
@@ -1046,3 +1034,5 @@ void try_rendering(
     assert(result == VK_SUCCESS);
   }
 }
+
+} // namespace
