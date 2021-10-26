@@ -1,8 +1,8 @@
 # Global Illumination TODO
 
 ## Known bugs
-- Grid boundaries still jump too much. :ProbeWrapping
-- Cascade boundaries are clearly visible.
+- Grid boundary values jump too much on movement.
+- Cascade boundaries are visible.
 - No texture LODs, will manifest in aliasing and perf.
 
 ## Harder tasks

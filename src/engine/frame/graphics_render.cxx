@@ -1294,24 +1294,17 @@ void prepare_uniforms(
     assert(engine::PROBE_CASCADE_COUNT <= engine::common::ubo::MAX_CASCADE_LEVELS);
     for (size_t c = 0; c < engine::PROBE_CASCADE_COUNT; c++) {
       auto delta = engine::PROBE_WORLD_DELTA_C0 * powf(2.0f, c);
-      auto floor_now = glm::floor(
+      auto infinite_grid_min = glm::ivec3(glm::floor(
         (session_state->debug_camera.position - some_world_offset)
-          / delta
-      );
-      auto floor_prev = glm::floor(
+          / delta - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE) + 1.0f
+      ));
+      auto infinite_grid_min_prev = glm::ivec3(glm::floor(
         (session_state->debug_camera_prev.position - some_world_offset)
-          / delta
-      );
+          / delta - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE) + 1.0f
+      ));
       cascades[c] = {
-        .world_position_zero = (
-          floor_now - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE) + 1.0f
-        ) * delta + some_world_offset,
-        .world_position_zero_prev = (
-          floor_prev - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE) + 1.0f
-        ) * delta + some_world_offset,
-        .change_from_prev = glm::ivec3(
-          floor_now - floor_prev
-        ),
+        .infinite_grid_min = infinite_grid_min,
+        .infinite_grid_min_prev = infinite_grid_min_prev,
       };
     };
 
@@ -1336,6 +1329,7 @@ void prepare_uniforms(
         .grid_size_z_factors = engine::PROBE_GRID_SIZE_Z_FACTORS,
         .cascade_count_factors = engine::PROBE_CASCADE_COUNT_FACTORS,
         // .cascades = cascades, // this is done below
+        .grid_world_position_zero = some_world_offset,
         .grid_world_position_delta_c0 = engine::PROBE_WORLD_DELTA_C0,
       },
       .end_marker = 0xDeadBeef,

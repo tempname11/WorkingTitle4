@@ -108,11 +108,14 @@ void main() {
     }
   }
 
-  // :ProbeWrapping
   rayQueryEXT ray_query;
+  ivec3 infinite_grid_min = frame.data.probe.cascades[cascade.level].infinite_grid_min;
   vec3 origin_world = (
-    frame.data.probe.cascades[cascade.level].world_position_zero +
-    cascade.world_position_delta * probe_coord
+    frame.data.probe.grid_world_position_zero +
+    cascade.world_position_delta * (0
+      + (ivec3(probe_coord) - infinite_grid_min) % ivec3(frame.data.probe.grid_size)
+      + infinite_grid_min
+    )
   );
   vec3 raydir_world = get_probe_ray_direction(
     ray_index,
@@ -212,7 +215,7 @@ void main() {
     N,
     frame.data,
     true, // prev
-    cascade.level + 1,
+    min(frame.data.probe.cascade_count - 1, cascade.level + 1),
     probe_irradiance_previous,
     probe_attention_write,
     albedo

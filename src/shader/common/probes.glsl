@@ -75,8 +75,8 @@ vec3 get_indirect_radiance(
   writeonly uimage2D probe_attention,
   vec3 albedo
 ) {
-  vec3 grid_coord_float;
-  ivec3 grid_coord0;
+  vec3 infinite_grid_coord_float;
+  uvec3 grid_coord0;
   bool out_of_bounds;
   uint cascade_level;
   vec3 cascade_world_position_delta;
@@ -87,20 +87,26 @@ vec3 get_indirect_radiance(
     vec3 delta = frame_data.probe.grid_world_position_delta_c0 * pow(2.0, min_cascade_level);
 
     for (uint c = min_cascade_level; c < frame_data.probe.cascade_count; c++) {
-      vec3 world_position_zero = (is_prev
-        ? frame_data.probe.cascades[c].world_position_zero_prev
-        : frame_data.probe.cascades[c].world_position_zero
+      ivec3 infinite_grid_min = (is_prev
+        ? frame_data.probe.cascades[c].infinite_grid_min_prev
+        : frame_data.probe.cascades[c].infinite_grid_min
       );
-      grid_coord_float = (pos_world - world_position_zero) / delta;
-      grid_coord0 = ivec3(floor(grid_coord_float));
-      // :ProbeWrapping
+      infinite_grid_coord_float = (pos_world - frame_data.probe.grid_world_position_zero) / delta;
+      ivec3 infinite_grid_coord = ivec3(floor(infinite_grid_coord_float));
 
       out_of_bounds = (false
-        || any(lessThan(grid_coord0, ivec3(0)))
-        || any(greaterThan(grid_coord0, frame_data.probe.grid_size - 2))
+        || any(lessThan(
+          infinite_grid_coord,
+          infinite_grid_min
+        ))
+        || any(greaterThan(
+          infinite_grid_coord,
+          infinite_grid_min + ivec3(frame_data.probe.grid_size) - 2
+        ))
       );
       
       if (!out_of_bounds || c == frame_data.probe.cascade_count - 1) {
+        grid_coord0 = infinite_grid_coord % frame_data.probe.grid_size;
         cascade_level = c;
         cascade_world_position_delta = delta;
         break;
@@ -110,30 +116,7 @@ vec3 get_indirect_radiance(
     }
   }
 
-  /*
-  vec3 cascade_world_position_delta = (
-    frame_data.probe.grid_world_position_delta_c0 *
-    pow(2.0, cascade_level) // bit shift maybe?
-  );
-
-  vec3 world_position_zero = (is_prev
-    ? frame_data.probe.cascades[cascade_level].world_position_zero_prev
-    : frame_data.probe.cascades[cascade_level].world_position_zero
-  );
-  vec3 grid_coord_float = (
-    (pos_world - world_position_zero) /
-    cascade_world_position_delta
-  );
-
-  ivec3 grid_coord0 = ivec3(floor(grid_coord_float)); // needs to be signed to check bounds
-  
-  out_of_bounds = (false
-    || any(lessThan(grid_coord0, ivec3(0)))
-    || any(greaterThan(grid_coord0, frame_data.probe.grid_size - 2))
-  );
-  */
-
-  vec3 grid_cube_coord = fract(grid_coord_float);
+  vec3 grid_cube_coord = fract(infinite_grid_coord_float);
 
   uvec2 cascade_subcoord = uvec2(
     cascade_level % frame_data.probe.cascade_count_factors.x,
@@ -152,7 +135,7 @@ vec3 get_indirect_radiance(
       (i & 4) == 4 ? 1 : 0
     );
 
-    uvec3 grid_coord = grid_coord0 + grid_cube_vertex_coord;
+    uvec3 grid_coord = (grid_coord0 + grid_cube_vertex_coord) % frame_data.probe.grid_size;
 
     vec3 trilinear = mix(
       1.0 - grid_cube_coord,

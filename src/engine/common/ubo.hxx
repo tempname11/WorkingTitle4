@@ -23,9 +23,8 @@ struct Flags {
 constexpr size_t MAX_CASCADE_LEVELS = 8; // :MaxCascadeLevels
 
 struct ProbeCascade {
-  glm::vec3 world_position_zero;
-  alignas(16) glm::vec3 world_position_zero_prev;
-  alignas(16) glm::ivec3 change_from_prev;
+  glm::ivec3 infinite_grid_min;
+  alignas(16) glm::ivec3 infinite_grid_min_prev;
 };
 
 struct ProbeInfo {
@@ -35,7 +34,8 @@ struct ProbeInfo {
   alignas(16) glm::uvec2 grid_size_z_factors;
   glm::uvec2 cascade_count_factors;
   alignas(16) ProbeCascade cascades[MAX_CASCADE_LEVELS];
-  alignas(16) glm::vec3 grid_world_position_delta_c0; // put it into ProbeCascade as well?
+  alignas(16) glm::vec3 grid_world_position_zero;
+  alignas(16) glm::vec3 grid_world_position_delta_c0;
   float depth_sharpness;
   float normal_bias;
 };
