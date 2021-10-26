@@ -212,6 +212,7 @@ void main() {
     N,
     frame.data,
     true, // prev
+    cascade.level + 1,
     probe_irradiance_previous,
     probe_attention_write,
     albedo

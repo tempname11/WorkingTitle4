@@ -70,21 +70,23 @@ vec3 get_indirect_radiance(
   vec3 N,
   FrameData frame_data,
   bool is_prev,
+  uint min_cascade_level,
   sampler2D probe_irradiance,
   writeonly uimage2D probe_attention,
   vec3 albedo
 ) {
-  bool out_of_bounds = true;
-  uint cascade_level = 0;
-  vec3 cascade_world_position_delta = vec3(0.0);
-  vec3 grid_coord_float = vec3(0.0);
-  ivec3 grid_coord0 = ivec3(0);
+  vec3 grid_coord_float;
+  ivec3 grid_coord0;
+  bool out_of_bounds;
+  uint cascade_level;
+  vec3 cascade_world_position_delta;
   {
     // @Performance: this is written to be obviously correct, but the loop is
     // probably way too slow. Figure out a fast approximation.
 
-    vec3 delta = frame_data.probe.grid_world_position_delta_c0;
-    for (uint c = 0; c < frame_data.probe.cascade_count; c++) {
+    vec3 delta = frame_data.probe.grid_world_position_delta_c0 * pow(2.0, min_cascade_level);
+
+    for (uint c = min_cascade_level; c < frame_data.probe.cascade_count; c++) {
       vec3 world_position_zero = (is_prev
         ? frame_data.probe.cascades[c].world_position_zero_prev
         : frame_data.probe.cascades[c].world_position_zero
@@ -98,7 +100,7 @@ vec3 get_indirect_radiance(
         || any(greaterThan(grid_coord0, frame_data.probe.grid_size - 2))
       );
       
-      if (!out_of_bounds) {
+      if (!out_of_bounds || c == frame_data.probe.cascade_count - 1) {
         cascade_level = c;
         cascade_world_position_delta = delta;
         break;

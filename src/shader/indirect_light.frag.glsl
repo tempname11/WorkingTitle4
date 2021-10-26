@@ -59,6 +59,7 @@ void main() {
     N,
     frame.data,
     false, // is_prev
+    0,
     probe_irradiance,
     probe_attention,
     albedo
