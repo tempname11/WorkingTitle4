@@ -18,6 +18,7 @@ void update_camera(
 
 void CtrlSession::run() {
   {
+    //std::string path = "assets/hogwarts/index.grup";
     std::string path = "assets/sponza-fixed/index.grup";
     task(engine::loading::group::load(
       ctx,
@@ -26,11 +27,6 @@ void CtrlSession::run() {
     ));
     task(update_camera, &session->state);
   }
-
-  advance_frames(20);
-  std::string path = "tmp/sponza.bmp";
-  screenshot_next_frame(path);
-  advance_frames(1);
 }
 
 MAIN_MACRO(CtrlSession);

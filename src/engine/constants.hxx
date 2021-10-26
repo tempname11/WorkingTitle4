@@ -10,15 +10,15 @@ const size_t ALLOCATOR_GPU_LOCAL_REGION_SIZE = 1024 * 1024 * 32;
 
 constexpr auto PROBE_WORLD_DELTA_C0 = glm::vec3(1.0f);
 
-constexpr auto PROBE_GRID_SIZE_Z_FACTORS = glm::uvec2(4, 4);
-constexpr auto PROBE_GRID_SIZE = glm::uvec3(16, 16, 16);
+constexpr auto PROBE_GRID_SIZE_Z_FACTORS = glm::uvec2(8, 8);
+constexpr auto PROBE_GRID_SIZE = glm::uvec3(64, 64, 64);
 static_assert(
   PROBE_GRID_SIZE.z ==
   PROBE_GRID_SIZE_Z_FACTORS.x * PROBE_GRID_SIZE_Z_FACTORS.y
 );
 
-constexpr auto PROBE_RAY_COUNT = 64; // :GI_N_Rays
-constexpr auto PROBE_RAY_COUNT_FACTORS = glm::uvec2(8, 8);
+constexpr auto PROBE_RAY_COUNT = 32; // :GI_N_Rays
+constexpr auto PROBE_RAY_COUNT_FACTORS = glm::uvec2(8, 4);
 static_assert(
   PROBE_RAY_COUNT ==
   PROBE_RAY_COUNT_FACTORS.x * PROBE_RAY_COUNT_FACTORS.y

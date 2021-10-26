@@ -4,8 +4,8 @@
 #include "constants.glsl"
 #include "frame.glsl"
 
-const uint PROBE_RAY_COUNT = 64; // GI_N_Rays
-const uvec2 PROBE_RAY_COUNT_FACTORS = uvec2(8, 8);
+const uint PROBE_RAY_COUNT = 32; // GI_N_Rays
+const uvec2 PROBE_RAY_COUNT_FACTORS = uvec2(8, 4);
 
 const uvec2 OCTOMAP_TEXEL_SIZE = uvec2(8, 8); // :ProbeOctoSize
 const float MIN_PROBE_WEIGHT = 0.000001;
