@@ -39,10 +39,10 @@ struct PerInstance {
   VertexBufferRef vertices;
 };
 
-layout(binding = 0, rgba16f) uniform image2D lbuffer; // :LBuffer2_Format
-layout(binding = 1) uniform sampler2D probe_irradiance_previous;
+layout(binding = 0, rgba16f) uniform writeonly image2D lbuffer; // :LBuffer2_Format
+layout(binding = 1) uniform sampler2D probe_irradiance;
 layout(binding = 3) uniform writeonly uimage2D probe_attention_write;
-layout(binding = 4, r32ui) uniform uimage2D probe_attention_prev; // :ProbeAttentionFormat
+layout(binding = 4, r32ui) uniform readonly uimage2D probe_attention_prev; // :ProbeAttentionFormat
 layout(binding = 5) uniform accelerationStructureEXT accel;
 layout(binding = 6) readonly buffer GeometryRefs { PerInstance data[]; } geometry_refs;
 layout(binding = 7) uniform Frame { FrameData data; } frame;
@@ -216,7 +216,7 @@ void main() {
     frame.data,
     true, // prev
     min(frame.data.probe.cascade_count - 1, cascade.level + 1),
-    probe_irradiance_previous,
+    probe_irradiance,
     probe_attention_write,
     albedo
   );

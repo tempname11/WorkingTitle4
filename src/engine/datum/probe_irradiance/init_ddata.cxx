@@ -16,10 +16,8 @@ void init_ddata(
 ) {
   ZoneScoped;
 
-  std::vector<lib::gfx::allocator::Image> images;
+  lib::gfx::allocator::Image image;
   {
-    images.resize(swapchain_description->image_count);
-
     VkImageCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
       .imageType = VK_IMAGE_TYPE_2D,
@@ -41,48 +39,42 @@ void init_ddata(
       .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
 
-    for (size_t i = 0; i < images.size(); i++) {
-      images[i] = lib::gfx::allocator::create_image(
-        allocator_dedicated,
-        core->device,
-        core->allocator,
-        &core->properties.basic,
-        &info
-      );
-    }
+    image = lib::gfx::allocator::create_image(
+      allocator_dedicated,
+      core->device,
+      core->allocator,
+      &core->properties.basic,
+      &info
+    );
   }
 
-  std::vector<VkImageView> views;
+  VkImageView view;
   {
-    views.resize(swapchain_description->image_count);
-
-    for (size_t i = 0; i < views.size(); i++) {
-      VkImageViewCreateInfo create_info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = images[i].image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = FORMAT,
-        .subresourceRange = {
-          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .levelCount = 1,
-          .layerCount = 1,
-        },
-      };
-      {
-        auto result = vkCreateImageView(
-          core->device,
-          &create_info,
-          core->allocator,
-          &views[i]
-        );
-        assert(result == VK_SUCCESS);
-      }
+    VkImageViewCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .image = image.image,
+      .viewType = VK_IMAGE_VIEW_TYPE_2D,
+      .format = FORMAT,
+      .subresourceRange = {
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .levelCount = 1,
+        .layerCount = 1,
+      },
+    };
+    {
+      auto result = vkCreateImageView(
+        core->device,
+        &create_info,
+        core->allocator,
+        &view
+      );
+      assert(result == VK_SUCCESS);
     }
   }
 
   *out = {
-    .images = std::move(images),
-    .views = std::move(views),
+    .image = image,
+    .view = view,
   };
 }
 

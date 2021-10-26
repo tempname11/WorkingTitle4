@@ -49,9 +49,9 @@ void init_ddata(
       .imageView = lbuffer->views[i],
       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
     };
-    VkDescriptorImageInfo probe_irradiance_prev_image_info = {
+    VkDescriptorImageInfo probe_irradiance_image_info = {
       .sampler = sdata->sampler_probe_irradiance,
-      .imageView = probe_irradiance->views[i_prev],
+      .imageView = probe_irradiance->view,
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
     VkDescriptorImageInfo probe_attention_info = {
@@ -90,7 +90,7 @@ void init_ddata(
         .dstBinding = 1,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-        .pImageInfo = &probe_irradiance_prev_image_info,
+        .pImageInfo = &probe_irradiance_image_info,
       },
       {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

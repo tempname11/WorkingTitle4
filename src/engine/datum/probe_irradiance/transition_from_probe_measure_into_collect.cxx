@@ -7,10 +7,9 @@
 
 namespace engine::datum::probe_irradiance {
 
-void transition_into_probe_collect(
+void transition_from_probe_measure_into_collect(
   Use<DData> it,
   Ref<engine::display::Data::FrameInfo> frame_info,
-  Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   VkCommandBuffer cmd
 ) {
   ZoneScoped;
@@ -18,13 +17,16 @@ void transition_into_probe_collect(
     VkImageMemoryBarrier barriers[] = {
       {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .srcAccessMask = 0,
-        .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-        .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
+        .dstAccessMask = VkAccessFlagBits(0
+          | VK_ACCESS_SHADER_READ_BIT
+          | VK_ACCESS_SHADER_WRITE_BIT
+        ),
+        .oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         .newLayout = VK_IMAGE_LAYOUT_GENERAL,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = it->images[frame_info->inflight_index].image,
+        .image = it->image.image,
         .subresourceRange = {
           .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
           .baseMipLevel = 0,
@@ -36,7 +38,7 @@ void transition_into_probe_collect(
     };
     vkCmdPipelineBarrier(
       cmd,
-      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
       0,
       0, nullptr,

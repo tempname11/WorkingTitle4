@@ -50,11 +50,7 @@ void init_ddata(
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
     VkDescriptorImageInfo probe_irradiance_info = {
-      .imageView = probe_irradiance->views[i],
-      .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-    };
-    VkDescriptorImageInfo probe_irradiance_info_previous = {
-      .imageView = probe_irradiance->views[i_prev],
+      .imageView = probe_irradiance->view,
       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
     };
     VkDescriptorBufferInfo ubo_frame_info = {
@@ -74,14 +70,6 @@ void init_ddata(
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         .pImageInfo = &probe_irradiance_info,
-      },
-      {
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = descriptor_sets[i],
-        .dstBinding = 1,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .pImageInfo = &probe_irradiance_info_previous,
       },
       {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

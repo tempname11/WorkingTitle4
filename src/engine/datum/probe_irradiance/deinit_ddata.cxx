@@ -12,13 +12,11 @@ void deinit_ddata(
 ) {
   ZoneScoped;
 
-  for (auto view : it->views) {
-    vkDestroyImageView(
-      core->device,
-      view,
-      core->allocator
-    );
-  }
+  vkDestroyImageView(
+    core->device,
+    it->view,
+    core->allocator
+  );
 }
 
 } // namespace

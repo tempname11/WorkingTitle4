@@ -25,24 +25,15 @@ void transition_from_probe_collect_into_indirect_light(
   VkCommandBuffer cmd
 );
 
-void transition_into_probe_collect(
+void transition_from_probe_measure_into_collect(
   Use<DData> it,
   Ref<display::Data::FrameInfo> frame_info,
-  Ref<display::Data::SwapchainDescription> swapchain_description,
   VkCommandBuffer cmd
 );
 
-void transition_previous_into_probe_measure(
+void transition_into_probe_measure(
   Use<DData> it,
   Ref<display::Data::FrameInfo> frame_info,
-  Ref<display::Data::SwapchainDescription> swapchain_description,
-  VkCommandBuffer cmd
-);
-
-void transition_previous_from_probe_measure_into_collect(
-  Use<DData> it,
-  Ref<display::Data::FrameInfo> frame_info,
-  Ref<display::Data::SwapchainDescription> swapchain_description,
   VkCommandBuffer cmd
 );
 

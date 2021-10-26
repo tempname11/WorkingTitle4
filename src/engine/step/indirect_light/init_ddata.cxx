@@ -63,7 +63,7 @@ void init_ddata(
       };
       VkDescriptorImageInfo probe_irradiance_image_info = {
         .sampler = sdata->sampler_probe_irradiance,
-        .imageView = probe_irradiance->views[i],
+        .imageView = probe_irradiance->view,
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
       VkDescriptorImageInfo probe_attention_image_info = {

@@ -7,8 +7,8 @@
 namespace engine::datum::probe_irradiance {
 
 struct DData {
-  std::vector<lib::gfx::allocator::Image> images;
-  std::vector<VkImageView> views;
+  lib::gfx::allocator::Image image;
+  VkImageView view;
 };
 
 } // namespace

@@ -9,13 +9,10 @@ layout(
   local_size_z = 1
 ) in;
 
-// :ProbeIrradianceFormat
-layout(binding = 0, rgba16f) uniform image2D probe_irradiance;
-layout(binding = 1, rgba16f) uniform image2D probe_irradiance_previous;
-
+layout(binding = 0, rgba16f) uniform image2D probe_irradiance; // :ProbeIrradianceFormat
 layout(binding = 2) uniform sampler2D probe_radiance;
 layout(binding = 3) uniform Frame { FrameData data; } frame;
-layout(binding = 4, r32ui) uniform uimage2D probe_attention_prev; // :ProbeAttentionFormat
+layout(binding = 4, r32ui) uniform readonly uimage2D probe_attention_prev; // :ProbeAttentionFormat
 
 layout(push_constant) uniform Cascade {
   vec3 world_position_delta;
@@ -126,7 +123,7 @@ void main() {
 
   if (frame.data.is_frame_sequential) {
     vec4 previous = imageLoad(
-      probe_irradiance_previous,
+      probe_irradiance,
       irradiance_texel_coord
     );
 

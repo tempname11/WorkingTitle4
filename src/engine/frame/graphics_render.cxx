@@ -1553,10 +1553,9 @@ void graphics_render(
     cmd
   );
 
-  datum::probe_irradiance::transition_previous_into_probe_measure(
+  datum::probe_irradiance::transition_into_probe_measure(
     &display->probe_irradiance,
     frame_info,
-    swapchain_description,
     cmd
   );
 
@@ -1574,23 +1573,15 @@ void graphics_render(
     );
   }
 
+  datum::probe_irradiance::transition_from_probe_measure_into_collect(
+    &display->probe_irradiance,
+    frame_info,
+    cmd
+  );
+
   datum::probe_radiance::transition_from_probe_measure_into_collect(
     &display->probe_radiance,
     frame_info,
-    cmd
-  );
-
-  datum::probe_irradiance::transition_previous_from_probe_measure_into_collect(
-    &display->probe_irradiance,
-    frame_info,
-    swapchain_description,
-    cmd
-  );
-
-  datum::probe_irradiance::transition_into_probe_collect(
-    &display->probe_irradiance,
-    frame_info,
-    swapchain_description,
     cmd
   );
 
