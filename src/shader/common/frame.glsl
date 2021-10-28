@@ -5,7 +5,6 @@ struct FrameFlags {
   bool disable_direct_lighting;
   bool disable_indirect_lighting;
   bool disable_indirect_bounces;
-  bool disable_indirect_attention;
   bool disable_eye_adaptation;
   bool disable_motion_blur;
   bool disable_TAA;
@@ -20,15 +19,14 @@ struct FrameProbeCascade {
   ivec3 infinite_grid_min_prev;
 };
 
-const uint MAX_CASCADE_LEVELS = 8; // :MaxCascadeLevels
+const uint PROBE_CASCADE_COUNT = 8; // :ProbeCascadeCount
+const uvec2 PROBE_CASCADE_COUNT_FACTORS = uvec2(2, 4);
 
 struct FrameProbe {
   mat3 random_orientation;
   uvec3 grid_size;
-  uint cascade_count;
   uvec2 grid_size_z_factors;
-  uvec2 cascade_count_factors;
-  FrameProbeCascade cascades[MAX_CASCADE_LEVELS];
+  FrameProbeCascade cascades[PROBE_CASCADE_COUNT];
   vec3 grid_world_position_zero;
   vec3 grid_world_position_delta_c0;
   float depth_sharpness;

@@ -1,5 +1,8 @@
 #pragma once
 
+extern "C" const char embedded_probe_appoint_comp[];
+extern "C" const size_t embedded_probe_appoint_comp_len;
+
 extern "C" const char embedded_probe_measure_comp[];
 extern "C" const size_t embedded_probe_measure_comp_len;
 

@@ -3,6 +3,7 @@
 #include <src/engine/constants.hxx>
 #include <src/engine/common/ubo.hxx>
 #include <src/engine/common/shared_descriptor_pool.hxx>
+#include <src/engine/step/probe_appoint.hxx>
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
 #include <src/engine/step/indirect_light.hxx>
@@ -49,11 +50,7 @@ void record_geometry_draw_commands(
     }
   }
 
-  auto sampler = (
-    session_state->ubo_flags.debug_A
-      ? s_gpass->sampler_normal
-      : s_gpass->sampler_biased
-  );
+  auto sampler = s_gpass->sampler_biased; // because of TAA
 
   for (size_t i = 0; i < render_list->items.size(); i++) {
     auto &item = render_list->items[i];
@@ -1290,10 +1287,9 @@ void prepare_uniforms(
     auto some_world_offset = glm::vec3(0.5f);
     // @Hack: make sure probes are not in the wall for voxel stuff
 
-    engine::common::ubo::ProbeCascade cascades[engine::common::ubo::MAX_CASCADE_LEVELS];
-    assert(engine::PROBE_CASCADE_COUNT <= engine::common::ubo::MAX_CASCADE_LEVELS);
-    for (size_t c = 0; c < engine::PROBE_CASCADE_COUNT; c++) {
-      auto delta = engine::PROBE_WORLD_DELTA_C0 * powf(2.0f, c);
+    engine::common::ubo::ProbeCascade cascades[PROBE_CASCADE_COUNT];
+    for (size_t c = 0; c < PROBE_CASCADE_COUNT; c++) {
+      auto delta = PROBE_WORLD_DELTA_C0 * powf(2.0f, c);
       auto infinite_grid_min = glm::ivec3(glm::floor(
         (session_state->debug_camera.position - some_world_offset)
           / delta - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE) + 1.0f
@@ -1325,9 +1321,7 @@ void prepare_uniforms(
       .probe_info = {
         .random_orientation = lib::gfx::utilities::get_random_rotation(),
         .grid_size = engine::PROBE_GRID_SIZE,
-        .cascade_count = engine::PROBE_CASCADE_COUNT,
         .grid_size_z_factors = engine::PROBE_GRID_SIZE_Z_FACTORS,
-        .cascade_count_factors = engine::PROBE_CASCADE_COUNT_FACTORS,
         // .cascades = cascades, // this is done below
         .grid_world_position_zero = some_world_offset,
         .grid_world_position_delta_c0 = engine::PROBE_WORLD_DELTA_C0,
@@ -1547,6 +1541,23 @@ void graphics_render(
     cmd
   );
 
+  { TracyVkZone(core->tracy_context, cmd, "probe_appoint");
+    step::probe_appoint::record(
+      &display->probe_appoint,
+      &session->vulkan.probe_appoint,
+      &session->vulkan.probe_workset,
+      frame_info,
+      core,
+      cmd
+    );
+  }
+
+  datum::probe_workset::barrier_from_write_to_read(
+    &session->vulkan.probe_workset,
+    frame_info,
+    cmd
+  );
+
   datum::probe_radiance::transition_into_probe_measure(
     &display->probe_radiance,
     frame_info,
@@ -1566,6 +1577,7 @@ void graphics_render(
       frame_info,
       core,
       descriptor_pool,
+      &session->vulkan.probe_workset,
       tlas_result->buffer_geometry_refs.buffer,
       render_list,
       tlas_result->accel,
@@ -1590,6 +1602,7 @@ void graphics_render(
       &display->probe_collect,
       &session->vulkan.probe_collect,
       frame_info,
+      &session->vulkan.probe_workset,
       cmd
     );
   }

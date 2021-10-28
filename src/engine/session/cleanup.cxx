@@ -6,6 +6,8 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/datum/probe_workset.hxx>
+#include <src/engine/step/probe_appoint.hxx>
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
 #include <src/engine/step/indirect_light.hxx>
@@ -38,6 +40,16 @@ void cleanup(
 
     deinit_session_finalpass(&it->finalpass, core);
 
+    datum::probe_workset::deinit_sdata(
+      &it->probe_workset,
+      core
+    );
+
+    step::probe_appoint::deinit_sdata(
+      &it->probe_appoint,
+      core
+    );
+
     step::probe_measure::deinit_sdata(
       &it->probe_measure,
       core
@@ -60,6 +72,18 @@ void cleanup(
         it->core.allocator
       );
     }
+
+    lib::gfx::allocator::deinit(
+      &it->allocator_host,
+      it->core.device,
+      it->core.allocator
+    );
+
+    lib::gfx::allocator::deinit(
+      &it->allocator_device,
+      it->core.device,
+      it->core.allocator
+    );
 
     { ZoneScopedN(".uploader");
       engine::uploader::deinit(

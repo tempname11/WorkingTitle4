@@ -14,17 +14,15 @@
 - Custom CPU allocators (frame, "short-term") :Better_CPU_Allocators
 - Way too many allocations in  `lib::task` implementation.
 - All file IO assumes little endian.
+- When ray tracing, no texture LODs, will manifest in aliasing and perf.
 
 # minor performance
-- Shaders need `readonly`/`writeonly`/other qualifiers for perf.
 - VkSubmitInfo `pWaitDstStageMask`-s are conservative, what should they actually be?
 - BLAS compaction.
 - No texture compression is used (this might be big?)
 - Texture mip levels are generated at runtime.
 
 # deprecations
-- Resource aliasing seems net harmful. 
-- Subtasks don't seem useful, remove them. Yarns do it better.
 - `rand()` is not thread-safe generally (although it is in MSVC).
 - `task::inject` seems net harmful. (can we really avoid it? @Think)
 

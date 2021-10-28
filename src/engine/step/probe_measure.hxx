@@ -27,6 +27,7 @@ void init_ddata(
   Use<datum::probe_radiance::DData> lbuffer,
   Use<datum::probe_irradiance::DData> probe_irradiance,
   Use<datum::probe_attention::DData> probe_attention,
+  Use<datum::probe_workset::SData> probe_workset,
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Ref<engine::session::Vulkan::Core> core
 );
@@ -42,6 +43,7 @@ void record(
   Ref<engine::display::Data::FrameInfo> frame_info,
   Ref<engine::session::Vulkan::Core> core,
   Ref<engine::common::SharedDescriptorPool> descriptor_pool,
+  Ref<engine::datum::probe_workset::SData> probe_workset,
   VkBuffer geometry_refs,
   Use<engine::misc::RenderList> render_list,
   VkAccelerationStructureKHR accel,

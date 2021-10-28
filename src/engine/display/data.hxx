@@ -9,6 +9,7 @@
 #include <src/engine/datum/probe_radiance/data.hxx>
 #include <src/engine/datum/probe_irradiance/data.hxx>
 #include <src/engine/datum/probe_attention/data.hxx>
+#include <src/engine/step/probe_appoint/data.hxx>
 #include <src/engine/step/probe_measure/data.hxx>
 #include <src/engine/step/probe_collect/data.hxx>
 #include <src/engine/step/indirect_light/data.hxx>
@@ -145,6 +146,7 @@ struct Data : lib::task::ParentResource {
     std::vector<VkFramebuffer> framebuffers;
   } lpass;
 
+  engine::step::probe_appoint::DData probe_appoint;
   engine::step::probe_measure::DData probe_measure;
   engine::step::probe_collect::DData probe_collect;
   engine::step::indirect_light::DData indirect_light;

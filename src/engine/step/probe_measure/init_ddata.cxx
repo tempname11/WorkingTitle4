@@ -1,5 +1,6 @@
 #include <src/global.hxx>
 #include <src/embedded.hxx>
+#include <src/engine/constants.hxx>
 #include <src/engine/session/data.hxx>
 #include <src/engine/display/data.hxx>
 #include "data.hxx"
@@ -14,6 +15,7 @@ void init_ddata(
   Use<datum::probe_radiance::DData> lbuffer,
   Use<datum::probe_irradiance::DData> probe_irradiance,
   Use<datum::probe_attention::DData> probe_attention,
+  Use<datum::probe_workset::SData> probe_workset,
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Ref<engine::session::Vulkan::Core> core
 ) {
@@ -41,10 +43,6 @@ void init_ddata(
   }
 
   for (size_t i = 0; i < swapchain_description->image_count; i++) {
-    auto i_prev = (
-      (i + swapchain_description->image_count - 1) %
-      swapchain_description->image_count
-    );
     VkDescriptorImageInfo lbuffer_info = {
       .imageView = lbuffer->views[i],
       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
@@ -58,9 +56,13 @@ void init_ddata(
       .imageView = probe_attention->views[i],
       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
     };
-    VkDescriptorImageInfo probe_attention_prev_info = {
-      .imageView = probe_attention->views[i_prev],
-      .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    VkDescriptorBufferInfo probe_worksets_info[PROBE_CASCADE_COUNT];
+    for (size_t c = 0; c < PROBE_CASCADE_COUNT; c++) {
+      probe_worksets_info[c] = {
+        .buffer = probe_workset->buffers_workset[c].buffer,
+        .offset = 0,
+        .range = VK_WHOLE_SIZE,
+      };
     };
     VkDescriptorImageInfo albedo_sampler_info = {
       .sampler = sdata->sampler_albedo,
@@ -106,9 +108,9 @@ void init_ddata(
         .dstSet = descriptor_sets_frame[i],
         .dstBinding = 4,
         .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .pImageInfo = &probe_attention_prev_info,
+        .descriptorCount = PROBE_CASCADE_COUNT,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .pBufferInfo = probe_worksets_info,
       },
       {
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

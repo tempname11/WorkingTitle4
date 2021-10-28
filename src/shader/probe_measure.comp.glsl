@@ -4,8 +4,8 @@
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : enable
 #extension GL_EXT_buffer_reference2 : enable
-#extension GL_EXT_scalar_block_layout : enable
 #extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_scalar_block_layout : enable
 #include "common/sky.glsl"
 #include "common/helpers.glsl"
 #include "common/frame.glsl"
@@ -42,7 +42,9 @@ struct PerInstance {
 layout(binding = 0, rgba16f) uniform writeonly image2D lbuffer; // :LBuffer2_Format
 layout(binding = 1) uniform sampler2D probe_irradiance;
 layout(binding = 3) uniform writeonly uimage2D probe_attention_write;
-layout(binding = 4, r32ui) uniform readonly uimage2D probe_attention_prev; // :ProbeAttentionFormat
+layout(binding = 4) readonly buffer ProbeWorkset {
+  uvec4 data[];
+} probe_worksets[PROBE_CASCADE_COUNT];
 layout(binding = 5) uniform accelerationStructureEXT accel;
 layout(binding = 6) readonly buffer GeometryRefs { PerInstance data[]; } geometry_refs;
 layout(binding = 7) uniform Frame { FrameData data; } frame;
@@ -64,7 +66,7 @@ const float RAY_T_MIN = 0.1;
 const float RAY_T_MAX = 10000.0;
 
 void main() {
-  uvec3 probe_coord = gl_WorkGroupID;
+  uvec3 probe_coord = probe_worksets[cascade.level].data[gl_WorkGroupID.x].xyz;
   uint ray_index = gl_LocalInvocationIndex;
 
   uvec2 z_subcoord = uvec2(
@@ -73,40 +75,24 @@ void main() {
   );
 
   uvec2 cascade_subcoord = uvec2(
-    cascade.level % frame.data.probe.cascade_count_factors.x,
-    cascade.level / frame.data.probe.cascade_count_factors.x
+    cascade.level % PROBE_CASCADE_COUNT_FACTORS.x,
+    cascade.level / PROBE_CASCADE_COUNT_FACTORS.x
   );
 
-  ivec2 store_coord = ivec2(gl_GlobalInvocationID.xy
-    + (
-      PROBE_RAY_COUNT_FACTORS *
-      frame.data.probe.grid_size.xy *
-      z_subcoord
-    )
-    + (
-      PROBE_RAY_COUNT_FACTORS *
-      frame.data.probe.grid_size.xy *
-      frame.data.probe.grid_size_z_factors *
-      cascade_subcoord
+  uvec2 combined_coord = (
+    probe_coord.xy +
+    frame.data.probe.grid_size.xy * (
+      z_subcoord +
+      frame.data.probe.grid_size_z_factors * (
+        cascade_subcoord
+      )
     )
   );
 
-  if (!frame.data.flags.disable_indirect_attention) {
-    ivec2 combined_coord = ivec2(
-      probe_coord.xy +
-      frame.data.probe.grid_size.xy * z_subcoord +
-      frame.data.probe.grid_size.xy * frame.data.probe.grid_size_z_factors * cascade_subcoord
-    );
-    
-    uint attention = imageLoad(
-      probe_attention_prev,
-      combined_coord
-    ).r;
-
-    if (attention == 0) {
-      return;
-    }
-  }
+  ivec2 store_coord = ivec2(
+    combined_coord * PROBE_RAY_COUNT_FACTORS +
+    gl_LocalInvocationID.xy
+  );
 
   rayQueryEXT ray_query;
   ivec3 infinite_grid_min = frame.data.probe.cascades[cascade.level].infinite_grid_min;
@@ -215,7 +201,7 @@ void main() {
     N,
     frame.data,
     true, // prev
-    min(frame.data.probe.cascade_count - 1, cascade.level + 1),
+    min(PROBE_CASCADE_COUNT - 1, cascade.level + 1),
     probe_irradiance,
     probe_attention_write,
     albedo

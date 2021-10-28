@@ -14,6 +14,7 @@
 #include <src/engine/datum/probe_radiance.hxx>
 #include <src/engine/datum/probe_irradiance.hxx>
 #include <src/engine/datum/probe_attention.hxx>
+#include <src/engine/step/probe_appoint.hxx>
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
 #include <src/engine/step/indirect_light.hxx>
@@ -718,6 +719,16 @@ void setup(
     &session->vulkan.core
   );
 
+  engine::step::probe_appoint::init_ddata(
+    &display->probe_appoint,
+    &session->vulkan.probe_appoint,
+    &display->helpers,
+    &display->probe_attention,
+    &session->vulkan.probe_workset,
+    &display->swapchain_description,
+    &session->vulkan.core
+  );
+
   engine::step::probe_measure::init_ddata(
     &display->probe_measure,
     &session->vulkan.probe_measure,
@@ -726,6 +737,7 @@ void setup(
     &display->probe_radiance,
     &display->probe_irradiance,
     &display->probe_attention,
+    &session->vulkan.probe_workset,
     &display->swapchain_description,
     &session->vulkan.core
   );
@@ -736,7 +748,7 @@ void setup(
     &display->helpers,
     &display->probe_radiance,
     &display->probe_irradiance,
-    &display->probe_attention,
+    &session->vulkan.probe_workset,
     &display->swapchain_description,
     &session->vulkan.core
   );

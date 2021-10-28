@@ -12,7 +12,9 @@ layout(
 layout(binding = 0, rgba16f) uniform image2D probe_irradiance; // :ProbeIrradianceFormat
 layout(binding = 2) uniform sampler2D probe_radiance;
 layout(binding = 3) uniform Frame { FrameData data; } frame;
-layout(binding = 4, r32ui) uniform readonly uimage2D probe_attention_prev; // :ProbeAttentionFormat
+layout(binding = 4) readonly buffer ProbeWorkset {
+  uvec4 data[];
+} probe_worksets[PROBE_CASCADE_COUNT];
 
 layout(push_constant) uniform Cascade {
   vec3 world_position_delta;
@@ -23,7 +25,7 @@ const float HYSTERESIS_PER_FRAME = 0.99;
 
 void main() {
   ivec2 octomap_coord = ivec2(gl_LocalInvocationID.xy);
-  uvec3 probe_coord = gl_WorkGroupID;
+  uvec3 probe_coord = probe_worksets[cascade.level].data[gl_WorkGroupID.x].xyz;
 
   uvec2 z_subcoord = uvec2(
     probe_coord.z % frame.data.probe.grid_size_z_factors.x,
@@ -31,8 +33,8 @@ void main() {
   );
 
   uvec2 cascade_subcoord = uvec2(
-    cascade.level % frame.data.probe.cascade_count_factors.x,
-    cascade.level / frame.data.probe.cascade_count_factors.x
+    cascade.level % PROBE_CASCADE_COUNT_FACTORS.x,
+    cascade.level / PROBE_CASCADE_COUNT_FACTORS.x
   );
 
   uvec2 combined_coord = (
@@ -48,42 +50,6 @@ void main() {
   ivec2 irradiance_texel_coord = octomap_coord + ivec2(
     OCTOMAP_TEXEL_SIZE * combined_coord
   );
-
-  if (!frame.data.flags.disable_indirect_attention) {
-    uint attention = imageLoad(
-      probe_attention_prev,
-      ivec2(combined_coord)
-    ).r;
-
-    if (attention == 0) {
-      ivec3 infinite_grid_min = frame.data.probe.cascades[cascade.level].infinite_grid_min;
-      ivec3 infinite_grid_min_prev = frame.data.probe.cascades[cascade.level].infinite_grid_min_prev;
-
-      ivec3 infinite_grid_coord = (0
-        + (ivec3(probe_coord) - infinite_grid_min) % ivec3(frame.data.probe.grid_size)
-        + infinite_grid_min
-      );
-      bool out_of_bounds = (false
-        || any(lessThan(
-          infinite_grid_coord,
-          infinite_grid_min_prev
-        ))
-        || any(greaterThan(
-          infinite_grid_coord,
-          infinite_grid_min_prev + ivec3(frame.data.probe.grid_size) - 1
-        ))
-      );
-      if (out_of_bounds) {
-        imageStore(
-          probe_irradiance,
-          irradiance_texel_coord,
-          vec4(0.0)
-        );
-      }
-
-      return;
-    }
-  }
 
   vec4 value = vec4(0.0);
   { // collect radiance

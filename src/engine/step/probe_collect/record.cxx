@@ -2,6 +2,7 @@
 #include <src/global.hxx>
 #include <src/engine/constants.hxx>
 #include <src/engine/display/data.hxx>
+#include <src/engine/datum/probe_workset.hxx>
 #include "internal.hxx"
 #include "data.hxx"
 
@@ -11,6 +12,7 @@ void record(
   Use<DData> ddata,
   Use<SData> sdata,
   Ref<engine::display::Data::FrameInfo> frame_info,
+  Ref<engine::datum::probe_workset::SData> probe_workset,
   VkCommandBuffer cmd
 ) {
   ZoneScoped;
@@ -35,10 +37,10 @@ void record(
       sizeof(PerCascade),
       &per_cascade_data
     );
-    vkCmdDispatch(cmd,
-      PROBE_GRID_SIZE.x,
-      PROBE_GRID_SIZE.y,
-      PROBE_GRID_SIZE.z
+    vkCmdDispatchIndirect(
+      cmd,
+      probe_workset->buffers_counter[c].buffer,
+      0
     );
   }
 }

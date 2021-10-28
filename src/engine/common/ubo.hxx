@@ -1,5 +1,6 @@
 #pragma once
 #include <glm/glm.hpp>
+#include <src/engine/constants.hxx>
 
 namespace engine::common::ubo {
 
@@ -9,7 +10,6 @@ struct Flags {
   gl_bool disable_direct_lighting;
   gl_bool disable_indirect_lighting;
   gl_bool disable_indirect_bounces;
-  gl_bool disable_indirect_attention;
   gl_bool disable_eye_adaptation;
   gl_bool disable_motion_blur;
   gl_bool disable_TAA;
@@ -20,8 +20,6 @@ struct Flags {
   gl_bool debug_C;
 };
 
-constexpr size_t MAX_CASCADE_LEVELS = 8; // :MaxCascadeLevels
-
 struct ProbeCascade {
   glm::ivec3 infinite_grid_min;
   alignas(16) glm::ivec3 infinite_grid_min_prev;
@@ -30,10 +28,8 @@ struct ProbeCascade {
 struct ProbeInfo {
   glm::mat3x4 random_orientation;
   alignas(16) glm::uvec3 grid_size;
-  glm::uint cascade_count;
   alignas(16) glm::uvec2 grid_size_z_factors;
-  glm::uvec2 cascade_count_factors;
-  alignas(16) ProbeCascade cascades[MAX_CASCADE_LEVELS];
+  alignas(16) ProbeCascade cascades[PROBE_CASCADE_COUNT];
   alignas(16) glm::vec3 grid_world_position_zero;
   alignas(16) glm::vec3 grid_world_position_delta_c0;
   float depth_sharpness;

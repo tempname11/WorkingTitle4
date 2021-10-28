@@ -1,5 +1,6 @@
 #include <src/global.hxx>
 #include <src/embedded.hxx>
+#include <src/engine/constants.hxx>
 #include <src/engine/session/data.hxx>
 #include <src/engine/display/data.hxx>
 #include "data.hxx"
@@ -12,7 +13,7 @@ void init_ddata(
   Own<display::Data::Helpers> helpers,
   Use<datum::probe_radiance::DData> probe_radiance,
   Use<datum::probe_irradiance::DData> probe_irradiance,
-  Use<datum::probe_attention::DData> probe_attention,
+  Use<datum::probe_workset::SData> probe_workset,
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Ref<engine::session::Vulkan::Core> core
 ) {
@@ -58,9 +59,13 @@ void init_ddata(
       .offset = 0,
       .range = VK_WHOLE_SIZE,
     };
-    VkDescriptorImageInfo probe_attention_prev_info = {
-      .imageView = probe_attention->views[i_prev],
-      .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    VkDescriptorBufferInfo probe_worksets_info[PROBE_CASCADE_COUNT];
+    for (size_t c = 0; c < PROBE_CASCADE_COUNT; c++) {
+      probe_worksets_info[c] = {
+        .buffer = probe_workset->buffers_workset[c].buffer,
+        .offset = 0,
+        .range = VK_WHOLE_SIZE,
+      };
     };
     VkWriteDescriptorSet writes[] = {
       {
@@ -92,9 +97,9 @@ void init_ddata(
         .dstSet = descriptor_sets[i],
         .dstBinding = 4,
         .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .pImageInfo = &probe_attention_prev_info,
+        .descriptorCount = PROBE_CASCADE_COUNT,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .pBufferInfo = probe_worksets_info,
       },
     };
     vkUpdateDescriptorSets(

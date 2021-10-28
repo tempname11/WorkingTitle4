@@ -8,6 +8,7 @@
 #include <src/engine/datum/probe_radiance.hxx>
 #include <src/engine/datum/probe_irradiance.hxx>
 #include <src/engine/datum/probe_attention.hxx>
+#include <src/engine/step/probe_appoint.hxx>
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
 #include <src/engine/step/indirect_light.hxx>
@@ -79,6 +80,11 @@ void cleanup(
 
   deinit_rendering_lpass(
     &data->lpass,
+    core
+  );
+
+  step::probe_appoint::deinit_ddata(
+    &data->probe_appoint,
     core
   );
 

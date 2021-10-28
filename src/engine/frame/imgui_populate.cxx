@@ -536,7 +536,6 @@ void imgui_populate(
       ImGuiX::Checkbox32("Disable direct lighting", &it->disable_direct_lighting);
       ImGuiX::Checkbox32("Disable indirect lighting", &it->disable_indirect_lighting);
       ImGuiX::Checkbox32("Disable indirect bounces", &it->disable_indirect_bounces);
-      ImGuiX::Checkbox32("Disable indirect attention", &it->disable_indirect_attention);
       ImGuiX::Checkbox32("Disable eye adaptation", &it->disable_eye_adaptation);
       ImGui::SameLine();
       ImGui::SliderFloat(

@@ -86,7 +86,7 @@ vec3 get_indirect_radiance(
 
     vec3 delta = frame_data.probe.grid_world_position_delta_c0 * pow(2.0, min_cascade_level);
 
-    for (uint c = min_cascade_level; c < frame_data.probe.cascade_count; c++) {
+    for (uint c = min_cascade_level; c < PROBE_CASCADE_COUNT; c++) {
       ivec3 infinite_grid_min = (is_prev
         ? frame_data.probe.cascades[c].infinite_grid_min_prev
         : frame_data.probe.cascades[c].infinite_grid_min
@@ -105,7 +105,7 @@ vec3 get_indirect_radiance(
         ))
       );
       
-      if (!out_of_bounds || c == frame_data.probe.cascade_count - 1) {
+      if (!out_of_bounds || c == PROBE_CASCADE_COUNT - 1) {
         grid_coord0 = infinite_grid_coord % frame_data.probe.grid_size;
         cascade_level = c;
         cascade_world_position_delta = delta;
@@ -119,8 +119,8 @@ vec3 get_indirect_radiance(
   vec3 grid_cube_coord = fract(infinite_grid_coord_float);
 
   uvec2 cascade_subcoord = uvec2(
-    cascade_level % frame_data.probe.cascade_count_factors.x,
-    cascade_level / frame_data.probe.cascade_count_factors.x
+    cascade_level % PROBE_CASCADE_COUNT_FACTORS.x,
+    cascade_level / PROBE_CASCADE_COUNT_FACTORS.x
   );
 
   if (out_of_bounds) {

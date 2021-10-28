@@ -14,6 +14,8 @@
 #include <src/engine/rendering/gpass.hxx>
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
+#include <src/engine/datum/probe_workset.hxx>
+#include <src/engine/step/probe_appoint.hxx>
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
 #include <src/engine/step/indirect_light.hxx>
@@ -235,6 +237,8 @@ void init_vulkan(
     VkPhysicalDeviceVulkan12Features vulkan_1_2_features = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
       .pNext = &ray_query_features,
+      //.storageBuffer8BitAccess = VK_TRUE,
+      //.shaderInt8 = VK_TRUE,
       .descriptorIndexing = VK_TRUE,
       .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
       //.descriptorBindingPartiallyBound = VK_TRUE,
@@ -374,6 +378,29 @@ void init_vulkan(
     );
   }
 
+  { ZoneScopedN(".allocator_host");
+    lib::gfx::allocator::init(
+      &it->allocator_host,
+      &it->core.properties.memory,
+      VkMemoryPropertyFlagBits(0
+        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+      ),
+      ALLOCATOR_GPU_LOCAL_REGION_SIZE,
+      "session.allocator_host"
+    );
+  }
+
+  { ZoneScopedN(".allocator_device");
+    lib::gfx::allocator::init(
+      &it->allocator_device,
+      &it->core.properties.memory,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      ALLOCATOR_GPU_LOCAL_REGION_SIZE,
+      "session.allocator_device"
+    );
+  }
+
   { ZoneScopedN(".uploader");
     engine::uploader::init(
       &it->uploader,
@@ -443,6 +470,17 @@ void init_vulkan(
 
   init_session_lpass(
     &it->lpass,
+    &it->core
+  );
+
+  datum::probe_workset::init_sdata(
+    &it->probe_workset,
+    &it->core,
+    &it->allocator_device
+  );
+
+  step::probe_appoint::init_sdata(
+    &it->probe_appoint,
     &it->core
   );
 
@@ -805,11 +843,11 @@ void setup(
   #ifndef NDEBUG
   {
     const auto size = sizeof(engine::session::Data) - sizeof(engine::session::Vulkan);
-    static_assert(size == 1160);
+    static_assert(size == 1152);
   }
   {
     const auto size = sizeof(engine::session::Vulkan);
-    static_assert(size == 2856);
+    static_assert(size == 3192);
   }
   #endif
 

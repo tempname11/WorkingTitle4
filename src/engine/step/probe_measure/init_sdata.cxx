@@ -1,5 +1,6 @@
 #include <src/global.hxx>
 #include <src/embedded.hxx>
+#include <src/engine/constants.hxx>
 #include <src/engine/session/data.hxx>
 #include "internal.hxx"
 #include "data.hxx"
@@ -37,8 +38,8 @@ void init_sdata(
       },
       {
         .binding = 4,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .descriptorCount = PROBE_CASCADE_COUNT,
         .stageFlags = VK_SHADER_STAGE_ALL,
       },
       {

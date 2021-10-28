@@ -15,6 +15,7 @@ void record(
   Ref<engine::display::Data::FrameInfo> frame_info,
   Ref<engine::session::Vulkan::Core> core,
   Ref<engine::common::SharedDescriptorPool> descriptor_pool,
+  Ref<engine::datum::probe_workset::SData> probe_workset,
   VkBuffer geometry_refs,
   Use<engine::misc::RenderList> render_list,
   VkAccelerationStructureKHR accel,
@@ -164,10 +165,14 @@ void record(
       sizeof(PerCascade),
       &per_cascade_data
     );
-    vkCmdDispatch(cmd,
-      PROBE_GRID_SIZE.x,
-      PROBE_GRID_SIZE.y,
-      PROBE_GRID_SIZE.z
+    vkCmdDispatch(
+      cmd,
+      1, 1, 1
+    ); // driver bug!?
+    vkCmdDispatchIndirect(
+      cmd,
+      probe_workset->buffers_counter[c].buffer,
+      0
     );
   }
 }

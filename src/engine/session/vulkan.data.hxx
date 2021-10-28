@@ -1,9 +1,11 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include <TracyVulkan.hpp>
+#include <src/engine/step/probe_appoint/data.hxx>
 #include <src/engine/step/probe_measure/data.hxx>
 #include <src/engine/step/probe_collect/data.hxx>
 #include <src/engine/step/indirect_light/data.hxx>
+#include <src/engine/datum/probe_workset/data.hxx>
 
 namespace engine::session {
 
@@ -45,6 +47,9 @@ struct Vulkan : lib::task::ParentResource {
 
   using MultiAlloc = lib::gfx::multi_alloc::Instance;
   MultiAlloc multi_alloc;
+
+  lib::gfx::Allocator allocator_host;
+  lib::gfx::Allocator allocator_device;
 
   using Uploader = engine::Uploader;
   Uploader uploader;
@@ -98,6 +103,9 @@ struct Vulkan : lib::task::ParentResource {
     VkPipeline pipeline_sun;
   } lpass;
 
+  datum::probe_workset::SData probe_workset;
+
+  engine::step::probe_appoint::SData probe_appoint;
   engine::step::probe_measure::SData probe_measure;
   engine::step::probe_collect::SData probe_collect;
   engine::step::indirect_light::SData indirect_light;
