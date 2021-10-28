@@ -17,7 +17,6 @@ layout(binding = 4) readonly buffer ProbeWorkset {
 } probe_worksets[PROBE_CASCADE_COUNT];
 
 layout(push_constant) uniform Cascade {
-  vec3 world_position_delta;
   uint level;
 } cascade;
 

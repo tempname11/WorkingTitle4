@@ -1301,6 +1301,7 @@ void prepare_uniforms(
       cascades[c] = {
         .infinite_grid_min = infinite_grid_min,
         .infinite_grid_min_prev = infinite_grid_min_prev,
+        .grid_world_position_delta = engine::PROBE_WORLD_DELTA_C0 * std::powf(2.0, c),
       };
     };
 
@@ -1324,7 +1325,6 @@ void prepare_uniforms(
         .grid_size_z_factors = engine::PROBE_GRID_SIZE_Z_FACTORS,
         // .cascades = cascades, // this is done below
         .grid_world_position_zero = some_world_offset,
-        .grid_world_position_delta_c0 = engine::PROBE_WORLD_DELTA_C0,
       },
       .end_marker = 0xDeadBeef,
     };

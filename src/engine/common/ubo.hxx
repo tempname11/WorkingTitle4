@@ -23,6 +23,7 @@ struct Flags {
 struct ProbeCascade {
   glm::ivec3 infinite_grid_min;
   alignas(16) glm::ivec3 infinite_grid_min_prev;
+  alignas(16) glm::vec3 grid_world_position_delta;
 };
 
 struct ProbeInfo {
@@ -31,7 +32,6 @@ struct ProbeInfo {
   alignas(16) glm::uvec2 grid_size_z_factors;
   alignas(16) ProbeCascade cascades[PROBE_CASCADE_COUNT];
   alignas(16) glm::vec3 grid_world_position_zero;
-  alignas(16) glm::vec3 grid_world_position_delta_c0;
   float depth_sharpness;
   float normal_bias;
 };

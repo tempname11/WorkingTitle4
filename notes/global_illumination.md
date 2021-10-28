@@ -1,5 +1,8 @@
 # Global Illumination TODO
 
--> Try compressing attention flags into queues and only processing them.
-* new cascade blending
-* explore "confidence"
+- "confidence"
+
+- 32-bit irradiance?
+- position randomization?
+- spend more time on the blending, perf and quality
+

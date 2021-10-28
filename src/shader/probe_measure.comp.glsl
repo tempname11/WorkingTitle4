@@ -58,7 +58,6 @@ layout(set = 1, binding = 0) uniform texture2D albedo_textures[];
 layout(set = 2, binding = 0) uniform texture2D romeao_textures[];
 
 layout(push_constant) uniform Cascade {
-  vec3 world_position_delta;
   uint level;
 } cascade;
 
@@ -96,9 +95,10 @@ void main() {
 
   rayQueryEXT ray_query;
   ivec3 infinite_grid_min = frame.data.probe.cascades[cascade.level].infinite_grid_min;
+  vec3 delta = frame.data.probe.cascades[cascade.level].world_position_delta;
   vec3 origin_world = (
     frame.data.probe.grid_world_position_zero +
-    cascade.world_position_delta * (0
+    delta * (0
       + (ivec3(probe_coord) - infinite_grid_min) % ivec3(frame.data.probe.grid_size)
       + infinite_grid_min
     )
@@ -200,7 +200,7 @@ void main() {
     pos_world,
     N,
     frame.data,
-    true, // prev
+    true, // is_prev. only should be true if we invalidate afterwards.
     min(PROBE_CASCADE_COUNT - 1, cascade.level + 1),
     probe_irradiance,
     probe_attention_write,

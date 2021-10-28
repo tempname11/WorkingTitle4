@@ -65,67 +65,22 @@ vec3 octo_decode(vec2 o) {
   return normalize(v);
 }
 
-vec3 get_indirect_radiance(
-  vec3 pos_world,
+vec4 _get_cascade_irradiance(
+  uint cascade_level,
+  vec3 infinite_grid_coord_float,
   vec3 N,
-  FrameData frame_data,
-  bool is_prev,
-  uint min_cascade_level,
   sampler2D probe_irradiance,
   writeonly uimage2D probe_attention,
-  vec3 albedo
+  FrameData frame_data
 ) {
-  vec3 infinite_grid_coord_float;
-  uvec3 grid_coord0;
-  bool out_of_bounds;
-  uint cascade_level;
-  vec3 cascade_world_position_delta;
-  {
-    // @Performance: this is written to be obviously correct, but the loop is
-    // probably way too slow. Figure out a fast approximation.
-
-    vec3 delta = frame_data.probe.grid_world_position_delta_c0 * pow(2.0, min_cascade_level);
-
-    for (uint c = min_cascade_level; c < PROBE_CASCADE_COUNT; c++) {
-      ivec3 infinite_grid_min = (is_prev
-        ? frame_data.probe.cascades[c].infinite_grid_min_prev
-        : frame_data.probe.cascades[c].infinite_grid_min
-      );
-      infinite_grid_coord_float = (pos_world - frame_data.probe.grid_world_position_zero) / delta;
-      ivec3 infinite_grid_coord = ivec3(floor(infinite_grid_coord_float));
-
-      out_of_bounds = (false
-        || any(lessThan(
-          infinite_grid_coord,
-          infinite_grid_min
-        ))
-        || any(greaterThan(
-          infinite_grid_coord,
-          infinite_grid_min + ivec3(frame_data.probe.grid_size) - 2
-        ))
-      );
-      
-      if (!out_of_bounds || c == PROBE_CASCADE_COUNT - 1) {
-        grid_coord0 = infinite_grid_coord % frame_data.probe.grid_size;
-        cascade_level = c;
-        cascade_world_position_delta = delta;
-        break;
-      }
-
-      delta *= 2.0;
-    }
-  }
-
   vec3 grid_cube_coord = fract(infinite_grid_coord_float);
+  ivec3 infinite_grid_coord = ivec3(floor(infinite_grid_coord_float));
+  uvec3 grid_coord0 = infinite_grid_coord % frame_data.probe.grid_size;
 
   uvec2 cascade_subcoord = uvec2(
     cascade_level % PROBE_CASCADE_COUNT_FACTORS.x,
     cascade_level / PROBE_CASCADE_COUNT_FACTORS.x
   );
-
-  if (out_of_bounds) {
-    return vec3(0.0);
-  }
 
   vec4 sum = vec4(0.0);
   for (uint i = 0; i < 8; i++) {
@@ -191,7 +146,134 @@ vec3 get_indirect_radiance(
     sum += vec4(irradiance * weight, weight);
   }
 
-  sum /= sum.a;
+  return sum;
+}
+
+vec3 get_indirect_radiance(
+  vec3 pos_world,
+  vec3 N,
+  FrameData frame_data,
+  bool is_prev,
+  uint min_cascade_level,
+  sampler2D probe_irradiance,
+  writeonly uimage2D probe_attention,
+  vec3 albedo
+) {
+  if (!frame_data.flags.debug_A) { // @Tmp
+    for (uint c = min_cascade_level; c < PROBE_CASCADE_COUNT; c++) {
+      vec3 delta = frame_data.probe.cascades[c].world_position_delta;
+      ivec3 infinite_grid_min = (is_prev
+        ? frame_data.probe.cascades[c].infinite_grid_min_prev
+        : frame_data.probe.cascades[c].infinite_grid_min
+      );
+      vec3 infinite_grid_coord_float = (
+        (pos_world - frame_data.probe.grid_world_position_zero)
+        / delta
+      );
+
+      bool out_of_bounds = (false
+        || any(lessThan(
+          infinite_grid_coord_float,
+          infinite_grid_min + 1
+        ))
+        || any(greaterThan(
+          infinite_grid_coord_float,
+          infinite_grid_min + ivec3(frame_data.probe.grid_size) - 2
+        ))
+      );
+
+      if (!out_of_bounds) {
+        vec4 sum = _get_cascade_irradiance(
+          c,
+          infinite_grid_coord_float,
+          N,
+          probe_irradiance,
+          probe_attention,
+          frame_data
+        );
+
+        if (sum.a > 0.0) {
+          sum /= sum.a;
+        }
+
+        return albedo * sum.rgb;
+      }
+    }
+
+    return vec3(0.0);
+  }
+
+  uint level_index[2];
+  vec3 level_infinite_grid_coord_float[2];
+  uint levels_ready = 0;
+  float level0_weight;
+  {
+    for (uint c = min_cascade_level; c < PROBE_CASCADE_COUNT; c++) {
+      // this loop might be slow, but we don't know that for sure.
+
+      vec3 delta = frame_data.probe.cascades[c].world_position_delta;
+      ivec3 infinite_grid_min = (is_prev
+        ? frame_data.probe.cascades[c].infinite_grid_min_prev
+        : frame_data.probe.cascades[c].infinite_grid_min
+      );
+      vec3 infinite_grid_coord_float = (
+        (pos_world - frame_data.probe.grid_world_position_zero)
+        / delta
+      );
+
+      bool out_of_bounds = (false
+        || any(lessThan(
+          infinite_grid_coord_float,
+          infinite_grid_min + 1
+        ))
+        || any(greaterThan(
+          infinite_grid_coord_float,
+          infinite_grid_min + ivec3(frame_data.probe.grid_size) - 2
+        ))
+      );
+
+      vec3 weights = 1.0 - max(
+        vec3(0.0),
+        abs(
+          (infinite_grid_coord_float - infinite_grid_min)
+            / (vec3(frame_data.probe.grid_size) - 1.0)
+          - 0.5
+        ) - 0.25
+      ) * 4.0;
+
+      if (!out_of_bounds) {
+        level_index[levels_ready] = c;
+        level_infinite_grid_coord_float[levels_ready] = infinite_grid_coord_float;
+        levels_ready++;
+
+        if (levels_ready == 1) {
+          level0_weight = min(min(weights.x, weights.y), weights.z);
+        }
+
+        if (levels_ready == 2) {
+          break;
+        }
+      }
+    }
+  }
+
+  vec4 sum = vec4(0.0);
+  float level_weight[2] = { level0_weight, 1.0 - level0_weight };
+  for (uint i = 0; i < levels_ready; i++) {
+    sum += level_weight[i] * _get_cascade_irradiance(
+      level_index[i],
+      level_infinite_grid_coord_float[i],
+      N,
+      probe_irradiance,
+      probe_attention,
+      frame_data
+    );
+  }
+
+  if (sum.a > 0.0) {
+    sum /= sum.a;
+  }
+
   return albedo * sum.rgb;
 }
 

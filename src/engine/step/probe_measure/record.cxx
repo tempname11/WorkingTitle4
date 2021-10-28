@@ -154,7 +154,6 @@ void record(
   );
   for (uint32_t c = 0; c < engine::PROBE_CASCADE_COUNT; c++) {
     PerCascade per_cascade_data = {
-      .world_position_delta = engine::PROBE_WORLD_DELTA_C0 * powf(2.0f, c),
       .level = c,
     };
     vkCmdPushConstants(

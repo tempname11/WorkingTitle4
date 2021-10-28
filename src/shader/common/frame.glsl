@@ -17,6 +17,7 @@ struct FrameFlags {
 struct FrameProbeCascade {
   ivec3 infinite_grid_min;
   ivec3 infinite_grid_min_prev;
+  vec3 world_position_delta;
 };
 
 const uint PROBE_CASCADE_COUNT = 8; // :ProbeCascadeCount
@@ -28,7 +29,6 @@ struct FrameProbe {
   uvec2 grid_size_z_factors;
   FrameProbeCascade cascades[PROBE_CASCADE_COUNT];
   vec3 grid_world_position_zero;
-  vec3 grid_world_position_delta_c0;
   float depth_sharpness;
   float normal_bias;
 };
