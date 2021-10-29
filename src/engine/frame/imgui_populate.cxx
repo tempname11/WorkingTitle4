@@ -534,6 +534,7 @@ void imgui_populate(
       auto it = &state->ubo_flags;
       ImGui::Begin("Flags", &state->show_imgui_window_flags);
       ImGuiX::Checkbox32("Disable direct lighting", &it->disable_direct_lighting);
+      ImGuiX::Checkbox32("Disable direct shadows", &it->disable_direct_shadows);
       ImGuiX::Checkbox32("Disable indirect lighting", &it->disable_indirect_lighting);
       ImGuiX::Checkbox32("Disable indirect bounces", &it->disable_indirect_bounces);
       ImGuiX::Checkbox32("Disable eye adaptation", &it->disable_eye_adaptation);

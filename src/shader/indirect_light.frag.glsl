@@ -59,7 +59,6 @@ void main() {
     pos_world,
     N,
     frame.data,
-    false, // is_prev
     0,
     probe_irradiance,
     probe_confidence,

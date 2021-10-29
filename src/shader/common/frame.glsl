@@ -3,6 +3,7 @@
 
 struct FrameFlags {
   bool disable_direct_lighting;
+  bool disable_direct_shadows;
   bool disable_indirect_lighting;
   bool disable_indirect_bounces;
   bool disable_eye_adaptation;

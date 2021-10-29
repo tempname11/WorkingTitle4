@@ -9,6 +9,7 @@ const uvec2 PROBE_RAY_COUNT_FACTORS = uvec2(8, 8);
 
 const uvec2 OCTOMAP_TEXEL_SIZE = uvec2(8, 8); // :ProbeOctoSize
 const float MIN_PROBE_WEIGHT = 0.000001;
+const float MIN_INITIAL_WEIGHT = 0.01;
 
 float madfrac(float a, float b) {
   return a * b - floor(a * b);
@@ -66,6 +67,7 @@ vec3 octo_decode(vec2 o) {
 }
 
 vec4 _get_cascade_irradiance(
+  bool _debug,
   uint cascade_level,
   vec3 infinite_grid_coord_float,
   vec3 N,
@@ -131,7 +133,7 @@ vec4 _get_cascade_irradiance(
       (combined_texel_coord + 0.5) / textureSize(probe_confidence, 0)
     ).r;
 
-    float weight = confidence;
+    float weight = max(confidence, MIN_INITIAL_WEIGHT);
 
     // "smooth backface" produced weird grid-like artifacts,
     // so we just use a sane one.
@@ -149,7 +151,14 @@ vec4 _get_cascade_irradiance(
     weight = max(min_weight, weight);
     weight *= trilinear.x * trilinear.y * trilinear.z;
 
-    sum += vec4(irradiance * weight, weight);
+    if (_debug) {
+      sum += vec4(vec3(
+        confidence,
+        0.0 * irradiance.gb
+      ) * weight, weight);
+    } else {
+      sum += vec4(irradiance * weight, weight);
+    }
   }
 
   return sum;
@@ -159,14 +168,14 @@ vec3 get_indirect_radiance(
   vec3 pos_world,
   vec3 N,
   FrameData frame_data,
-  bool is_prev,
   uint min_cascade_level,
   sampler2D probe_irradiance,
   sampler2D probe_confidence,
   writeonly uimage2D probe_attention,
   vec3 albedo
 ) {
-  if (frame_data.flags.debug_B) { // @Tmp: compare quality and speed
+  /*
+  if (...) {
     for (uint c = min_cascade_level; c < PROBE_CASCADE_COUNT; c++) {
       vec3 delta = frame_data.probe.cascades[c].world_position_delta;
       ivec3 infinite_grid_min = (is_prev
@@ -210,6 +219,7 @@ vec3 get_indirect_radiance(
 
     return vec3(0.0);
   }
+  */
 
   uint level_index[2];
   vec3 level_infinite_grid_coord_float[2];
@@ -220,10 +230,7 @@ vec3 get_indirect_radiance(
       // this loop might be slow, but we don't know that for sure.
 
       vec3 delta = frame_data.probe.cascades[c].world_position_delta;
-      ivec3 infinite_grid_min = (is_prev
-        ? frame_data.probe.cascades[c].infinite_grid_min_prev
-        : frame_data.probe.cascades[c].infinite_grid_min
-      );
+      ivec3 infinite_grid_min = frame_data.probe.cascades[c].infinite_grid_min;
       vec3 infinite_grid_coord_float = (
         (pos_world - frame_data.probe.grid_world_position_zero)
         / delta
@@ -266,9 +273,13 @@ vec3 get_indirect_radiance(
   }
 
   vec4 sum = vec4(0.0);
-  float level_weight[2] = { level0_weight, 1.0 - level0_weight };
+  float level_weight[2] = {
+    level0_weight,
+    (1.0 - level0_weight) // * 0.25 // next level is inherently less accurate
+  };
   for (uint i = 0; i < levels_ready; i++) {
     sum += level_weight[i] * _get_cascade_irradiance(
+      min_cascade_level == 0 && frame_data.flags.debug_B, // _debug
       level_index[i],
       level_infinite_grid_coord_float[i],
       N,

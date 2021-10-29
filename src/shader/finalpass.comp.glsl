@@ -111,6 +111,7 @@ void main() {
     }
   }
 
+  barrier();
   memoryBarrierImage(); // @Think: not really sure if this works right.
 
   if (!frame.data.flags.disable_motion_blur) {

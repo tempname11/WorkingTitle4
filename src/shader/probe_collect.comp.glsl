@@ -17,11 +17,21 @@ layout(binding = 4) readonly buffer ProbeWorkset {
   uvec4 data[];
 } probe_worksets[PROBE_CASCADE_COUNT];
 
+vec3 to_perception_space(vec3 l) {
+  return l / (frame.data.luminance_moving_average + l);
+}
+
+shared uint overall_surprise_uint;
+
 layout(push_constant) uniform Cascade {
   uint level;
 } cascade;
 
 void main() {
+  if (gl_LocalInvocationIndex == 0) {
+    overall_surprise_uint = 0;
+  }
+
   ivec2 octomap_coord = ivec2(gl_LocalInvocationID.xy);
   uvec3 probe_coord = probe_worksets[cascade.level].data[gl_WorkGroupID.x].xyz;
 
@@ -85,7 +95,7 @@ void main() {
     }
   }
 
-  vec4 previous = imageLoad(
+  vec4 irradiance_read = imageLoad(
     probe_irradiance,
     irradiance_texel_coord
   );
@@ -95,24 +105,51 @@ void main() {
     ivec2(combined_coord)
   ).r;
 
-  value = previous * confidence + 0.01 * value;
-  value /= (confidence + 0.01);
+  vec4 irradiance_write = irradiance_read * confidence + 0.01 * value;
+  irradiance_write /= (confidence + 0.01);
 
-  confidence = (confidence + 0.01) * (1.0 - 0.01);
-  // @Tmp: confidence update...
-  // use subgroup ops?
+  if (frame.data.flags.debug_C) {
+    irradiance_write = irradiance_read;
+  }
 
   imageStore(
     probe_irradiance,
     irradiance_texel_coord,
-    value
+    irradiance_write
   );
 
-  if (gl_LocalInvocationIndex == 0) {
-    imageStore(
-      probe_confidence,
-      ivec2(combined_coord),
-      vec4(confidence, 0.0, 0.0, 0.0)
+  { // update confidence
+    float surprise = clamp(
+      length(
+        to_perception_space(irradiance_read.rgb) -
+        to_perception_space(value.rgb)
+      ),
+      0.0,
+      1.0
     );
+
+    barrier(); // @Think: are these barriers overkill or necessary?
+    memoryBarrierShared();
+    atomicMax(overall_surprise_uint, uint(surprise * 65536));
+    barrier();
+    memoryBarrierShared();
+
+    if (gl_LocalInvocationIndex == 0) {
+      float overall_surprise = overall_surprise_uint / 65536.0;
+      confidence = clamp(
+        1.0 - (
+          (1.0 - confidence) *
+          pow(2.0, overall_surprise - 0.25)
+        ),
+        0.0,
+        0.9
+      );
+
+      imageStore(
+        probe_confidence,
+        ivec2(combined_coord),
+        vec4(confidence, 0.0, 0.0, 0.0)
+      );
+    }
   }
 }

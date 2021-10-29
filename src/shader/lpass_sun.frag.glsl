@@ -45,7 +45,7 @@ void main() {
   vec3 pos_view = pos_view_projective.xyz / pos_view_projective.w;
   vec3 pos_world = pos_world_projective.xyz / pos_world_projective.w;
 
-  if (!frame.data.flags.debug_C) { // @Tmp check that shadows are also slow
+  if (!frame.data.flags.disable_direct_shadows) {
     rayQueryEXT ray_query;
     rayQueryInitializeEXT(
       ray_query,

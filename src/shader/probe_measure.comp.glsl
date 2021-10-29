@@ -201,8 +201,8 @@ void main() {
     pos_world,
     N,
     frame.data,
-    true, // is_prev. only should be true if we invalidate afterwards.
-    frame.data.flags.debug_A ? cascade.level : min(PROBE_CASCADE_COUNT - 1, cascade.level + 1),
+    min(PROBE_CASCADE_COUNT - 1, cascade.level + 1),
+    // Using `level + 1` here makes a huge difference to performance.
     probe_irradiance,
     probe_confidence,
     probe_attention_write,

@@ -1,6 +1,5 @@
 #version 460
 #extension GL_GOOGLE_include_directive : enable
-#extension GL_KHR_shader_subgroup_arithmetic : enable
 #include "common/frame.glsl"
 #include "common/probes.glsl"
 
@@ -30,6 +29,15 @@ shared uint subgroup_inner_next_id;
 void main() {
   uvec3 probe_coord = gl_GlobalInvocationID;
 
+  bool out_of_bounds = any(greaterThanEqual(
+    probe_coord,
+    frame.data.probe.grid_size
+  )); // needed because maybe `grid_size % local_group_size != 0`
+
+  if (out_of_bounds) { 
+    return;
+  }
+
   uvec2 z_subcoord = uvec2(
     probe_coord.z % frame.data.probe.grid_size_z_factors.x,
     probe_coord.z / frame.data.probe.grid_size_z_factors.x
@@ -55,7 +63,7 @@ void main() {
     ivec2(combined_coord)
   ).r;
 
-  { // invalidation @Tmp
+  { // invalidation
     ivec3 infinite_grid_min = frame.data.probe.cascades[cascade.level].infinite_grid_min;
     ivec3 infinite_grid_min_prev = frame.data.probe.cascades[cascade.level].infinite_grid_min_prev;
 
@@ -88,13 +96,13 @@ void main() {
     ivec2(combined_coord)
   ).r;
   
-  bool out_of_bounds = any(greaterThanEqual(
-    probe_coord,
-    frame.data.probe.grid_size
-  )); // needed because maybe `grid_size % local_group_size != 0`
-
-  // @Tmp confidence check
-  if (confidence > 0.8 || attention == 0 || out_of_bounds) {
+  if (false
+    || (
+      !frame.data.flags.debug_A &&
+      floor(mod(frame.data.number, 1.0 / (1.0 - confidence))) != 0.0
+    )
+    || attention == 0
+  ) {
     return;
   }
 
