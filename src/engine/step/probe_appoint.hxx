@@ -2,7 +2,6 @@
 #include <vulkan/vulkan.h>
 #include <src/engine/session/data.hxx>
 #include <src/engine/display/data.hxx>
-#include <src/engine/datum/probe_workset.hxx>
 
 namespace engine::step::probe_appoint {
 
@@ -24,6 +23,7 @@ void init_ddata(
   Use<SData> sdata,
   Own<display::Data::Helpers> helpers,
   Use<datum::probe_attention::DData> probe_attention,
+  Use<datum::probe_confidence::SData> probe_confidence,
   Use<datum::probe_workset::SData> probe_workset,
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Ref<engine::session::Vulkan::Core> core

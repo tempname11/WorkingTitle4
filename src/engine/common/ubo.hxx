@@ -48,8 +48,9 @@ struct Frame {
   float luminance_moving_average;
   alignas(16) glm::vec3 sky_sun_direction;
   alignas(16) glm::vec3 sky_intensity;
+  uint32_t number;
   uint32_t is_frame_sequential;
-  Flags flags;
+  alignas(16) Flags flags;
   alignas(16) ProbeInfo probe_info;
   alignas(16) uint32_t end_marker;
 };

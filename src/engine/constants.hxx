@@ -17,8 +17,8 @@ static_assert(
   PROBE_GRID_SIZE_Z_FACTORS.x * PROBE_GRID_SIZE_Z_FACTORS.y
 );
 
-constexpr auto PROBE_RAY_COUNT = 32; // :GI_N_Rays
-constexpr auto PROBE_RAY_COUNT_FACTORS = glm::uvec2(8, 4);
+constexpr auto PROBE_RAY_COUNT = 64; // :GI_N_Rays
+constexpr auto PROBE_RAY_COUNT_FACTORS = glm::uvec2(8, 8);
 static_assert(
   PROBE_RAY_COUNT ==
   PROBE_RAY_COUNT_FACTORS.x * PROBE_RAY_COUNT_FACTORS.y

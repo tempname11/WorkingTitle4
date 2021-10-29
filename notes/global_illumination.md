@@ -1,8 +1,8 @@
 # Global Illumination TODO
 
-- "confidence"
+- read confidence when sampling irradiance
+- better confidence update
+- better confidence check
 
 - 32-bit irradiance?
-- position randomization?
-- spend more time on the blending, perf and quality
 

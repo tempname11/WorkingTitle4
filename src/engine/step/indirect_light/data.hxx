@@ -10,6 +10,7 @@ struct SData {
   VkRenderPass render_pass;
   VkPipeline pipeline;
   VkSampler sampler_probe_irradiance;
+  VkSampler sampler_trivial;
 };
 
 struct DData {

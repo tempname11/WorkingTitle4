@@ -45,22 +45,24 @@ void main() {
   vec3 pos_view = pos_view_projective.xyz / pos_view_projective.w;
   vec3 pos_world = pos_world_projective.xyz / pos_world_projective.w;
 
-  rayQueryEXT ray_query;
-  rayQueryInitializeEXT(
-    ray_query,
-    accel,
-    0,
-    0xFF,
-    pos_world,
-    RAY_T_MIN_MULT * length(pos_view), // try to compensate for Z precision.
-    -directional_light.direction,
-    RAY_T_MAX
-  );
-  rayQueryProceedEXT(ray_query);
-  float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);
+  if (!frame.data.flags.debug_C) { // @Tmp check that shadows are also slow
+    rayQueryEXT ray_query;
+    rayQueryInitializeEXT(
+      ray_query,
+      accel,
+      0,
+      0xFF,
+      pos_world,
+      RAY_T_MIN_MULT * length(pos_view), // try to compensate for Z precision.
+      -directional_light.direction,
+      RAY_T_MAX
+    );
+    rayQueryProceedEXT(ray_query);
+    float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);
 
-  if (t_intersection > 0.0) {
-    discard;
+    if (t_intersection > 0.0) {
+      discard;
+    }
   }
 
   vec3 L = -directional_light.direction;

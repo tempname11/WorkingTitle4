@@ -12,6 +12,7 @@ layout(
 
 layout(binding = 0) uniform Frame { FrameData data; } frame;
 layout(binding = 1, r32ui) uniform readonly uimage2D probe_attention_prev; // :ProbeAttentionFormat
+layout(binding = 2, r32f) uniform image2D probe_confidence; // :ProbeConfidenceFormat
 layout(set = 1, binding = 0) writeonly buffer ProbeWorkset {
   uvec4 data[];
 } probe_workset;
@@ -49,46 +50,51 @@ void main() {
     )
   );
 
+  float confidence = imageLoad(
+    probe_confidence,
+    ivec2(combined_coord)
+  ).r;
+
+  { // invalidation @Tmp
+    ivec3 infinite_grid_min = frame.data.probe.cascades[cascade.level].infinite_grid_min;
+    ivec3 infinite_grid_min_prev = frame.data.probe.cascades[cascade.level].infinite_grid_min_prev;
+
+    ivec3 infinite_grid_coord = (0
+      + (ivec3(probe_coord) - infinite_grid_min) % ivec3(frame.data.probe.grid_size)
+      + infinite_grid_min
+    );
+    bool out_of_bounds = (false
+      || any(lessThan(
+        infinite_grid_coord,
+        infinite_grid_min_prev
+      ))
+      || any(greaterThan(
+        infinite_grid_coord,
+        infinite_grid_min_prev + ivec3(frame.data.probe.grid_size) - 1
+      ))
+    );
+    if (out_of_bounds) {
+      confidence = 0.0;
+      imageStore(
+        probe_confidence,
+        ivec2(combined_coord),
+        vec4(0.0)
+      );
+    }
+  }
+
   uint attention = imageLoad(
     probe_attention_prev,
     ivec2(combined_coord)
   ).r;
-  
-  /*
-    if (attention == 0) {
-      ivec3 infinite_grid_min = frame.data.probe.cascades[cascade.level].infinite_grid_min;
-      ivec3 infinite_grid_min_prev = frame.data.probe.cascades[cascade.level].infinite_grid_min_prev;
-
-      ivec3 infinite_grid_coord = (0
-        + (ivec3(probe_coord) - infinite_grid_min) % ivec3(frame.data.probe.grid_size)
-        + infinite_grid_min
-      );
-      bool out_of_bounds = (false
-        || any(lessThan(
-          infinite_grid_coord,
-          infinite_grid_min_prev
-        ))
-        || any(greaterThan(
-          infinite_grid_coord,
-          infinite_grid_min_prev + ivec3(frame.data.probe.grid_size) - 1
-        ))
-      );
-      if (out_of_bounds) {
-        imageStore(
-          probe_irradiance,
-          irradiance_texel_coord,
-          vec4(0.0)
-        );
-      }
-    }
-  */
   
   bool out_of_bounds = any(greaterThanEqual(
     probe_coord,
     frame.data.probe.grid_size
   )); // needed because maybe `grid_size % local_group_size != 0`
 
-  if (attention == 0 || out_of_bounds) {
+  // @Tmp confidence check
+  if (confidence > 0.8 || attention == 0 || out_of_bounds) {
     return;
   }
 

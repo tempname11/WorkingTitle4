@@ -15,6 +15,7 @@
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/engine/datum/probe_workset.hxx>
+#include <src/engine/datum/probe_confidence.hxx>
 #include <src/engine/step/probe_appoint.hxx>
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
@@ -479,6 +480,12 @@ void init_vulkan(
     &it->allocator_device
   );
 
+  datum::probe_confidence::init_sdata(
+    &it->probe_confidence,
+    &it->allocator_device,
+    &it->core
+  );
+
   step::probe_appoint::init_sdata(
     &it->probe_appoint,
     &it->core
@@ -847,7 +854,7 @@ void setup(
   }
   {
     const auto size = sizeof(engine::session::Vulkan);
-    static_assert(size == 3192);
+    static_assert(size == 3232);
   }
   #endif
 

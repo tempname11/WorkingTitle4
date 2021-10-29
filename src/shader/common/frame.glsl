@@ -45,6 +45,7 @@ struct FrameData {
   float luminance_moving_average;
   vec3 sky_sun_direction;
   vec3 sky_intensity;
+  uint number;
   bool is_frame_sequential;
   FrameFlags flags;
   FrameProbe probe;

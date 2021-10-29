@@ -20,9 +20,10 @@ void update_camera(
 
 void CtrlSession::run() {
   {
+    //std::string path = "assets/vox/test/index.grup";
     std::string path = "assets/hogwarts/index.grup";
     //std::string path = "assets/sponza-fixed/index.grup";
-    //std::string path = "assets/gi_test_0.grup";
+    //std::string path = "assets/gi_test_3.grup";
     task(engine::loading::group::load(
       ctx,
       &path,

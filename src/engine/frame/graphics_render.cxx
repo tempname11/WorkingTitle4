@@ -10,7 +10,9 @@
 #include <src/engine/datum/probe_radiance.hxx>
 #include <src/engine/datum/probe_irradiance.hxx>
 #include <src/engine/datum/probe_irradiance/constants.hxx>
+#include <src/engine/datum/probe_workset.hxx>
 #include <src/engine/datum/probe_attention.hxx>
+#include <src/engine/datum/probe_confidence.hxx>
 #include "graphics_render.hxx"
 
 namespace engine::frame {
@@ -1317,6 +1319,7 @@ void prepare_uniforms(
       .luminance_moving_average = session_state->luminance_moving_average,
       .sky_sun_direction = sun_direction,
       .sky_intensity = sun_irradiance,
+      .number = uint32_t(frame_info->number),
       .is_frame_sequential = frame_info->is_sequential,
       .flags = session_state->ubo_flags,
       .probe_info = {
@@ -1541,6 +1544,12 @@ void graphics_render(
     cmd
   );
 
+  datum::probe_confidence::barrier_into_appoint(
+    &session->vulkan.probe_confidence,
+    frame_info,
+    cmd
+  );
+
   { TracyVkZone(core->tracy_context, cmd, "probe_appoint");
     step::probe_appoint::record(
       &display->probe_appoint,
@@ -1566,6 +1575,12 @@ void graphics_render(
 
   datum::probe_irradiance::transition_into_probe_measure(
     &display->probe_irradiance,
+    frame_info,
+    cmd
+  );
+
+  datum::probe_confidence::barrier_from_appoint_into_measure(
+    &session->vulkan.probe_confidence,
     frame_info,
     cmd
   );
@@ -1597,6 +1612,12 @@ void graphics_render(
     cmd
   );
 
+  datum::probe_confidence::barrier_from_measure_into_collect(
+    &session->vulkan.probe_confidence,
+    frame_info,
+    cmd
+  );
+
   { TracyVkZone(core->tracy_context, cmd, "probe_collect");
     step::probe_collect::record(
       &display->probe_collect,
@@ -1606,6 +1627,12 @@ void graphics_render(
       cmd
     );
   }
+
+  datum::probe_confidence::barrier_from_collect_into_indirect_light(
+    &session->vulkan.probe_confidence,
+    frame_info,
+    cmd
+  );
 
   datum::probe_irradiance::transition_from_probe_collect_into_indirect_light(
     &display->probe_irradiance,

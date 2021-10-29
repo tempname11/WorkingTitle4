@@ -41,6 +41,7 @@ struct PerInstance {
 
 layout(binding = 0, rgba16f) uniform writeonly image2D lbuffer; // :LBuffer2_Format
 layout(binding = 1) uniform sampler2D probe_irradiance;
+layout(binding = 2) uniform sampler2D probe_confidence;
 layout(binding = 3) uniform writeonly uimage2D probe_attention_write;
 layout(binding = 4) readonly buffer ProbeWorkset {
   uvec4 data[];
@@ -201,8 +202,9 @@ void main() {
     N,
     frame.data,
     true, // is_prev. only should be true if we invalidate afterwards.
-    min(PROBE_CASCADE_COUNT - 1, cascade.level + 1),
+    frame.data.flags.debug_A ? cascade.level : min(PROBE_CASCADE_COUNT - 1, cascade.level + 1),
     probe_irradiance,
+    probe_confidence,
     probe_attention_write,
     albedo
   );

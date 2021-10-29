@@ -10,6 +10,7 @@ layout(
 ) in;
 
 layout(binding = 0, rgba16f) uniform image2D probe_irradiance; // :ProbeIrradianceFormat
+layout(binding = 1, r32f) uniform image2D probe_confidence; // :ProbeConfidenceFormat
 layout(binding = 2) uniform sampler2D probe_radiance;
 layout(binding = 3) uniform Frame { FrameData data; } frame;
 layout(binding = 4) readonly buffer ProbeWorkset {
@@ -19,8 +20,6 @@ layout(binding = 4) readonly buffer ProbeWorkset {
 layout(push_constant) uniform Cascade {
   uint level;
 } cascade;
-
-const float HYSTERESIS_PER_FRAME = 0.99;
 
 void main() {
   ivec2 octomap_coord = ivec2(gl_LocalInvocationID.xy);
@@ -86,18 +85,34 @@ void main() {
     }
   }
 
-  if (frame.data.is_frame_sequential) {
-    vec4 previous = imageLoad(
-      probe_irradiance,
-      irradiance_texel_coord
-    );
+  vec4 previous = imageLoad(
+    probe_irradiance,
+    irradiance_texel_coord
+  );
 
-    value = previous * HYSTERESIS_PER_FRAME + (1.0 - HYSTERESIS_PER_FRAME) * value;
-  }
+  float confidence = imageLoad(
+    probe_confidence,
+    ivec2(combined_coord)
+  ).r;
+
+  value = previous * confidence + 0.01 * value;
+  value /= (confidence + 0.01);
+
+  confidence = (confidence + 0.01) * (1.0 - 0.01);
+  // @Tmp: confidence update...
+  // use subgroup ops?
 
   imageStore(
     probe_irradiance,
     irradiance_texel_coord,
     value
   );
+
+  if (gl_LocalInvocationIndex == 0) {
+    imageStore(
+      probe_confidence,
+      ivec2(combined_coord),
+      vec4(confidence, 0.0, 0.0, 0.0)
+    );
+  }
 }

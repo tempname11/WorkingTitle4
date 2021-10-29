@@ -7,6 +7,7 @@
 #include <src/engine/rendering/lpass.hxx>
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/engine/datum/probe_workset.hxx>
+#include <src/engine/datum/probe_confidence.hxx>
 #include <src/engine/step/probe_appoint.hxx>
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
@@ -42,6 +43,11 @@ void cleanup(
 
     datum::probe_workset::deinit_sdata(
       &it->probe_workset,
+      core
+    );
+
+    datum::probe_confidence::deinit_sdata(
+      &it->probe_confidence,
       core
     );
 

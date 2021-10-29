@@ -31,6 +31,12 @@ void init_sdata(
         .stageFlags = VK_SHADER_STAGE_ALL,
       },
       {
+        .binding = 2,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
+      {
         .binding = 3,
         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         .descriptorCount = 1,
@@ -230,15 +236,26 @@ void init_sdata(
     VkSamplerCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
       .magFilter = VK_FILTER_LINEAR,
-      .minFilter = VK_FILTER_LINEAR,
-      .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-      .maxLod = VK_LOD_CLAMP_NONE,
     };
     auto result = vkCreateSampler(
       core->device,
       &create_info,
       core->allocator,
       &sampler_probe_irradiance
+    );
+    assert(result == VK_SUCCESS);
+  }
+
+  VkSampler sampler_trivial;
+  { ZoneScopedN("sampler_trivial");
+    VkSamplerCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+    };
+    auto result = vkCreateSampler(
+      core->device,
+      &create_info,
+      core->allocator,
+      &sampler_trivial
     );
     assert(result == VK_SUCCESS);
   }
@@ -250,6 +267,7 @@ void init_sdata(
     .pipeline = pipeline,
     .sampler_albedo = sampler_albedo,
     .sampler_probe_irradiance = sampler_probe_irradiance,
+    .sampler_trivial = sampler_trivial,
   };
 }
 

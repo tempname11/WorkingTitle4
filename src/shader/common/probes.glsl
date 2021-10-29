@@ -4,8 +4,8 @@
 #include "constants.glsl"
 #include "frame.glsl"
 
-const uint PROBE_RAY_COUNT = 32; // GI_N_Rays
-const uvec2 PROBE_RAY_COUNT_FACTORS = uvec2(8, 4);
+const uint PROBE_RAY_COUNT = 64; // GI_N_Rays
+const uvec2 PROBE_RAY_COUNT_FACTORS = uvec2(8, 8);
 
 const uvec2 OCTOMAP_TEXEL_SIZE = uvec2(8, 8); // :ProbeOctoSize
 const float MIN_PROBE_WEIGHT = 0.000001;
@@ -70,6 +70,7 @@ vec4 _get_cascade_irradiance(
   vec3 infinite_grid_coord_float,
   vec3 N,
   sampler2D probe_irradiance,
+  sampler2D probe_confidence,
   writeonly uimage2D probe_attention,
   FrameData frame_data
 ) {
@@ -125,7 +126,12 @@ vec4 _get_cascade_irradiance(
       ) / textureSize(probe_irradiance, 0)
     ).rgb;
 
-    float weight = 1.0;
+    float confidence = texture(
+      probe_confidence,
+      (combined_texel_coord + 0.5) / textureSize(probe_confidence, 0)
+    ).r;
+
+    float weight = confidence;
 
     // "smooth backface" produced weird grid-like artifacts,
     // so we just use a sane one.
@@ -156,10 +162,11 @@ vec3 get_indirect_radiance(
   bool is_prev,
   uint min_cascade_level,
   sampler2D probe_irradiance,
+  sampler2D probe_confidence,
   writeonly uimage2D probe_attention,
   vec3 albedo
 ) {
-  if (!frame_data.flags.debug_A) { // @Tmp
+  if (frame_data.flags.debug_B) { // @Tmp: compare quality and speed
     for (uint c = min_cascade_level; c < PROBE_CASCADE_COUNT; c++) {
       vec3 delta = frame_data.probe.cascades[c].world_position_delta;
       ivec3 infinite_grid_min = (is_prev
@@ -188,6 +195,7 @@ vec3 get_indirect_radiance(
           infinite_grid_coord_float,
           N,
           probe_irradiance,
+          probe_confidence,
           probe_attention,
           frame_data
         );
@@ -265,6 +273,7 @@ vec3 get_indirect_radiance(
       level_infinite_grid_coord_float[i],
       N,
       probe_irradiance,
+      probe_confidence,
       probe_attention,
       frame_data
     );

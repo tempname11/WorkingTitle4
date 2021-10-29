@@ -26,6 +26,7 @@ void init_ddata(
   engine::display::Data::LPass::Stakes* lpass_stakes,
   Use<datum::probe_radiance::DData> lbuffer,
   Use<datum::probe_irradiance::DData> probe_irradiance,
+  Use<datum::probe_confidence::SData> probe_confidence,
   Use<datum::probe_attention::DData> probe_attention,
   Use<datum::probe_workset::SData> probe_workset,
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,

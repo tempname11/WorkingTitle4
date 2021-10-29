@@ -46,6 +46,12 @@ void init_sdata(
         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
       },
       {
+        .binding = 5,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+      },
+      {
         .binding = 6,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
@@ -373,9 +379,6 @@ void init_sdata(
     VkSamplerCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
       .magFilter = VK_FILTER_LINEAR,
-      .minFilter = VK_FILTER_LINEAR,
-      .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-      .maxLod = VK_LOD_CLAMP_NONE,
     };
     auto result = vkCreateSampler(
       core->device,
@@ -386,12 +389,27 @@ void init_sdata(
     assert(result == VK_SUCCESS);
   }
 
+  VkSampler sampler_trivial;
+  { ZoneScopedN("sampler_trivial");
+    VkSamplerCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+    };
+    auto result = vkCreateSampler(
+      core->device,
+      &create_info,
+      core->allocator,
+      &sampler_trivial
+    );
+    assert(result == VK_SUCCESS);
+  }
+
   *out = {
     .descriptor_set_layout_frame = descriptor_set_layout_frame,
     .pipeline_layout = pipeline_layout,
     .render_pass = render_pass,
     .pipeline = pipeline,
     .sampler_probe_irradiance = sampler_probe_irradiance,
+    .sampler_trivial = sampler_trivial,
   };
 }
 

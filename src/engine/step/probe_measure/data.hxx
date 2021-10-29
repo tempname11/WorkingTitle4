@@ -11,6 +11,7 @@ struct SData {
   VkPipeline pipeline;
   VkSampler sampler_albedo;
   VkSampler sampler_probe_irradiance;
+  VkSampler sampler_trivial;
 };
 
 struct DData {

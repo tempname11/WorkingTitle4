@@ -24,6 +24,7 @@ void init_ddata(
   Own<engine::display::Data::Helpers> helpers,
   Use<datum::probe_radiance::DData> probe_radiance,
   Use<datum::probe_irradiance::DData> probe_irradiance,
+  Use<datum::probe_confidence::SData> probe_confidence,
   Use<datum::probe_workset::SData> probe_workset,
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Ref<engine::session::Vulkan::Core> core

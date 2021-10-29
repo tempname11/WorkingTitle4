@@ -40,6 +40,11 @@ void deinit_sdata(
     it->sampler_probe_irradiance,
     core->allocator
   );
+  vkDestroySampler(
+    core->device,
+    it->sampler_trivial,
+    core->allocator
+  );
 }
 
 } // namespace
