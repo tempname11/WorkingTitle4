@@ -10,7 +10,7 @@ layout(
 ) in;
 
 layout(binding = 0, rgba16f) uniform image2D probe_irradiance; // :ProbeIrradianceFormat
-layout(binding = 1, r32f) uniform image2D probe_confidence; // :ProbeConfidenceFormat
+layout(binding = 1, rgba16ui) uniform uimage2D probe_confidence; // :ProbeConfidenceFormat
 layout(binding = 2) uniform sampler2D probe_radiance;
 layout(binding = 3) uniform Frame { FrameData data; } frame;
 layout(binding = 4) readonly buffer ProbeWorkset {
@@ -100,10 +100,11 @@ void main() {
     irradiance_texel_coord
   );
 
-  float confidence = imageLoad(
+  uvec4 confidence_packed = imageLoad(
     probe_confidence,
     ivec2(combined_coord)
-  ).r;
+  ); // :ProbeConfidenceFormat
+  float confidence = confidence_packed.r / 65535.0;
 
   vec4 irradiance_write = irradiance_read * confidence + 0.01 * value;
   irradiance_write /= (confidence + 0.01);
@@ -130,12 +131,12 @@ void main() {
 
     barrier(); // @Think: are these barriers overkill or necessary?
     memoryBarrierShared();
-    atomicMax(overall_surprise_uint, uint(surprise * 65536));
+    atomicMax(overall_surprise_uint, uint(surprise * 65535));
     barrier();
     memoryBarrierShared();
 
     if (gl_LocalInvocationIndex == 0) {
-      float overall_surprise = overall_surprise_uint / 65536.0;
+      float overall_surprise = overall_surprise_uint / 65535.0;
       confidence = clamp(
         1.0 - (
           (1.0 - confidence) *
@@ -148,7 +149,7 @@ void main() {
       imageStore(
         probe_confidence,
         ivec2(combined_coord),
-        vec4(confidence, 0.0, 0.0, 0.0)
+        uvec4(confidence * 65535, 0.0, 0.0, 0.0) // :ProbeConfidenceFormat
       );
     }
   }

@@ -11,7 +11,7 @@ layout(
 
 layout(binding = 0) uniform Frame { FrameData data; } frame;
 layout(binding = 1, r32ui) uniform readonly uimage2D probe_attention_prev; // :ProbeAttentionFormat
-layout(binding = 2, r32f) uniform image2D probe_confidence; // :ProbeConfidenceFormat
+layout(binding = 2, rgba16ui) uniform uimage2D probe_confidence; // :ProbeConfidenceFormat
 layout(set = 1, binding = 0) writeonly buffer ProbeWorkset {
   uvec4 data[];
 } probe_workset;
@@ -58,10 +58,11 @@ void main() {
     )
   );
 
-  float confidence = imageLoad(
+  uvec4 confidence_packed = imageLoad(
     probe_confidence,
     ivec2(combined_coord)
-  ).r;
+  );
+    float confidence = confidence_packed.r / 65535.0;
 
   { // invalidation
     ivec3 infinite_grid_min = frame.data.probe.cascades[cascade.level].infinite_grid_min;
@@ -86,7 +87,7 @@ void main() {
       imageStore(
         probe_confidence,
         ivec2(combined_coord),
-        vec4(0.0)
+        uvec4(0)
       );
     }
   }

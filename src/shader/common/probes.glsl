@@ -72,7 +72,7 @@ vec4 _get_cascade_irradiance(
   vec3 infinite_grid_coord_float,
   vec3 N,
   sampler2D probe_irradiance,
-  sampler2D probe_confidence,
+  usampler2D probe_confidence,
   writeonly uimage2D probe_attention,
   FrameData frame_data
 ) {
@@ -128,10 +128,11 @@ vec4 _get_cascade_irradiance(
       ) / textureSize(probe_irradiance, 0)
     ).rgb;
 
-    float confidence = texture(
+    uvec4 confidence_packed = texture(
       probe_confidence,
       (combined_texel_coord + 0.5) / textureSize(probe_confidence, 0)
-    ).r;
+    ); // :ProbeConfidenceFormat
+    float confidence = confidence_packed.r / 65535.0;
 
     float weight = max(confidence, MIN_INITIAL_WEIGHT);
 
@@ -170,7 +171,7 @@ vec3 get_indirect_radiance(
   FrameData frame_data,
   uint min_cascade_level,
   sampler2D probe_irradiance,
-  sampler2D probe_confidence,
+  usampler2D probe_confidence,
   writeonly uimage2D probe_attention,
   vec3 albedo
 ) {

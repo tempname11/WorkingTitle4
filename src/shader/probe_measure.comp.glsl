@@ -41,7 +41,7 @@ struct PerInstance {
 
 layout(binding = 0, rgba16f) uniform writeonly image2D lbuffer; // :LBuffer2_Format
 layout(binding = 1) uniform sampler2D probe_irradiance;
-layout(binding = 2) uniform sampler2D probe_confidence;
+layout(binding = 2) uniform usampler2D probe_confidence;
 layout(binding = 3) uniform writeonly uimage2D probe_attention_write;
 layout(binding = 4) readonly buffer ProbeWorkset {
   uvec4 data[];

@@ -21,7 +21,7 @@ void update_camera(
   lib::debug_camera::update(&state->debug_camera, &zero_input, 0.0, 0.0);
   state->ubo_flags.disable_direct_lighting = 1;
   state->ubo_flags.disable_direct_shadows = 1;
-  state->ubo_flags.debug_B = 1;
+  //state->ubo_flags.debug_B = 1;
 }
 
 void CtrlSession::run() {

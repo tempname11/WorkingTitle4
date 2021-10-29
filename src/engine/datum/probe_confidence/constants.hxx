@@ -4,7 +4,7 @@
 
 namespace engine::datum::probe_confidence {
 
-const VkFormat FORMAT = VK_FORMAT_R32_SFLOAT; // :ProbeConfidenceFormat
+const VkFormat FORMAT = VK_FORMAT_R16G16B16A16_UINT; // :ProbeConfidenceFormat
 
 const uint32_t WIDTH = (1
   * PROBE_GRID_SIZE.x
