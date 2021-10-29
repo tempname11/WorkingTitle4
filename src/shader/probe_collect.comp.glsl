@@ -21,7 +21,7 @@ vec3 to_perception_space(vec3 l) {
   return l / (frame.data.luminance_moving_average + l);
 }
 
-shared uint overall_surprise_uint;
+shared uint shared_error_uint;
 
 layout(push_constant) uniform Cascade {
   uint level;
@@ -29,7 +29,7 @@ layout(push_constant) uniform Cascade {
 
 void main() {
   if (gl_LocalInvocationIndex == 0) {
-    overall_surprise_uint = 0;
+    shared_error_uint = 0;
   }
 
   ivec2 octomap_coord = ivec2(gl_LocalInvocationID.xy);
@@ -104,14 +104,16 @@ void main() {
     probe_confidence,
     ivec2(combined_coord)
   ); // :ProbeConfidenceFormat
-  float confidence = confidence_packed.r / 65535.0;
+  uint last_update_frame_number = confidence_packed.r * 65536 + confidence_packed.g;
+  uint frames_passed = frame.data.number - last_update_frame_number;
+  float volatility = confidence_packed.b / 65535.0;
+  uint accumulator = confidence_packed.a;
 
-  vec4 irradiance_write = irradiance_read * confidence + 0.01 * value;
-  irradiance_write /= (confidence + 0.01);
-
-  if (frame.data.flags.debug_C) {
-    irradiance_write = irradiance_read;
-  }
+  vec4 irradiance_write = (
+    irradiance_read * accumulator
+    + value * frames_passed
+  );
+  irradiance_write /= accumulator + frames_passed;
 
   imageStore(
     probe_irradiance,
@@ -120,36 +122,46 @@ void main() {
   );
 
   { // update confidence
-    float surprise = clamp(
+    float error = clamp(
+      length(
+        value.rgb / (value.rgb + irradiance_read.rgb) - 0.5
+      ) + length(
+        irradiance_read.rgb / (value.rgb + irradiance_read.rgb) - 0.5
+      ), // @Hack @Tmp
+      /*
       length(
         to_perception_space(irradiance_read.rgb) -
         to_perception_space(value.rgb)
-      ),
+      ) * 10.0,
+      */
       0.0,
       1.0
     );
 
     barrier(); // @Think: are these barriers overkill or necessary?
     memoryBarrierShared();
-    atomicMax(overall_surprise_uint, uint(surprise * 65535));
+    atomicMax(shared_error_uint, uint(error * 65535));
     barrier();
     memoryBarrierShared();
 
     if (gl_LocalInvocationIndex == 0) {
-      float overall_surprise = overall_surprise_uint / 65535.0;
-      confidence = clamp(
-        1.0 - (
-          (1.0 - confidence) *
-          pow(2.0, overall_surprise - 0.25)
-        ),
+      float max_error = shared_error_uint / 65535.0;
+      volatility = clamp(
+        (volatility * accumulator + max_error * frames_passed)
+          / (accumulator + frames_passed),
         0.0,
-        0.9
+        1.0
       );
 
       imageStore(
         probe_confidence,
         ivec2(combined_coord),
-        uvec4(confidence * 65535, 0.0, 0.0, 0.0) // :ProbeConfidenceFormat
+        uvec4(
+          frame.data.number / 65536,
+          frame.data.number % 65536,
+          volatility * 65535.0,
+          min(accumulator + 1, PROBE_ACCUMULATOR_MAX)
+        ) // :ProbeConfidenceFormat
       );
     }
   }

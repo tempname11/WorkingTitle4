@@ -1,8 +1,10 @@
 # Global Illumination TODO
 
-- read confidence when sampling irradiance
-- better confidence update
-- better confidence check
+- what is going on with volatility and frames_passed?!
+- low ray count artifacts
 
-- 32-bit irradiance?
+- probe-in-the-wall artifacts
+- [5, 45] degree artifacts
+
+- try 32-bit irradiance
 

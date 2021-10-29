@@ -61,8 +61,11 @@ void main() {
   uvec4 confidence_packed = imageLoad(
     probe_confidence,
     ivec2(combined_coord)
-  );
-    float confidence = confidence_packed.r / 65535.0;
+  ); // :ProbeConfidenceFormat
+  float volatility = confidence_packed.b / 65535.0;
+  uint accumulator = confidence_packed.a;
+  uint last_update_frame_number = confidence_packed.r * 65536 + confidence_packed.g;
+  uint frames_passed = frame.data.number - last_update_frame_number;
 
   { // invalidation
     ivec3 infinite_grid_min = frame.data.probe.cascades[cascade.level].infinite_grid_min;
@@ -83,7 +86,6 @@ void main() {
       ))
     );
     if (out_of_bounds) {
-      confidence = 0.0;
       imageStore(
         probe_confidence,
         ivec2(combined_coord),
@@ -97,13 +99,17 @@ void main() {
     ivec2(combined_coord)
   ).r;
   
-  if (false
-    || (
-      !frame.data.flags.debug_A &&
-      floor(mod(frame.data.number, 1.0 / (1.0 - confidence))) != 0.0
-    )
-    || attention == 0
-  ) {
+  float certainty = (
+    (accumulator + 1.0)
+      / (PROBE_ACCUMULATOR_MAX + 1.0)
+      / max(volatility, PROBE_VOLATILITY_MIN)
+  );
+  bool should_appoint = certainty * 2.0 < frames_passed; // @Cleanup 2.0
+
+  if (frame.data.flags.debug_A) {
+    should_appoint = true;
+  }
+  if (attention == 0 || !should_appoint) {
     return;
   }
 

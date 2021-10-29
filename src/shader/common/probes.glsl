@@ -4,6 +4,9 @@
 #include "constants.glsl"
 #include "frame.glsl"
 
+const float PROBE_VOLATILITY_MIN = 1.0 / 128.0;
+const uint PROBE_ACCUMULATOR_MAX = 128; // frames
+
 const uint PROBE_RAY_COUNT = 64; // GI_N_Rays
 const uvec2 PROBE_RAY_COUNT_FACTORS = uvec2(8, 8);
 
@@ -132,31 +135,46 @@ vec4 _get_cascade_irradiance(
       probe_confidence,
       (combined_texel_coord + 0.5) / textureSize(probe_confidence, 0)
     ); // :ProbeConfidenceFormat
-    float confidence = confidence_packed.r / 65535.0;
+    uint accumulator = confidence_packed.a;
+    float volatility = confidence_packed.b / 65535.0;
 
-    float weight = max(confidence, MIN_INITIAL_WEIGHT);
+    float weight = float(accumulator) / PROBE_ACCUMULATOR_MAX;
 
     // "smooth backface" produced weird grid-like artifacts,
-    // so we just use a sane one.
+    // so we just use a sane one. Should revisit this!
     vec3 probe_direction = normalize(grid_cube_vertex_coord - grid_cube_coord);
     float backface = dot(probe_direction, N) >= 0.0 ? 1.0 : 0.0;
     weight *= backface;
 
-    imageStore(
-      probe_attention,
-      ivec2(combined_texel_coord),
-      uvec4(1, 0, 0, 0)
-    );
+    if (backface > 0.0) {
+      imageStore(
+        probe_attention,
+        ivec2(combined_texel_coord),
+        uvec4(1, 0, 0, 0)
+      );
+    }
 
     const float min_weight = MIN_PROBE_WEIGHT;
     weight = max(min_weight, weight);
     weight *= trilinear.x * trilinear.y * trilinear.z;
 
     if (_debug) {
-      sum += vec4(vec3(
-        confidence,
-        0.0 * irradiance.gb
-      ) * weight, weight);
+      uint last_update_frame_number = confidence_packed.r * 65536 + confidence_packed.g;
+      uint frames_passed = frame_data.number - last_update_frame_number;
+      float certainty = (
+        (accumulator + 1.0)
+          / (PROBE_ACCUMULATOR_MAX + 1.0)
+          / max(volatility, PROBE_VOLATILITY_MIN)
+      );
+      bool should_appoint = certainty * 2.0 < frames_passed; // @Cleanup 2.0
+      sum += vec4(
+        should_appoint ? 1.0 : 0.0,
+        //volatility,
+        //frames_passed / 10.0,
+        0.0,
+        0.0,
+        1.0
+      );
     } else {
       sum += vec4(irradiance * weight, weight);
     }
@@ -293,6 +311,8 @@ vec3 get_indirect_radiance(
 
   if (sum.a > 0.0) {
     sum /= sum.a;
+  } else {
+    sum = vec4(frame_data.luminance_moving_average); // @Hack
   }
 
   return albedo * sum.rgb;
