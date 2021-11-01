@@ -4,8 +4,8 @@
 #include "constants.glsl"
 #include "frame.glsl"
 
-const float PROBE_VOLATILITY_MIN = 1.0 / 128.0;
-const uint PROBE_ACCUMULATOR_MAX = 128; // frames
+uint PROBE_MAX_SKIPS = 8;
+const float PROBE_ACCUMULATOR_MAX = 128.0; // ~frames
 
 const uint PROBE_RAY_COUNT = 64; // GI_N_Rays
 const uvec2 PROBE_RAY_COUNT_FACTORS = uvec2(8, 8);
@@ -70,7 +70,6 @@ vec3 octo_decode(vec2 o) {
 }
 
 vec4 _get_cascade_irradiance(
-  bool _debug,
   uint cascade_level,
   vec3 infinite_grid_coord_float,
   vec3 N,
@@ -135,10 +134,14 @@ vec4 _get_cascade_irradiance(
       probe_confidence,
       (combined_texel_coord + 0.5) / textureSize(probe_confidence, 0)
     ); // :ProbeConfidenceFormat
-    uint accumulator = confidence_packed.a;
+    float accumulator = confidence_packed.a / 65535.0 * PROBE_ACCUMULATOR_MAX;
     float volatility = confidence_packed.b / 65535.0;
+    uint last_update_frame_number = confidence_packed.r * 65536 + confidence_packed.g;
+    uint frames_passed = frame_data.number - last_update_frame_number;
+    float beta = max(0.0, accumulator - min(frames_passed, PROBE_ACCUMULATOR_MAX));
 
-    float weight = float(accumulator) / PROBE_ACCUMULATOR_MAX;
+    // initial weight
+    float weight = beta / PROBE_ACCUMULATOR_MAX;
 
     // "smooth backface" produced weird grid-like artifacts,
     // so we just use a sane one. Should revisit this!
@@ -157,27 +160,7 @@ vec4 _get_cascade_irradiance(
     const float min_weight = MIN_PROBE_WEIGHT;
     weight = max(min_weight, weight);
     weight *= trilinear.x * trilinear.y * trilinear.z;
-
-    if (_debug) {
-      uint last_update_frame_number = confidence_packed.r * 65536 + confidence_packed.g;
-      uint frames_passed = frame_data.number - last_update_frame_number;
-      float certainty = (
-        (accumulator + 1.0)
-          / (PROBE_ACCUMULATOR_MAX + 1.0)
-          / max(volatility, PROBE_VOLATILITY_MIN)
-      );
-      bool should_appoint = certainty * 2.0 < frames_passed; // @Cleanup 2.0
-      sum += vec4(
-        should_appoint ? 1.0 : 0.0,
-        //volatility,
-        //frames_passed / 10.0,
-        0.0,
-        0.0,
-        1.0
-      );
-    } else {
-      sum += vec4(irradiance * weight, weight);
-    }
+    sum += vec4(irradiance * weight, weight);
   }
 
   return sum;
@@ -193,53 +176,6 @@ vec3 get_indirect_radiance(
   writeonly uimage2D probe_attention,
   vec3 albedo
 ) {
-  /*
-  if (...) {
-    for (uint c = min_cascade_level; c < PROBE_CASCADE_COUNT; c++) {
-      vec3 delta = frame_data.probe.cascades[c].world_position_delta;
-      ivec3 infinite_grid_min = (is_prev
-        ? frame_data.probe.cascades[c].infinite_grid_min_prev
-        : frame_data.probe.cascades[c].infinite_grid_min
-      );
-      vec3 infinite_grid_coord_float = (
-        (pos_world - frame_data.probe.grid_world_position_zero)
-        / delta
-      );
-
-      bool out_of_bounds = (false
-        || any(lessThan(
-          infinite_grid_coord_float,
-          infinite_grid_min + 1
-        ))
-        || any(greaterThan(
-          infinite_grid_coord_float,
-          infinite_grid_min + ivec3(frame_data.probe.grid_size) - 2
-        ))
-      );
-
-      if (!out_of_bounds) {
-        vec4 sum = _get_cascade_irradiance(
-          c,
-          infinite_grid_coord_float,
-          N,
-          probe_irradiance,
-          probe_confidence,
-          probe_attention,
-          frame_data
-        );
-
-        if (sum.a > 0.0) {
-          sum /= sum.a;
-        }
-
-        return albedo * sum.rgb;
-      }
-    }
-
-    return vec3(0.0);
-  }
-  */
-
   uint level_index[2];
   vec3 level_infinite_grid_coord_float[2];
   uint levels_ready = 0;
@@ -298,7 +234,6 @@ vec3 get_indirect_radiance(
   };
   for (uint i = 0; i < levels_ready; i++) {
     sum += level_weight[i] * _get_cascade_irradiance(
-      min_cascade_level == 0 && frame_data.flags.debug_B, // _debug
       level_index[i],
       level_infinite_grid_coord_float[i],
       N,

@@ -21,11 +21,6 @@ layout(push_constant) uniform Cascade {
   uint level;
 } cascade;
 
-/*
-shared uint subgroup_outer_id;
-shared uint subgroup_inner_next_id;
-*/
-
 void main() {
   uvec3 probe_coord = gl_GlobalInvocationID;
 
@@ -63,10 +58,12 @@ void main() {
     ivec2(combined_coord)
   ); // :ProbeConfidenceFormat
   float volatility = confidence_packed.b / 65535.0;
-  uint accumulator = confidence_packed.a;
+  float accumulator = confidence_packed.a / 65535.0 * PROBE_ACCUMULATOR_MAX;
   uint last_update_frame_number = confidence_packed.r * 65536 + confidence_packed.g;
   uint frames_passed = frame.data.number - last_update_frame_number;
+  float beta = max(0.0, accumulator - min(frames_passed, PROBE_ACCUMULATOR_MAX));
 
+  bool should_appoint = false;
   { // invalidation
     ivec3 infinite_grid_min = frame.data.probe.cascades[cascade.level].infinite_grid_min;
     ivec3 infinite_grid_min_prev = frame.data.probe.cascades[cascade.level].infinite_grid_min_prev;
@@ -91,6 +88,7 @@ void main() {
         ivec2(combined_coord),
         uvec4(0)
       );
+      should_appoint = true;
     }
   }
 
@@ -99,36 +97,18 @@ void main() {
     ivec2(combined_coord)
   ).r;
   
-  float certainty = (
-    (accumulator + 1.0)
-      / (PROBE_ACCUMULATOR_MAX + 1.0)
-      / max(volatility, PROBE_VOLATILITY_MIN)
-  );
-  bool should_appoint = certainty * 2.0 < frames_passed; // @Cleanup 2.0
-
-  if (frame.data.flags.debug_A) {
+  if (beta < PROBE_ACCUMULATOR_MAX - PROBE_MAX_SKIPS) {
     should_appoint = true;
   }
+
+  if (frame.data.flags.disable_indirect_skips) {
+    should_appoint = true;
+  }
+
   if (attention == 0 || !should_appoint) {
     return;
   }
 
   uint id = atomicAdd(probe_counter.next_id, 1);
-  probe_workset.data[id] = uvec4(probe_coord, 0);
-
-  /*
-  uint subgroup_attention = subgroupAdd(attention);
-
-  if (subgroupElect()) {
-    subgroup_outer_id = atomicAdd(probe_counter.next_id, 1);
-    subgroup_inner_next_id = 0;
-  }
-
-  subgroupMemoryBarrierShared();
-
-  if (attention == 1) {
-    uint subgroup_inner_id = atomicAdd(subgroup_inner_next_id, 1);
-    probe_workset.data[subgroup_outer_id + subgroup_inner_id] = u8vec4(probe_coord, 0);
-  }
-  */
+  probe_workset.data[id] = uvec4(probe_coord, attention);
 }

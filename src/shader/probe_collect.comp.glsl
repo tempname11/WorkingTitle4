@@ -17,23 +17,21 @@ layout(binding = 4) readonly buffer ProbeWorkset {
   uvec4 data[];
 } probe_worksets[PROBE_CASCADE_COUNT];
 
-vec3 to_perception_space(vec3 l) {
-  return l / (frame.data.luminance_moving_average + l);
-}
-
 shared uint shared_error_uint;
 
 layout(push_constant) uniform Cascade {
   uint level;
 } cascade;
 
-void main() {
+void main() { 
   if (gl_LocalInvocationIndex == 0) {
     shared_error_uint = 0;
   }
 
   ivec2 octomap_coord = ivec2(gl_LocalInvocationID.xy);
-  uvec3 probe_coord = probe_worksets[cascade.level].data[gl_WorkGroupID.x].xyz;
+  uvec4 workset_data = probe_worksets[cascade.level].data[gl_WorkGroupID.x];
+  uvec3 probe_coord = workset_data.xyz;
+  uint attention = workset_data.w;
 
   uvec2 z_subcoord = uvec2(
     probe_coord.z % frame.data.probe.grid_size_z_factors.x,
@@ -107,13 +105,15 @@ void main() {
   uint last_update_frame_number = confidence_packed.r * 65536 + confidence_packed.g;
   uint frames_passed = frame.data.number - last_update_frame_number;
   float volatility = confidence_packed.b / 65535.0;
-  uint accumulator = confidence_packed.a;
+  float accumulator = confidence_packed.a / 65535.0 * PROBE_ACCUMULATOR_MAX;
+  float beta = max(0.0, accumulator - min(frames_passed, PROBE_ACCUMULATOR_MAX));
 
+  float alpha = 1.0 / max(1.0 / PROBE_MAX_SKIPS, volatility);
   vec4 irradiance_write = (
-    irradiance_read * accumulator
-    + value * frames_passed
+    irradiance_read * beta
+    + value * alpha 
   );
-  irradiance_write /= accumulator + frames_passed;
+  irradiance_write /= beta + alpha;
 
   imageStore(
     probe_irradiance,
@@ -122,21 +122,16 @@ void main() {
   );
 
   { // update confidence
+    vec3 error_rgb = abs(value.rgb - irradiance_read.rgb);
+    float error_linear = max(error_rgb.r, max(error_rgb.g, error_rgb.b));
     float error = clamp(
-      length(
-        value.rgb / (value.rgb + irradiance_read.rgb) - 0.5
-      ) + length(
-        irradiance_read.rgb / (value.rgb + irradiance_read.rgb) - 0.5
-      ), // @Hack @Tmp
-      /*
-      length(
-        to_perception_space(irradiance_read.rgb) -
-        to_perception_space(value.rgb)
-      ) * 10.0,
-      */
+      error_linear / (frame.data.luminance_moving_average + error_linear), // @Hack
       0.0,
       1.0
     );
+    if (value.w == 0.0) { // probe-in-the-wall? check this later.
+      error = 0.0;
+    }
 
     barrier(); // @Think: are these barriers overkill or necessary?
     memoryBarrierShared();
@@ -147,11 +142,11 @@ void main() {
     if (gl_LocalInvocationIndex == 0) {
       float max_error = shared_error_uint / 65535.0;
       volatility = clamp(
-        (volatility * accumulator + max_error * frames_passed)
-          / (accumulator + frames_passed),
+        (volatility * 15.0 + max_error * 1.0)
+          / (15.0 + 1.0),
         0.0,
         1.0
-      );
+      ); // pretty sure this needs to be improved a lot.
 
       imageStore(
         probe_confidence,
@@ -160,7 +155,7 @@ void main() {
           frame.data.number / 65536,
           frame.data.number % 65536,
           volatility * 65535.0,
-          min(accumulator + 1, PROBE_ACCUMULATOR_MAX)
+          min(beta + alpha + 1.0, PROBE_ACCUMULATOR_MAX) / PROBE_ACCUMULATOR_MAX * 65535.0
         ) // :ProbeConfidenceFormat
       );
     }

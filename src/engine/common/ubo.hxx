@@ -11,6 +11,7 @@ struct Flags {
   gl_bool disable_direct_shadows;
   gl_bool disable_indirect_lighting;
   gl_bool disable_indirect_bounces;
+  gl_bool disable_indirect_skips;
   gl_bool disable_eye_adaptation;
   gl_bool disable_motion_blur;
   gl_bool disable_TAA;

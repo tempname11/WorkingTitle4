@@ -1324,6 +1324,7 @@ void prepare_uniforms(
       .flags = session_state->ubo_flags,
       .probe_info = {
         .random_orientation = lib::gfx::utilities::get_random_rotation(),
+        //.random_orientation = glm::mat3(1, 0, 0, 0, 1, 0, 0, 0, 1),
         .grid_size = engine::PROBE_GRID_SIZE,
         .grid_size_z_factors = engine::PROBE_GRID_SIZE_Z_FACTORS,
         // .cascades = cascades, // this is done below

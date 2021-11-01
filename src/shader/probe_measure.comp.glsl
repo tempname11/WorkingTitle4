@@ -197,17 +197,20 @@ void main() {
   vec3 H = normalize(V + L);
   vec3 pos_world = origin_world + t_intersection * raydir_world;
 
-  vec3 result = get_indirect_radiance(
-    pos_world,
-    N,
-    frame.data,
-    min(PROBE_CASCADE_COUNT - 1, cascade.level + 1),
-    // Using `level + 1` here makes a huge difference to performance.
-    probe_irradiance,
-    probe_confidence,
-    probe_attention_write,
-    albedo
-  );
+  vec3 result = vec3(0.0);
+  if (!frame.data.flags.disable_indirect_bounces) {
+    result += get_indirect_radiance(
+      pos_world,
+      N,
+      frame.data,
+      min(PROBE_CASCADE_COUNT - 1, cascade.level + 1),
+      // Using `level + 1` here makes a huge difference to performance.
+      probe_irradiance,
+      probe_confidence,
+      probe_attention_write,
+      albedo
+    );
+  }
 
   { // directional light
     float NdotV = max(0.0, dot(N, V));
