@@ -29,6 +29,7 @@ void init_ddata(
   Use<display::Data::LBuffer> lbuffer,
   Use<datum::probe_irradiance::DData> probe_irradiance,
   Use<datum::probe_confidence::SData> probe_confidence,
+  Use<datum::probe_offsets::SData> probe_offsets,
   Use<datum::probe_attention::DData> probe_attention,
   Ref<display::Data::SwapchainDescription> swapchain_description
 );

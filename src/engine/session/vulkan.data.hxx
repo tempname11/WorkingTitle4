@@ -7,6 +7,7 @@
 #include <src/engine/step/indirect_light/data.hxx>
 #include <src/engine/datum/probe_workset/data.hxx>
 #include <src/engine/datum/probe_confidence/data.hxx>
+#include <src/engine/datum/probe_offsets/data.hxx>
 
 namespace engine::session {
 
@@ -106,6 +107,7 @@ struct Vulkan : lib::task::ParentResource {
 
   datum::probe_workset::SData probe_workset;
   datum::probe_confidence::SData probe_confidence;
+  datum::probe_offsets::SData probe_offsets;
 
   engine::step::probe_appoint::SData probe_appoint;
   engine::step::probe_measure::SData probe_measure;

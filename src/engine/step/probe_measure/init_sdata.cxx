@@ -78,6 +78,12 @@ void init_sdata(
         .descriptorCount = 1,
         .stageFlags = VK_SHADER_STAGE_ALL,
       },
+      {
+        .binding = 10,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_ALL,
+      },
     };
     VkDescriptorSetLayoutCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,

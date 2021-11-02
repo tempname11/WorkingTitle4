@@ -15,6 +15,7 @@ void init_ddata(
   Use<datum::probe_radiance::DData> lbuffer,
   Use<datum::probe_irradiance::DData> probe_irradiance,
   Use<datum::probe_confidence::SData> probe_confidence,
+  Use<datum::probe_offsets::SData> probe_offsets,
   Use<datum::probe_attention::DData> probe_attention,
   Use<datum::probe_workset::SData> probe_workset,
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
@@ -58,6 +59,11 @@ void init_ddata(
       .imageView = probe_confidence->view,
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
+    VkDescriptorImageInfo probe_offsets_info = {
+      .sampler = sdata->sampler_trivial,
+      .imageView = probe_offsets->view,
+      .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
     VkDescriptorImageInfo probe_attention_info = {
       .imageView = probe_attention->views[i],
       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
@@ -78,7 +84,7 @@ void init_ddata(
       .offset = 0,
       .range = VK_WHOLE_SIZE,
     };
-    VkDescriptorBufferInfo tmp_directional_light_info = {
+    VkDescriptorBufferInfo directional_light_info = {
       .buffer = lpass_stakes->ubo_directional_light[i].buffer,
       .range = VK_WHOLE_SIZE,
     };
@@ -151,7 +157,16 @@ void init_ddata(
         .dstArrayElement = 0,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .pBufferInfo = &tmp_directional_light_info,
+        .pBufferInfo = &directional_light_info,
+      },
+      {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptor_sets_frame[i],
+        .dstBinding = 10,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .pImageInfo = &probe_offsets_info,
       },
     };
     vkUpdateDescriptorSets(

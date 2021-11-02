@@ -39,7 +39,7 @@ struct PerInstance {
   VertexBufferRef vertices;
 };
 
-layout(binding = 0, rgba16f) uniform writeonly image2D lbuffer; // :LBuffer2_Format
+layout(binding = 0, rgba16f) uniform writeonly image2D probe_radiance; // :ProbeRadianceFormat
 layout(binding = 1) uniform sampler2D probe_irradiance;
 layout(binding = 2) uniform usampler2D probe_confidence;
 layout(binding = 3) uniform writeonly uimage2D probe_attention_write;
@@ -54,6 +54,7 @@ layout(binding = 9) uniform DirectionalLight {
   vec3 direction;
   vec3 irradiance;
 } directional_light; // @Incomplete :ManyLights
+layout(binding = 10) uniform sampler2D probe_offsets;
 
 layout(set = 1, binding = 0) uniform texture2D albedo_textures[];
 layout(set = 2, binding = 0) uniform texture2D romeao_textures[];
@@ -62,7 +63,8 @@ layout(push_constant) uniform Cascade {
   uint level;
 } cascade;
 
-const float RAY_T_MIN = 0.1;
+const float RAY_T_MIN_SHADOW = 0.1;
+const float RAY_T_MIN_MULT = 0.1;
 const float RAY_T_MAX = 10000.0;
 
 void main() {
@@ -94,15 +96,20 @@ void main() {
     gl_LocalInvocationID.xy
   );
 
+  vec3 offset = texture(
+    probe_offsets,
+    (combined_coord + 0.5) / textureSize(probe_offsets, 0)
+  ).rgb;
+
   rayQueryEXT ray_query;
   ivec3 infinite_grid_min = frame.data.probe.cascades[cascade.level].infinite_grid_min;
-  vec3 delta = frame.data.probe.cascades[cascade.level].world_position_delta;
+  float delta = frame.data.probe.cascades[cascade.level].world_position_delta;
   vec3 origin_world = (
     frame.data.probe.grid_world_position_zero +
-    delta * (0
+    delta * (offset + (0
       + (ivec3(probe_coord) - infinite_grid_min) % ivec3(frame.data.probe.grid_size)
       + infinite_grid_min
-    )
+    ))
   );
   vec3 raydir_world = get_probe_ray_direction(
     ray_index,
@@ -115,7 +122,7 @@ void main() {
     0,
     0xFF,
     origin_world,
-    RAY_T_MIN,
+    RAY_T_MIN_MULT * delta,
     raydir_world,
     RAY_T_MAX
   );
@@ -123,24 +130,28 @@ void main() {
   float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);
   bool front_face = rayQueryGetIntersectionFrontFaceEXT(ray_query, false);
 
-  if (t_intersection == 0.0 || !front_face) {
-    vec3 result = vec3(0.0);
-    if (true
-      && t_intersection == 0.0
-      && raydir_world.z > 0.0
-      && !frame.data.flags.disable_sky
-    ) {
-      result = sky(
-        raydir_world,
-        frame.data.sky_sun_direction,
-        frame.data.sky_intensity,
-        false /* show_sun */
-      );
+  if (t_intersection < delta || !front_face) {
+    vec4 result = vec4(0.0);
+    if (t_intersection == 0.0) {
+      // sky
+      if (true
+        && raydir_world.z > 0.0
+        && !frame.data.flags.disable_sky
+      ) {
+        result.rgb = sky(
+          raydir_world,
+          frame.data.sky_sun_direction,
+          frame.data.sky_intensity,
+          false /* show_sun */
+        );
+      }
+    } else if (!front_face) {
+      result.a = min(delta, t_intersection);
     }
     imageStore(
-      lbuffer,
+      probe_radiance,
       store_coord,
-      vec4(result, 0.0)
+      result
     );
     return;
   }
@@ -207,6 +218,7 @@ void main() {
       // Using `level + 1` here makes a huge difference to performance.
       probe_irradiance,
       probe_confidence,
+      probe_offsets,
       probe_attention_write,
       albedo
     );
@@ -224,7 +236,7 @@ void main() {
       0,
       0xFF,
       pos_world,
-      RAY_T_MIN,
+      RAY_T_MIN_SHADOW,
       -directional_light.direction,
       RAY_T_MAX
     );
@@ -245,7 +257,7 @@ void main() {
   }
 
   imageStore(
-    lbuffer,
+    probe_radiance,
     store_coord,
     vec4(result, 0.0)
   );

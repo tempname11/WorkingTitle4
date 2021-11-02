@@ -7,6 +7,7 @@ struct FrameFlags {
   bool disable_indirect_lighting;
   bool disable_indirect_bounces;
   bool disable_indirect_skips;
+  bool disable_probe_offsets;
   bool disable_eye_adaptation;
   bool disable_motion_blur;
   bool disable_TAA;
@@ -19,7 +20,7 @@ struct FrameFlags {
 struct FrameProbeCascade {
   ivec3 infinite_grid_min;
   ivec3 infinite_grid_min_prev;
-  vec3 world_position_delta;
+  float world_position_delta;
 };
 
 const uint PROBE_CASCADE_COUNT = 8; // :ProbeCascadeCount

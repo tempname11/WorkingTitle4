@@ -16,6 +16,7 @@ layout(binding = 3) uniform Frame { FrameData data; } frame;
 layout(binding = 4) readonly buffer ProbeWorkset {
   uvec4 data[];
 } probe_worksets[PROBE_CASCADE_COUNT];
+layout(binding = 5, rgba16f) uniform image2D probe_offsets; // :ProbeOffsetsFormat
 
 shared uint shared_error_uint;
 
@@ -58,6 +59,7 @@ void main() {
   );
 
   vec4 value = vec4(0.0);
+  vec4 offset_adjust = vec4(0.0);
   { // collect radiance
     uvec2 texel_coord_base = PROBE_RAY_COUNT_FACTORS * combined_coord;
     vec2 unique_texel_size = OCTOMAP_TEXEL_SIZE - 1.0;
@@ -75,16 +77,20 @@ void main() {
           frame.data.probe.random_orientation
         );
 
-        vec3 ray_radiance = texture(
+        vec4 read = texture(
           probe_radiance,
           (
             (vec2(texel_coord_base + uvec2(x, y)) + 0.5) /
               textureSize(probe_radiance, 0)
           )
-        ).rgb;
+        );
+        vec3 ray_radiance = read.rgb;
+        if (read.a > 0.0) {
+          ray_radiance = vec3(0.0, 0.0, 0.0);
+        }
 
         float weight = max(0.0, dot(octomap_direction, ray_direction));
-
+        offset_adjust += vec4(-ray_direction * read.a, read.a);
         value += vec4(ray_radiance * weight, weight);
       }
     }
@@ -107,13 +113,16 @@ void main() {
   float volatility = confidence_packed.b / 65535.0;
   float accumulator = confidence_packed.a / 65535.0 * PROBE_ACCUMULATOR_MAX;
   float beta = max(0.0, accumulator - min(frames_passed, PROBE_ACCUMULATOR_MAX));
+  float alpha = min(PROBE_MAX_SKIPS, 1.0 + 1.0 / volatility);
 
-  float alpha = 1.0 / max(1.0 / PROBE_MAX_SKIPS, volatility);
   vec4 irradiance_write = (
     irradiance_read * beta
     + value * alpha 
   );
-  irradiance_write /= beta + alpha;
+
+  if (beta + alpha > 0.0) {
+    irradiance_write /= beta + alpha;
+  }
 
   imageStore(
     probe_irradiance,
@@ -129,9 +138,6 @@ void main() {
       0.0,
       1.0
     );
-    if (value.w == 0.0) { // probe-in-the-wall? check this later.
-      error = 0.0;
-    }
 
     barrier(); // @Think: are these barriers overkill or necessary?
     memoryBarrierShared();
@@ -140,6 +146,35 @@ void main() {
     memoryBarrierShared();
 
     if (gl_LocalInvocationIndex == 0) {
+      vec3 offset = imageLoad(
+        probe_offsets,
+        ivec2(combined_coord)
+      ).rgb;
+
+      if (accumulator == 0.0) {
+        offset = vec3(0.0);
+      }
+
+      if (offset_adjust.w > 0.0) {
+        offset_adjust /= offset_adjust.w;
+      }
+
+      offset = clamp(
+        offset + 0.1 * offset_adjust.xyz,
+        vec3(-0.5),
+        vec3(0.5)
+      );
+
+      if (frame.data.flags.disable_probe_offsets) {
+        offset = vec3(0.0);
+      }
+
+      imageStore(
+        probe_offsets,
+        ivec2(combined_coord),
+        vec4(offset, 0.0)
+      );
+
       float max_error = shared_error_uint / 65535.0;
       volatility = clamp(
         (volatility * 15.0 + max_error * 1.0)
@@ -155,7 +190,7 @@ void main() {
           frame.data.number / 65536,
           frame.data.number % 65536,
           volatility * 65535.0,
-          min(beta + alpha + 1.0, PROBE_ACCUMULATOR_MAX) / PROBE_ACCUMULATOR_MAX * 65535.0
+          min(beta + alpha, PROBE_ACCUMULATOR_MAX) / PROBE_ACCUMULATOR_MAX * 65535.0
         ) // :ProbeConfidenceFormat
       );
     }

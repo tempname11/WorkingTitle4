@@ -35,7 +35,6 @@ vec3 spherical_fibonacci(float i, float n) {
 
 // @Performance: maybe precompute N vectors instead?
 vec3 get_probe_ray_direction(float i, float n, mat3 random_orientation) {
-  //return vec3(0, 0, -1);
   return random_orientation * spherical_fibonacci(i, n);
 }
 
@@ -75,6 +74,7 @@ vec4 _get_cascade_irradiance(
   vec3 N,
   sampler2D probe_irradiance,
   usampler2D probe_confidence,
+  sampler2D probe_offsets,
   writeonly uimage2D probe_attention,
   FrameData frame_data
 ) {
@@ -96,12 +96,6 @@ vec4 _get_cascade_irradiance(
     );
 
     uvec3 grid_coord = (grid_coord0 + grid_cube_vertex_coord) % frame_data.probe.grid_size;
-
-    vec3 trilinear = mix(
-      1.0 - grid_cube_coord,
-      grid_cube_coord,
-      vec3(grid_cube_vertex_coord)
-    ); // choose first or second in each component depending on the cube vertex.
 
     uvec2 current_z_subcoord = uvec2(
       grid_coord.z % frame_data.probe.grid_size_z_factors.x,
@@ -143,13 +137,18 @@ vec4 _get_cascade_irradiance(
     // initial weight
     float weight = beta / PROBE_ACCUMULATOR_MAX;
 
-    // "smooth backface" produced weird grid-like artifacts,
-    // so we just use a sane one. Should revisit this!
-    vec3 probe_direction = normalize(grid_cube_vertex_coord - grid_cube_coord);
-    float backface = dot(probe_direction, N) >= 0.0 ? 1.0 : 0.0;
-    weight *= backface;
+    vec3 offset = texture(
+      probe_offsets,
+      (combined_texel_coord + 0.5) / textureSize(probe_offsets, 0)
+    ).rgb;
 
-    if (backface > 0.0) {
+    vec3 probe_direction = normalize(
+      grid_cube_vertex_coord + offset - grid_cube_coord
+    );
+    float front_face = smoothstep(-0.1, 0.0, dot(probe_direction, N));
+    weight *= front_face;
+
+    if (front_face > 0.0) {
       imageStore(
         probe_attention,
         ivec2(combined_texel_coord),
@@ -159,7 +158,10 @@ vec4 _get_cascade_irradiance(
 
     const float min_weight = MIN_PROBE_WEIGHT;
     weight = max(min_weight, weight);
-    weight *= trilinear.x * trilinear.y * trilinear.z;
+
+    vec3 tri = abs(1.0 - grid_cube_coord - grid_cube_vertex_coord);
+    weight *= tri.x * tri.y * tri.z;
+
     sum += vec4(irradiance * weight, weight);
   }
 
@@ -173,6 +175,7 @@ vec3 get_indirect_radiance(
   uint min_cascade_level,
   sampler2D probe_irradiance,
   usampler2D probe_confidence,
+  sampler2D probe_offsets,
   writeonly uimage2D probe_attention,
   vec3 albedo
 ) {
@@ -184,7 +187,7 @@ vec3 get_indirect_radiance(
     for (uint c = min_cascade_level; c < PROBE_CASCADE_COUNT; c++) {
       // this loop might be slow, but we don't know that for sure.
 
-      vec3 delta = frame_data.probe.cascades[c].world_position_delta;
+      float delta = frame_data.probe.cascades[c].world_position_delta;
       ivec3 infinite_grid_min = frame_data.probe.cascades[c].infinite_grid_min;
       vec3 infinite_grid_coord_float = (
         (pos_world - frame_data.probe.grid_world_position_zero)
@@ -239,6 +242,7 @@ vec3 get_indirect_radiance(
       N,
       probe_irradiance,
       probe_confidence,
+      probe_offsets,
       probe_attention,
       frame_data
     );

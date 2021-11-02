@@ -12,6 +12,7 @@ struct Flags {
   gl_bool disable_indirect_lighting;
   gl_bool disable_indirect_bounces;
   gl_bool disable_indirect_skips;
+  gl_bool disable_probe_offsets;
   gl_bool disable_eye_adaptation;
   gl_bool disable_motion_blur;
   gl_bool disable_TAA;
@@ -25,7 +26,7 @@ struct Flags {
 struct ProbeCascade {
   glm::ivec3 infinite_grid_min;
   alignas(16) glm::ivec3 infinite_grid_min_prev;
-  alignas(16) glm::vec3 grid_world_position_delta;
+  float grid_world_position_delta;
 };
 
 struct ProbeInfo {

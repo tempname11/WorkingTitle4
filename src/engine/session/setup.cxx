@@ -16,6 +16,7 @@
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/engine/datum/probe_workset.hxx>
 #include <src/engine/datum/probe_confidence.hxx>
+#include <src/engine/datum/probe_offsets.hxx>
 #include <src/engine/step/probe_appoint.hxx>
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
@@ -486,6 +487,12 @@ void init_vulkan(
     &it->core
   );
 
+  datum::probe_offsets::init_sdata(
+    &it->probe_offsets,
+    &it->allocator_device,
+    &it->core
+  );
+
   step::probe_appoint::init_sdata(
     &it->probe_appoint,
     &it->core
@@ -850,11 +857,11 @@ void setup(
   #ifndef NDEBUG
   {
     const auto size = sizeof(engine::session::Data) - sizeof(engine::session::Vulkan);
-    static_assert(size == 1160);
+    static_assert(size == 1168);
   }
   {
     const auto size = sizeof(engine::session::Vulkan);
-    static_assert(size == 3232);
+    static_assert(size == 3256);
   }
   #endif
 

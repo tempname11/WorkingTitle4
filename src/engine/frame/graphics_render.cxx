@@ -13,6 +13,7 @@
 #include <src/engine/datum/probe_workset.hxx>
 #include <src/engine/datum/probe_attention.hxx>
 #include <src/engine/datum/probe_confidence.hxx>
+#include <src/engine/datum/probe_offsets.hxx>
 #include "graphics_render.hxx"
 
 namespace engine::frame {
@@ -1286,24 +1287,21 @@ void prepare_uniforms(
     auto projection_prev = jitter_prev * projection_base;
     auto projection = jitter * projection_base;
 
-    auto some_world_offset = glm::vec3(0.5f);
-    // @Hack: make sure probes are not in the wall for voxel stuff
-
     engine::common::ubo::ProbeCascade cascades[PROBE_CASCADE_COUNT];
     for (size_t c = 0; c < PROBE_CASCADE_COUNT; c++) {
       auto delta = PROBE_WORLD_DELTA_C0 * powf(2.0f, c);
       auto infinite_grid_min = glm::ivec3(glm::floor(
-        (session_state->debug_camera.position - some_world_offset)
+        (session_state->debug_camera.position)
           / delta - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE) + 1.0f
       ));
       auto infinite_grid_min_prev = glm::ivec3(glm::floor(
-        (session_state->debug_camera_prev.position - some_world_offset)
+        (session_state->debug_camera_prev.position)
           / delta - 0.5f * glm::vec3(engine::PROBE_GRID_SIZE) + 1.0f
       ));
       cascades[c] = {
         .infinite_grid_min = infinite_grid_min,
         .infinite_grid_min_prev = infinite_grid_min_prev,
-        .grid_world_position_delta = engine::PROBE_WORLD_DELTA_C0 * std::powf(2.0, c),
+        .grid_world_position_delta = delta,
       };
     };
 
@@ -1324,11 +1322,11 @@ void prepare_uniforms(
       .flags = session_state->ubo_flags,
       .probe_info = {
         .random_orientation = lib::gfx::utilities::get_random_rotation(),
-        //.random_orientation = glm::mat3(1, 0, 0, 0, 1, 0, 0, 0, 1),
+        //.random_orientation = glm::mat3(1.0),
         .grid_size = engine::PROBE_GRID_SIZE,
         .grid_size_z_factors = engine::PROBE_GRID_SIZE_Z_FACTORS,
         // .cascades = cascades, // this is done below
-        .grid_world_position_zero = some_world_offset,
+        .grid_world_position_zero = glm::vec3(0.0),
       },
       .end_marker = 0xDeadBeef,
     };
@@ -1586,6 +1584,12 @@ void graphics_render(
     cmd
   );
 
+  datum::probe_offsets::barrier_into_measure(
+    &session->vulkan.probe_offsets,
+    frame_info,
+    cmd
+  );
+
   { TracyVkZone(core->tracy_context, cmd, "probe_measure");
     step::probe_measure::record(
       &display->probe_measure,
@@ -1619,6 +1623,12 @@ void graphics_render(
     cmd
   );
 
+  datum::probe_offsets::barrier_from_measure_into_collect(
+    &session->vulkan.probe_offsets,
+    frame_info,
+    cmd
+  );
+
   { TracyVkZone(core->tracy_context, cmd, "probe_collect");
     step::probe_collect::record(
       &display->probe_collect,
@@ -1631,6 +1641,12 @@ void graphics_render(
 
   datum::probe_confidence::barrier_from_collect_into_indirect_light(
     &session->vulkan.probe_confidence,
+    frame_info,
+    cmd
+  );
+
+  datum::probe_offsets::barrier_from_collect_into_indirect_light(
+    &session->vulkan.probe_offsets,
     frame_info,
     cmd
   );

@@ -538,6 +538,7 @@ void imgui_populate(
       ImGuiX::Checkbox32("Disable indirect lighting", &it->disable_indirect_lighting);
       ImGuiX::Checkbox32("Disable indirect bounces", &it->disable_indirect_bounces);
       ImGuiX::Checkbox32("Disable indirect skips", &it->disable_indirect_skips);
+      ImGuiX::Checkbox32("Disable probe offsets", &it->disable_probe_offsets);
       ImGuiX::Checkbox32("Disable eye adaptation", &it->disable_eye_adaptation);
       ImGui::SameLine();
       ImGui::SliderFloat(

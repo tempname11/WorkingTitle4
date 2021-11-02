@@ -8,6 +8,7 @@
 #include <src/engine/rendering/finalpass.hxx>
 #include <src/engine/datum/probe_workset.hxx>
 #include <src/engine/datum/probe_confidence.hxx>
+#include <src/engine/datum/probe_offsets.hxx>
 #include <src/engine/step/probe_appoint.hxx>
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
@@ -48,6 +49,11 @@ void cleanup(
 
     datum::probe_confidence::deinit_sdata(
       &it->probe_confidence,
+      core
+    );
+
+    datum::probe_offsets::deinit_sdata(
+      &it->probe_offsets,
       core
     );
 

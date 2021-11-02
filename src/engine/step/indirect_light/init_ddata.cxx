@@ -15,6 +15,7 @@ void init_ddata(
   Use<display::Data::LBuffer> lbuffer,
   Use<datum::probe_irradiance::DData> probe_irradiance,
   Use<datum::probe_confidence::SData> probe_confidence,
+  Use<datum::probe_offsets::SData> probe_offsets,
   Use<datum::probe_attention::DData> probe_attention,
   Ref<display::Data::SwapchainDescription> swapchain_description
 ) {
@@ -70,6 +71,11 @@ void init_ddata(
       VkDescriptorImageInfo probe_confidence_info = {
         .sampler = sdata->sampler_trivial,
         .imageView = probe_confidence->view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      };
+      VkDescriptorImageInfo probe_offsets_info = {
+        .sampler = sdata->sampler_trivial,
+        .imageView = probe_offsets->view,
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       };
       VkDescriptorImageInfo probe_attention_image_info = {
@@ -145,6 +151,14 @@ void init_ddata(
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
           .pImageInfo = &probe_attention_image_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets_frame[i],
+          .dstBinding = 8,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .pImageInfo = &probe_offsets_info,
         },
       };
       vkUpdateDescriptorSets(

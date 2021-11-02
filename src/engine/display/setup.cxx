@@ -738,6 +738,7 @@ void setup(
     &display->probe_radiance,
     &display->probe_irradiance,
     &session->vulkan.probe_confidence,
+    &session->vulkan.probe_offsets,
     &display->probe_attention,
     &session->vulkan.probe_workset,
     &display->swapchain_description,
@@ -751,6 +752,7 @@ void setup(
     &display->probe_radiance,
     &display->probe_irradiance,
     &session->vulkan.probe_confidence,
+    &session->vulkan.probe_offsets,
     &session->vulkan.probe_workset,
     &display->swapchain_description,
     &session->vulkan.core
@@ -766,6 +768,7 @@ void setup(
     &display->lbuffer,
     &display->probe_irradiance,
     &session->vulkan.probe_confidence,
+    &session->vulkan.probe_offsets,
     &display->probe_attention,
     &display->swapchain_description
   );

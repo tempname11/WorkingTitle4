@@ -19,6 +19,7 @@ layout(binding = 4) uniform sampler2D probe_irradiance;
 layout(binding = 5) uniform usampler2D probe_confidence;
 layout(binding = 6) uniform Frame { FrameData data; } frame;
 layout(binding = 7) uniform writeonly uimage2D probe_attention_write;
+layout(binding = 8) uniform sampler2D probe_offsets;
 
 void main() {
   // Sanity check for frame data.
@@ -62,6 +63,7 @@ void main() {
     0,
     probe_irradiance,
     probe_confidence,
+    probe_offsets,
     probe_attention_write,
     albedo
   );
