@@ -4,7 +4,7 @@
 #include <src/lib/lifetime.hxx>
 #include "../group.hxx"
 
-namespace engine::loading::group {
+namespace engine::system::grup::group {
 
 void deref(
   lib::task::ContextBase *ctx,

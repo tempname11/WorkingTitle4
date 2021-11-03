@@ -6,7 +6,7 @@
 #include "common.hxx"
 #include "load.hxx"
 
-namespace engine::loading::mesh {
+namespace engine::system::grup::mesh {
 
 void _load_read_file(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,

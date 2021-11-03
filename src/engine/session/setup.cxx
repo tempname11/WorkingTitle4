@@ -21,7 +21,7 @@
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
 #include <src/engine/step/indirect_light.hxx>
-#include <src/engine/loading/group.hxx>
+#include <src/engine/system/grup/group.hxx>
 #include <src/engine/constants.hxx>
 #include <src/engine/misc.hxx>
 #include "setup_cleanup.hxx"

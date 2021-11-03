@@ -1,32 +1,30 @@
-#pragma once
 #include <src/global.hxx>
 #include <src/engine/session/data.hxx>
 #include <src/lib/guid.hxx>
 
-namespace engine::loading::texture {
+namespace engine::system::grup::mesh {
 
 void deref(
-  lib::GUID texture_id,
+  lib::GUID mesh_id,
   lib::task::ContextBase* ctx,
   Ref<engine::session::Data> session,
-  Use<engine::session::Data::MetaTextures> meta_textures
+  Use<engine::session::Data::MetaMeshes> meta_meshes
 );
 
 void reload(
-  lib::GUID texture_id,
+  lib::GUID mesh_id,
   lib::task::ContextBase* ctx,
   Ref<engine::session::Data> session,
-  Own<engine::session::Data::MetaTextures> meta_textures
+  Own<engine::session::Data::MetaMeshes> meta_meshes
 );
 
 lib::Task *load(
   std::string &path,
-  VkFormat format,
   lib::task::ContextBase* ctx,
   Ref<engine::session::Data> session,
-  Own<engine::session::Data::MetaTextures> meta_textures,
+  Own<engine::session::Data::MetaMeshes> meta_meshes,
   Use<engine::session::Data::GuidCounter> guid_counter,
-  lib::GUID *out_texture_id
+  lib::GUID *out_mesh_id
 );
 
 } // namespace

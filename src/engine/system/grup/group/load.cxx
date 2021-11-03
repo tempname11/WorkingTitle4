@@ -5,7 +5,7 @@
 #include "../group.hxx"
 #include "common.hxx"
 
-namespace engine::loading::group {
+namespace engine::system::grup::group {
 
 struct LoadData {
   std::string path;

@@ -3,7 +3,7 @@
 #include <src/lib/task.hxx>
 #include <src/engine/session/data.hxx>
 
-namespace engine::loading::group {
+namespace engine::system::grup::group {
 
 struct GroupDescription {
   std::string name;

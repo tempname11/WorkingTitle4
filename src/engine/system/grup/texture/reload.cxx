@@ -5,7 +5,7 @@
 #include "../texture.hxx"
 #include "load.hxx"
 
-namespace engine::loading::texture {
+namespace engine::system::grup::texture {
 
 void _reload_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,

@@ -1,7 +1,7 @@
 #pragma once
 #include "../mesh.hxx"
 
-namespace engine::loading::mesh {
+namespace engine::system::grup::mesh {
 
 engine::common::mesh::T06 read_t06_file(const char *filename);
 

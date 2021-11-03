@@ -2,7 +2,7 @@
 #include <src/engine/common/after_inflight.hxx>
 #include "../mesh.hxx"
 
-namespace engine::loading::texture {
+namespace engine::system::grup::texture {
 
 struct DerefData {
   lib::GUID texture_id;

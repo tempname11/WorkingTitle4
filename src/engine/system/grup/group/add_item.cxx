@@ -7,7 +7,7 @@
 #include "../texture.hxx"
 #include "../group.hxx"
 
-namespace engine::loading::group {
+namespace engine::system::grup::group {
 
 struct AddItemData {
   lib::GUID group_id;
@@ -60,7 +60,7 @@ void add_item(
   }
 
   lib::GUID mesh_id = 0;
-  auto signal_mesh_loaded = engine::loading::mesh::load(
+  auto signal_mesh_loaded = engine::system::grup::mesh::load(
     desc->path_mesh,
     ctx,
     session,
@@ -72,7 +72,7 @@ void add_item(
   lib::GUID albedo_id = 0;
   lib::GUID normal_id = 0;
   lib::GUID romeao_id = 0;
-  auto signal_albedo_loaded = engine::loading::texture::load(
+  auto signal_albedo_loaded = engine::system::grup::texture::load(
     desc->path_albedo,
     engine::common::texture::ALBEDO_TEXTURE_FORMAT,
     ctx,
@@ -81,7 +81,7 @@ void add_item(
     &session->guid_counter,
     &albedo_id
   );
-  auto signal_normal_loaded = engine::loading::texture::load(
+  auto signal_normal_loaded = engine::system::grup::texture::load(
     desc->path_normal,
     engine::common::texture::NORMAL_TEXTURE_FORMAT,
     ctx,
@@ -90,7 +90,7 @@ void add_item(
     &session->guid_counter,
     &normal_id
   );
-  auto signal_romeao_loaded = engine::loading::texture::load(
+  auto signal_romeao_loaded = engine::system::grup::texture::load(
     desc->path_romeao,
     engine::common::texture::ROMEAO_TEXTURE_FORMAT,
     ctx,

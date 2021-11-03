@@ -4,7 +4,7 @@
 #include <src/engine/common/texture.hxx>
 #include "../texture.hxx"
 
-namespace engine::loading::texture {
+namespace engine::system::grup::texture {
 
 struct LoadData {
   lib::GUID texture_id;

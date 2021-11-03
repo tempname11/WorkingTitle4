@@ -7,7 +7,7 @@
   #undef NOMINMAX
 #endif
 #include <misc/cpp/imgui_stdlib.h>
-#include <src/engine/loading/group.hxx>
+#include <src/engine/system/grup/group.hxx>
 #include <src/engine/tools/cube_writer.hxx>
 #include <src/engine/tools/gltf_converter.hxx>
 #include <src/engine/tools/voxel_converter.hxx>
@@ -15,7 +15,7 @@
 
 namespace engine::frame {
 
-engine::loading::group::GroupDescription default_group = {
+engine::system::grup::group::GroupDescription default_group = {
   .name = "New group",
 };
 
@@ -88,7 +88,7 @@ namespace ImGuiX {
   }
 }
 
-engine::loading::group::ItemDescription default_group_item = {
+engine::system::grup::group::ItemDescription default_group_item = {
   .path_mesh = "assets/mesh.t06",
   .path_albedo = "assets/texture-1px/albedo.png",
   .path_normal = "assets/texture-1px/normal.png",
@@ -214,7 +214,7 @@ void imgui_populate(
           ImGui::OpenPopup("Save group");
         }
         if (ImGui::BeginPopupModal("Add an item to the group", NULL, 0)) {
-          static engine::loading::group::ItemDescription desc = {};
+          static engine::system::grup::group::ItemDescription desc = {};
           ImGuiX::InputPath(&desc.path_mesh, "Path to mesh");
           ImGuiX::InputPath(&desc.path_albedo, "Path to `albedo` texture");
           ImGuiX::InputPath(&desc.path_normal, "Path to `normal` texture");
@@ -222,7 +222,7 @@ void imgui_populate(
           if (ImGui::Button("OK", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
             imgui_reactions->added_item_to_group_id = group_id;
-            imgui_reactions->added_item_to_group_description = new engine::loading::group::ItemDescription(desc);
+            imgui_reactions->added_item_to_group_description = new engine::system::grup::group::ItemDescription(desc);
             desc = {};
           }
           ImGui::SameLine();
@@ -241,7 +241,7 @@ void imgui_populate(
           ImGuiX::InputPath(&path, "Path", ImGuiX::DialogType::SaveFile);
           if (ImGui::Button("OK", ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
-            engine::loading::group::save(
+            engine::system::grup::group::save(
               ctx,
               &path,
               group_id,
@@ -267,11 +267,11 @@ void imgui_populate(
         ImGui::OpenPopup("Load group");
       }
       if (ImGui::BeginPopupModal("Create a new group", NULL, 0)) {
-        static engine::loading::group::GroupDescription desc = {};
+        static engine::system::grup::group::GroupDescription desc = {};
         ImGui::InputText("Group name", &desc.name);
         if (ImGui::Button("OK", ImVec2(120, 0))) {
           ImGui::CloseCurrentPopup();
-          imgui_reactions->created_group_description = new engine::loading::group::GroupDescription(desc);
+          imgui_reactions->created_group_description = new engine::system::grup::group::GroupDescription(desc);
           desc = {};
         }
         ImGui::SameLine();
@@ -291,7 +291,7 @@ void imgui_populate(
         ImGuiX::InputPath(&path, "Path");
         if (ImGui::Button("OK", ImVec2(120, 0))) {
           ImGui::CloseCurrentPopup();
-          auto task = engine::loading::group::load(
+          auto task = engine::system::grup::group::load(
             ctx,
             &path,
             session

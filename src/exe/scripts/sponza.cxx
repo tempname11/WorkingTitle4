@@ -2,7 +2,7 @@
 #include <src/global.hxx>
 #include <src/lib/debug_camera.hxx>
 #include <src/engine/startup.hxx>
-#include <src/engine/loading/group.hxx>
+#include <src/engine/system/grup/group.hxx>
 #include <src/engine/session/setup.hxx>
 #include "session.inline.hxx"
 
@@ -19,7 +19,7 @@ void update_camera(
 void CtrlSession::run() {
   {
     std::string path = "assets/sponza-fixed/index.grup";
-    task(engine::loading::group::load(
+    task(engine::system::grup::group::load(
       ctx,
       &path,
       session

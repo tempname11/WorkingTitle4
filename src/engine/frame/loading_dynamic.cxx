@@ -1,6 +1,6 @@
-#include <src/engine/loading/texture.hxx>
-#include <src/engine/loading/mesh.hxx>
-#include <src/engine/loading/group.hxx>
+#include <src/engine/system/grup/texture.hxx>
+#include <src/engine/system/grup/mesh.hxx>
+#include <src/engine/system/grup/group.hxx>
 #include "loading_dynamic.hxx"
 
 namespace engine::frame {
@@ -18,7 +18,7 @@ void loading_dynamic(
     auto id = imgui_reactions->reloaded_mesh_id;
     auto group = &meta_meshes->items.at(id);
     if (group->status == engine::session::Data::MetaMeshes::Status::Ready) {
-      engine::loading::mesh::reload(
+      engine::system::grup::mesh::reload(
         id,
         ctx,
         session,
@@ -31,7 +31,7 @@ void loading_dynamic(
     auto id = imgui_reactions->reloaded_texture_id;
     auto group = &meta_textures->items.at(id);
     if (group->status == engine::session::Data::MetaTextures::Status::Ready) {
-      engine::loading::texture::reload(
+      engine::system::grup::texture::reload(
         id,
         ctx,
         session,
@@ -41,7 +41,7 @@ void loading_dynamic(
   }
 
   if (imgui_reactions->created_group_description != nullptr) {
-    engine::loading::group::create(
+    engine::system::grup::group::create(
       ctx,
       session,
       imgui_reactions->created_group_description
@@ -61,7 +61,7 @@ void loading_dynamic(
       glm::vec3(0.0f, -32.0f, 0.0f)
     );*/
 
-    engine::loading::group::add_item(
+    engine::system::grup::group::add_item(
       ctx,
       imgui_reactions->added_item_to_group_id,
       imgui_reactions->added_item_to_group_description,
@@ -71,7 +71,7 @@ void loading_dynamic(
   }
 
   if (imgui_reactions->removed_group_id != 0) {
-    engine::loading::group::deref(
+    engine::system::grup::group::deref(
       ctx,
       imgui_reactions->removed_group_id,
       session

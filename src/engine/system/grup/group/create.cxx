@@ -6,7 +6,7 @@
 #include "../texture.hxx"
 #include "../group.hxx"
 
-namespace engine::loading::group {
+namespace engine::system::grup::group {
 
 struct DestroyData {
   lib::GUID group_id;
@@ -26,28 +26,28 @@ void _remove_scene_items(
   for (size_t i = 0; i < scene->items.size(); i++) {
     auto *item = &scene->items[i];
     if (item->group_id == data->group_id) {
-      engine::loading::mesh::deref(
+      engine::system::grup::mesh::deref(
         item->mesh_id,
         ctx,
         session,
         meta_meshes
       );
 
-      engine::loading::texture::deref(
+      engine::system::grup::texture::deref(
         item->texture_albedo_id,
         ctx,
         session,
         meta_textures
       );
 
-      engine::loading::texture::deref(
+      engine::system::grup::texture::deref(
         item->texture_normal_id,
         ctx,
         session,
         meta_textures
       );
 
-      engine::loading::texture::deref(
+      engine::system::grup::texture::deref(
         item->texture_romeao_id,
         ctx,
         session,

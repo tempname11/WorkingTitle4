@@ -2,7 +2,7 @@
 #include <src/global.hxx>
 #include <src/lib/debug_camera.hxx>
 #include <src/engine/startup.hxx>
-#include <src/engine/loading/group.hxx>
+#include <src/engine/system/grup/group.hxx>
 #include <src/engine/session/setup.hxx>
 #undef WINDOWS
 #include "session.inline.hxx"
@@ -23,7 +23,7 @@ void CtrlSession::run() {
   runtest();
   {
     std::string path = "assets/vox/medieval_city_2/index.grup";
-    task(engine::loading::group::load(
+    task(engine::system::grup::group::load(
       ctx,
       &path,
       session

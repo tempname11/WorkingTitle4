@@ -7,7 +7,7 @@
 #include <src/engine/common/texture.hxx>
 #include "../texture.hxx"
 
-namespace engine::loading::texture {
+namespace engine::system::grup::texture {
 
 engine::common::texture::Data<uint8_t> load_rgba8(const char *filename) {
   int width, height, _channels = 4;

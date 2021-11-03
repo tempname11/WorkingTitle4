@@ -4,7 +4,7 @@
 #include "../mesh.hxx"
 #include "common.hxx"
 
-namespace engine::loading::mesh {
+namespace engine::system::grup::mesh {
 
 struct DerefData {
   lib::GUID mesh_id;
