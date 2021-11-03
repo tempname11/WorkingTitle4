@@ -2,6 +2,7 @@
 #include <src/engine/blas_storage.hxx>
 #include <src/engine/common/after_inflight.hxx>
 #include "../mesh.hxx"
+#include "../data.hxx"
 #include "common.hxx"
 
 namespace engine::system::grup::mesh {
@@ -15,7 +16,7 @@ void _deref(
   Ref<engine::session::Data> session,
   Ref<engine::session::Vulkan::Core> core,
   Own<engine::session::Vulkan::Meshes> meshes,
-  Own<engine::session::Data::MetaMeshes> meta_meshes,
+  Own<MetaMeshes> meta_meshes,
   Own<DerefData> data
 ) {
   ZoneScoped;
@@ -24,7 +25,7 @@ void _deref(
   assert(meta->ref_count > 0);
 
   // we must have waited for the initial load to finish.
-  assert(meta->status == engine::session::Data::MetaMeshes::Status::Ready);
+  assert(meta->status == MetaMeshes::Status::Ready);
 
   // we must have waited for reload to finish.
   assert(meta->will_have_reloaded == nullptr);
@@ -59,7 +60,7 @@ void deref(
   lib::GUID mesh_id,
   lib::task::ContextBase* ctx,
   Ref<engine::session::Data> session,
-  Use<engine::session::Data::MetaMeshes> meta_meshes
+  Use<MetaMeshes> meta_meshes
 ) {
   ZoneScoped;
 
@@ -77,7 +78,7 @@ void deref(
       session.ptr,
       &session->vulkan.core,
       &session->vulkan.meshes,
-      &session->meta_meshes,
+      &session->grup.meta_meshes,
       data
     )
   );

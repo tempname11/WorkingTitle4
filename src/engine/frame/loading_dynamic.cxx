@@ -9,15 +9,15 @@ void loading_dynamic(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
   Use<engine::session::Data::GuidCounter> guid_counter,
-  Own<engine::session::Data::MetaMeshes> meta_meshes,
-  Own<engine::session::Data::MetaTextures> meta_textures,
+  Own<engine::system::grup::MetaMeshes> meta_meshes,
+  Own<engine::system::grup::MetaTextures> meta_textures,
   Use<engine::misc::ImguiReactions> imgui_reactions
 ) {
   ZoneScoped;
   if (imgui_reactions->reloaded_mesh_id != 0) {
     auto id = imgui_reactions->reloaded_mesh_id;
     auto group = &meta_meshes->items.at(id);
-    if (group->status == engine::session::Data::MetaMeshes::Status::Ready) {
+    if (group->status == engine::system::grup::MetaMeshes::Status::Ready) {
       engine::system::grup::mesh::reload(
         id,
         ctx,
@@ -30,7 +30,7 @@ void loading_dynamic(
   if (imgui_reactions->reloaded_texture_id != 0) {
     auto id = imgui_reactions->reloaded_texture_id;
     auto group = &meta_textures->items.at(id);
-    if (group->status == engine::session::Data::MetaTextures::Status::Ready) {
+    if (group->status == engine::system::grup::MetaTextures::Status::Ready) {
       engine::system::grup::texture::reload(
         id,
         ctx,

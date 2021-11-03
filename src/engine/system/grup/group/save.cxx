@@ -3,6 +3,7 @@
 #include <src/lib/guid.hxx>
 #include <src/lib/io.hxx>
 #include "../group.hxx"
+#include "../data.hxx"
 #include "common.hxx"
 
 namespace engine::system::grup::group {
@@ -16,8 +17,8 @@ void _save(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
   Use<engine::session::Data::Scene> scene,
-  Use<engine::session::Data::MetaMeshes> meta_meshes,
-  Use<engine::session::Data::MetaTextures> meta_textures,
+  Use<MetaMeshes> meta_meshes,
+  Use<MetaTextures> meta_textures,
   Own<SaveData> data
 ) {
   ZoneScoped;
@@ -28,8 +29,8 @@ void _save(
   fwrite(&GRUP_VERSION, 1, sizeof(GRUP_VERSION), file);
   
   {
-    std::shared_lock lock(session->groups.rw_mutex);
-    auto item = &session->groups.items.at(data->group_id);
+    std::shared_lock lock(session->grup.groups.rw_mutex);
+    auto item = &session->grup.groups.items.at(data->group_id);
     lib::io::string::write(file, &item->name);
   }
      
@@ -58,8 +59,8 @@ void _save(
 
   lib::lifetime::deref(&session->lifetime, ctx->runner);
   {
-    std::shared_lock lock(session->groups.rw_mutex);
-    auto item = &session->groups.items.at(data->group_id);
+    std::shared_lock lock(session->grup.groups.rw_mutex);
+    auto item = &session->grup.groups.items.at(data->group_id);
     lib::lifetime::deref(&item->lifetime, ctx->runner);
   }
   delete data.ptr;
@@ -74,8 +75,8 @@ void save(
   ZoneScoped;
   lib::lifetime::ref(&session->lifetime);
   {
-    std::shared_lock lock(session->groups.rw_mutex);
-    auto item = &session->groups.items.at(group_id);
+    std::shared_lock lock(session->grup.groups.rw_mutex);
+    auto item = &session->grup.groups.items.at(group_id);
     lib::lifetime::ref(&item->lifetime);
   }
 
@@ -89,8 +90,8 @@ void save(
       _save,
       session.ptr,
       &session->scene,
-      &session->meta_meshes,
-      &session->meta_textures,
+      &session->grup.meta_meshes,
+      &session->grup.meta_textures,
       data
     )
   });

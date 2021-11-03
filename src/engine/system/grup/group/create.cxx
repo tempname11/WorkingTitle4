@@ -5,6 +5,7 @@
 #include "../mesh.hxx"
 #include "../texture.hxx"
 #include "../group.hxx"
+#include "../data.hxx"
 
 namespace engine::system::grup::group {
 
@@ -17,8 +18,8 @@ void _remove_scene_items(
   Ref<engine::session::Data> session,
   Ref<engine::session::Vulkan::Core> core,
   Own<engine::session::Data::Scene> scene,
-  Use<engine::session::Data::MetaMeshes> meta_meshes,
-  Use<engine::session::Data::MetaTextures> meta_textures,
+  Use<MetaMeshes> meta_meshes,
+  Use<MetaTextures> meta_textures,
   Own<DestroyData> data
 ) {
   ZoneScoped;
@@ -72,16 +73,16 @@ void _destroy(
 ) {
   ZoneScoped;
 
-  std::unique_lock lock(session->groups.rw_mutex);
-  session->groups.items.erase(data->group_id);
+  std::unique_lock lock(session->grup.groups.rw_mutex);
+  session->grup.groups.items.erase(data->group_id);
 
   auto task_remove_scene_items = lib::task::create(
     _remove_scene_items,
     session.ptr,
     &session->vulkan.core,
     &session->scene,
-    &session->meta_meshes,
-    &session->meta_textures,
+    &session->grup.meta_meshes,
+    &session->grup.meta_textures,
     data.ptr
   );
   {
@@ -110,8 +111,8 @@ lib::GUID create(
   lib::GUID group_id = lib::guid::next(&session->guid_counter);
   lib::Task *yarn = nullptr;
   {
-    std::unique_lock lock(session->groups.rw_mutex);
-    auto result = session->groups.items.insert({ group_id, engine::session::Data::Groups::Item {
+    std::unique_lock lock(session->grup.groups.rw_mutex);
+    auto result = session->grup.groups.items.insert({ group_id, engine::system::grup::Groups::Item {
       .name = desc->name,
     }});
     auto item = &(*result.first).second;

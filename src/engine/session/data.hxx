@@ -11,6 +11,7 @@
 #include <src/lib/gpu_signal.hxx>
 #include <src/lib/gfx/multi_alloc.hxx>
 #include <src/lib/debug_camera.hxx>
+#include <src/engine/system/grup/data.hxx>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/common/ubo.hxx>
@@ -18,29 +19,6 @@
 #include <src/engine/blas_storage/data.hxx>
 #include <src/engine/blas_storage/id.hxx>
 #include "vulkan.data.hxx"
-
-namespace engine::session {
-  struct MetaTexturesKey {
-    std::string path;
-    VkFormat format;
-
-    bool operator==(const MetaTexturesKey& other) const {
-      return (true
-        && path == other.path
-        && format == other.format
-      );
-    }
-  };
-}
-
-namespace std {
-  template <>
-  struct hash<engine::session::MetaTexturesKey> {
-    size_t operator()(const engine::session::MetaTexturesKey& key) const {
-      return hash<std::string>()(key.path) ^ hash<VkFormat>()(key.format);
-    }
-  };
-}
 
 namespace engine::session {
 
@@ -64,16 +42,6 @@ struct Data : lib::task::ParentResource {
 
   lib::Lifetime lifetime;
 
-  struct Groups {
-    struct Item {
-      lib::Lifetime lifetime;
-      std::string name;
-    };
-
-    std::unordered_map<lib::GUID, Item> items;
-    std::shared_mutex rw_mutex;
-  } groups;
-
   struct Scene {
     struct Item {
       lib::GUID group_id;
@@ -87,46 +55,11 @@ struct Data : lib::task::ParentResource {
     std::vector<Item> items;
   } scene;
 
-  struct MetaMeshes {
-    std::unordered_map<std::string, lib::GUID> by_path;
-
-    enum struct Status {
-      Loading,
-      Ready,
-    };
-
-    struct Item {
-      size_t ref_count;
-      Status status;
-      bool invalid;
-      lib::Task *will_have_loaded;
-      lib::Task *will_have_reloaded;
-      std::string path;
-    } item;
-
-    std::unordered_map<lib::GUID, Item> items;
-  } meta_meshes;
-
-  struct MetaTextures {
-    std::unordered_map<MetaTexturesKey, lib::GUID> by_key;
-
-    enum struct Status {
-      Loading,
-      Ready,
-    };
-
-    struct Item {
-      size_t ref_count;
-      Status status;
-      bool invalid;
-      lib::Task *will_have_loaded;
-      lib::Task *will_have_reloaded;
-      std::string path;
-      VkFormat format;
-    } item;
-
-    std::unordered_map<lib::GUID, Item> items;
-  } meta_textures;
+  struct Grup {
+    system::grup::Groups groups;
+    system::grup::MetaMeshes meta_meshes;
+    system::grup::MetaTextures meta_textures;
+  } grup;
 
   Vulkan vulkan;
 

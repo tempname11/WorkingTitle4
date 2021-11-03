@@ -13,7 +13,7 @@ void _reload_finish(
   Ref<engine::session::Data> session,
   Ref<engine::session::Vulkan::Core> core,
   Own<engine::session::Vulkan::Meshes> meshes,
-  Own<engine::session::Data::MetaMeshes> meta_meshes,
+  Own<MetaMeshes> meta_meshes,
   Own<LoadData> data
 ) {
   ZoneScoped;
@@ -49,7 +49,7 @@ void reload(
   lib::GUID mesh_id,
   lib::task::ContextBase* ctx,
   Ref<engine::session::Data> session,
-  Own<engine::session::Data::MetaMeshes> meta_meshes
+  Own<MetaMeshes> meta_meshes
 ) {
   ZoneScoped;
 
@@ -61,7 +61,7 @@ void reload(
   // Reloading will likely only ever be manual, and right now the user
   // would simply have to wait to reload something that's already reloading.
   // We have to ensure the status is right before calling this.
-  assert(meta->status == engine::session::Data::MetaMeshes::Status::Ready);
+  assert(meta->status == MetaMeshes::Status::Ready);
 
   auto data = new LoadData {
     .mesh_id = mesh_id,
@@ -102,7 +102,7 @@ void reload(
       session.ptr,
       &session->vulkan.core,
       &session->vulkan.meshes,
-      &session->meta_meshes,
+      &session->grup.meta_meshes,
       data
     )
   );

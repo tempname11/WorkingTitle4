@@ -165,8 +165,8 @@ void _begin(
       data.ptr,
       &session->imgui_context,
       &frame_data->imgui_reactions,
-      &session->meta_meshes,
-      &session->meta_textures,
+      &session->grup.meta_meshes,
+      &session->grup.meta_textures,
       &session->state
     ),
     lib::task::create(
@@ -230,8 +230,8 @@ void _begin(
       loading_dynamic,
       session.ptr,
       &session->guid_counter,
-      &session->meta_meshes,
-      &session->meta_textures,
+      &session->grup.meta_meshes,
+      &session->grup.meta_textures,
       &frame_data->imgui_reactions
     ),
   });

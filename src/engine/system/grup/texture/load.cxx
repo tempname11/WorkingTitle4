@@ -114,14 +114,14 @@ void _load_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
   Own<engine::session::Vulkan::Textures> textures,
-  Own<engine::session::Data::MetaTextures> meta_textures,
+  Own<MetaTextures> meta_textures,
   Own<LoadData> data
 ) {
   ZoneScoped;
 
   textures->items.insert({ data->texture_id, data->texture_item });
   auto meta = &meta_textures->items.at(data->texture_id);
-  meta->status = engine::session::Data::MetaTextures::Status::Ready;
+  meta->status = MetaTextures::Status::Ready;
   meta->will_have_loaded = nullptr;
   meta->invalid = data->the_texture.data == nullptr;
 
@@ -137,7 +137,7 @@ lib::Task *load(
   VkFormat format,
   lib::task::ContextBase* ctx,
   Ref<engine::session::Data> session,
-  Own<engine::session::Data::MetaTextures> meta_textures,
+  Own<MetaTextures> meta_textures,
   Use<engine::session::Data::GuidCounter> guid_counter,
   lib::GUID *out_texture_id
 ) {
@@ -151,12 +151,12 @@ lib::Task *load(
     auto meta = &meta_textures->items.at(texture_id);
     meta->ref_count++;
 
-    if (meta->status == engine::session::Data::MetaTextures::Status::Loading) {
+    if (meta->status == MetaTextures::Status::Loading) {
       assert(meta->will_have_loaded != nullptr);
       return meta->will_have_loaded;
     }
 
-    if (meta->status == engine::session::Data::MetaTextures::Status::Ready) {
+    if (meta->status == MetaTextures::Status::Ready) {
       return nullptr;
     }
 
@@ -195,7 +195,7 @@ lib::Task *load(
       _load_finish,
       session.ptr,
       &session->vulkan.textures,
-      &session->meta_textures,
+      &session->grup.meta_textures,
       data
     )
   );
@@ -211,9 +211,9 @@ lib::Task *load(
     { signal_init_image, task_finish.first },
   });
 
-  engine::session::Data::MetaTextures::Item meta = {
+  MetaTextures::Item meta = {
     .ref_count = 1,
-    .status = engine::session::Data::MetaTextures::Status::Loading,
+    .status = MetaTextures::Status::Loading,
     .will_have_loaded = task_finish.second,
     .path = path,
     .format = format,

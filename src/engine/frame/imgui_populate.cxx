@@ -147,8 +147,8 @@ void imgui_populate(
   Ref<engine::display::Data> display,
   Own<engine::session::Data::ImguiContext> imgui,
   Own<engine::misc::ImguiReactions> imgui_reactions,
-  Use<engine::session::Data::MetaMeshes> meta_meshes,
-  Use<engine::session::Data::MetaTextures> meta_textures,
+  Use<engine::system::grup::MetaMeshes> meta_meshes,
+  Use<engine::system::grup::MetaTextures> meta_textures,
   Own<engine::session::Data::State> state
 ) {
   if (state->show_imgui) {
@@ -170,13 +170,13 @@ void imgui_populate(
     }
 
     if (state->show_imgui_window_groups) {
-      std::shared_lock lock(session->groups.rw_mutex);
+      std::shared_lock lock(session->grup.groups.rw_mutex);
       ImGui::Begin("Groups", &state->show_imgui_window_groups);
       ImGui::BeginTable("table_groups", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
       ImGui::TableSetupColumn("Name");
       ImGui::TableSetupColumn("Actions");
       ImGui::TableHeadersRow();
-      for (auto &pair : session->groups.items) {
+      for (auto &pair : session->grup.groups.items) {
         auto group_id = pair.first;
         auto item = &pair.second;
         if (item->lifetime.ref_count == 0) {
@@ -332,10 +332,10 @@ void imgui_populate(
         );
 
         ImGui::TableNextColumn();
-        if (item->status == engine::session::Data::MetaMeshes::Status::Loading) {
+        if (item->status == engine::system::grup::MetaMeshes::Status::Loading) {
           ImGui::Text("[loading]");
         }
-        if (item->status == engine::session::Data::MetaMeshes::Status::Ready) {
+        if (item->status == engine::system::grup::MetaMeshes::Status::Ready) {
           if (item->invalid) {
             ImGui::Text("<invalid>");
           } else {
@@ -387,10 +387,10 @@ void imgui_populate(
         );
 
         ImGui::TableNextColumn();
-        if (item->status == engine::session::Data::MetaTextures::Status::Loading) {
+        if (item->status == engine::system::grup::MetaTextures::Status::Loading) {
           ImGui::Text("[loading]");
         }
-        if (item->status == engine::session::Data::MetaTextures::Status::Ready) {
+        if (item->status == engine::system::grup::MetaTextures::Status::Ready) {
           if (item->invalid) {
             ImGui::Text("<invalid>");
           } else {

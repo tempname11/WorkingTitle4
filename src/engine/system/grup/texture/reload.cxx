@@ -12,7 +12,7 @@ void _reload_finish(
   Ref<engine::session::Data> session,
   Ref<engine::session::Vulkan::Core> core,
   Own<engine::session::Vulkan::Textures> textures,
-  Own<engine::session::Data::MetaTextures> meta_textures,
+  Own<MetaTextures> meta_textures,
   Own<LoadData> data
 ) {
   ZoneScoped;
@@ -42,7 +42,7 @@ void reload(
   lib::GUID texture_id,
   lib::task::ContextBase* ctx,
   Ref<engine::session::Data> session,
-  Own<engine::session::Data::MetaTextures> meta_textures
+  Own<MetaTextures> meta_textures
 ) {
   ZoneScoped;
 
@@ -54,7 +54,7 @@ void reload(
   // Reloading will likely only ever be manual, and right now the user
   // would simply have to wait to reload something that's already reloading.
   // We have to ensure the status is right before calling this.
-  assert(meta->status == engine::session::Data::MetaTextures::Status::Ready);
+  assert(meta->status == MetaTextures::Status::Ready);
 
   auto data = new LoadData {
     .texture_id = texture_id,
@@ -85,7 +85,7 @@ void reload(
       session.ptr,
       &session->vulkan.core,
       &session->vulkan.textures,
-      &session->meta_textures,
+      &session->grup.meta_textures,
       data
     )
   );

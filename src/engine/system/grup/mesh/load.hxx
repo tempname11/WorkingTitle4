@@ -37,7 +37,7 @@ void _load_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
   Own<engine::session::Vulkan::Meshes> meshes,
-  Own<engine::session::Data::MetaMeshes> meta_meshes,
+  Own<MetaMeshes> meta_meshes,
   Own<LoadData> data
 );
 
