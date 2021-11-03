@@ -106,7 +106,7 @@ void init_sdata(
       {
         .binding = 0,
         .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-        .descriptorCount = 1024, // @Incomplete :LargeEnough
+        .descriptorCount = 2048, // @Incomplete :LargeEnough
         .stageFlags = VK_SHADER_STAGE_ALL,
       },
     };

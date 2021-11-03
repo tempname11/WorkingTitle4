@@ -24,7 +24,8 @@ void main() {
   // @Performance: precompute matrices.
   gl_Position = frame.data.projection * frame.data.view * constants.model * vec4(position, 1.0);
   world_space_tangent = (constants.model * vec4(tangent, 0.0)).xyz;
-  world_space_bitangent = (constants.model * vec4(bitangent, 0.0)).xyz;
+  world_space_bitangent = -(constants.model * vec4(bitangent, 0.0)).xyz;
+  // @Think: what went wrong that we needed a "-" ?
   world_space_normal = (constants.model * vec4(normal, 0.0)).xyz;
   out_uv = uv;
 }
