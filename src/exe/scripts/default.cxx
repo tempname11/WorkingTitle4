@@ -46,7 +46,8 @@ void runtest() {
 
   test_fn();
 
-  FreeLibrary(h_lib);
+  auto result = FreeLibrary(h_lib);
+  assert(result != 0);
 }
 
 int WinMain(
