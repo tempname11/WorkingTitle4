@@ -1,5 +1,5 @@
 #pragma once
-#define FMT_USE_NONTYPE_TEMPLATE_PARAMETERS 0
+#include <cassert>
 #include <fmt/format.h>
 #include <Tracy.hpp>
 #include <src/lib/task.hxx>

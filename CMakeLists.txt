@@ -5,6 +5,10 @@ project ("WorkingTitle4")
 message(CUSTOM_LINK_PATH = $ENV{CUSTOM_LINK_PATH})
 message(CUSTOM_INCLUDE_PATH = $ENV{CUSTOM_INCLUDE_PATH})
 
+if(MSVC)
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+endif()
+
 file (GLOB SRC_SHADER_COMMON CONFIGURE_DEPENDS "src/shader/common/*.glsl") # hacky glob, instead of include analysis
 file (GLOB SRC_SHADER_PROG CONFIGURE_DEPENDS "src/shader/*.*.glsl")
 
@@ -56,6 +60,17 @@ include_directories (
 )
 
 add_library (
+  tracy_lib
+  SHARED
+  "${CMAKE_SOURCE_DIR}/submodule/tracy/TracyClient.cpp"
+)
+
+target_compile_definitions(tracy_lib PRIVATE -DTRACY_ENABLE=1)
+target_compile_definitions(tracy_lib PRIVATE -DTRACY_ON_DEMAND=1)
+# target_compile_definitions(tracy_lib PRIVATE -DTRACY_NO_EXIT=1)
+target_compile_definitions(tracy_lib INTERFACE -DTRACY_IMPORTS)
+
+add_library (
   engine_lib
   STATIC
   "src/impl/global_overload.cxx"
@@ -67,7 +82,6 @@ add_library (
   ${SRC_ENGINE}
   ${SRC_TOOLS}
   ${ALL_EMBEDDED_GLSL}
-  "${CMAKE_SOURCE_DIR}/submodule/tracy/TracyClient.cpp"
   "${CMAKE_SOURCE_DIR}/submodule/imgui/imgui.cpp"
   "${CMAKE_SOURCE_DIR}/submodule/imgui/imgui_draw.cpp"
   "${CMAKE_SOURCE_DIR}/submodule/imgui/imgui_tables.cpp"
@@ -78,25 +92,24 @@ add_library (
   "${CMAKE_SOURCE_DIR}/submodule/imgui/misc/cpp/imgui_stdlib.cpp"
 )
 
+# defines for external stuff
+target_compile_definitions(engine_lib PRIVATE -DVC_EXTRALEAN)
+target_compile_definitions(engine_lib PRIVATE -DGLFW_INCLUDE_VULKAN)
+target_compile_definitions(engine_lib PRIVATE -DGLM_FORCE_DEPTH_ZERO_TO_ONE)
+target_compile_definitions(engine_lib PRIVATE -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
+target_compile_definitions(engine_lib PRIVATE -DFMT_USE_NONTYPE_TEMPLATE_PARAMETERS=0)
+
+# defines for our stuff
 target_compile_definitions(engine_lib PUBLIC -DWINDOWS)
-target_compile_definitions(engine_lib PUBLIC -DVC_EXTRALEAN)
-target_compile_definitions(engine_lib PUBLIC -DGLFW_INCLUDE_VULKAN)
-target_compile_definitions(engine_lib PUBLIC -DGLM_FORCE_DEPTH_ZERO_TO_ONE)
-target_compile_definitions(engine_lib PUBLIC IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
-
 target_compile_definitions(engine_lib PUBLIC -DENGINE_DEVELOPER)
-target_compile_definitions(engine_lib PUBLIC TRACY_ENABLE=1)
-# target_compile_definitions(engine_lib PUBLIC TRACY_ON_DEMAND=1)
-# target_compile_definitions(engine_lib PUBLIC TRACY_NO_EXIT=1)
 
-target_link_directories (engine_lib PUBLIC $ENV{CUSTOM_LINK_PATH})
-target_link_directories (engine_lib PUBLIC "${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/build/lib/Release/x64")
-target_link_libraries (engine_lib glfw3)
-target_link_libraries (engine_lib vulkan-1)
-target_link_libraries (engine_lib nfd)
-target_link_libraries(engine_lib fmt::fmt-header-only)
-
-
+target_link_directories (engine_lib INTERFACE $ENV{CUSTOM_LINK_PATH})
+target_link_directories (engine_lib INTERFACE "${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/build/lib/Release/x64")
+target_link_libraries (engine_lib PRIVATE glfw3)
+target_link_libraries (engine_lib PRIVATE vulkan-1)
+target_link_libraries (engine_lib PRIVATE nfd)
+target_link_libraries(engine_lib PRIVATE fmt::fmt-header-only)
+target_link_libraries (engine_lib PUBLIC tracy_lib)
 
 # executables
 
@@ -111,7 +124,7 @@ foreach (FILE IN LISTS SRC_EXE_SCRIPTS)
     ${FILE}
   )
 
-  target_link_libraries(script_${EXE_NAME} engine_lib)
+  target_link_libraries(script_${EXE_NAME} PRIVATE engine_lib)
 endforeach()
 
 add_executable (
@@ -119,13 +132,21 @@ add_executable (
   WIN32
   "src/exe/engine.cxx"
 )
-target_link_libraries(engine engine_lib)
+target_link_libraries(engine PRIVATE engine_lib)
 
 add_executable (
   embedfile
   "src/exe/embedfile.cxx"
 )
 
+add_library(
+  testlib
+  SHARED
+  "src/exe/test.cxx"
+)
+target_link_libraries(testlib PRIVATE engine_lib)
+
+#[[
 add_executable (
   taskmark
   "src/exe/taskmark.cxx"
@@ -137,7 +158,4 @@ add_executable (
 target_compile_definitions(taskmark PUBLIC TRACY_ENABLE=1)
 target_compile_definitions(taskmark PUBLIC TRACY_NO_EXIT=1)
 target_link_libraries(taskmark fmt::fmt-header-only)
-
-set_target_properties(
-    script_sponza PROPERTIES
-    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+]]#
