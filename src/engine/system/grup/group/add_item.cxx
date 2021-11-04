@@ -28,7 +28,7 @@ void _add_item_insert(
   ZoneScoped;
 
   scene->items.push_back(engine::session::Data::Scene::Item {
-    .group_id = data->group_id,
+    .owner_id = data->group_id,
     .transform = data->transform,
     .mesh_id = data->mesh_id,
     .texture_albedo_id = data->albedo_id,

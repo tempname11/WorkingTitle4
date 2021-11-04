@@ -39,7 +39,7 @@ void _save(
   fwrite(&item_count, 1, sizeof(item_count), file);
 
   for (auto &item : scene->items) {
-    if (item.group_id != data->group_id) {
+    if (item.owner_id != data->group_id) {
       continue;
     }
 

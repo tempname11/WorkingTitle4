@@ -45,11 +45,8 @@ struct Ctrl {
   Waitable wait_for_signal(lib::Task *signal) {
     auto semaphore = new std::binary_semaphore(0);
     auto after = lib::task::create(_release_semaphore, semaphore);
-    lib::task::inject(ctx->runner, {}, {
-      .new_dependencies = {
-        { signal, after },
-      },
-    });
+    ctx->new_dependencies.push_back({ signal, after });
+    lib::task::inject_pending(ctx);
     return Waitable(semaphore);
   }
 

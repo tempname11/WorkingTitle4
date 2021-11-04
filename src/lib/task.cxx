@@ -588,6 +588,16 @@ void inject(Runner *r, std::vector<Task *> && tasks, Auxiliary && aux) {
   }
 }
 
+void inject_pending(ContextBase *ctx) {
+  _internal_infer_dependencies(ctx->runner, ctx->new_tasks, nullptr);
+  _internal_new_dependencies(ctx->runner, std::move(ctx->new_dependencies));
+  for (auto t : ctx->new_tasks) {
+    _internal_add_new_task(ctx->runner, t);
+  }
+  ctx->new_tasks.clear();
+  ctx->new_dependencies.clear();
+}
+
 void no_op(ContextBase *ctx) {}
 
 Task *create_external_signal() {

@@ -78,6 +78,7 @@ void discard_runner(Runner *);
 void discard_task_or_signal(Task *);
 
 void inject(Runner *, std::vector<Task *> &&, Auxiliary && = {});
+void inject_pending(ContextBase *);
 
 Task *create_external_signal();
 Task *create_yarn_signal();

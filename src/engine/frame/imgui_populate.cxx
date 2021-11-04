@@ -8,6 +8,7 @@
 #endif
 #include <misc/cpp/imgui_stdlib.h>
 #include <src/engine/system/grup/group.hxx>
+#include <src/engine/system/artline/public.hxx>
 #include <src/engine/tools/cube_writer.hxx>
 #include <src/engine/tools/gltf_converter.hxx>
 #include <src/engine/tools/voxel_converter.hxx>
@@ -158,6 +159,7 @@ void imgui_populate(
       ImGui::MenuItem("Groups", "CTRL-G", &state->show_imgui_window_groups);
       ImGui::MenuItem("Meshes", "CTRL-M", &state->show_imgui_window_meshes);
       ImGui::MenuItem("Textures", "CTRL-T", &state->show_imgui_window_textures);
+      ImGui::MenuItem("Artline", "CTRL-A", &state->show_imgui_window_artline);
       ImGui::MenuItem("GPU Memory", "CTRL-Q", &state->show_imgui_window_gpu_memory);
       ImGui::MenuItem("Tools", "CTRL-W", &state->show_imgui_window_tools);
       ImGui::MenuItem("Flags", "CTRL-F", &state->show_imgui_window_flags);
@@ -418,6 +420,36 @@ void imgui_populate(
         ImGui::PopID();
       }
       ImGui::EndTable();
+      ImGui::End();
+    }
+
+    if (state->show_imgui_window_artline) {
+      auto it = &session->artline;
+
+      ImGui::Begin("Artline", &state->show_imgui_window_groups);
+      ImGui::BeginTable("table_artline", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+      ImGui::TableSetupColumn("Name");
+      ImGui::TableSetupColumn("Test");
+      ImGui::TableHeadersRow();
+      {
+        std::shared_lock lock(it->rw_mutex);
+        for (auto &item : it->dlls) {
+          ImGui::PushID(item.first);
+          ImGui::TableNextRow();
+          ImGui::TableNextColumn();
+          ImGui::TextUnformatted(
+            item.second.filename.c_str(),
+            item.second.filename.c_str() + item.second.filename.size()
+          );
+          ImGui::TableNextColumn();
+          ImGui::Text("%d", item.second.test);
+          ImGui::PopID();
+        }
+      }
+      ImGui::EndTable();
+      if (ImGui::Button("Reload all")) {
+        system::artline::reload_all(session, ctx);
+      }
       ImGui::End();
     }
 

@@ -3,7 +3,7 @@
 #include <src/lib/debug_camera.hxx>
 #include <src/engine/startup.hxx>
 #include <src/engine/system/grup/group.hxx>
-#include <src/engine/session/setup.hxx>
+#include <src/engine/session/data.hxx>
 #include "session.inline.hxx"
 
 void update_camera(

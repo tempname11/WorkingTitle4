@@ -13,7 +13,7 @@
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
 #include <src/engine/step/indirect_light.hxx>
-#include "cleanup.hxx"
+#include "public.hxx"
 
 namespace engine::session {
 

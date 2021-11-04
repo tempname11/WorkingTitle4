@@ -1,5 +1,9 @@
 #pragma once
 #include <shared_mutex>
+#include <unordered_map>
+#include <vulkan/vulkan.h>
+#include <src/lib/lifetime.hxx>
+#include <src/lib/guid.hxx>
 
 namespace engine::system::grup {
   struct MetaTexturesKey {

@@ -2,7 +2,7 @@
 #include <vector>
 #include <src/global.hxx>
 #include <src/lib/task.hxx>
-#include <src/engine/session/setup.hxx>
+#include <src/engine/session/public.hxx>
 #include "startup.hxx"
 
 // #define ENGINE_DEBUG_TASK_THREADS 1

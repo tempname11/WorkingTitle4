@@ -26,7 +26,7 @@ void _remove_scene_items(
 
   for (size_t i = 0; i < scene->items.size(); i++) {
     auto *item = &scene->items[i];
-    if (item->group_id == data->group_id) {
+    if (item->owner_id == data->group_id) {
       engine::system::grup::mesh::deref(
         item->mesh_id,
         ctx,

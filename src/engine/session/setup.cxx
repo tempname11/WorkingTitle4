@@ -26,7 +26,7 @@
 #include <src/engine/misc.hxx>
 #include "setup_cleanup.hxx"
 #include "iteration.hxx"
-#include "cleanup.hxx"
+#include "public.hxx"
 
 namespace engine::session {
 
@@ -758,6 +758,15 @@ void setup(
       if (true
         && ptr->state->show_imgui
         && action == GLFW_PRESS
+        && key == GLFW_KEY_A
+        && is_control_pressed
+      ) {
+        ptr->state->show_imgui_window_artline = !ptr->state->show_imgui_window_artline;
+      }
+
+      if (true
+        && ptr->state->show_imgui
+        && action == GLFW_PRESS
         && key == GLFW_KEY_D
         && is_control_pressed
       ) {
@@ -857,7 +866,7 @@ void setup(
   #ifndef NDEBUG
   {
     const auto size = sizeof(engine::session::Data) - sizeof(engine::session::Vulkan);
-    static_assert(size == 1168);
+    static_assert(size == 1256);
   }
   {
     const auto size = sizeof(engine::session::Vulkan);

@@ -12,6 +12,7 @@
 #include <src/lib/gfx/multi_alloc.hxx>
 #include <src/lib/debug_camera.hxx>
 #include <src/engine/system/grup/data.hxx>
+#include <src/engine/system/artline/data.hxx>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/common/ubo.hxx>
@@ -44,7 +45,7 @@ struct Data : lib::task::ParentResource {
 
   struct Scene {
     struct Item {
-      lib::GUID group_id;
+      lib::GUID owner_id;
       glm::mat4 transform;
       lib::GUID mesh_id;
       lib::GUID texture_albedo_id;
@@ -60,6 +61,8 @@ struct Data : lib::task::ParentResource {
     system::grup::MetaMeshes meta_meshes;
     system::grup::MetaTextures meta_textures;
   } grup;
+
+  system::artline::Data artline;
 
   Vulkan vulkan;
 
@@ -84,6 +87,7 @@ struct Data : lib::task::ParentResource {
     bool show_imgui_window_groups;
     bool show_imgui_window_meshes;
     bool show_imgui_window_textures;
+    bool show_imgui_window_artline;
     bool show_imgui_window_gpu_memory;
     bool show_imgui_window_tools;
     bool show_imgui_window_flags;

@@ -1,6 +1,7 @@
 #pragma once
 #include <semaphore>
 #include <src/lib/task.hxx>
+#include <src/engine/session/public.hxx>
 #include "common.inline.hxx"
 
 void Ctrl::run() {} // ignore

@@ -140,8 +140,8 @@ add_executable (
 )
 
 add_library(
-  testlib
+  test.art
   SHARED
-  "src/exe/test.cxx"
+  "src/art/test.cxx"
 )
-target_link_libraries(testlib PRIVATE engine_lib)
+target_link_libraries(test.art PRIVATE engine_lib)
