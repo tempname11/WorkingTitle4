@@ -9,7 +9,9 @@ if(MSVC)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 endif()
 
-file (GLOB SRC_SHADER_COMMON CONFIGURE_DEPENDS "src/shader/common/*.glsl") # hacky glob, instead of include analysis
+# Recompile all shaders, when common files change.
+# If and when that's too slow, try to do include analysis.
+file (GLOB SRC_SHADER_COMMON CONFIGURE_DEPENDS "src/shader/common/*.glsl")
 file (GLOB SRC_SHADER_PROG CONFIGURE_DEPENDS "src/shader/*.*.glsl")
 
 foreach (GLSL_FILE IN LISTS SRC_SHADER_PROG)
@@ -113,9 +115,9 @@ target_link_libraries (engine_lib PUBLIC tracy_lib)
 
 # executables
 
-file (GLOB SRC_EXE_SCRIPTS CONFIGURE_DEPENDS "src/exe/scripts/*.cxx")
+file (GLOB SRC_EXE_SCRIPTS CONFIGURE_DEPENDS "src/target/script/*.cxx")
 foreach (FILE IN LISTS SRC_EXE_SCRIPTS)
-  string (REPLACE ${CMAKE_SOURCE_DIR}/src/exe/scripts/ "" EXE_NAME ${FILE})
+  string (REPLACE "${CMAKE_SOURCE_DIR}/src/target/script/" "" EXE_NAME ${FILE})
   string (REPLACE ".cxx" "" EXE_NAME ${EXE_NAME})
 
   add_executable (
@@ -130,18 +132,18 @@ endforeach()
 add_executable (
   engine
   WIN32
-  "src/exe/engine.cxx"
+  "src/target/exe/engine.cxx"
 )
 target_link_libraries(engine PRIVATE engine_lib)
 
 add_executable (
   embedfile
-  "src/exe/embedfile.cxx"
+  "src/target/exe/embedfile.cxx"
 )
 
 add_library(
   test.art
   SHARED
-  "src/art/test.cxx"
+  "src/target/artline/test.cxx"
 )
 target_link_libraries(test.art PRIVATE engine_lib)
