@@ -71,6 +71,14 @@ void deinit(
     allocator
   );
 
+  for (auto &item : it->images) {
+    vkDestroyImageView(
+      device,
+      item.second.image_view,
+      allocator
+    );
+  }
+
   vkDestroyCommandPool(
     device,
     it->command_pool,

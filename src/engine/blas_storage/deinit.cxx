@@ -21,6 +21,14 @@ void deinit(
     core->allocator
   );
 
+  for (auto &item : it->items) {
+    core->extension_pointers.vkDestroyAccelerationStructureKHR(
+      core->device,
+      item.second.accel,
+      core->allocator
+    );
+  }
+
   vkDestroyCommandPool(
     core->device,
     it->command_pool,
