@@ -24,6 +24,7 @@ void CtrlSession::run() {
       )
     );
   }
+  /*
   {
     std::string path = "assets/vox/medieval_city_2/index.grup";
     task(engine::system::grup::group::load(
@@ -33,6 +34,7 @@ void CtrlSession::run() {
     ));
     task(update_stuff, &session->state);
   }
+  */
 }
 
 MAIN_MACRO(CtrlSession);

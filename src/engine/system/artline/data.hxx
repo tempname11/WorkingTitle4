@@ -14,7 +14,6 @@ struct Data {
   struct DLL {
     std::string filename;
     Status status;
-    int test;
   };
 
   std::shared_mutex rw_mutex;

@@ -1,6 +1,6 @@
 #include <src/lib/task.hxx>
 #include <src/engine/session/data.hxx>
-#include "_load.hxx"
+#include "_/private.hxx"
 
 namespace engine::system::artline {
 
@@ -8,6 +8,8 @@ void reload_all(
   Ref<engine::session::Data> session,
   lib::task::ContextBase *ctx
 ) {
+  assert(false); // @Incomplete
+  /*
   {
     auto it = &session->artline;
     std::unique_lock lock(it->rw_mutex);
@@ -31,6 +33,7 @@ void reload_all(
       lib::lifetime::ref(&session->lifetime);
     }
   }
+  */
 }
 
 } // namespace

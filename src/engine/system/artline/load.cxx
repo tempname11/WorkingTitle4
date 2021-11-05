@@ -2,7 +2,7 @@
 #include <src/lib/lifetime.hxx>
 #include <src/lib/guid.hxx>
 #include <src/engine/session/data.hxx>
-#include "_load.hxx"
+#include "_/private.hxx"
 
 namespace engine::system::artline {
 
@@ -12,10 +12,10 @@ lib::Task *load(
   lib::task::ContextBase *ctx
 ) {
   auto yarn_end = lib::task::create_yarn_signal();
-  auto guid = lib::guid::next(&session->guid_counter);
+  auto dll_id = lib::guid::next(&session->guid_counter);
   auto data = new LoadData {
     .dll_filename = dll_filename,
-    .guid = guid,
+    .dll_id = dll_id,
     .yarn_end = yarn_end,
   };
 
@@ -29,7 +29,7 @@ lib::Task *load(
     auto it = &session->artline;
     std::unique_lock lock(it->rw_mutex);
     it->dlls.insert({
-      guid,
+      dll_id,
       Data::DLL {
         .filename = dll_filename,
         .status = Data::Status::Loading,

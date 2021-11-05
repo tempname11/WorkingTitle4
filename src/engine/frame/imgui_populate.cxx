@@ -429,7 +429,6 @@ void imgui_populate(
       ImGui::Begin("Artline", &state->show_imgui_window_groups);
       ImGui::BeginTable("table_artline", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
       ImGui::TableSetupColumn("Name");
-      ImGui::TableSetupColumn("Test");
       ImGui::TableHeadersRow();
       {
         std::shared_lock lock(it->rw_mutex);
@@ -441,8 +440,6 @@ void imgui_populate(
             item.second.filename.c_str(),
             item.second.filename.c_str() + item.second.filename.size()
           );
-          ImGui::TableNextColumn();
-          ImGui::Text("%d", item.second.test);
           ImGui::PopID();
         }
       }

@@ -1,13 +1,14 @@
+# missing features
+- Need proper support for multiple lights. :ManyLights
+
 # need to check
 - Why is nSight hanging when trying to profile?
 - When running the Vulkan Configurator overrides, some additional errors/warnings
     pop up. Need to enable their presence by default, and also fix them.
 
 # architectural problems
-- Need proper support for multiple lights. :ManyLights
 - Combine LPass parts to a render pass :UseRenderPasses. Also :IndirectFirst.
 - Need automatic GPU memory region compacting.
-- Uploader need a performance-oriented overhaul :UploaderMustBeImproved
 - Semaphores are used unnecessarily to separate `work` <-> `imgui` <-> `compose`.
 - We do not need (inflight-count) of every datum.
 - Descriptor pool counts are fixed; can run out of them. :FixedDescriptorPool
@@ -24,7 +25,6 @@
 
 # deprecations
 - `rand()` is not thread-safe generally (although it is in MSVC).
-- `task::inject` seems net harmful. (can we really avoid it? @Think)
 
 # minor bugs
 - TAA shimmer for small pixel movement
