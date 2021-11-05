@@ -23,6 +23,8 @@ struct ImguiData {
 
 struct GlfwUserData {
   engine::session::Data::State *state;
+  Ref<engine::session::Data> session;
+  lib::task::ContextBase *ctx;
 };
 
 struct UpdateData {

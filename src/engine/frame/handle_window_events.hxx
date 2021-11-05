@@ -8,7 +8,8 @@ void handle_window_events(
   lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   Own<engine::session::Data::GLFW> glfw,
   Own<engine::session::Data::State> session_state,
-  Own<engine::misc::UpdateData> update
+  Own<engine::misc::UpdateData> update,
+  Ref<engine::session::Data> session
 );
 
 } // namespace

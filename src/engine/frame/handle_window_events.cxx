@@ -6,7 +6,8 @@ void handle_window_events(
   lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   Own<engine::session::Data::GLFW> glfw,
   Own<engine::session::Data::State> session_state,
-  Own<engine::misc::UpdateData> update
+  Own<engine::misc::UpdateData> update,
+  Ref<engine::session::Data> session
 ) {
   ZoneScoped;
 
@@ -16,6 +17,8 @@ void handle_window_events(
 
   auto user_data = new engine::misc::GlfwUserData {
     .state = session_state.ptr,
+    .session = session,
+    .ctx = ctx,
   };
   glfwSetWindowUserPointer(glfw->window, user_data);
   glfwPollEvents();

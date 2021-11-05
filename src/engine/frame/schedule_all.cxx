@@ -103,7 +103,8 @@ void _begin(
       handle_window_events,
       &session->glfw,
       &session->state,
-      &frame_data->update_data
+      &frame_data->update_data,
+      session.ptr
     ),
     lib::task::create(
       update,

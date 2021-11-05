@@ -670,7 +670,7 @@ void setup(
     int width = DEFAULT_WINDOW_WIDTH;
     int height = DEFAULT_WINDOW_HEIGHT;
 
-    it->window = glfwCreateWindow(width, height, "WorkingTitle", monitor, nullptr);
+    it->window = glfwCreateWindow(width, height, "WorkingTitleInstance", monitor, nullptr);
     it->last_known_mouse_cursor_position = glm::vec2(NAN, NAN);
     it->last_window_position = glm::ivec2(0, 0);
     it->last_window_size = glm::ivec2(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
@@ -726,6 +726,18 @@ void setup(
         )
       ) {
         ptr->state->is_fullscreen = !ptr->state->is_fullscreen;
+      }
+
+      // Alt+R
+      if (true
+        && action == GLFW_PRESS
+        && key == GLFW_KEY_R
+        && is_alt_pressed
+      ) {
+        system::artline::reload_all(
+          ptr->session,
+          ptr->ctx
+        );
       }
 
       if (true
