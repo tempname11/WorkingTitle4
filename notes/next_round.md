@@ -2,7 +2,9 @@
 
 - Remove GRUP stuff, leave only exporters and add DLL import adapter.
 
-- Remove subtasks. Yarns do it better.
+- `after_inflight` should be a function, not a task.
+
+- Remove subtasks!
 
 - Remove resource aliasing. 
 

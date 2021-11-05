@@ -45,4 +45,24 @@ void _upload_texture(
   Ref<engine::session::Data> session
 );
 
+struct UnloadData {
+  lib::GUID dll_id;
+  std::vector<session::Data::Scene::Item> items_removed;
+};
+
+void _unload_scene(
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<UnloadData> data,
+  Own<session::Data::Scene> scene,
+  Ref<session::Data> session
+);
+
+void _unload_assets(
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<UnloadData> data,
+  Own<session::Vulkan::Meshes> meshes,
+  Own<session::Vulkan::Textures> textures,
+  Ref<session::Data> session
+);
+
 } // namespace
