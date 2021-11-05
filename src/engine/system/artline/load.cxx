@@ -32,7 +32,7 @@ lib::Task *load(
       dll_id,
       Data::DLL {
         .filename = dll_filename,
-        .status = Data::Status::Loading,
+        .status = Status::Loading,
       },
     });
   }

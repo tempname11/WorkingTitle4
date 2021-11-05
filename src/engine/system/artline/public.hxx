@@ -1,14 +1,28 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <src/lib/task.hxx>
+#include <src/lib/guid.hxx>
 #include <src/engine/session/public.hxx>
 
 namespace engine::system::artline {
 
 struct Data;
 
+enum struct Status {
+  Loading,
+  Reloading,
+  Ready,
+  Unloading,
+};
+
 lib::Task *load(
   char const* dll_filename,
+  Ref<engine::session::Data> session,
+  lib::task::ContextBase *ctx
+);
+
+void unload(
+  lib::GUID dll_id,
   Ref<engine::session::Data> session,
   lib::task::ContextBase *ctx
 );

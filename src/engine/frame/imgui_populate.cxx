@@ -352,7 +352,10 @@ void imgui_populate(
         { // reload button
           auto disabled = item->will_have_reloaded != nullptr;
           if (disabled) {
-            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+            ImGui::PushStyleVar(
+              ImGuiStyleVar_Alpha,
+              ImGui::GetStyle().Alpha * 0.5f
+            );
           }
           if (ImGui::Button("Reload") && !disabled) {
             imgui_reactions->reloaded_mesh_id = mesh_id;
@@ -407,7 +410,10 @@ void imgui_populate(
         { // reload button
           auto disabled = item->will_have_reloaded != nullptr;
           if (disabled) {
-            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+            ImGui::PushStyleVar(
+              ImGuiStyleVar_Alpha,
+              ImGui::GetStyle().Alpha * 0.5f
+            );
           }
           if (ImGui::Button("Reload") && !disabled) {
             imgui_reactions->reloaded_texture_id = texture_id;
@@ -429,17 +435,42 @@ void imgui_populate(
       ImGui::Begin("Artline", &state->show_imgui_window_groups);
       ImGui::BeginTable("table_artline", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
       ImGui::TableSetupColumn("Name");
+      ImGui::TableSetupColumn("Action");
       ImGui::TableHeadersRow();
       {
         std::shared_lock lock(it->rw_mutex);
-        for (auto &item : it->dlls) {
-          ImGui::PushID(item.first);
+        for (auto &pair : it->dlls) {
+          auto dll_id = pair.first;
+          auto item = &pair.second;
+          ImGui::PushID(dll_id);
           ImGui::TableNextRow();
           ImGui::TableNextColumn();
           ImGui::TextUnformatted(
-            item.second.filename.c_str(),
-            item.second.filename.c_str() + item.second.filename.size()
+            item->filename.c_str(),
+            item->filename.c_str() + item->filename.size()
           );
+          ImGui::TableNextColumn();
+          { // unload button
+            auto disabled = item->status != system::artline::Status::Ready;
+            if (disabled) {
+              ImGui::PushStyleVar(
+                ImGuiStyleVar_Alpha,
+                ImGui::GetStyle().Alpha * 0.5f
+              );
+            }
+            if (ImGui::Button("Unload") && !disabled) {
+              lock.unlock();
+              system::artline::unload(
+                dll_id,
+                session.ptr,
+                ctx
+              );
+              lock.lock();
+            }
+            if (disabled) {
+              ImGui::PopStyleVar();
+            }
+          }
           ImGui::PopID();
         }
       }

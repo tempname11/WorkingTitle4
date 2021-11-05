@@ -98,7 +98,7 @@ void _finish_texture(
 }
 
 struct FinishData {
-  std::vector<session::Data::Scene::Item> scene_items;
+  std::vector<session::Data::Scene::Item> items_to_add;
 };
 
 void _finish(
@@ -113,14 +113,13 @@ void _finish(
     auto it = &session->artline;
     std::unique_lock lock(it->rw_mutex);
     auto item = &it->dlls[data->dll_id];
-    item->status = Data::Status::Ready;
-    // @Incomplete: store mesh ids so we can clean them up later!
+    item->status = Status::Ready;
   }
 
   scene->items.insert(
     scene->items.end(),
-    finish_data->scene_items.begin(),
-    finish_data->scene_items.end()
+    finish_data->items_to_add.begin(),
+    finish_data->items_to_add.end()
   );
 
   if (data->yarn_end != nullptr) {
@@ -282,7 +281,7 @@ void _load(
     auto texture_normal_id = lib::guid::next(&session->guid_counter);
     auto texture_romeao_id = lib::guid::next(&session->guid_counter);
 
-    finish_data->scene_items.push_back(session::Data::Scene::Item {
+    finish_data->items_to_add.push_back(session::Data::Scene::Item {
       .owner_id = data->dll_id,
       .transform = model.transform,
       .mesh_id = mesh_id,

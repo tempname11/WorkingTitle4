@@ -1,16 +1,11 @@
 #include <shared_mutex>
 #include <unordered_map>
 #include <src/lib/guid.hxx>
+#include "public.hxx"
 
 namespace engine::system::artline {
 
 struct Data {
-  enum struct Status {
-    Loading,
-    Reloading,
-    Ready,
-  };
-
   struct DLL {
     std::string filename;
     Status status;
