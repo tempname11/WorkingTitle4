@@ -11,6 +11,9 @@ function OnChange {
     $wshell.SendKeys('%r')
     Write-Warning 'Sent!'
   }
+  $ok = $wshell.AppActivate('Microsoft Visual Studio')
+  if (!$ok) {
+    Write-Warning '... could not change focus back ...'
 }
 
 $changeTypes = [System.IO.WatcherChangeTypes]::All
@@ -23,5 +26,5 @@ try {
   }
 }
 finally {
-  $wacher.Dispose()
+  $watcher.Dispose()
 }

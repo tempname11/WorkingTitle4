@@ -20,6 +20,7 @@ struct CountdownData {
 
 struct LoadMeshData {
   lib::GUID mesh_id;
+  std::string path;
   engine::common::mesh::T06 t06;
   engine::session::Vulkan::Meshes::Item mesh_item;
   CountdownData *countdown;
@@ -30,7 +31,7 @@ void _read_mesh_file(
   Ref<LoadMeshData> data 
 ) {
   ZoneScoped;
-  data->t06 = grup::mesh::read_t06_file("assets/gi_test_0.t06"); // @Tmp !
+  data->t06 = grup::mesh::read_t06_file(data->path.c_str());
 }
 
 void _finish_mesh(
@@ -134,15 +135,17 @@ void _finish(
 
 void _add_mesh_tasks(
   lib::GUID mesh_id,
+  std::string *path,
   CountdownData *countdown,
   Ref<engine::session::Data> session,
   lib::task::ContextBase *ctx
 ) {
   auto data = new LoadMeshData {
     .mesh_id = mesh_id,
+    .path = *path,
     .countdown = countdown,
   };
-  auto task_read_file = lib::task::create( // @Tmp
+  auto task_read_file = lib::task::create(
     _read_mesh_file,
     data
   );
@@ -275,54 +278,111 @@ void _load(
 
   auto finish_data = new FinishData {};
 
-  for (auto &model : desc.models) {
-    auto mesh_id = lib::guid::next(&session->guid_counter);
-    auto texture_albedo_id = lib::guid::next(&session->guid_counter);
-    auto texture_normal_id = lib::guid::next(&session->guid_counter);
-    auto texture_romeao_id = lib::guid::next(&session->guid_counter);
+  {
+    auto it = &session->artline;
+    std::unique_lock lock(it->rw_mutex);
 
-    finish_data->items_to_add.push_back(session::Data::Scene::Item {
-      .owner_id = data->dll_id,
-      .transform = model.transform,
-      .mesh_id = mesh_id,
-      .texture_albedo_id = texture_albedo_id,
-      .texture_normal_id = texture_normal_id,
-      .texture_romeao_id = texture_romeao_id,
-    });
+    for (auto &model : desc.models) {
+      lib::GUID mesh_id = 0;
+      if (it->meshes_by_key.contains(model.filename_mesh)) {
+        mesh_id = it->meshes_by_key.at(model.filename_mesh);
+        it->meshes[mesh_id].ref_count++;
+      } else {
+        mesh_id = lib::guid::next(&session->guid_counter);
+        it->meshes_by_key[model.filename_albedo] = mesh_id;
+        it->meshes[mesh_id] = MeshInfo {
+          .ref_count = 1,
+          .key = model.filename_mesh,
+        };
 
-    _add_mesh_tasks(
-      mesh_id,
-      countdown,
-      session,
-      ctx
-    );
+        _add_mesh_tasks(
+          mesh_id,
+          &model.filename_mesh,
+          countdown,
+          session,
+          ctx
+        );
+      }
+      assert(mesh_id != 0);
 
-    _add_texture_tasks(
-      texture_albedo_id,
-      engine::common::texture::ALBEDO_TEXTURE_FORMAT,
-      &model.filename_albedo,
-      countdown,
-      session,
-      ctx
-    );
+      lib::GUID texture_albedo_id = 0;
+      if (it->textures_by_key.contains(model.filename_albedo)) {
+        texture_albedo_id = it->textures_by_key.at(model.filename_albedo);
+        it->textures[texture_albedo_id].ref_count++;
+      } else {
+        texture_albedo_id = lib::guid::next(&session->guid_counter);
+        it->textures_by_key[model.filename_albedo] = texture_albedo_id;
+        it->textures[texture_albedo_id] = TextureInfo {
+          .ref_count = 1,
+          .key = model.filename_albedo,
+        };
 
-    _add_texture_tasks(
-      texture_normal_id,
-      engine::common::texture::NORMAL_TEXTURE_FORMAT,
-      &model.filename_normal,
-      countdown,
-      session,
-      ctx
-    );
+        _add_texture_tasks(
+          texture_albedo_id,
+          engine::common::texture::ALBEDO_TEXTURE_FORMAT,
+          &model.filename_albedo,
+          countdown,
+          session,
+          ctx
+        );
+      }
+      assert(texture_albedo_id != 0);
 
-    _add_texture_tasks(
-      texture_romeao_id,
-      engine::common::texture::ROMEAO_TEXTURE_FORMAT,
-      &model.filename_romeao,
-      countdown,
-      session,
-      ctx
-    );
+      lib::GUID texture_normal_id = 0;
+      if (it->textures_by_key.contains(model.filename_normal)) {
+        texture_normal_id = it->textures_by_key.at(model.filename_normal);
+        it->textures[texture_normal_id].ref_count++;
+      } else {
+        texture_normal_id = lib::guid::next(&session->guid_counter);
+        it->textures_by_key[model.filename_normal] = texture_normal_id;
+        it->textures[texture_normal_id] = TextureInfo {
+          .ref_count = 1,
+          .key = model.filename_normal,
+        };
+
+        _add_texture_tasks(
+          texture_normal_id,
+          engine::common::texture::ALBEDO_TEXTURE_FORMAT,
+          &model.filename_normal,
+          countdown,
+          session,
+          ctx
+        );
+      }
+      assert(texture_normal_id != 0);
+
+      lib::GUID texture_romeao_id = 0;
+      if (it->textures_by_key.contains(model.filename_romeao)) {
+        texture_romeao_id = it->textures_by_key.at(model.filename_romeao);
+        it->textures[texture_romeao_id].ref_count++;
+      } else {
+        texture_romeao_id = lib::guid::next(&session->guid_counter);
+        it->textures_by_key[model.filename_romeao] = texture_romeao_id;
+        it->textures[texture_romeao_id] = TextureInfo {
+          .ref_count = 1,
+          .key = model.filename_romeao,
+        };
+
+        _add_texture_tasks(
+          texture_romeao_id,
+          engine::common::texture::ALBEDO_TEXTURE_FORMAT,
+          &model.filename_romeao,
+          countdown,
+          session,
+          ctx
+        );
+      }
+      assert(texture_romeao_id != 0);
+
+      finish_data->items_to_add.push_back(session::Data::Scene::Item {
+        .owner_id = data->dll_id,
+        .transform = model.transform,
+        .mesh_id = mesh_id,
+        .texture_albedo_id = texture_albedo_id,
+        .texture_normal_id = texture_normal_id,
+        .texture_romeao_id = texture_romeao_id,
+      });
+    }
   }
 
   auto task_finish = lib::defer(

@@ -46,8 +46,11 @@ struct Model {
   */
   glm::mat4 transform;
 
+  /* @Incomplete
   DensityFn *density_fn;
   size_t density_fn_version;
+  */
+  std::string filename_mesh;
 
   std::string filename_albedo;
   std::string filename_normal;
