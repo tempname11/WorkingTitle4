@@ -27,6 +27,7 @@ const float Z_FAR = 10000.0;
 
 const float RAY_T_MIN_MULT = 0.01;
 const float RAY_T_MAX = 10000.0;
+const float SHADOW_NORMAL_BIAS_MULT = 0.001;
 
 void main() {
   float depth = subpassLoad(zchannel).r;
@@ -52,8 +53,8 @@ void main() {
       accel,
       0,
       0xFF,
-      pos_world,
-      RAY_T_MIN_MULT * length(pos_view), // try to compensate for Z precision.
+      pos_world + N * SHADOW_NORMAL_BIAS_MULT * length(pos_view),
+      0, // RAY_T_MIN_MULT * length(pos_view), // try to compensate for Z precision.
       -directional_light.direction,
       RAY_T_MAX
     );
