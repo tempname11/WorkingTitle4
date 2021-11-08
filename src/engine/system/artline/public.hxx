@@ -2,6 +2,7 @@
 #include <glm/glm.hpp>
 #include <src/lib/task.hxx>
 #include <src/lib/guid.hxx>
+#include <src/engine/common/mesh.hxx>
 #include <src/engine/session/public.hxx>
 
 namespace engine::system::artline {
@@ -37,6 +38,28 @@ using DensityFn = float (glm::vec3 position);
 
 // struct Light {}; // @Incomplete
 
+union ModelMesh {
+  enum struct Type {
+    File,
+    Density,
+  };
+
+  struct File {
+    Type type;
+    std::string *filename; // @Bug: currently leaks
+  };
+
+  struct Density {
+    Type type;
+    DensityFn *density_fn;
+    size_t density_fn_version;
+  };
+
+  Type type;
+  File file;
+  Density density;
+};
+
 struct Model {
   size_t unique_index;
 
@@ -46,16 +69,13 @@ struct Model {
   */
   glm::mat4 transform;
 
-  /* @Incomplete
-  DensityFn *density_fn;
-  size_t density_fn_version;
-  */
-  std::string filename_mesh;
+  ModelMesh mesh;
 
   std::string filename_albedo;
   std::string filename_normal;
   std::string filename_romeao;
 };
+
 struct Description {
   // std::vector<Light> lights;
   std::vector<Model> models;
@@ -63,5 +83,9 @@ struct Description {
 
 #define DECL_DESCRIBE_FN(name) void name(engine::system::artline::Description *desc)
 typedef DECL_DESCRIBE_FN(DescribeFn);
+
+common::mesh::T06 generate(
+  DensityFn *density_fn
+);
 
 } // namespace

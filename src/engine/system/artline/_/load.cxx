@@ -18,7 +18,15 @@ struct CountdownData {
   lib::Task *yarn_zero;
 };
 
-struct LoadMeshData {
+struct DensityMeshData {
+  lib::GUID mesh_id;
+  DensityFn *density_fn;
+  engine::common::mesh::T06 t06;
+  engine::session::Vulkan::Meshes::Item mesh_item;
+  CountdownData *countdown;
+};
+
+struct FileMeshData {
   lib::GUID mesh_id;
   std::string path;
   engine::common::mesh::T06 t06;
@@ -26,17 +34,44 @@ struct LoadMeshData {
   CountdownData *countdown;
 };
 
+void _generate_mesh(
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<DensityMeshData> data 
+) {
+  ZoneScoped;
+  data->t06 = generate(data->density_fn);
+}
+
 void _read_mesh_file(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<LoadMeshData> data 
+  Ref<FileMeshData> data 
 ) {
   ZoneScoped;
   data->t06 = grup::mesh::read_t06_file(data->path.c_str());
 }
 
-void _finish_mesh(
+void _finish_density_mesh(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<LoadMeshData> data,
+  Ref<DensityMeshData> data,
+  Own<engine::session::Vulkan::Meshes> meshes,
+  Ref<engine::session::Data> session
+) {
+  // @CopyPaste
+  ZoneScoped;
+  meshes->items.insert({ data->mesh_id, data->mesh_item });
+  grup::mesh::deinit_t06(&data->t06);
+  auto old_countdown = data->countdown->value.fetch_sub(1);
+  assert(old_countdown > 0);
+  if (old_countdown == 1) {
+    lib::task::signal(ctx->runner, data->countdown->yarn_zero);
+    delete data->countdown;
+  }
+  delete data.ptr;
+}
+
+void _finish_file_mesh(
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<FileMeshData> data,
   Own<engine::session::Vulkan::Meshes> meshes,
   Ref<engine::session::Data> session
 ) {
@@ -50,6 +85,136 @@ void _finish_mesh(
     delete data->countdown;
   }
   delete data.ptr;
+}
+
+void _add_density_mesh_tasks(
+  lib::GUID mesh_id,
+  ModelMesh::Density *density,
+  CountdownData *countdown,
+  Ref<engine::session::Data> session,
+  lib::task::ContextBase *ctx
+) {
+  auto data = new DensityMeshData {
+    .mesh_id = mesh_id,
+    .density_fn = *density->density_fn,
+    .countdown = countdown,
+  };
+
+  auto task_generate = lib::task::create(
+    _generate_mesh,
+    data
+  );
+
+  // @CopyPaste
+  auto signal_init_buffer = lib::task::create_external_signal();
+  auto task_init_buffer = lib::defer(
+    lib::task::create(
+      _upload_mesh_init_buffer,
+      &data->t06,
+      &data->mesh_item,
+      signal_init_buffer,
+      &session->vulkan.queue_work,
+      session.ptr
+    )
+  );
+  auto signal_init_blas = lib::task::create_external_signal();
+  auto task_init_blas = lib::defer(
+    lib::task::create(
+      _upload_mesh_init_blas,
+      &data->mesh_item,
+      signal_init_blas,
+      &session->vulkan.queue_work,
+      session.ptr
+    )
+  );
+
+  auto task_finish_mesh = lib::defer(
+    lib::task::create(
+      _finish_density_mesh,
+      data,
+      &session->vulkan.meshes,
+      session.ptr
+    )
+  );
+
+  ctx->new_tasks.insert(ctx->new_tasks.end(), {
+    task_generate,
+    task_init_buffer.first,
+    task_init_blas.first,
+    task_finish_mesh.first,
+  });
+
+  ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
+    { task_generate, task_init_buffer.first },
+    { signal_init_buffer, task_init_blas.first },
+    { signal_init_blas, task_finish_mesh.first },
+  });
+
+  countdown->value++;
+}
+
+void _add_file_mesh_tasks(
+  lib::GUID mesh_id,
+  ModelMesh::File *file,
+  CountdownData *countdown,
+  Ref<engine::session::Data> session,
+  lib::task::ContextBase *ctx
+) {
+  auto data = new FileMeshData {
+    .mesh_id = mesh_id,
+    .path = *file->filename,
+    .countdown = countdown,
+  };
+  auto task_read_file = lib::task::create(
+    _read_mesh_file,
+    data
+  );
+
+  auto signal_init_buffer = lib::task::create_external_signal();
+  auto task_init_buffer = lib::defer(
+    lib::task::create(
+      _upload_mesh_init_buffer,
+      &data->t06,
+      &data->mesh_item,
+      signal_init_buffer,
+      &session->vulkan.queue_work,
+      session.ptr
+    )
+  );
+  auto signal_init_blas = lib::task::create_external_signal();
+  auto task_init_blas = lib::defer(
+    lib::task::create(
+      _upload_mesh_init_blas,
+      &data->mesh_item,
+      signal_init_blas,
+      &session->vulkan.queue_work,
+      session.ptr
+    )
+  );
+
+  auto task_finish_mesh = lib::defer(
+    lib::task::create(
+      _finish_file_mesh,
+      data,
+      &session->vulkan.meshes,
+      session.ptr
+    )
+  );
+
+  ctx->new_tasks.insert(ctx->new_tasks.end(), {
+    task_read_file,
+    task_init_buffer.first,
+    task_init_blas.first,
+    task_finish_mesh.first,
+  });
+
+  ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
+    { task_read_file, task_init_buffer.first },
+    { signal_init_buffer, task_init_blas.first },
+    { signal_init_blas, task_finish_mesh.first },
+  });
+
+  countdown->value++;
 }
 
 struct LoadTextureData {
@@ -99,6 +264,7 @@ void _finish_texture(
 }
 
 struct FinishData {
+  HINSTANCE h_lib;
   std::vector<session::Data::Scene::Item> items_to_add;
 };
 
@@ -129,72 +295,13 @@ void _finish(
 
   lib::lifetime::deref(&session->lifetime, ctx->runner);
 
+  {
+    auto result = FreeLibrary(finish_data->h_lib);
+    assert(result != 0);
+  }
+
   delete data.ptr;
   delete finish_data.ptr;
-}
-
-void _add_mesh_tasks(
-  lib::GUID mesh_id,
-  std::string *path,
-  CountdownData *countdown,
-  Ref<engine::session::Data> session,
-  lib::task::ContextBase *ctx
-) {
-  auto data = new LoadMeshData {
-    .mesh_id = mesh_id,
-    .path = *path,
-    .countdown = countdown,
-  };
-  auto task_read_file = lib::task::create(
-    _read_mesh_file,
-    data
-  );
-
-  auto signal_init_buffer = lib::task::create_external_signal();
-  auto task_init_buffer = lib::defer(
-    lib::task::create(
-      _upload_mesh_init_buffer,
-      &data->t06,
-      &data->mesh_item,
-      signal_init_buffer,
-      &session->vulkan.queue_work,
-      session.ptr
-    )
-  );
-  auto signal_init_blas = lib::task::create_external_signal();
-  auto task_init_blas = lib::defer(
-    lib::task::create(
-      _upload_mesh_init_blas,
-      &data->mesh_item,
-      signal_init_blas,
-      &session->vulkan.queue_work,
-      session.ptr
-    )
-  );
-
-  auto task_finish_mesh = lib::defer(
-    lib::task::create(
-      _finish_mesh,
-      data,
-      &session->vulkan.meshes,
-      session.ptr
-    )
-  );
-
-  ctx->new_tasks.insert(ctx->new_tasks.end(), {
-    task_read_file,
-    task_init_buffer.first,
-    task_init_blas.first,
-    task_finish_mesh.first,
-  });
-
-  ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-    { task_read_file, task_init_buffer.first },
-    { signal_init_buffer, task_init_blas.first },
-    { signal_init_blas, task_finish_mesh.first },
-  });
-
-  countdown->value++;
 }
 
 void _add_texture_tasks(
@@ -258,6 +365,7 @@ void _load(
 ) {
   ZoneScoped;
 
+  auto finish_data = new FinishData {};
   engine::system::artline::Description desc;
   {
     HINSTANCE h_lib = LoadLibrary(data->dll_filename.c_str());
@@ -268,15 +376,12 @@ void _load(
 
     describe_fn(&desc);
 
-    auto result = FreeLibrary(h_lib);
-    assert(result != 0);
+    finish_data->h_lib = h_lib;
   }
 
   auto countdown = new CountdownData {
     .yarn_zero = lib::task::create_yarn_signal(),
   };
-
-  auto finish_data = new FinishData {};
 
   {
     auto it = &session->artline;
@@ -284,24 +389,55 @@ void _load(
 
     for (auto &model : desc.models) {
       lib::GUID mesh_id = 0;
-      if (it->meshes_by_key.contains(model.filename_mesh)) {
-        mesh_id = it->meshes_by_key.at(model.filename_mesh);
-        it->meshes[mesh_id].ref_count++;
-      } else {
-        mesh_id = lib::guid::next(&session->guid_counter);
-        it->meshes_by_key[model.filename_albedo] = mesh_id;
-        it->meshes[mesh_id] = MeshInfo {
-          .ref_count = 1,
-          .key = model.filename_mesh,
-        };
+      switch(model.mesh.type) {
+        case ModelMesh::Type::File: {
+          ModelMesh::File *file = &model.mesh.file;
+          auto key = *file->filename;
+          if (it->meshes_by_key.contains(key)) {
+            mesh_id = it->meshes_by_key.at(key);
+            it->meshes[mesh_id].ref_count++;
+          } else {
+            mesh_id = lib::guid::next(&session->guid_counter);
+            it->meshes_by_key[model.filename_albedo] = mesh_id;
+            it->meshes[mesh_id] = MeshInfo {
+              .ref_count = 1,
+              .key = key,
+            };
 
-        _add_mesh_tasks(
-          mesh_id,
-          &model.filename_mesh,
-          countdown,
-          session,
-          ctx
-        );
+            _add_file_mesh_tasks(
+              mesh_id,
+              &model.mesh.file,
+              countdown,
+              session,
+              ctx
+            );
+          }
+          break;
+        }
+        case ModelMesh::Type::Density: {
+          ModelMesh::Density *density = &model.mesh.density;
+          std::string key = "tmp"; // @Tmp
+          if (it->meshes_by_key.contains(key)) {
+            mesh_id = it->meshes_by_key.at(key);
+            it->meshes[mesh_id].ref_count++;
+          } else {
+            mesh_id = lib::guid::next(&session->guid_counter);
+            it->meshes_by_key[model.filename_albedo] = mesh_id;
+            it->meshes[mesh_id] = MeshInfo {
+              .ref_count = 1,
+              .key = key,
+            };
+
+            _add_density_mesh_tasks(
+              mesh_id,
+              &model.mesh.density,
+              countdown,
+              session,
+              ctx
+            );
+          }
+          break;
+        }
       }
       assert(mesh_id != 0);
 

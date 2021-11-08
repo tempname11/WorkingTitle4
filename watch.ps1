@@ -5,15 +5,20 @@ $watcher.NotifyFilter = [IO.NotifyFilters]::Attributes
 
 function OnChange {
   Write-Warning 'Change detected.'
+  Start-Sleep 0.2
   $wshell = New-Object -ComObject wscript.shell;
   $ok = $wshell.AppActivate('WorkingTitleInstance')
   if ($ok) {
     $wshell.SendKeys('%r')
     Write-Warning 'Sent!'
+
+    if ($false) {
+      $ok = $wshell.AppActivate('Microsoft Visual Studio')
+      if (!$ok) {
+        Write-Warning '... could not change focus back ...'
+      }
+    }
   }
-  $ok = $wshell.AppActivate('Microsoft Visual Studio')
-  if (!$ok) {
-    Write-Warning '... could not change focus back ...'
 }
 
 $changeTypes = [System.IO.WatcherChangeTypes]::All

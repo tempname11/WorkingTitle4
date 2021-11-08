@@ -15,6 +15,7 @@
 
 namespace engine::tools {
 
+// @Cleanup: moved to marching_cubes.hxx
 #define X 255
 uint8_t mc_table[256][16] = {
   {X, X, X, X, X, X, X, X, X, X, X, X, X, X, X, X},
