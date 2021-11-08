@@ -10,10 +10,13 @@ using common::mesh::T06;
 using common::mesh::IndexT06;
 using common::mesh::VertexT06;
 
+// @Incomplete: move to parameters
 const auto grid_size = glm::uvec3(32);
 const auto grid_min_bounds = glm::vec3(-1.0f);
 const auto grid_max_bounds = glm::vec3(1.0f);
-const float normal_epsilon = 0.01f;
+const float normal_epsilon_mult = 0.01f;
+const size_t SOLVE_ITERATIONS_MAX = 4;
+const float SOLVE_EPSILON = 0.001;
 
 glm::uvec3 mc_vertices[8] = {
   glm::uvec3(0, 0, 0),
@@ -123,7 +126,7 @@ T06 generate(
   uint32_t vertex_count = checked_integer_cast<uint32_t>(total_triangles * 3);
   uint32_t index_count = vertex_count;
 
-  assert(vertex_count < 65536);
+  assert(vertex_count < 65536); // @Incomplete: many meshes
 
   auto indices_size = index_count * sizeof(IndexT06);
   auto vertices_size = vertex_count * sizeof(VertexT06);
@@ -157,10 +160,10 @@ T06 generate(
           auto edge_index = lib::gfx::marching_cubes::edge_table[variant][i];
           assert(edge_index < 12);
 
-          glm::vec3 p;
-          if (0) { // middle @Incomplete: use enum
-            p = mc_edge_middles[edge_index];
-          } else {
+          glm::vec3 v;
+          glm::vec3 position;
+          float d;
+          {
             auto v0 = mc_vertices[mc_edge_connects[edge_index][0]];
             auto v1 = mc_vertices[mc_edge_connects[edge_index][1]];
             float d0 = densities_buffer[
@@ -173,17 +176,29 @@ T06 generate(
               + (y + v1.y) * (grid_size.x + 1)
               + (z + v1.z) * (grid_size.x + 1) * (grid_size.y + 1)
             ];
-            p = (
-              (abs(d1) * glm::vec3(v0) + abs(d0) * glm::vec3(v1))
-                / (abs(d0) + abs(d1))
-            );
+            for (size_t r = 0; r < SOLVE_ITERATIONS_MAX; r++) {
+              v = (
+                (abs(d1) * glm::vec3(v0) + abs(d0) * glm::vec3(v1))
+                  / (abs(d0) + abs(d1))
+              );
+              position = base_position + v * cell_size;
+              d = density_fn(position);
+              if (abs(d) < SOLVE_EPSILON) {
+                break;
+              }
+              if (d0 * d > 0) {
+                d0 = d;
+                v0 = v;
+              } else {
+                d1 = d;
+                v1 = v;
+              }
+            }
           }
 
-          glm::vec3 position = base_position + p * cell_size;
-          float d = density_fn(position);
-          float dx = density_fn(position + glm::vec3(normal_epsilon, 0.0f, 0.0f));
-          float dy = density_fn(position + glm::vec3(0.0f, normal_epsilon, 0.0f));
-          float dz = density_fn(position + glm::vec3(0.0f, 0.0f, normal_epsilon));
+          float dx = density_fn(position + cell_size * glm::vec3(normal_epsilon_mult, 0.0f, 0.0f));
+          float dy = density_fn(position + cell_size * glm::vec3(0.0f, normal_epsilon_mult, 0.0f));
+          float dz = density_fn(position + cell_size * glm::vec3(0.0f, 0.0f, normal_epsilon_mult));
           glm::vec3 N = glm::normalize(glm::vec3(d - dx, d - dy, d - dz));
 
           vertices[current_vertex] = VertexT06 {

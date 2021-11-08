@@ -15,7 +15,22 @@ float sphere(glm::vec3 position, glm::vec3 center, float radius) {
 }
 
 float model0(glm::vec3 position) {
-  return sphere(position, glm::vec3(0.0f), 0.9f);
+  // return sphere(position, glm::vec3(0.0f), 0.9f);
+  return std::min(
+    std::min(
+      sphere(
+        position,
+        glm::vec3(0.0f),
+        0.9
+      ),
+      -sphere(
+        position,
+        glm::vec3(0.0f),
+        0.8
+      )
+    ),
+    position.x
+  );
 }
 
 glm::mat4 rotation(float turns, glm::vec3 axis) {
@@ -44,7 +59,7 @@ DLL_EXPORT DECL_DESCRIBE_FN(describe) {
   desc->models.push_back(Model {
     .unique_index = 0,
     .transform = (
-      translation(glm::vec3(15, 15, 5))
+      translation(glm::vec3(15, 15, 15))
         * scaling(10)
         * rotation(
           0.25,
