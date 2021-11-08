@@ -2,7 +2,7 @@
 #include <Windows.h>
 #include <cstdint>
 
-namespace lib::array {
+namespace lib::big_array {
 
 SYSTEM_INFO get_system_info() {
   SYSTEM_INFO system_info;
