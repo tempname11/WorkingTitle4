@@ -21,7 +21,7 @@ struct CountdownData {
 struct DensityMeshData {
   lib::GUID mesh_id;
   DensityFn *density_fn;
-  engine::common::mesh::T06 t06;
+  lib::Array<engine::common::mesh::T06> *t06_meshes;
   engine::session::Vulkan::Meshes::Item mesh_item;
   CountdownData *countdown;
 };
@@ -34,12 +34,82 @@ struct FileMeshData {
   CountdownData *countdown;
 };
 
-void _generate_mesh(
+void _finish_density_mesh(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<DensityMeshData> data 
+  Ref<DensityMeshData> data,
+  Own<engine::session::Vulkan::Meshes> meshes,
+  Ref<engine::session::Data> session
 ) {
   ZoneScoped;
-  data->t06 = generate(data->density_fn);
+
+  meshes->items.insert({ data->mesh_id, data->mesh_item });
+  for (size_t i = 0; i < data->t06_meshes->count; i++) {
+    grup::mesh::deinit_t06(&data->t06_meshes->data[i]);
+  }
+  lib::array::destroy(data->t06_meshes);
+  auto old_countdown = data->countdown->value.fetch_sub(1);
+  assert(old_countdown > 0);
+  if (old_countdown == 1) {
+    lib::task::signal(ctx->runner, data->countdown->yarn_zero);
+    delete data->countdown;
+  }
+  delete data.ptr;
+}
+
+void _generate_mesh(
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<DensityMeshData> data,
+  Ref<engine::session::Data> session
+) {
+  ZoneScoped;
+  data->t06_meshes = generate(data->density_fn);
+
+  auto task_finish_mesh = lib::defer(
+    lib::task::create(
+      _finish_density_mesh,
+      data.ptr,
+      &session->vulkan.meshes,
+      session.ptr
+    )
+  );
+
+  ctx->new_tasks.insert(ctx->new_tasks.end(), {
+    task_finish_mesh.first,
+  });
+
+  for (size_t i = 0; i < data->t06_meshes->count; i++) {
+    auto signal_init_buffer = lib::task::create_external_signal();
+    auto task_init_buffer = lib::defer(
+      lib::task::create(
+        _upload_mesh_init_buffer,
+        &data->t06_meshes->data[i],
+        &data->mesh_item,
+        signal_init_buffer,
+        &session->vulkan.queue_work,
+        session.ptr
+      )
+    );
+    auto signal_init_blas = lib::task::create_external_signal();
+    auto task_init_blas = lib::defer(
+      lib::task::create(
+        _upload_mesh_init_blas,
+        &data->mesh_item,
+        signal_init_blas,
+        &session->vulkan.queue_work,
+        session.ptr
+      )
+    );
+
+    ctx->new_tasks.insert(ctx->new_tasks.end(), {
+      task_init_buffer.first,
+      task_init_blas.first,
+    });
+
+    ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
+      { signal_init_buffer, task_init_blas.first },
+      { signal_init_blas, task_finish_mesh.first },
+    });
+  }
 }
 
 void _read_mesh_file(
@@ -48,25 +118,6 @@ void _read_mesh_file(
 ) {
   ZoneScoped;
   data->t06 = grup::mesh::read_t06_file(data->path.c_str());
-}
-
-void _finish_density_mesh(
-  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<DensityMeshData> data,
-  Own<engine::session::Vulkan::Meshes> meshes,
-  Ref<engine::session::Data> session
-) {
-  // @CopyPaste
-  ZoneScoped;
-  meshes->items.insert({ data->mesh_id, data->mesh_item });
-  grup::mesh::deinit_t06(&data->t06);
-  auto old_countdown = data->countdown->value.fetch_sub(1);
-  assert(old_countdown > 0);
-  if (old_countdown == 1) {
-    lib::task::signal(ctx->runner, data->countdown->yarn_zero);
-    delete data->countdown;
-  }
-  delete data.ptr;
 }
 
 void _finish_file_mesh(
@@ -102,52 +153,12 @@ void _add_density_mesh_tasks(
 
   auto task_generate = lib::task::create(
     _generate_mesh,
-    data
-  );
-
-  // @CopyPaste
-  auto signal_init_buffer = lib::task::create_external_signal();
-  auto task_init_buffer = lib::defer(
-    lib::task::create(
-      _upload_mesh_init_buffer,
-      &data->t06,
-      &data->mesh_item,
-      signal_init_buffer,
-      &session->vulkan.queue_work,
-      session.ptr
-    )
-  );
-  auto signal_init_blas = lib::task::create_external_signal();
-  auto task_init_blas = lib::defer(
-    lib::task::create(
-      _upload_mesh_init_blas,
-      &data->mesh_item,
-      signal_init_blas,
-      &session->vulkan.queue_work,
-      session.ptr
-    )
-  );
-
-  auto task_finish_mesh = lib::defer(
-    lib::task::create(
-      _finish_density_mesh,
-      data,
-      &session->vulkan.meshes,
-      session.ptr
-    )
+    data,
+    session.ptr
   );
 
   ctx->new_tasks.insert(ctx->new_tasks.end(), {
     task_generate,
-    task_init_buffer.first,
-    task_init_blas.first,
-    task_finish_mesh.first,
-  });
-
-  ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-    { task_generate, task_init_buffer.first },
-    { signal_init_buffer, task_init_blas.first },
-    { signal_init_blas, task_finish_mesh.first },
   });
 
   countdown->value++;

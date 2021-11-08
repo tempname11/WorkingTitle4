@@ -84,7 +84,7 @@ struct Description {
 #define DECL_DESCRIBE_FN(name) void name(engine::system::artline::Description *desc)
 typedef DECL_DESCRIBE_FN(DescribeFn);
 
-common::mesh::T06 generate(
+lib::Array<common::mesh::T06> *generate(
   DensityFn *density_fn
 );
 

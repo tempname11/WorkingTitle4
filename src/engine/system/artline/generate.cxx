@@ -66,7 +66,7 @@ uint8_t mc_edge_connects[12][2] = {
 };
 
 
-T06 generate(
+lib::Array<T06> *generate(
   DensityFn *density_fn
 ) {
   auto cell_size = (grid_max_bounds - grid_min_bounds) / glm::vec3(grid_size);
@@ -214,13 +214,16 @@ T06 generate(
   free(densities_buffer);
   free(variants_buffer);
 
-  return common::mesh::T06 {
+  auto result = lib::array::create<common::mesh::T06>(lib::allocator::crt, 1);
+  result->data[0] = common::mesh::T06 {
     .buffer = buffer,
     .index_count = index_count,
     .vertex_count = vertex_count,
     .indices = indices,
     .vertices = vertices,
   };
+  result->count = 1;
+  return result;
 }
 
 } // namespace

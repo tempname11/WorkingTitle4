@@ -2,6 +2,7 @@
 #include <cassert>
 #include <fmt/format.h>
 #include <Tracy.hpp>
+#include <src/lib/base.hxx>
 #include <src/lib/task.hxx>
 
 enum QueueIndex {
