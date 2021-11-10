@@ -56,6 +56,7 @@ glm::mat4 scaling(float m) {
 }
 
 DLL_EXPORT DECL_DESCRIBE_FN(describe) {
+  /*
   desc->models.push_back(Model {
     .unique_index = 0,
     .transform = (
@@ -91,4 +92,5 @@ DLL_EXPORT DECL_DESCRIBE_FN(describe) {
     .filename_normal = "assets/texture-1px/normal.png",
     .filename_romeao = "assets/texture-1px/romeao.png",
   });
+  */
 }

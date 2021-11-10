@@ -162,7 +162,7 @@ lib::Task* load(
       return nullptr;
     }
 
-    assert(false);
+    assert("Unknown meta status" && false);
   }
 
   lib::lifetime::ref(&session->lifetime);

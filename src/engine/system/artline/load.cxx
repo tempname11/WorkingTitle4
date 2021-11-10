@@ -7,10 +7,14 @@
 namespace engine::system::artline {
 
 lib::Task *load(
-  char const* dll_filename,
+  lib::cstr_range_t dll_filename,
   Ref<engine::session::Data> session,
   lib::task::ContextBase *ctx
 ) {
+  assert(false); //!
+  return nullptr;
+
+  /*
   auto yarn_end = lib::task::create_yarn_signal();
   auto dll_id = lib::guid::next(&session->guid_counter);
   auto data = new LoadData {
@@ -31,7 +35,7 @@ lib::Task *load(
     it->dlls.insert({
       dll_id,
       Data::DLL {
-        .filename = dll_filename,
+        .filename = _copy_dll_filename,
         .status = Status::Loading,
       },
     });
@@ -39,6 +43,7 @@ lib::Task *load(
 
   lib::lifetime::ref(&session->lifetime);
   return yarn_end;
+  */
 }
 
 } // namespace

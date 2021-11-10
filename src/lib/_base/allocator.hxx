@@ -3,23 +3,34 @@
 
 namespace lib {
 
-struct Allocator;
+struct allocator_t;
 
 namespace allocator {
-  using AllocFn = void * (Allocator *it, size_t size);
-  using ReallocFn = void * (Allocator *it, void *ptr, size_t size);
-  using FreeFn = void (Allocator *it, void *ptr);
+  using alloc_fn_t = void * (
+    allocator_t *it,
+    size_t size,
+    size_t alignment
+  );
+  using realloc_fn_t = void * (
+    allocator_t *it,
+    void *ptr,
+    size_t size,
+    size_t alignment
+  );
+  using dealloc_fn_t = void (
+    allocator_t *it,
+    void *ptr
+  );
 }
 
-struct Allocator {
-  allocator::AllocFn *alloc_fn;
-  allocator::ReallocFn *realloc_fn;
-  allocator::FreeFn *free_fn;
-  uint8_t custom_data[];
+struct allocator_t {
+  allocator::alloc_fn_t *alloc_fn;
+  allocator::realloc_fn_t *realloc_fn;
+  allocator::dealloc_fn_t *dealloc_fn;
 };
 
 namespace allocator {
-  extern Allocator *crt;
+  extern allocator_t *crt;
 }
 
 } // namespace

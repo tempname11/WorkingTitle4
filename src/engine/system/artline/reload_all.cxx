@@ -9,6 +9,8 @@ void reload_all(
   Ref<engine::session::Data> session,
   lib::task::ContextBase *ctx
 ) {
+  assert(false); //!
+  /*
   auto it = &session->artline;
   std::unique_lock lock(it->rw_mutex);
   for (auto &pair : it->dlls) {
@@ -64,6 +66,7 @@ void reload_all(
     lib::lifetime::ref(&session->lifetime); // for unload
     lib::lifetime::ref(&session->lifetime); // for load
   }
+  */
 }
 
 } // namespace

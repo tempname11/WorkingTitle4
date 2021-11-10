@@ -17,7 +17,7 @@ enum struct Status {
 };
 
 lib::Task *load(
-  char const* dll_filename,
+  lib::cstr_range_t dll_filename,
   Ref<engine::session::Data> session,
   lib::task::ContextBase *ctx
 );
@@ -46,7 +46,7 @@ union ModelMesh {
 
   struct File {
     Type type;
-    std::string *filename; // @Bug: currently leaks
+    lib::cstr_range_t filename;
   };
 
   struct Density {
@@ -71,20 +71,19 @@ struct Model {
 
   ModelMesh mesh;
 
-  std::string filename_albedo;
-  std::string filename_normal;
-  std::string filename_romeao;
+  lib::cstr_range_t filename_albedo;
+  lib::cstr_range_t filename_normal;
+  lib::cstr_range_t filename_romeao;
 };
 
 struct Description {
-  // std::vector<Light> lights;
-  std::vector<Model> models;
+  lib::array_t<Model> *models;
 };
 
 #define DECL_DESCRIBE_FN(name) void name(engine::system::artline::Description *desc)
 typedef DECL_DESCRIBE_FN(DescribeFn);
 
-lib::Array<common::mesh::T06> *generate(
+lib::array_t<common::mesh::T06> *generate(
   DensityFn *density_fn
 );
 

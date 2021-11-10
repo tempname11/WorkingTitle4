@@ -438,6 +438,8 @@ void imgui_populate(
       ImGui::TableSetupColumn("Action");
       ImGui::TableHeadersRow();
       {
+        assert(false); //!
+        /*
         std::shared_lock lock(it->rw_mutex);
         for (auto &pair : it->dlls) {
           auto dll_id = pair.first;
@@ -473,6 +475,7 @@ void imgui_populate(
           }
           ImGui::PopID();
         }
+        */
       }
       ImGui::EndTable();
       if (ImGui::Button("Reload all")) {

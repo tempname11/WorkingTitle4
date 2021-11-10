@@ -362,7 +362,7 @@ HostMapping get_host_mapping(
         };
       }
     }
-    assert(false);
+    assert("ID not found" && false);
   } else {
     Allocator::Region *region = nullptr;
     for (auto &item : it->regions) {
@@ -381,7 +381,7 @@ HostMapping get_host_mapping(
         };
       }
     }
-    assert(false);
+    assert("ID not found" && false);
   }
 }
 
@@ -405,7 +405,7 @@ void _deallocate(
         return;
       }
     }
-    assert(false);
+    assert("ID not found" && false);
   } else {
     Allocator::Region *region = nullptr;
     size_t region_index = 0;

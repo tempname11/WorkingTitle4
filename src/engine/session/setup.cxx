@@ -878,7 +878,7 @@ void setup(
   #ifndef NDEBUG
   {
     const auto size = sizeof(engine::session::Data) - sizeof(engine::session::Vulkan);
-    static_assert(size == 1576);
+    static_assert(size == 1176);
   }
   {
     const auto size = sizeof(engine::session::Vulkan);

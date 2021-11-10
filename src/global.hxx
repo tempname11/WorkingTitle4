@@ -4,6 +4,7 @@
 #include <Tracy.hpp>
 #include <src/lib/base.hxx>
 #include <src/lib/task.hxx>
+#include <src/lib/cstr.hxx>
 
 enum QueueIndex {
   QUEUE_INDEX_MAIN_THREAD_ONLY,

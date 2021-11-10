@@ -222,7 +222,7 @@ void _internal_end(
         assert(result == VK_SUCCESS);
       }
     } else {
-      assert(false);
+      assert("Unknown type" && false);
     }
   }
 }
@@ -259,7 +259,7 @@ void init(
         break;
       }
       default: {
-        assert(false);
+        assert("Unknown type" && false);
       }
     }
   }

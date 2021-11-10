@@ -91,7 +91,7 @@ size_t get_format_byte_size(VkFormat format) {
     default: {
       // If this asserts, time to add new cases!
       // Not sure if Vulkan API can do this for us instead?
-      assert(false);
+      assert("Unknown format" && false);
       return 0;
     }
   }

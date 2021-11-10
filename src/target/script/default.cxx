@@ -19,7 +19,7 @@ void CtrlSession::run() {
   {
     wait_for_signal(
       engine::system::artline::load(
-        "test.art.dll",
+        lib::cstr::from_static("test.art.dll"),
         session, ctx
       )
     );

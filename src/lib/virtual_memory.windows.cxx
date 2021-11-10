@@ -1,8 +1,9 @@
 #ifdef WINDOWS
 #include <Windows.h>
-#include <cstdint>
 
-namespace lib::big_array {
+namespace lib::virtual_memory {
+
+const char *tracy_pool_name = "Windows Virtual Memory";
 
 SYSTEM_INFO get_system_info() {
   SYSTEM_INFO system_info;
@@ -11,33 +12,30 @@ SYSTEM_INFO get_system_info() {
 }
 SYSTEM_INFO system_info = get_system_info();
 
-size_t _virtual_page_size() {
+size_t get_page_size() {
   return system_info.dwPageSize;
 }
-void *_virtual_reserve(size_t size) {
+
+void *reserve(size_t num_pages) {
   return VirtualAlloc(
     NULL,
-    size,
+    num_pages * system_info.dwPageSize,
     MEM_RESERVE,
     PAGE_READWRITE
   );
 }
 
-void _virtual_commit(void *mem, size_t size) {
+void commit(void *mem, size_t num_pages) {
   VirtualAlloc(
     mem,
-    size,
+    num_pages * system_info.dwPageSize,
     MEM_COMMIT,
     PAGE_READWRITE
   );
 }
 
-void _virtual_free(void *mem) {
+void free(void *mem) {
   VirtualFree(mem, 0, MEM_RELEASE);
-}
-
-void _virtual_decommit(void *mem, size_t offset, size_t size) {
-  VirtualFree((uint8_t *)mem + offset, size, MEM_DECOMMIT);
 }
 
 } // namespace

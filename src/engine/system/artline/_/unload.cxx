@@ -35,6 +35,8 @@ void _deref_texture(
   Own<session::Vulkan::Textures> textures,
   Ref<session::Data> session
 ) {
+  assert(false); //!
+  /*
   assert(it->textures.contains(texture_id));
   auto texture_info = &it->textures.at(texture_id);
   assert(texture_info->ref_count > 0);
@@ -52,6 +54,7 @@ void _deref_texture(
     it->textures_by_key.erase(texture_info->key);
     it->textures.erase(texture_id);
   }
+  */
 }
 
 void _unload_assets(
@@ -63,6 +66,9 @@ void _unload_assets(
 ) {
   ZoneScoped;
 
+  assert(false); //!
+
+  /*
   {
     auto it = &session->artline;
     std::unique_lock lock(it->rw_mutex);
@@ -124,6 +130,7 @@ void _unload_assets(
   lib::lifetime::deref(&session->lifetime, ctx->runner);
 
   delete data.ptr;
+  */
 }
 
 } // namespace

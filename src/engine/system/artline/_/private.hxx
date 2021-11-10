@@ -7,7 +7,7 @@
 namespace engine::system::artline {
 
 struct LoadData {
-  std::string dll_filename;
+  lib::cstr_range_t dll_filename;
   lib::GUID dll_id;
   lib::Task *yarn_end;
 };

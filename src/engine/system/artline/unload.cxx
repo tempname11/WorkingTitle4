@@ -13,6 +13,9 @@ void _remove_entry(
   Ref<engine::session::Data> session
 ) {
   ZoneScoped;
+
+  assert(false); //!
+  /*
   {
     auto it = &session->artline;
     std::unique_lock lock(it->rw_mutex);
@@ -20,6 +23,7 @@ void _remove_entry(
     assert(it->dlls[data->dll_id].status == Status::Ready);
     it->dlls.erase(data->dll_id);
   }
+  */
 }
 
 void unload(
