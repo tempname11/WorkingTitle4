@@ -826,6 +826,8 @@ void setup(
   auto vulkan = &session->vulkan;
   init_vulkan(vulkan, glfw);
 
+  system::artline::init(&session->artline);
+
   { ZoneScopedN(".gpu_signal_support");
     auto it = &session->gpu_signal_support;
     *it = lib::gpu_signal::init_support(
@@ -878,7 +880,7 @@ void setup(
   #ifndef NDEBUG
   {
     const auto size = sizeof(engine::session::Data) - sizeof(engine::session::Vulkan);
-    static_assert(size == 1176);
+    static_assert(size == 1184);
   }
   {
     const auto size = sizeof(engine::session::Vulkan);

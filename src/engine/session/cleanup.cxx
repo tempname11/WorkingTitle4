@@ -30,6 +30,9 @@ void cleanup(
       session->vulkan.core.allocator
     );
   }
+
+  system::artline::deinit(&session->artline);
+
   { ZoneScopedN(".vulkan");
     auto it = &session->vulkan;
     auto core = &it->core;

@@ -17,11 +17,13 @@ struct TextureInfo {
 
 struct Data {
   struct DLL {
-    std::string filename;
+    lib::GUID id;
+    lib::cstr_range_t filename; // uses crt_allocator
     Status status;
   };
 
   lib::mutex_t mutex;
+  lib::array_t<DLL> *dlls;
 
   /*
   std::unordered_map<lib::GUID, DLL> dlls;

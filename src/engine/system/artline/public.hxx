@@ -16,6 +16,9 @@ enum struct Status {
   Unloading,
 };
 
+void init(Data *out);
+void deinit(Data *it);
+
 lib::Task *load(
   lib::cstr_range_t dll_filename,
   Ref<engine::session::Data> session,
