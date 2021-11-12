@@ -29,6 +29,21 @@ struct FinishData {
   Description desc;
 };
 
+struct PerMeshData {
+  lib::GUID mesh_id; // Sadly, distinct from the uploaded buffer id.
+  session::Vulkan::Meshes::Item mesh_item;
+};
+
+struct PerTextureData {
+  lib::GUID texture_id; // Sadly, distinct from the uploaded texture id.
+  session::Vulkan::Textures::Item texture_item;
+};
+
+struct AssembleData {
+  lib::array_t<PerMeshData> *meshes;
+  lib::array_t<PerTextureData> *textures;
+};
+
 void _read_texture_file(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<LoadTextureData> data 
@@ -50,26 +65,30 @@ void _read_texture_file(
 
 void _finish_texture(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<LoadTextureData> data
+  Ref<PerTextureData> per_texture,
+  Ref<LoadTextureData> data,
+  Own<engine::session::Vulkan::Textures> textures,
+  Ref<engine::session::Data> session
 ) {
   ZoneScoped;
+  per_texture->texture_id = lib::guid::next(&session->guid_counter);
+  textures->items.insert({ per_texture->texture_id, per_texture->texture_item });
   stbi_image_free(data->data.data);
 }
 
 void _finish_mesh(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<common::mesh::T06> t06,
-  Ref<session::Vulkan::Meshes::Item> mesh_item,
+  Ref<PerMeshData> per_mesh,
+  Own<engine::session::Vulkan::Meshes> meshes,
+  Ref<engine::session::Data> session,
   Ref<LoadData> data
 ) {
   ZoneScoped;
+  per_mesh->mesh_id = lib::guid::next(&session->guid_counter);
+  meshes->items.insert({ per_mesh->mesh_id, per_mesh->mesh_item });
   grup::mesh::deinit_t06(t06.ptr);
 }
-
-struct AssembleData {
-  lib::array_t<session::Vulkan::Meshes::Item> *mesh_items;
-  session::Vulkan::Textures::Item texture_items[NUM_TEXTURE_TYPES];
-};
 
 void _assemble_scene_items(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
@@ -82,19 +101,18 @@ void _assemble_scene_items(
 
   lib::mutex::lock(&data->ready->mutex);
 
-  auto count = assemble_data->mesh_items->count;
+  auto count = assemble_data->meshes->count;
   lib::array::ensure_space(&data->ready->scene_items, count);
   for (size_t i = 0; i < count; i++) {
-    auto m = &assemble_data->mesh_items->data[i];
     data->ready->scene_items->data[
       data->ready->scene_items->count++
     ] = session::Data::Scene::Item {
       .owner_id = data->dll_id,
       .transform = model_data->transform,
-      .mesh_id = m->id,
-      .texture_albedo_id = assemble_data->texture_items[0].id,
-      .texture_normal_id = assemble_data->texture_items[1].id,
-      .texture_romeao_id = assemble_data->texture_items[2].id,
+      .mesh_id = assemble_data->meshes->data[i].mesh_id,
+      .texture_albedo_id = assemble_data->textures->data[0].texture_id,
+      .texture_normal_id = assemble_data->textures->data[1].texture_id,
+      .texture_romeao_id = assemble_data->textures->data[2].texture_id,
     };
   }
 
@@ -134,16 +152,21 @@ void _generate_model(
     }
   }
     
-  auto mesh_items = lib::array::create<session::Vulkan::Meshes::Item>(
-    data->misc,
-    t06_meshes->count
-  );
-  mesh_items->count = t06_meshes->count; // will be initalized by respective tasks.
-
   auto assemble_data = lib::allocator::make<AssembleData>(data->misc);
   *assemble_data = {
-    .mesh_items = mesh_items,
+    .meshes = lib::array::create<PerMeshData>(
+      data->misc,
+      t06_meshes->count
+    ),
+    .textures = lib::array::create<PerTextureData>(
+      data->misc,
+      NUM_TEXTURE_TYPES
+    ),
   };
+
+  // initialized in tasks
+  assemble_data->meshes->count = assemble_data->meshes->capacity;
+  assemble_data->textures->count = assemble_data->textures->capacity;
 
   auto task_assemble_scene_items = lib::task::create(
     _assemble_scene_items,
@@ -163,7 +186,7 @@ void _generate_model(
       lib::task::create(
         _upload_mesh_init_buffer,
         &t06_meshes->data[i],
-        &mesh_items->data[i],
+        &assemble_data->meshes->data[i].mesh_item,
         signal_init_buffer,
         &session->vulkan.queue_work,
         session.ptr
@@ -173,7 +196,7 @@ void _generate_model(
     auto task_init_blas = lib::defer(
       lib::task::create(
         _upload_mesh_init_blas,
-        &mesh_items->data[i],
+        &assemble_data->meshes->data[i].mesh_item,
         signal_init_blas,
         &session->vulkan.queue_work,
         session.ptr
@@ -184,7 +207,9 @@ void _generate_model(
       lib::task::create(
         _finish_mesh,
         &t06_meshes->data[i],
-        &mesh_items->data[i],
+        &assemble_data->meshes->data[i],
+        &session->vulkan.meshes,
+        session.ptr,
         data.ptr
       )
     );
@@ -201,7 +226,9 @@ void _generate_model(
     });
   }
 
+  // @Cleanup: we also have PerTextureData above, which is redundant.
   auto load_texture_data = lib::array::create<LoadTextureData>(data->misc, NUM_TEXTURE_TYPES);
+  load_texture_data->count = load_texture_data->capacity;
   load_texture_data->data[0] = {
     .file_path = model_data->file_path_albedo,
     .format = engine::common::texture::ALBEDO_TEXTURE_FORMAT,
@@ -227,7 +254,7 @@ void _generate_model(
         _upload_texture,
         &load_texture_data->data[i].format,
         &load_texture_data->data[i].data,
-        &assemble_data->texture_items[i],
+        &assemble_data->textures->data[i].texture_item,
         signal_init_image,
         &session->vulkan.queue_work,
         session.ptr
@@ -237,7 +264,10 @@ void _generate_model(
     auto task_finish_texture = lib::defer(
       lib::task::create(
         _finish_texture,
-        &load_texture_data->data[i]
+        &assemble_data->textures->data[i],
+        &load_texture_data->data[i],
+        &session->vulkan.textures,
+        session.ptr
       )
     );
 

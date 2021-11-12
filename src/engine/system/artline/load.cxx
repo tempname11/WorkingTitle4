@@ -10,18 +10,14 @@ namespace engine::system::artline {
 
 void _update_scene(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<LoadData> data,
   Own<session::Data::Scene> scene,
-  Ref<session::Data> session
+  Ref<LoadData> data
 ) {
   ZoneScoped;
 
   for (size_t i = 0; i < data->ready->scene_items->count; i++) {
     scene->items.push_back(data->ready->scene_items->data[i]);
   }
-
-  lib::lifetime::deref(&session->lifetime, ctx->runner);
-  lib::easy_allocator::destroy(data->misc);
 }
 
 void _finish(
@@ -30,6 +26,19 @@ void _finish(
   Ref<session::Data> session
 ) {
   ZoneScoped;
+
+  {
+    auto it = &session->artline;
+    lib::mutex::lock(&it->mutex);
+
+    auto dll = lib::u64_table::lookup(
+      it->dlls,
+      lib::u64_table::from_guid(data->dll_id)
+    );
+    dll->status = Status::Ready;
+      
+    lib::mutex::unlock(&it->mutex);
+  }
 
   lib::lifetime::deref(&session->lifetime, ctx->runner);
   lib::easy_allocator::destroy(data->misc);
@@ -43,19 +52,21 @@ lib::Task *load(
   auto misc = lib::easy_allocator::create(1024 * 1024 * 1024); // 1 GB
   auto yarn_done = lib::task::create_yarn_signal();
   auto dll_id = lib::guid::next(&session->guid_counter);
-  auto data = lib::allocator::make<LoadData>(misc);
-  *data = {
-    .dll_filename = dll_filename,
-    .dll_id = dll_id,
-    .yarn_done = yarn_done,
-    .misc = misc,
-  };
 
   auto ready_data = lib::allocator::make<ReadyData>(misc);
   *ready_data = {
     .scene_items = lib::array::create<session::Data::Scene::Item>(misc, 0),
   };
   lib::mutex::init(&ready_data->mutex);
+
+  auto data = lib::allocator::make<LoadData>(misc);
+  *data = {
+    .dll_filename = dll_filename,
+    .dll_id = dll_id,
+    .yarn_done = yarn_done,
+    .misc = misc,
+    .ready = ready_data,
+  };
 
   auto task_load_dll = lib::task::create(
     _load_dll,
@@ -66,9 +77,8 @@ lib::Task *load(
   auto task_update_scene = lib::defer(
     lib::task::create(
       _update_scene,
-      data,
       &session->scene,
-      session.ptr
+      data
     )
   );
 

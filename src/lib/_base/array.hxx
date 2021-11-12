@@ -44,6 +44,7 @@ inline void ensure_space(array_t<T> **p_it, size_t added_count) {
     it = (array_t<T> *) it->acr->realloc_fn(it->acr, it, new_size, alignof(T));
     assert(it != nullptr);
     it->capacity = new_capacity;
+    *p_it = it;
   }
 }
 
