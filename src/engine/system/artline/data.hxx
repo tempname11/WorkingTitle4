@@ -1,6 +1,7 @@
 #include <src/lib/base.hxx>
 #include <src/lib/guid.hxx>
 #include <src/lib/mutex.hxx>
+#include <src/lib/u64_table.hxx>
 #include "public.hxx"
 
 namespace engine::system::artline {
@@ -18,12 +19,12 @@ struct TextureInfo {
 struct Data {
   struct DLL {
     lib::GUID id;
-    lib::cstr_range_t filename; // uses crt_allocator
+    lib::cstr_range_t filename; // uses crt allocator
     Status status;
   };
 
   lib::mutex_t mutex;
-  lib::array_t<DLL> *dlls;
+  lib::u64_table_t<DLL> *dlls;
 
   /*
   std::unordered_map<lib::GUID, DLL> dlls;

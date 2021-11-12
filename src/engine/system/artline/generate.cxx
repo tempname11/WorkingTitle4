@@ -49,6 +49,7 @@ uint8_t mc_edge_connects[12][2] = {
 
 
 lib::array_t<T06> *generate(
+  lib::allocator_t *misc,
   DensityFn *density_fn
 ) {
   auto cell_size = (grid_max_bounds - grid_min_bounds) / glm::vec3(grid_size);
@@ -107,7 +108,7 @@ lib::array_t<T06> *generate(
 
   //assert(vertex_count < 65536); // @Incomplete: many meshes
   auto result = lib::array::create<common::mesh::T06>(
-    lib::allocator::crt,
+    misc,
     1 + total_triangles * 3 / 65536
   );
 
@@ -133,7 +134,7 @@ lib::array_t<T06> *generate(
     auto indices = (IndexT06 *) buffer;
     auto vertices = (VertexT06 *) (buffer + aligned_size);
 
-    result = lib::array::ensure_space(result, 1);
+    lib::array::ensure_space(&result, 1);
     result->data[result->count++] = common::mesh::T06 {
       .buffer = buffer,
       .index_count = index_count,

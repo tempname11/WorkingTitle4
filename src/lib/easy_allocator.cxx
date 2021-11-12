@@ -87,12 +87,12 @@ void dealloc_fn(allocator_t *parent, void *ptr) {
   assert("Not supported" && false);
 }
 
-allocator_t* create(size_t max_size) {
+allocator_t* create(size_t conceivable_size) {
   auto page_size = virtual_memory::get_page_size();
-  assert(max_size > sizeof(implementation_t));
+  assert(conceivable_size > sizeof(implementation_t));
   assert(page_size > sizeof(implementation_t));
 
-  auto reserved_pages = (max_size + page_size - 1) / page_size;
+  auto reserved_pages = (conceivable_size + page_size - 1) / page_size;
   size_t committed_pages = 1;
   auto mem = virtual_memory::reserve(reserved_pages);
   virtual_memory::commit(mem, committed_pages);

@@ -4,6 +4,7 @@
 
 namespace lib {
   using GUID = uint64_t;
+  // @Cleanup: use `struct guid_t { uint64_t as_number; };` in the future.
 }
 
 namespace lib::guid {

@@ -56,8 +56,8 @@ glm::mat4 scaling(float m) {
 }
 
 DLL_EXPORT DECL_DESCRIBE_FN(describe) {
-  /*
-  desc->models.push_back(Model {
+  lib::array::ensure_space(&desc->models, 1);
+  desc->models->data[desc->models->count++] = Model {
     .unique_index = 0,
     .transform = (
       translation(glm::vec3(15, 15, 15))
@@ -74,23 +74,23 @@ DLL_EXPORT DECL_DESCRIBE_FN(describe) {
         .density_fn_version = 0,
       },
     },
-    .filename_albedo = "assets/texture-1px/albedo.png",
-    .filename_normal = "assets/texture-1px/normal.png",
-    .filename_romeao = "assets/texture-1px/romeao.png",
-  });
+    .file_path_albedo = lib::cstr::from_static("assets/texture-1px/albedo.png"),
+    .file_path_normal = lib::cstr::from_static("assets/texture-1px/normal.png"),
+    .file_path_romeao = lib::cstr::from_static("assets/texture-1px/romeao.png"),
+  };
 
-  desc->models.push_back(Model {
+  lib::array::ensure_space(&desc->models, 1);
+  desc->models->data[desc->models->count++] = Model {
     .unique_index = 1,
     .transform = id,
     .mesh {
       .file = {
         .type = ModelMesh::Type::File,
-        .filename = new std::string("assets/gi_test_0.t06"),
+        .path = lib::cstr::from_static("assets/gi_test_0.t06"),
       },
     },
-    .filename_albedo = "assets/texture-1px/albedo.png",
-    .filename_normal = "assets/texture-1px/normal.png",
-    .filename_romeao = "assets/texture-1px/romeao.png",
-  });
-  */
+    .file_path_albedo = lib::cstr::from_static("assets/texture-1px/albedo.png"),
+    .file_path_normal = lib::cstr::from_static("assets/texture-1px/normal.png"),
+    .file_path_romeao = lib::cstr::from_static("assets/texture-1px/romeao.png"),
+  };
 }

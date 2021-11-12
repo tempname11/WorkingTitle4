@@ -31,6 +31,16 @@ struct allocator_t {
 
 namespace allocator {
   extern allocator_t *crt;
+
+  template<typename T>
+  inline T *make(allocator_t *acr) {
+    return (T *) acr->alloc_fn(acr, sizeof(T), alignof(T));
+  }
+
+  template<typename T>
+  inline void forget(allocator_t *acr, T *ptr) {
+    acr->dealloc_fn(acr, (void *) ptr);
+  }
 }
 
 } // namespace

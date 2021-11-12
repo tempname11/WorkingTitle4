@@ -49,7 +49,7 @@ union ModelMesh {
 
   struct File {
     Type type;
-    lib::cstr_range_t filename;
+    lib::cstr_range_t path;
   };
 
   struct Density {
@@ -74,9 +74,9 @@ struct Model {
 
   ModelMesh mesh;
 
-  lib::cstr_range_t filename_albedo;
-  lib::cstr_range_t filename_normal;
-  lib::cstr_range_t filename_romeao;
+  lib::cstr_range_t file_path_albedo;
+  lib::cstr_range_t file_path_normal;
+  lib::cstr_range_t file_path_romeao;
 };
 
 struct Description {
@@ -87,6 +87,7 @@ struct Description {
 typedef DECL_DESCRIBE_FN(DescribeFn);
 
 lib::array_t<common::mesh::T06> *generate(
+  lib::allocator_t *misc,
   DensityFn *density_fn
 );
 

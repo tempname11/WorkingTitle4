@@ -116,7 +116,7 @@ lib::GUID create(
       .name = desc->name,
     }});
     auto item = &(*result.first).second;
-    lib::lifetime::init(&item->lifetime);
+    lib::lifetime::init(&item->lifetime, 1);
     yarn = item->lifetime.yarn;
   }
 

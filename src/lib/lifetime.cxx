@@ -13,6 +13,13 @@ namespace lib {
     ref_count = 0;
     yarn = nullptr;
   }
+
+  Lifetime &Lifetime::operator= (const Lifetime &other) {
+    assert(other.ref_count == 0);
+    ref_count = 0;
+    yarn = nullptr;
+    return *this;
+  }
 }
 
 namespace lib::lifetime {
@@ -35,9 +42,9 @@ bool deref(Lifetime *lifetime, lib::task::Runner *runner) {
   return final;
 }
 
-void init(Lifetime *lifetime) {
+void init(Lifetime *lifetime, size_t initial_count) {
   assert(lifetime->yarn == nullptr);
-  lifetime->ref_count = 1;
+  lifetime->ref_count = initial_count;
   lifetime->yarn = lib::task::create_yarn_signal();
 }
 

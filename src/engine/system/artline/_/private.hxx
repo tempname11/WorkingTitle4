@@ -6,22 +6,29 @@
 
 namespace engine::system::artline {
 
+struct ReadyData {
+  lib::mutex_t mutex;
+  lib::array_t<session::Data::Scene::Item> *scene_items;
+};
+
 struct LoadData {
   lib::cstr_range_t dll_filename;
   lib::GUID dll_id;
-  lib::Task *yarn_end;
+  lib::Task *yarn_done;
+  lib::allocator_t *misc;
+  ReadyData *ready;
 };
 
-void _load(
+void _load_dll(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<LoadData> data,
-  Ref<engine::session::Data> session
+  Ref<session::Data> session
 );
 
 void _upload_mesh_init_buffer(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<engine::common::mesh::T06> t06,
-  Ref<engine::session::Vulkan::Meshes::Item> mesh_item,
+  Ref<common::mesh::T06> t06,
+  Ref<session::Vulkan::Meshes::Item> mesh_item,
   Ref<lib::Task> signal,
   Own<VkQueue> queue_work,
   Ref<engine::session::Data> session
@@ -29,20 +36,20 @@ void _upload_mesh_init_buffer(
 
 void _upload_mesh_init_blas(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<engine::session::Vulkan::Meshes::Item> mesh_item,
+  Ref<session::Vulkan::Meshes::Item> mesh_item,
   Ref<lib::Task> signal,
   Own<VkQueue> queue_work,
-  Ref<engine::session::Data> session
+  Ref<session::Data> session
 );
 
 void _upload_texture(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<VkFormat> format,
-  Ref<engine::common::texture::Data<uint8_t>> data,
-  Ref<engine::session::Vulkan::Textures::Item> texture_item,
+  Ref<common::texture::Data<uint8_t>> data,
+  Ref<session::Vulkan::Textures::Item> texture_item,
   Ref<lib::Task> signal,
   Own<VkQueue> queue_work,
-  Ref<engine::session::Data> session
+  Ref<session::Data> session
 );
 
 struct UnloadData {

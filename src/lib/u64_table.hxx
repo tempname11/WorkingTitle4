@@ -2,7 +2,12 @@
 #include "_base/array.hxx"
 
 // Potential improvements:
-// * Make impl not templated (use sizeof(T) + memcpy), move into .cxx
+// * Make impl not templated (use `sizeof(T)` and `memcpy`), move into ".cxx".
+// * VS debugger visualization / NatVis.
+// * `_fill` could move all the data from lower tier bucket it accesses.
+// * Storing bucket entry counts would probably make inserts faster.
+//   (for < 32 buckets store them the header)
+//   (for >= 32 buckets store them in the lower bits of the first key)
 
 namespace lib {
   namespace u64_table {
@@ -27,6 +32,10 @@ namespace lib {
 namespace lib::u64_table {
 
 const size_t BUCKET_NUM_ENTRIES = 32;
+
+inline hash_t from_guid(lib::GUID guid) {
+  return hash_t(guid);
+}
 
 template<typename T>
 u64_table_t<T> *create(

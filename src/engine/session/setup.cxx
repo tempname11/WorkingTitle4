@@ -651,7 +651,7 @@ void setup(
 ) {
   ZoneScoped;
   auto session = new engine::session::Data {};
-  lib::lifetime::init(&session->lifetime);
+  lib::lifetime::init(&session->lifetime, 1);
 
   { ZoneScopedN(".glfw");
     auto it = &session->glfw;

@@ -12,11 +12,12 @@ namespace lib {
     // so we need explicit zero constructors
     Lifetime();
     Lifetime(const Lifetime &other);
+    Lifetime &operator= (const Lifetime &other);
   };
 }
 
 namespace lib::lifetime {
   void ref(Lifetime *lifetime);
   bool deref(Lifetime *lifetime, lib::task::Runner *runner);
-  void init(Lifetime *lifetime);
+  void init(Lifetime *lifetime, size_t initial_count);
 }
