@@ -31,17 +31,18 @@ struct PerTexture {
   lib::cstr_range_t file_path;
   VkFormat format;
 
+  lib::GUID texture_id;
   engine::common::texture::Data<uint8_t> data;
   session::Vulkan::Textures::Item texture_item;
-  lib::GUID texture_id;
+  lib::hash64_t key;
 };
 
 struct PerModel {
   lib::Lifetime complete;
-  lib::u64_table::hash_t mesh_key;
   lib::array_t<lib::GUID> *mesh_ids;
   lib::array_t<PerMesh> *meshes;
   lib::array_t<PerTexture> *textures;
+  lib::hash64_t mesh_key;
 };
 
 void _read_texture_file(
@@ -71,10 +72,22 @@ void _finish_texture(
   Ref<engine::session::Data> session
 ) {
   ZoneScoped;
-  texture->texture_id = lib::guid::next(&session->guid_counter);
   textures->items.insert({ texture->texture_id, texture->texture_item });
-  stbi_image_free(texture->data.data);
+
+  {
+    auto a = &session->artline;
+    lib::mutex::lock(&a->mutex);
+    auto cached = lib::u64_table::lookup(
+      a->textures_by_key,
+      texture->key
+    );
+    assert(cached != nullptr);
+    cached->pending = nullptr;
+    lib::mutex::unlock(&a->mutex);
+  }
+
   lib::lifetime::deref(&model->complete, ctx->runner);
+  stbi_image_free(texture->data.data);
 }
 
 void _finish_mesh(
@@ -90,7 +103,6 @@ void _finish_mesh(
   *p_mesh_id = lib::guid::next(&session->guid_counter);
   meshes->items.insert({ *p_mesh_id, mesh->mesh_item });
   grup::mesh::deinit_t06(t06.ptr);
-  lib::lifetime::deref(&model->complete, ctx->runner);
 }
 
 void _model_end(
@@ -123,22 +135,28 @@ void _model_end(
     lib::mutex::unlock(&load->ready.mutex);
   }
 
-  if (model->mesh_key.as_number != 0) {
+  {
     auto a = &session->artline;
     lib::mutex::lock(&a->mutex);
-    // insert the new mesh ids into the cache.
-    lib::u64_table::insert(
-      &a->meshes_by_key,
-      model->mesh_key,
-      CachedMesh {
-        .ref_count = 1, 
-        .mesh_ids = model->mesh_ids,
-      }
+
+    auto cached = lib::u64_table::lookup(
+      a->meshes_by_key,
+      model->mesh_key
     );
+    assert(cached != nullptr);
+    cached->mesh_ids = model->mesh_ids;
     lib::mutex::unlock(&a->mutex);
   }
 
   lib::lifetime::deref(&load->impl->models_complete, ctx->runner);
+}
+
+void _after_pending_texture(
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<PerModel> model
+) {
+  ZoneScoped;
+  lib::lifetime::deref(&model->complete, ctx->runner);
 }
 
 void _generate_texture(
@@ -149,63 +167,122 @@ void _generate_texture(
 ) {
   ZoneScoped;
   auto a = &session->artline;
-  auto key = lib::cstr::fnv_1a(texture->file_path);
+  auto key = lib::hash64::from_cstr(texture->file_path);
 
-  lib::GUID cached_texture_id = 0;
   {
     lib::mutex::lock(&a->mutex);
     auto hit = lib::u64_table::lookup(a->textures_by_key, key);
     if (hit == nullptr) {
-      // @Bug :ConcurrentLoad
+      auto task_read_file = lib::task::create(
+        _read_texture_file,
+        texture.ptr
+      );
+
+      auto signal_init_image = lib::task::create_external_signal();
+      auto task_init_image = lib::defer(
+        lib::task::create(
+          _upload_texture,
+          &texture->format,
+          &texture->data,
+          &texture->texture_item,
+          signal_init_image,
+          &session->vulkan.queue_work,
+          session.ptr
+        )
+      );
+
+      auto task_finish_texture = lib::defer(
+        lib::task::create(
+          _finish_texture,
+          texture.ptr,
+          model.ptr,
+          &session->vulkan.textures,
+          session.ptr
+        )
+      );
+
+      ctx->new_tasks.insert(ctx->new_tasks.end(), {
+        task_read_file,
+        task_init_image.first,
+        task_finish_texture.first,
+      });
+
+      ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
+        { task_read_file, task_init_image.first },
+        { signal_init_image, task_finish_texture.first },
+      });
+
+      texture->texture_id = lib::guid::next(&session->guid_counter);
+      texture->key = key;
+
+      lib::u64_table::insert(&a->textures_by_key, key, CachedTexture {
+        .ref_count = 1,
+        .pending = task_finish_texture.second,
+        .texture_id = texture->texture_id,
+      });
     } else {
       hit->ref_count++;
-      cached_texture_id = hit->texture_id;
+      texture->texture_id = hit->texture_id;
+
+      if (hit->pending == nullptr) {
+        lib::lifetime::deref(&model->complete, ctx->runner);
+      } else {
+        auto task = lib::task::create(
+          _after_pending_texture,
+          model.ptr
+        );
+
+        ctx->new_tasks.insert(ctx->new_tasks.end(), {
+          task,
+        });
+
+        ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
+          { hit->pending, task },
+        });
+
+        lib::task::inject_pending(ctx); // still under mutex
+      }
     }
     lib::mutex::unlock(&a->mutex);
   }
+}
 
-  if (cached_texture_id == 0) {
-    auto task_read_file = lib::task::create(
-      _read_texture_file,
-      texture.ptr
+void _finish_meshes(
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<PerModel> model,
+  Ref<session::Data> session
+) {
+  ZoneScoped;
+
+  {
+    auto a = &session->artline;
+    lib::mutex::lock(&a->mutex);
+    auto cached = lib::u64_table::lookup(
+      a->meshes_by_key,
+      model->mesh_key
     );
+    assert(cached != nullptr);
+    cached->pending = nullptr;
+    cached->mesh_ids = model->mesh_ids;
+    lib::mutex::unlock(&a->mutex);
+  }
 
-    auto signal_init_image = lib::task::create_external_signal();
-    auto task_init_image = lib::defer(
-      lib::task::create(
-        _upload_texture,
-        &texture->format,
-        &texture->data,
-        &texture->texture_item,
-        signal_init_image,
-        &session->vulkan.queue_work,
-        session.ptr
-      )
-    );
+  lib::lifetime::deref(&model->complete, ctx->runner);
+}
 
-    auto task_finish_texture = lib::defer(
-      lib::task::create(
-        _finish_texture,
-        texture.ptr,
-        model.ptr,
-        &session->vulkan.textures,
-        session.ptr
-      )
-    );
-
-    ctx->new_tasks.insert(ctx->new_tasks.end(), {
-      task_read_file,
-      task_init_image.first,
-      task_finish_texture.first,
-    });
-
-    ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-      { task_read_file, task_init_image.first },
-      { signal_init_image, task_finish_texture.first },
-    });
-  } else {
-    texture->texture_id = cached_texture_id;
-    lib::lifetime::deref(&model->complete, ctx->runner);
+void _after_pending_meshes(
+  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
+  Ref<PerModel> model,
+  Ref<session::Data> session
+) {
+  ZoneScoped;
+  lib::lifetime::deref(&model->complete, ctx->runner);
+  {
+    auto a = &session->artline;
+    lib::mutex::lock(&a->mutex);
+    auto hit = lib::u64_table::lookup(a->meshes_by_key, model->mesh_key);
+    assert(hit != nullptr);
+    model->mesh_ids = hit->mesh_ids;
   }
 }
 
@@ -216,68 +293,88 @@ void _generate_meshes(
   Ref<PerLoad> load,
   Ref<session::Data> session
 ) {
-  lib::array_t<lib::GUID> *cached_mesh_ids = nullptr;
-  lib::array_t<common::mesh::T06> *t06_meshes = nullptr;
+  ZoneScoped;
+
   auto a = &session->artline;
+  lib::hash64_t key = {};
   switch (desc_model->mesh.type) {
     case ModelMesh::Type::File: {
       auto it = &desc_model->mesh.file;
-      auto key = lib::cstr::fnv_1a(it->path);
-
-      {
-        lib::mutex::lock(&a->mutex);
-        auto hit = lib::u64_table::lookup(a->meshes_by_key, key);
-        if (hit == nullptr) {
-          // @Bug :ConcurrentLoad
-        } else {
-          hit->ref_count++;
-          cached_mesh_ids = hit->mesh_ids;
-        }
-        lib::mutex::unlock(&a->mutex);
-      }
-
-      if (cached_mesh_ids == nullptr) {
-        model->mesh_key = key;
-        t06_meshes = lib::array::create<common::mesh::T06>(load->misc, 1);
-        t06_meshes->data[t06_meshes->count++] = (
-          grup::mesh::read_t06_file(it->path.start)
-        );
-      }
+      key = lib::hash64::from_cstr(it->path);
       break;
     }
     case ModelMesh::Type::Density: {
       auto it = &desc_model->mesh.density;
-      auto key = lib::u64_table::from_u64(it->signature); // @Incomplete: should also use `dll_id`.
-
-      {
-        lib::mutex::lock(&a->mutex);
-        auto hit = lib::u64_table::lookup(a->meshes_by_key, key);
-        if (hit == nullptr) {
-          // @Bug :ConcurrentLoad
-        } else {
-          hit->ref_count++;
-          cached_mesh_ids = hit->mesh_ids;
-        }
-        lib::mutex::unlock(&a->mutex);
-      }
-      
-      if (cached_mesh_ids == nullptr) {
-        model->mesh_key = key;
-        t06_meshes = generate(load->misc, it->fn);
-      }
-
+      auto h = lib::hash64::begin();
+      lib::hash64::add_value(&h, it->signature);
+      lib::hash64::add_value(&h, load->dll_id);
+      key = lib::hash64::get(&h);
       break;
     }
     default: {
       assert("Unknown mesh type" && false);
     }
   }
-    
-  if (cached_mesh_ids != nullptr) {
-    model->mesh_ids = cached_mesh_ids; // ref_count will keep it alive for us
+  model->mesh_key = key;
+
+  lib::Task *task_our_pending = nullptr;
+  {
+    lib::mutex::lock(&a->mutex);
+    auto hit = lib::u64_table::lookup(a->meshes_by_key, key);
+    if (hit == nullptr) {
+      task_our_pending = lib::task::create(
+        _finish_meshes,
+        model.ptr,
+        session.ptr
+      );
+
+      ctx->new_tasks.push_back(task_our_pending);
+
+      lib::u64_table::insert(&a->meshes_by_key, key, CachedMesh {
+        .ref_count = 1,
+        .pending = task_our_pending,
+        .mesh_ids = nullptr, // valid after `task_our_pending` finishes.
+      });
+    } else {
+      hit->ref_count++;
+      if (hit->pending == nullptr) {
+        model->mesh_ids = hit->mesh_ids;
+        lib::lifetime::deref(&model->complete, ctx->runner);
+      } else {
+        ctx->new_tasks.push_back(lib::task::create(
+          _after_pending_meshes,
+          model.ptr,
+          session.ptr
+        ));
+      }
+    }
+    lib::mutex::unlock(&a->mutex);
   }
 
-  if (t06_meshes != nullptr) {
+  if (task_our_pending != nullptr) {
+    lib::array_t<common::mesh::T06> *t06_meshes = nullptr;
+
+    switch (desc_model->mesh.type) {
+      case ModelMesh::Type::File: {
+        auto it = &desc_model->mesh.file;
+
+        t06_meshes = lib::array::create<common::mesh::T06>(load->misc, 1);
+        t06_meshes->data[t06_meshes->count++] = (
+          grup::mesh::read_t06_file(it->path.start)
+        );
+        break;
+      }
+      case ModelMesh::Type::Density: {
+        auto it = &desc_model->mesh.density;
+
+        t06_meshes = generate(load->misc, it->fn);
+        break;
+      }
+      default: {
+        assert("Unknown mesh type" && false);
+      }
+    }
+
     model->mesh_ids = lib::array::create<lib::GUID>(
       // CRT allocator is important, because this array
       // will go into the cache and needs long-term lifetime.
@@ -291,7 +388,6 @@ void _generate_meshes(
     model->meshes->count = model->meshes->capacity;
 
     for (size_t i = 0; i < t06_meshes->count; i++) {
-      lib::lifetime::ref(&model->complete);
       auto signal_init_buffer = lib::task::create_external_signal();
       auto task_init_buffer = lib::defer(
         lib::task::create(
@@ -334,11 +430,10 @@ void _generate_meshes(
       ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
         { signal_init_buffer, task_init_blas.first },
         { signal_init_blas, task_finish_mesh.first },
+        { task_finish_mesh.second, task_our_pending },
       });
     }
   }
-
-  lib::lifetime::deref(&model->complete, ctx->runner);
 }
 
 void _begin_model(
@@ -449,7 +544,7 @@ void _load_dll(
   load->impl = impl;
 
   {
-    HINSTANCE h_lib = LoadLibrary(load->dll_filename.start);
+    HINSTANCE h_lib = LoadLibrary(load->dll_file_path.start);
     assert(h_lib != nullptr);
 
     auto describe_fn = (DescribeFn *) GetProcAddress(h_lib, "describe");

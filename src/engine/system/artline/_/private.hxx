@@ -7,7 +7,7 @@ namespace engine::system::artline {
 
 struct PerLoadImpl;
 struct PerLoad {
-  lib::cstr_range_t dll_filename;
+  lib::cstr_range_t dll_file_path;
   lib::GUID dll_id;
   lib::Task *yarn_done;
   lib::allocator_t *misc;
@@ -53,21 +53,22 @@ void _upload_texture(
   Ref<session::Data> session
 );
 
-struct UnloadData {
+struct PerUnload {
+  lib::allocator_t *misc;
   lib::GUID dll_id;
-  std::vector<session::Data::Scene::Item> items_removed;
+  lib::array_t<session::Data::Scene::Item> *items_removed;
 };
 
 void _unload_scene(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<UnloadData> data,
+  Ref<PerUnload> data,
   Own<session::Data::Scene> scene,
   Ref<session::Data> session
 );
 
 void _unload_assets(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<UnloadData> data,
+  Ref<PerUnload> data,
   Own<session::Vulkan::Meshes> meshes,
   Own<session::Vulkan::Textures> textures,
   Ref<session::Data> session

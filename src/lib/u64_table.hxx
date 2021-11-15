@@ -1,7 +1,7 @@
 #pragma once
 #include <cassert>
 #include "_base/array.hxx"
-#include "guid.hxx"
+#include "hash64.hxx"
 
 // Potential improvements:
 // * Make impl not templated (use `sizeof(T)` and `memcpy`), move into ".cxx".
@@ -12,21 +12,13 @@
 //   (for >= 32 buckets store them in the lower bits of the first key?)
 
 namespace lib {
-  namespace u64_table {
-    struct hash_t {
-      uint64_t as_number;
-
-      bool operator==(hash_t h) const { return this->as_number == h.as_number; }
-    };
-  }
-
   template<typename T>
   struct u64_table_t {
     lib::allocator_t *acr;
     u64_table_t *prev_table;
     size_t prev_table_refs;
     size_t num_buckets; // power-of-2
-    u64_table::hash_t *keys;
+    hash64_t *keys;
     T *values;
   };
 }
@@ -34,15 +26,6 @@ namespace lib {
 namespace lib::u64_table {
 
 const size_t BUCKET_NUM_ENTRIES = 32;
-
-inline hash_t from_guid(lib::GUID guid) {
-  return hash_t(guid);
-}
-
-inline hash_t from_u64(uint64_t value) {
-  // @Incomplete: need hash function. Will work OK for now.
-  return hash_t(value);
-}
 
 template<typename T>
 u64_table_t<T> *create(
@@ -57,10 +40,10 @@ u64_table_t<T> *create(
   auto size = sizeof(u64_table_t<T>);
 
   size = (
-    (size + alignof(hash_t) - 1) / alignof(hash_t)
-  ) * alignof(hash_t);
+    (size + alignof(hash64_t) - 1) / alignof(hash64_t)
+  ) * alignof(hash64_t);
   auto keys_offset = size;
-  size += sizeof(hash_t) * num_buckets * BUCKET_NUM_ENTRIES;
+  size += sizeof(hash64_t) * num_buckets * BUCKET_NUM_ENTRIES;
   auto memset_zero_size = size;
 
   size = (
@@ -74,7 +57,7 @@ u64_table_t<T> *create(
   memset(it, 0, memset_zero_size);
   it->acr = acr;
   it->num_buckets = num_buckets;
-  it->keys = (hash_t *) ((uint8_t *) it + keys_offset);
+  it->keys = (hash64_t *) ((uint8_t *) it + keys_offset);
   it->values = (T *) ((uint8_t *) it + values_offset);
   return it;
 }
@@ -90,7 +73,7 @@ void destroy(u64_table_t<T> *it) {
 template<typename T>
 void _fill(
   size_t out_max_count,
-  hash_t *out_keys,
+  hash64_t *out_keys,
   T *out_values,
   uint64_t test_partial_key,
   uint64_t test_divisor,
@@ -148,12 +131,12 @@ void _fill(
   }
 
   if (!did_fill) {
-    out_keys[1] = hash_t(~uint64_t(0));
+    out_keys[1] = hash64_t(~uint64_t(0));
   }
 }
 
 template<typename T>
-T *lookup(u64_table_t<T> *it, hash_t key) {
+T *lookup(u64_table_t<T> *it, hash64_t key) {
   assert(key.as_number != 0);
   auto bucket = key.as_number % it->num_buckets;
   auto first_entry_index = bucket * BUCKET_NUM_ENTRIES;
@@ -201,7 +184,7 @@ T *lookup(u64_table_t<T> *it, hash_t key) {
 }
 
 template<typename T>
-void insert(u64_table_t<T> **p_it, hash_t key, T value) {
+void insert(u64_table_t<T> **p_it, hash64_t key, T value) {
   auto it = *p_it;
   assert(key.as_number != 0);
   auto bucket = key.as_number % it->num_buckets;
@@ -259,7 +242,7 @@ void insert(u64_table_t<T> **p_it, hash_t key, T value) {
 }
 
 template<typename T>
-void remove(u64_table_t<T> *it, hash_t key) {
+void remove(u64_table_t<T> *it, hash64_t key) {
   assert(key.as_number != 0);
   auto bucket = key.as_number % it->num_buckets;
   auto first_entry_index = bucket * BUCKET_NUM_ENTRIES;
@@ -319,7 +302,7 @@ void remove(u64_table_t<T> *it, hash_t key) {
 
   it->keys[slot_index] = it->keys[last_occupied_index];
   it->values[slot_index] = it->values[last_occupied_index];
-  it->keys[last_occupied_index] = hash_t(0);
+  it->keys[last_occupied_index] = hash64_t(0);
 }
 
 } // namespace

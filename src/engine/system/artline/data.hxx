@@ -8,18 +8,20 @@ namespace engine::system::artline {
 
 struct CachedMesh {
   size_t ref_count;
+  lib::Task *pending;
   lib::array_t<lib::GUID> *mesh_ids;
 };
 
 struct CachedTexture {
   size_t ref_count;
+  lib::Task *pending;
   lib::GUID texture_id;
 };
 
 struct Data {
   struct DLL {
     lib::GUID id;
-    lib::cstr_range_t filename; // uses crt allocator
+    lib::cstr_range_t file_path; // uses crt allocator
     Status status;
   };
 

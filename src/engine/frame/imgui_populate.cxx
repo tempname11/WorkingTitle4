@@ -448,8 +448,8 @@ void imgui_populate(
           ImGui::TableNextRow();
           ImGui::TableNextColumn();
           ImGui::TextUnformatted(
-            item->filename.c_str(),
-            item->filename.c_str() + item->filename.size()
+            item->file_path.c_str(),
+            item->file_path.c_str() + item->filename.size()
           );
           ImGui::TableNextColumn();
           { // unload button

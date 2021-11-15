@@ -4,7 +4,7 @@
 
 - `session/setup.cxx` does too much and should be split up.
 
-- avoid `task::inject` whenever possible.
+- deprecate `task::inject` in favor of `task::inject_pending`
 
 - Error handing for file reads is currently hairy.
   (Consider a set of read helpers that provide zero output on error and go on...)

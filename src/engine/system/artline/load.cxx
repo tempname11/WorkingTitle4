@@ -33,7 +33,7 @@ void _finish(
 
     auto dll = lib::u64_table::lookup(
       it->dlls,
-      lib::u64_table::from_guid(load->dll_id)
+      lib::hash64::from_guid(load->dll_id)
     );
     dll->status = Status::Ready;
       
@@ -45,7 +45,7 @@ void _finish(
 }
 
 lib::Task *load(
-  lib::cstr_range_t dll_filename,
+  lib::cstr_range_t dll_file_path,
   Ref<session::Data> session,
   lib::task::ContextBase *ctx
 ) {
@@ -55,7 +55,7 @@ lib::Task *load(
 
   auto data = lib::allocator::make<PerLoad>(misc);
   *data = {
-    .dll_filename = dll_filename,
+    .dll_file_path = dll_file_path,
     .dll_id = dll_id,
     .yarn_done = yarn_done,
     .misc = misc,
@@ -104,9 +104,9 @@ lib::Task *load(
 
     lib::u64_table::insert(
       &it->dlls,
-      lib::u64_table::from_guid(dll_id),
+      lib::hash64::from_guid(dll_id),
       Data::DLL {
-        .filename = lib::cstr::crt_copy(dll_filename),
+        .file_path = lib::cstr::crt_copy(dll_file_path),
         .status = Status::Loading,
       }
     );

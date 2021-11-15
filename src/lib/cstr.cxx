@@ -28,18 +28,4 @@ void crt_free(cstr_range_t cstr) {
   );
 }
 
-const uint64_t fnv_basis = 14695981039346656037ull;
-const uint64_t fnv_prime = 1099511628211ull;
-
-u64_table::hash_t fnv_1a(cstr_range_t cstr) {
-  uint64_t result = fnv_basis;
-  auto ptr = cstr.start;
-  while (ptr < cstr.end) {
-    result = result ^ *ptr;
-    result = result * fnv_prime;
-    ptr++;
-  }
-  return u64_table::hash_t(result);
-}
-
 } // namespace
