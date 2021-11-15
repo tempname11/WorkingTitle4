@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 #include "allocator.hxx"
 #include "common.hxx"
 
@@ -31,7 +32,7 @@ inline array_t<T> *create(
 
 template<typename T>
 inline void destroy(array_t<T> *it) {
-  it->acr->free_fn(it->acr, it);
+  it->acr->dealloc_fn(it->acr, it);
 }
 
 template<typename T>

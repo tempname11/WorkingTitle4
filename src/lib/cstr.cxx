@@ -10,13 +10,15 @@ cstr_range_t from_static(const char *str) {
 }
 
 cstr_range_t crt_copy(cstr_range_t cstr) {
-  auto length = cstr.end - cstr.start;
-  auto start = (const char *) lib::allocator::crt->alloc_fn(
+  auto size = size_t(cstr.end - cstr.start);
+  auto ptr = (char *) lib::allocator::crt->alloc_fn(
     lib::allocator::crt,
-    length + 1, // trailing zero
+    size + 1, // trailing zero
     1
   );
-  return cstr_range_t(start, start + length);
+  memcpy((void *) ptr, cstr.start, size);
+  ptr[size] = 0;
+  return cstr_range_t(ptr, ptr + size);
 }
 
 void crt_free(cstr_range_t cstr) {

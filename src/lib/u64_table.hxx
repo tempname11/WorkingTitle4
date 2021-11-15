@@ -297,6 +297,7 @@ void remove(u64_table_t<T> *it, hash64_t key) {
     auto p_key = &it->keys[first_entry_index + i];
     if (p_key->as_number == 0) {
       last_occupied_index = first_entry_index + i - 1;
+      break;
     }
   }
 

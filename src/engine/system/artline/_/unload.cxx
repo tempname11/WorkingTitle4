@@ -7,71 +7,52 @@
 
 namespace engine::system::artline {
 
-void _unload_scene(
-  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<PerUnload> unload,
-  Own<session::Data::Scene> scene,
-  Ref<session::Data> session
-) {
-  ZoneScoped;
-
-  for (size_t i = 0; i < scene->items.size(); i++) {
-    auto scene_item = &scene->items[i];
-    if (scene_item->owner_id == unload->dll_id) {
-      lib::array::ensure_space(&unload->items_removed, 1);
-      unload->items_removed->data[unload->items_removed->count++] = scene->items[i];
-
-      scene->items[i] = scene->items[scene->items.size() - 1];
-      scene->items.pop_back();
-      i--;
-    }
-  }
-}
-
 void _deref_mesh(
-  lib::GUID mesh_id,
+  lib::hash64_t key,
   Data *it,
   Own<session::Vulkan::Meshes> meshes,
   Ref<session::Data> session
 ) {
-  auto key = lib::hash64::from_guid(mesh_id);
   auto cached = lib::u64_table::lookup(it->meshes_by_key, key);
   assert(cached != nullptr);
   assert(cached->ref_count > 0);
   cached->ref_count--;
   if (cached->ref_count == 0) {
-    auto mesh_item = &meshes->items[mesh_id];
+    for (size_t i = 0; i < cached->mesh_ids->count; i++) {
+      auto mesh_id = cached->mesh_ids->data[i];
+      auto mesh_item = &meshes->items[mesh_id];
 
-    engine::uploader::destroy_buffer(
-      &session->vulkan.uploader,
-      &session->vulkan.core,
-      mesh_item->id
-    );
+      engine::uploader::destroy_buffer(
+        &session->vulkan.uploader,
+        &session->vulkan.core,
+        mesh_item->id
+      );
 
-    engine::blas_storage::destroy(
-      &session->vulkan.blas_storage,
-      &session->vulkan.core,
-      mesh_item->blas_id
-    );
+      engine::blas_storage::destroy(
+        &session->vulkan.blas_storage,
+        &session->vulkan.core,
+        mesh_item->blas_id
+      );
 
-    meshes->items.erase(mesh_id);
+      meshes->items.erase(mesh_id);
+    }
+
     lib::u64_table::remove(it->meshes_by_key, key);
   }
 }
 
 void _deref_texture(
-  lib::GUID texture_id,
+  lib::hash64_t key,
   Data *it,
   Own<session::Vulkan::Textures> textures,
   Ref<session::Data> session
 ) {
-  auto key = lib::hash64::from_guid(texture_id);
   auto cached = lib::u64_table::lookup(it->textures_by_key, key);
   assert(cached != nullptr);
   assert(cached->ref_count > 0);
   cached->ref_count--;
   if (cached->ref_count == 0) {
-    auto texture_item = &textures->items[texture_id];
+    auto texture_item = &textures->items[cached->texture_id];
 
     engine::uploader::destroy_image(
       &session->vulkan.uploader,
@@ -79,14 +60,15 @@ void _deref_texture(
       texture_item->id
     );
 
-    textures->items.erase(texture_id);
+    textures->items.erase(cached->texture_id);
     lib::u64_table::remove(it->textures_by_key, key);
   }
 }
 
 void _unload_assets(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<PerUnload> unload,
+  Ref<lib::array_t<lib::hash64_t>> mesh_keys,
+  Ref<lib::array_t<lib::hash64_t>> texture_keys,
   Own<session::Vulkan::Meshes> meshes,
   Own<session::Vulkan::Textures> textures,
   Ref<session::Data> session
@@ -97,29 +79,18 @@ void _unload_assets(
     auto it = &session->artline;
     lib::mutex::lock(&it->mutex);
 
-    for (size_t i = 0; i < unload->items_removed->count; i++) {
-      auto scene_item = &unload->items_removed->data[i];
-
+    for (size_t i = 0; i < mesh_keys->count; i++) {
       _deref_mesh(
-        scene_item->mesh_id,
+        mesh_keys->data[i],
         it,
         meshes,
         session
       );
+    }
+
+    for (size_t i = 0; i < mesh_keys->count; i++) {
       _deref_texture(
-        scene_item->texture_albedo_id,
-        it,
-        textures,
-        session
-      );
-      _deref_texture(
-        scene_item->texture_normal_id,
-        it,
-        textures,
-        session
-      );
-      _deref_texture(
-        scene_item->texture_romeao_id,
+        texture_keys->data[i],
         it,
         textures,
         session
@@ -128,6 +99,9 @@ void _unload_assets(
 
     lib::mutex::unlock(&it->mutex);
   }
+
+  lib::array::destroy(texture_keys.ptr);
+  lib::array::destroy(mesh_keys.ptr);
 }
 
 } // namespace

@@ -438,22 +438,19 @@ void imgui_populate(
       ImGui::TableSetupColumn("Action");
       ImGui::TableHeadersRow();
       {
-        assert(false); //!
-        /*
-        std::shared_lock lock(it->rw_mutex);
-        for (auto &pair : it->dlls) {
-          auto dll_id = pair.first;
-          auto item = &pair.second;
-          ImGui::PushID(dll_id);
+        lib::mutex::lock(&it->mutex);
+        for (size_t i = 0; i < it->dlls->count; i++) {
+          auto dll = &it->dlls->data[i];
+          ImGui::PushID(dll->id);
           ImGui::TableNextRow();
           ImGui::TableNextColumn();
           ImGui::TextUnformatted(
-            item->file_path.c_str(),
-            item->file_path.c_str() + item->filename.size()
+            dll->file_path.start,
+            dll->file_path.end
           );
           ImGui::TableNextColumn();
           { // unload button
-            auto disabled = item->status != system::artline::Status::Ready;
+            auto disabled = dll->status != system::artline::Status::Ready;
             if (disabled) {
               ImGui::PushStyleVar(
                 ImGuiStyleVar_Alpha,
@@ -461,13 +458,14 @@ void imgui_populate(
               );
             }
             if (ImGui::Button("Unload") && !disabled) {
-              lock.unlock();
+              lib::mutex::unlock(&it->mutex);
+              // @Bug
               system::artline::unload(
-                dll_id,
+                dll->id,
                 session.ptr,
                 ctx
               );
-              lock.lock();
+              lib::mutex::lock(&it->mutex);
             }
             if (disabled) {
               ImGui::PopStyleVar();
@@ -475,7 +473,7 @@ void imgui_populate(
           }
           ImGui::PopID();
         }
-        */
+        lib::mutex::unlock(&it->mutex);
       }
       ImGui::EndTable();
       if (ImGui::Button("Reload all")) {

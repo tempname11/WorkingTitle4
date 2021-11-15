@@ -7,7 +7,14 @@ namespace lib {
     T *start;
     T *end;
 
-    inline memory_range_t(T* start, T* end) { // prevent default constructor
+    // C++ stuff:
+    // prevent default constructor, so that `memory_range_t(T*)`
+    // does not construct an obviously invalid range.
+    inline memory_range_t() {
+      this->start = nullptr;
+      this->end = nullptr;
+    }
+    inline memory_range_t(T* start, T* end) {
       this->start = start;
       this->end = end;
     }

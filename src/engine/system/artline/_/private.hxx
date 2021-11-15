@@ -17,6 +17,8 @@ struct PerLoad {
   struct Ready {
     lib::mutex_t mutex;
     lib::array_t<session::Data::Scene::Item> *scene_items;
+    lib::array_t<lib::hash64_t> *mesh_keys;
+    lib::array_t<lib::hash64_t> *texture_keys;
   } ready;
 };
 
@@ -56,19 +58,12 @@ void _upload_texture(
 struct PerUnload {
   lib::allocator_t *misc;
   lib::GUID dll_id;
-  lib::array_t<session::Data::Scene::Item> *items_removed;
 };
-
-void _unload_scene(
-  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<PerUnload> data,
-  Own<session::Data::Scene> scene,
-  Ref<session::Data> session
-);
 
 void _unload_assets(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<PerUnload> data,
+  Ref<lib::array_t<lib::hash64_t>> mesh_keys,
+  Ref<lib::array_t<lib::hash64_t>> texture_keys,
   Own<session::Vulkan::Meshes> meshes,
   Own<session::Vulkan::Textures> textures,
   Ref<session::Data> session

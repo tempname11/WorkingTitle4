@@ -163,11 +163,22 @@ void _generate_texture(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<PerTexture> texture,
   Ref<PerModel> model,
+  Ref<PerLoad> load,
   Ref<session::Data> session
 ) {
   ZoneScoped;
   auto a = &session->artline;
   auto key = lib::hash64::from_cstr(texture->file_path);
+
+  {
+    lib::mutex::lock(&load->ready.mutex);
+
+    auto arr = &load->ready.texture_keys;
+    lib::array::ensure_space(arr, 1);
+    (*arr)->data[(*arr)->count++] = key;
+
+    lib::mutex::unlock(&load->ready.mutex);
+  }
 
   {
     lib::mutex::lock(&a->mutex);
@@ -316,6 +327,16 @@ void _generate_meshes(
     }
   }
   model->mesh_key = key;
+
+  {
+    lib::mutex::lock(&load->ready.mutex);
+
+    auto arr = &load->ready.mesh_keys;
+    lib::array::ensure_space(arr, 1);
+    (*arr)->data[(*arr)->count++] = key;
+
+    lib::mutex::unlock(&load->ready.mutex);
+  }
 
   lib::Task *task_our_pending = nullptr;
   {
@@ -502,6 +523,7 @@ void _begin_model(
       _generate_texture,
       &model->textures->data[i],
       model,
+      load.ptr,
       session.ptr
     );
 

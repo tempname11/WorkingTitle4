@@ -21,12 +21,17 @@ struct CachedTexture {
 struct Data {
   struct DLL {
     lib::GUID id;
-    lib::cstr_range_t file_path; // uses crt allocator
     Status status;
+
+    // Everything here uses the CRT allocator.
+    lib::cstr_range_t file_path;
+    lib::array_t<lib::hash64_t> *mesh_keys;
+    lib::array_t<lib::hash64_t> *texture_keys;
   };
 
   lib::mutex_t mutex;
-  lib::u64_table_t<DLL> *dlls;
+  lib::array_t<DLL> *dlls;
+  lib::u64_table_t<size_t> *dll_indices;
   lib::u64_table_t<CachedMesh> *meshes_by_key;
   lib::u64_table_t<CachedTexture> *textures_by_key;
 };

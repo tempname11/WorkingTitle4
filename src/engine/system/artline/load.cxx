@@ -31,11 +31,15 @@ void _finish(
     auto it = &session->artline;
     lib::mutex::lock(&it->mutex);
 
-    auto dll = lib::u64_table::lookup(
-      it->dlls,
+    auto p_index = lib::u64_table::lookup(
+      it->dll_indices,
       lib::hash64::from_guid(load->dll_id)
     );
+    assert(p_index != nullptr);
+    auto dll = &it->dlls->data[*p_index];
     dll->status = Status::Ready;
+    dll->mesh_keys = load->ready.mesh_keys;
+    dll->texture_keys = load->ready.texture_keys;
       
     lib::mutex::unlock(&it->mutex);
   }
@@ -50,17 +54,19 @@ lib::Task *load(
   lib::task::ContextBase *ctx
 ) {
   auto misc = lib::easy_allocator::create(1024 * 1024 * 1024); // 1 GB
-  auto yarn_done = lib::task::create_yarn_signal();
   auto dll_id = lib::guid::next(&session->guid_counter);
+  auto copied_file_path = lib::cstr::crt_copy(dll_file_path);
 
   auto data = lib::allocator::make<PerLoad>(misc);
   *data = {
-    .dll_file_path = dll_file_path,
+    .dll_file_path = copied_file_path,
     .dll_id = dll_id,
-    .yarn_done = yarn_done,
+    .yarn_done = lib::task::create_yarn_signal(),
     .misc = misc,
     .ready = {
       .scene_items = lib::array::create<session::Data::Scene::Item>(misc, 0),
+      .mesh_keys = lib::array::create<lib::hash64_t>(lib::allocator::crt, 0),
+      .texture_keys = lib::array::create<lib::hash64_t>(lib::allocator::crt, 0),
     },
   };
   lib::mutex::init(&data->ready.mutex);
@@ -79,43 +85,45 @@ lib::Task *load(
     )
   );
 
-  auto task_finish = lib::defer(
-    lib::task::create(
-      _finish,
-      data,
-      session.ptr
-    )
+  auto task_finish = lib::task::create(
+    _finish,
+    data,
+    session.ptr
   );
 
   ctx->new_tasks.insert(ctx->new_tasks.end(), {
     task_load_dll,
     task_update_scene.first,
-    task_finish.first,
+    task_finish,
   });
 
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-    { yarn_done, task_update_scene.first },
-    { task_update_scene.second, task_finish.first },
+    { data->yarn_done, task_update_scene.first },
+    { task_update_scene.second, task_finish },
   });
 
   {
     auto it = &session->artline;
     lib::mutex::lock(&it->mutex);
 
+    lib::array::ensure_space(&it->dlls, 1);
+    auto index = it->dlls->count;
+    it->dlls->data[it->dlls->count++] = Data::DLL {
+      .id = dll_id,
+      .status = Status::Loading,
+      .file_path = copied_file_path,
+    };
     lib::u64_table::insert(
-      &it->dlls,
+      &it->dll_indices,
       lib::hash64::from_guid(dll_id),
-      Data::DLL {
-        .file_path = lib::cstr::crt_copy(dll_file_path),
-        .status = Status::Loading,
-      }
+      index
     );
       
     lib::mutex::unlock(&it->mutex);
   }
 
   lib::lifetime::ref(&session->lifetime);
-  return task_finish.second;
+  return task_finish;
 }
 
 } // namespace
