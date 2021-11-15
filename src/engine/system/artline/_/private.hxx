@@ -1,27 +1,28 @@
 #pragma once
-#include <string>
 #include <src/global.hxx>
 #include <src/lib/guid.hxx>
 #include <src/engine/session/public.hxx>
 
 namespace engine::system::artline {
 
-struct ReadyData {
-  lib::mutex_t mutex;
-  lib::array_t<session::Data::Scene::Item> *scene_items;
-};
-
-struct LoadData {
+struct PerLoadImpl;
+struct PerLoad {
   lib::cstr_range_t dll_filename;
   lib::GUID dll_id;
   lib::Task *yarn_done;
   lib::allocator_t *misc;
-  ReadyData *ready;
+
+  PerLoadImpl *impl;
+
+  struct Ready {
+    lib::mutex_t mutex;
+    lib::array_t<session::Data::Scene::Item> *scene_items;
+  } ready;
 };
 
 void _load_dll(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<LoadData> data,
+  Ref<PerLoad> data,
   Ref<session::Data> session
 );
 

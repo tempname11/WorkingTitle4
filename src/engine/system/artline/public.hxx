@@ -54,8 +54,8 @@ union ModelMesh {
 
   struct Density {
     Type type;
-    DensityFn *density_fn;
-    size_t density_fn_version;
+    DensityFn *fn;
+    uint64_t signature;
   };
 
   Type type;
@@ -64,16 +64,8 @@ union ModelMesh {
 };
 
 struct Model {
-  size_t unique_index;
-
-  /* @Incomplete
-  TransformFn *transform_fn;
-  size_t transform_fn_version;
-  */
   glm::mat4 transform;
-
   ModelMesh mesh;
-
   lib::cstr_range_t file_path_albedo;
   lib::cstr_range_t file_path_normal;
   lib::cstr_range_t file_path_romeao;

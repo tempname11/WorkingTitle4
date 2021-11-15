@@ -11,18 +11,18 @@ namespace engine::system::artline {
 void _update_scene(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Own<session::Data::Scene> scene,
-  Ref<LoadData> data
+  Ref<PerLoad> load
 ) {
   ZoneScoped;
 
-  for (size_t i = 0; i < data->ready->scene_items->count; i++) {
-    scene->items.push_back(data->ready->scene_items->data[i]);
+  for (size_t i = 0; i < load->ready.scene_items->count; i++) {
+    scene->items.push_back(load->ready.scene_items->data[i]);
   }
 }
 
 void _finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<LoadData> data,
+  Ref<PerLoad> load,
   Ref<session::Data> session
 ) {
   ZoneScoped;
@@ -33,7 +33,7 @@ void _finish(
 
     auto dll = lib::u64_table::lookup(
       it->dlls,
-      lib::u64_table::from_guid(data->dll_id)
+      lib::u64_table::from_guid(load->dll_id)
     );
     dll->status = Status::Ready;
       
@@ -41,7 +41,7 @@ void _finish(
   }
 
   lib::lifetime::deref(&session->lifetime, ctx->runner);
-  lib::easy_allocator::destroy(data->misc);
+  lib::easy_allocator::destroy(load->misc);
 }
 
 lib::Task *load(
@@ -53,20 +53,17 @@ lib::Task *load(
   auto yarn_done = lib::task::create_yarn_signal();
   auto dll_id = lib::guid::next(&session->guid_counter);
 
-  auto ready_data = lib::allocator::make<ReadyData>(misc);
-  *ready_data = {
-    .scene_items = lib::array::create<session::Data::Scene::Item>(misc, 0),
-  };
-  lib::mutex::init(&ready_data->mutex);
-
-  auto data = lib::allocator::make<LoadData>(misc);
+  auto data = lib::allocator::make<PerLoad>(misc);
   *data = {
     .dll_filename = dll_filename,
     .dll_id = dll_id,
     .yarn_done = yarn_done,
     .misc = misc,
-    .ready = ready_data,
+    .ready = {
+      .scene_items = lib::array::create<session::Data::Scene::Item>(misc, 0),
+    },
   };
+  lib::mutex::init(&data->ready.mutex);
 
   auto task_load_dll = lib::task::create(
     _load_dll,

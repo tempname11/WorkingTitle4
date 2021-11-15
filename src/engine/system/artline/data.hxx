@@ -6,14 +6,14 @@
 
 namespace engine::system::artline {
 
-struct MeshInfo {
+struct CachedMesh {
   size_t ref_count;
-  std::string key;
+  lib::array_t<lib::GUID> *mesh_ids;
 };
 
-struct TextureInfo {
+struct CachedTexture {
   size_t ref_count;
-  std::string key;
+  lib::GUID texture_id;
 };
 
 struct Data {
@@ -25,14 +25,8 @@ struct Data {
 
   lib::mutex_t mutex;
   lib::u64_table_t<DLL> *dlls;
-
-  /*
-  std::unordered_map<lib::GUID, DLL> dlls;
-  std::unordered_map<lib::GUID, MeshInfo> meshes;
-  std::unordered_map<lib::GUID, TextureInfo> textures;
-  std::unordered_map<std::string, lib::GUID> meshes_by_key;
-  std::unordered_map<std::string, lib::GUID> textures_by_key;
-  */
+  lib::u64_table_t<CachedMesh> *meshes_by_key;
+  lib::u64_table_t<CachedTexture> *textures_by_key;
 };
 
 } // namespace

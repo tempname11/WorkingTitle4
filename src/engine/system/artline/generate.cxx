@@ -117,7 +117,7 @@ lib::array_t<T06> *generate(
   size_t last_z = 0;
   while (total_triangles > 0) {
     size_t mesh_triangles = lib::min<size_t>(65536 / 3, total_triangles);
-    LOG("tri {} {}", total_triangles, mesh_triangles);
+    DBG("tri {} {}", total_triangles, mesh_triangles);
     total_triangles -= mesh_triangles;
 
     uint32_t vertex_count = checked_integer_cast<uint32_t>(mesh_triangles * 3);
@@ -221,8 +221,8 @@ lib::array_t<T06> *generate(
     } 
 
     break_3: void;
-    LOG("vtx {} {}", current_vertex, vertex_count);
-    LOG("xyz {} {} {}", last_x, last_y, last_z);
+    DBG("vtx {} {}", current_vertex, vertex_count);
+    DBG("xyz {} {} {}", last_x, last_y, last_z);
   }
 
   free(densities_buffer);

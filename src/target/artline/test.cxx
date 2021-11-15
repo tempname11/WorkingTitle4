@@ -14,6 +14,7 @@ float sphere(glm::vec3 position, glm::vec3 center, float radius) {
   return radius - glm::length(position - center);
 }
 
+uint64_t model0_signature = 0x00010000;
 float model0(glm::vec3 position) {
   // return sphere(position, glm::vec3(0.0f), 0.9f);
   return std::min(
@@ -58,7 +59,6 @@ glm::mat4 scaling(float m) {
 DLL_EXPORT DECL_DESCRIBE_FN(describe) {
   lib::array::ensure_space(&desc->models, 1);
   desc->models->data[desc->models->count++] = Model {
-    .unique_index = 0,
     .transform = (
       translation(glm::vec3(15, 15, 15))
         * scaling(10)
@@ -70,8 +70,8 @@ DLL_EXPORT DECL_DESCRIBE_FN(describe) {
     .mesh {
       .density = {
         .type = ModelMesh::Type::Density,
-        .density_fn = model0,
-        .density_fn_version = 0,
+        .fn = model0,
+        .signature = model0_signature,
       },
     },
     .file_path_albedo = lib::cstr::from_static("assets/texture-1px/albedo.png"),
@@ -81,7 +81,6 @@ DLL_EXPORT DECL_DESCRIBE_FN(describe) {
 
   lib::array::ensure_space(&desc->models, 1);
   desc->models->data[desc->models->count++] = Model {
-    .unique_index = 1,
     .transform = id,
     .mesh {
       .file = {
