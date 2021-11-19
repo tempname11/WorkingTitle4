@@ -117,7 +117,7 @@ void _model_end(
   {
     lib::mutex::lock(&load->ready.mutex);
 
-    auto count = model->meshes->count;
+    auto count = model->mesh_ids->count;
     lib::array::ensure_space(&load->ready.scene_items, count);
     for (size_t i = 0; i < count; i++) {
       load->ready.scene_items->data[
@@ -314,8 +314,8 @@ void _generate_meshes(
       key = lib::hash64::from_cstr(it->path);
       break;
     }
-    case ModelMesh::Type::Density: {
-      auto it = &desc_model->mesh.density;
+    case ModelMesh::Type::Gen0: {
+      auto it = &desc_model->mesh.gen0;
       auto h = lib::hash64::begin();
       lib::hash64::add_value(&h, it->signature);
       lib::hash64::add_value(&h, load->dll_id);
@@ -385,10 +385,14 @@ void _generate_meshes(
         );
         break;
       }
-      case ModelMesh::Type::Density: {
-        auto it = &desc_model->mesh.density;
+      case ModelMesh::Type::Gen0: {
+        auto it = &desc_model->mesh.gen0;
 
-        t06_meshes = generate(load->misc, it->fn);
+        t06_meshes = generate(
+          load->misc,
+          it->signed_distance_fn,
+          it->texture_uv_fn
+        );
         break;
       }
       default: {
@@ -566,7 +570,19 @@ void _load_dll(
   load->impl = impl;
 
   {
-    HINSTANCE h_lib = LoadLibrary(load->dll_file_path.start);
+    load->dll_file_path_copy = lib::cstr::copy(load->misc, load->dll_file_path);
+    ((char *)load->dll_file_path_copy.end)[-1] = 'x';
+    {
+      auto result = CopyFile(
+        load->dll_file_path.start,
+        load->dll_file_path_copy.start,
+        false
+      );
+      assert(result != 0);
+    }
+      
+
+    HINSTANCE h_lib = LoadLibrary(load->dll_file_path_copy.start);
     assert(h_lib != nullptr);
 
     auto describe_fn = (DescribeFn *) GetProcAddress(h_lib, "describe");

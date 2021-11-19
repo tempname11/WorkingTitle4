@@ -8,6 +8,7 @@ namespace engine::system::artline {
 struct PerLoadImpl;
 struct PerLoad {
   lib::cstr_range_t dll_file_path;
+  lib::cstr_range_t dll_file_path_copy;
   lib::GUID dll_id;
   lib::Task *yarn_done;
   lib::allocator_t *misc;

@@ -1,4 +1,5 @@
 #pragma once
+#include "_base/allocator.hxx"
 #include "_base/memory_range.hxx"
 
 namespace lib {
@@ -9,5 +10,6 @@ namespace lib {
 namespace lib::cstr {
   cstr_range_t from_static(const char *str);
   cstr_range_t crt_copy(cstr_range_t cstr);
+  cstr_range_t copy(lib::allocator_t *acr, cstr_range_t cstr);
   void crt_free(cstr_range_t cstr);
 }

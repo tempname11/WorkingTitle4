@@ -37,14 +37,13 @@ void reload_all(
 );
 
 using TransformFn = glm::mat4 (double time);
-using DensityFn = float (glm::vec3 position);
-
-// struct Light {}; // @Incomplete
+using SignedDistanceFn = float (glm::vec3 position);
+using TextureUvFn = glm::vec2 (glm::vec3 position, glm::vec3 N);
 
 union ModelMesh {
   enum struct Type {
     File,
-    Density,
+    Gen0,
   };
 
   struct File {
@@ -52,15 +51,16 @@ union ModelMesh {
     lib::cstr_range_t path;
   };
 
-  struct Density {
+  struct Gen0 {
     Type type;
-    DensityFn *fn;
+    SignedDistanceFn *signed_distance_fn;
+    TextureUvFn *texture_uv_fn;
     uint64_t signature;
   };
 
   Type type;
   File file;
-  Density density;
+  Gen0 gen0;
 };
 
 struct Model {
@@ -80,7 +80,8 @@ typedef DECL_DESCRIBE_FN(DescribeFn);
 
 lib::array_t<common::mesh::T06> *generate(
   lib::allocator_t *misc,
-  DensityFn *density_fn
+  SignedDistanceFn *signed_distance_fn,
+  TextureUvFn *texture_uv_fn
 );
 
 } // namespace

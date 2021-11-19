@@ -50,10 +50,12 @@ uint8_t mc_edge_connects[12][2] = {
 
 lib::array_t<T06> *generate(
   lib::allocator_t *misc,
-  DensityFn *density_fn
+  SignedDistanceFn *signed_distance_fn,
+  TextureUvFn *texture_uv_fn
 ) {
   auto cell_size = (grid_max_bounds - grid_min_bounds) / glm::vec3(grid_size);
 
+  // @Cleanup: old name
   auto densities_buffer = (float *) malloc(sizeof(float)
     * (grid_size.x + 1)
     * (grid_size.y + 1)
@@ -75,7 +77,7 @@ lib::array_t<T06> *generate(
           + x
           + y * (grid_size.x + 1)
           + z * (grid_size.x + 1) * (grid_size.y + 1)
-        ] = density_fn(base_position);
+        ] = signed_distance_fn(base_position);
       }
     }
   }
@@ -117,7 +119,6 @@ lib::array_t<T06> *generate(
   size_t last_z = 0;
   while (total_triangles > 0) {
     size_t mesh_triangles = lib::min<size_t>(65536 / 3, total_triangles);
-    DBG("tri {} {}", total_triangles, mesh_triangles);
     total_triangles -= mesh_triangles;
 
     uint32_t vertex_count = checked_integer_cast<uint32_t>(mesh_triangles * 3);
@@ -156,6 +157,8 @@ lib::array_t<T06> *generate(
             + z * grid_size.x * grid_size.y
           ];
           auto tris = lib::gfx::marching_cubes::triangle_count_table[variant];
+          assert(tris <= 5);
+          assert(lib::gfx::marching_cubes::edge_table[variant][3 * tris] == 255);
           for (size_t i = 0; i < 3 * tris; i++) {
             auto edge_index = lib::gfx::marching_cubes::edge_table[variant][i];
             assert(edge_index < 12);
@@ -182,7 +185,7 @@ lib::array_t<T06> *generate(
                     / (abs(d0) + abs(d1))
                 );
                 position = base_position + v * cell_size;
-                d = density_fn(position);
+                d = signed_distance_fn(position);
                 if (abs(d) < SOLVE_EPSILON) {
                   break;
                 }
@@ -196,15 +199,16 @@ lib::array_t<T06> *generate(
               }
             }
 
-            float dx = density_fn(position + cell_size * glm::vec3(normal_epsilon_mult, 0.0f, 0.0f));
-            float dy = density_fn(position + cell_size * glm::vec3(0.0f, normal_epsilon_mult, 0.0f));
-            float dz = density_fn(position + cell_size * glm::vec3(0.0f, 0.0f, normal_epsilon_mult));
+            float dx = signed_distance_fn(position + cell_size * glm::vec3(normal_epsilon_mult, 0.0f, 0.0f));
+            float dy = signed_distance_fn(position + cell_size * glm::vec3(0.0f, normal_epsilon_mult, 0.0f));
+            float dz = signed_distance_fn(position + cell_size * glm::vec3(0.0f, 0.0f, normal_epsilon_mult));
             glm::vec3 N = glm::normalize(glm::vec3(d - dx, d - dy, d - dz));
 
+            auto uv = texture_uv_fn(position, N);
             vertices[current_vertex] = VertexT06 {
               .position = position, 
               .normal = N,
-              // @Incomplete: uv
+              .uv = uv,
             };
             indices[current_vertex] = current_vertex;
             current_vertex++;
@@ -217,16 +221,22 @@ lib::array_t<T06> *generate(
             }
           }
         }
+        last_x = 0;
       }
+      last_y = 0;
     } 
+    last_z = 0;
+    assert(current_vertex == vertex_count);
 
     break_3: void;
-    DBG("vtx {} {}", current_vertex, vertex_count);
-    DBG("xyz {} {} {}", last_x, last_y, last_z);
   }
 
   free(densities_buffer);
   free(variants_buffer);
+
+  auto tmp = result->data[1];
+  result->data[1] = result->data[0];
+  result->data[0] = tmp;
 
   return result;
 }

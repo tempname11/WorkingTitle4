@@ -243,14 +243,10 @@ void main() {
     rayQueryProceedEXT(ray_query_shadow);
     float t_intersection_shadow = rayQueryGetIntersectionTEXT(ray_query_shadow, false);
     if (t_intersection_shadow == 0.0) {
-      result += get_radiance_outgoing(
+      result += get_radiance_outgoing_simple(
         albedo,
-        romeao,
-        NdotV,
         NdotL,
         HdotV,
-        N,
-        H,
         directional_light.irradiance
       );
     }

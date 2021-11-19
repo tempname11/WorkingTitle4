@@ -55,4 +55,22 @@ vec3 get_radiance_outgoing(
   return (kD * albedo / PI + specular) * radiance_incoming * NdotL;
 }
 
+// An attempt to get rid of indirect light "fireflies" from specular component,
+// and also speed things up a bit.
+vec3 get_radiance_outgoing_simple(
+  vec3 albedo,
+  float NdotL,
+  float HdotV,
+  vec3 radiance_incoming
+) {
+  float metallic = 0.0; // @Hack
+  vec3 specular = vec3(0.0);
+
+  vec3 F0 = mix(F0_dielectric, albedo, metallic);
+  vec3 F = F_fresnelSchlick(HdotV, F0);
+  vec3 kD = (1.0 - F) * (1.0 - metallic);
+
+  return (kD * albedo / PI + specular) * radiance_incoming * NdotL;
+}
+
 #endif // _COMMON_LIGHT_MODEL_GLSL_
