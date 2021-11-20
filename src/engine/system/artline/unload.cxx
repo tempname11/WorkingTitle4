@@ -77,7 +77,7 @@ void unload(
     lib::mutex::unlock(&it->mutex);
   }
 
-  auto misc = lib::easy_allocator::create(1024 * 1024 * 1024); // 1 GB
+  auto misc = lib::easy_allocator::create(lib::allocator::GB);
   auto data = lib::allocator::make<PerUnload>(misc);
   *data = {
     .misc = misc,

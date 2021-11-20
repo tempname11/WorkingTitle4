@@ -1,4 +1,5 @@
 #ifdef WINDOWS
+#include <cassert>
 #include <Windows.h>
 
 namespace lib::virtual_memory {
@@ -17,25 +18,29 @@ size_t get_page_size() {
 }
 
 void *reserve(size_t num_pages) {
-  return VirtualAlloc(
+  auto result = VirtualAlloc(
     NULL,
     num_pages * system_info.dwPageSize,
     MEM_RESERVE,
     PAGE_READWRITE
   );
+  assert(result != nullptr);
+  return result;
 }
 
 void commit(void *mem, size_t num_pages) {
-  VirtualAlloc(
+  auto result = VirtualAlloc(
     mem,
     num_pages * system_info.dwPageSize,
     MEM_COMMIT,
     PAGE_READWRITE
   );
+  assert(result != nullptr);
 }
 
 void free(void *mem) {
-  VirtualFree(mem, 0, MEM_RELEASE);
+  auto result = VirtualFree(mem, 0, MEM_RELEASE);
+  assert(result != 0);
 }
 
 } // namespace

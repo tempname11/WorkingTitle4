@@ -41,7 +41,7 @@ void *alloc_fn(
     ((reserved_start_offset + sizeof(reserved_t)) + alignment - 1) / alignment
   );
   auto end_offset = aligned_start_offset + size;
-  auto free_range_end_offset = page_size * it->committed_pages * page_size;
+  auto free_range_end_offset = it->committed_pages * page_size;
 
   if (end_offset > free_range_end_offset) {
     auto added_size = end_offset - free_range_end_offset;

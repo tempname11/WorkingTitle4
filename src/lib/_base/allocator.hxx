@@ -41,6 +41,10 @@ namespace allocator {
   inline void forget(allocator_t *acr, T *ptr) {
     acr->dealloc_fn(acr, (void *) ptr);
   }
+
+  const size_t KB = 1024;
+  const size_t MB = 1024 * KB;
+  const size_t GB = 1024 * MB;
 }
 
 } // namespace

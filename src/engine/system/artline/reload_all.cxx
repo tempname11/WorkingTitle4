@@ -74,7 +74,7 @@ void _reload(
   dll->mesh_keys = nullptr;
   dll->texture_keys = nullptr;
 
-  auto misc = lib::easy_allocator::create(1024 * 1024 * 1024); // 1 GB
+  auto misc = lib::easy_allocator::create(lib::allocator::GB);
   auto data = lib::allocator::make<PerReload>(misc);
   *data = {
     .load = {
