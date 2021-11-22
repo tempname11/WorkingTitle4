@@ -50,6 +50,7 @@ include_directories(
   SYSTEM
   $ENV{CUSTOM_INCLUDE_PATH}
   ${CMAKE_SOURCE_DIR}/submodule/imgui
+  ${CMAKE_SOURCE_DIR}/submodule/qef
   ${CMAKE_SOURCE_DIR}/submodule/glm
   ${CMAKE_SOURCE_DIR}/submodule/tracy
   ${CMAKE_SOURCE_DIR}/submodule/tinygltf
@@ -76,6 +77,7 @@ add_library (
   engine_lib
   STATIC
   "src/impl/global_overload.cxx"
+  "src/impl/qef.cxx"
   "src/impl/log.cxx"
   "src/impl/stb_image.cxx"
   "src/impl/stb_image_write.cxx"

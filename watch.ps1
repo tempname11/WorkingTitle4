@@ -5,7 +5,6 @@ $watcher.NotifyFilter = [IO.NotifyFilters]::Attributes
 
 function OnChange {
   Write-Warning 'Change detected.'
-  Start-Sleep 0.2
   $wshell = New-Object -ComObject wscript.shell;
   $ok = $wshell.AppActivate('WorkingTitleInstance')
   if ($ok) {

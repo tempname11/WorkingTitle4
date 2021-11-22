@@ -580,6 +580,7 @@ void _load_dll(
   {
     load->dll_file_path_copy = lib::cstr::copy(load->misc, load->dll_file_path);
     ((char *)load->dll_file_path_copy.end)[-1] = 'x';
+
     {
       auto result = CopyFile(
         load->dll_file_path.start,
@@ -588,7 +589,6 @@ void _load_dll(
       );
       assert(result != 0);
     }
-      
 
     HINSTANCE h_lib = LoadLibrary(load->dll_file_path_copy.start);
     assert(h_lib != nullptr);

@@ -19,3 +19,6 @@
 [submodule "submodule/nativefiledialog"]
 	path = submodule/nativefiledialog
 	url = https://github.com/mlabbe/nativefiledialog
+[submodule "submodule/qef"]
+	path = submodule/qef
+	url = https://github.com/nickgildea/qef

@@ -1,4 +1,5 @@
 #include <glm/glm.hpp>
+#include <qef_simd.h>
 #include <src/engine/common/mesh.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include "../public.hxx"
@@ -13,18 +14,99 @@ using common::mesh::VertexT06;
 const auto grid_size = glm::uvec3(64);
 const auto grid_min_bounds = glm::vec3(-1.0f);
 const auto grid_max_bounds = glm::vec3(1.0f);
+const auto normal_offset_mult = 0.1f;
+const auto normal_epsilon_mult = 0.01f;
+const auto cell_size = (grid_max_bounds - grid_min_bounds) / glm::vec3(grid_size);
+
+void add_quad(
+  glm::vec3 *positions,
+  lib::array_t<VertexT06> **p_all_vertices,
+  SignedDistanceFn *signed_distance_fn,
+  TextureUvFn *texture_uv_fn
+) {
+  lib::array::ensure_space(p_all_vertices, 6);
+  size_t indices[6] = { 0, 1, 2, 2, 1, 3 };
+  size_t neighbors[6][2] = {
+    { 1, 2 },
+    { 2, 0 },
+    { 0, 1 },
+    { 1, 3 },
+    { 3, 2 },
+    { 2, 1 },
+  };
+  for (size_t i = 0; i < 6; i++) {
+    auto ix = indices[i];
+    auto in = neighbors[i][0];
+    auto im = neighbors[i][1];
+    auto normal = glm::normalize(glm::cross(
+      positions[im] - positions[ix],
+      positions[in] - positions[ix]
+    ));
+    auto tangent = glm::normalize(
+      (positions[im] + positions[in]) * 0.5f
+        - positions[ix]
+    );
+    auto bitangent = glm::cross(normal, tangent);
+    auto e = normal_epsilon_mult;
+    auto offset = cell_size * tangent * normal_offset_mult;
+    float d = signed_distance_fn(positions[ix] + offset);
+    float dt = signed_distance_fn(positions[ix] + offset + cell_size * tangent * e);
+    float db = signed_distance_fn(positions[ix] + offset + cell_size * bitangent * e);
+    float dn = signed_distance_fn(positions[ix] + offset + cell_size * normal * e);
+    auto gradient = glm::normalize(glm::vec3(d - dt, d - db, d - dn));
+    auto surface_normal = (
+      tangent * gradient.x +
+      bitangent * gradient.y +
+      normal * gradient.z
+    );
+    if (glm::dot(surface_normal, normal) <= 0.0f) {
+      surface_normal = normal; // decline
+    }
+
+    auto uv = texture_uv_fn(positions[ix], surface_normal);
+    (*p_all_vertices)->data[(*p_all_vertices)->count++] = VertexT06 {
+      .position = positions[ix],
+      .normal = surface_normal,
+      .uv = uv,
+    };
+  }
+}
+
+glm::vec3 calculate_normal(
+  glm::vec3 p,
+  float d,
+  SignedDistanceFn *signed_distance_fn
+) {
+  auto e = normal_epsilon_mult;
+  float dx = signed_distance_fn(p + cell_size * glm::vec3(e, 0, 0));
+  float dy = signed_distance_fn(p + cell_size * glm::vec3(0, e, 0));
+  float dz = signed_distance_fn(p + cell_size * glm::vec3(0, 0, e));
+  return glm::normalize(glm::vec3(d - dx, d - dy, d - dz));
+}
+
+glm::vec3 calculate_normal(
+  glm::vec3 p,
+  SignedDistanceFn *signed_distance_fn
+) {
+  float d = signed_distance_fn(p);
+  return calculate_normal(p, d, signed_distance_fn);
+}
 
 lib::array_t<T06> *generate_dc_v1(
   lib::allocator_t *misc,
   SignedDistanceFn *signed_distance_fn,
   TextureUvFn *texture_uv_fn
 ) {
-  auto cell_size = (grid_max_bounds - grid_min_bounds) / glm::vec3(grid_size);
-
   auto evals_buffer = (float *) malloc(sizeof(float)
     * (grid_size.x + 1)
     * (grid_size.y + 1)
     * (grid_size.z + 1)
+  );
+
+  auto points_buffer = (glm::vec3 *) malloc(sizeof(glm::vec3)
+    * grid_size.x
+    * grid_size.y
+    * grid_size.z
   );
 
   for (size_t z = 0; z < grid_size.z + 1; z++) {
@@ -33,11 +115,110 @@ lib::array_t<T06> *generate_dc_v1(
         auto base_position = (
           grid_min_bounds + cell_size * glm::vec3(x, y, z)
         );
+        auto e = signed_distance_fn(base_position);
+        if (e == 0) {
+          e = -0.00001f; // @Hack for perfect hits
+        }
         evals_buffer[0
           + x
           + y * (grid_size.x + 1)
           + z * (grid_size.x + 1) * (grid_size.y + 1)
-        ] = signed_distance_fn(base_position);
+        ] = e;
+      }
+    }
+  }
+
+  for (size_t z = 0; z < grid_size.z; z++) {
+    for (size_t y = 0; y < grid_size.y; y++) {
+      for (size_t x = 0; x < grid_size.x; x++) {
+        size_t count = 0;
+        glm::vec3 cube_positions[12];
+        glm::vec3 normals[12];
+
+        glm::vec3 axes[] = {
+          glm::vec3(1, 0, 0),
+          glm::vec3(0, 1, 0),
+          glm::vec3(0, 0, 1),
+        };
+
+        // find all edges with sign change, add their interpolated 0-positions
+        // into a list, along with normal.
+        for (size_t k = 0; k < 3; k++) {
+          for (size_t i = 0; i < 2; i++) {
+            for (size_t j = 0; j < 2; j++) {
+              glm::vec3 p0 = (
+                float(i) * axes[(k + 1) % 3] +
+                float(j) * axes[(k + 2) % 3]
+              );
+              glm::vec3 p1 = p0 + axes[k];
+              auto e0 = evals_buffer[0
+                + (x + int(p0.x))
+                + (y + int(p0.y)) * (grid_size.x + 1)
+                + (z + int(p0.z)) * (grid_size.x + 1) * (grid_size.y + 1)
+              ];
+              auto e1 = evals_buffer[0
+                + (x + int(p1.x))
+                + (y + int(p1.y)) * (grid_size.x + 1)
+                + (z + int(p1.z)) * (grid_size.x + 1) * (grid_size.y + 1)
+              ];
+              if (e0 * e1 <= 0) {
+                glm::vec3 p;
+                for (size_t r = 0; r < 4; r++) {
+                  p = (
+                    abs(e1) * p0 +
+                    abs(e0) * p1
+                  ) / (abs(e0) + abs(e1));
+                  auto e = signed_distance_fn(
+                    grid_min_bounds +
+                    cell_size * (glm::vec3(x, y, z) + p)
+                  );
+                  if (e == 0) {
+                    break;
+                  } else if (e0 * e > 0) {
+                    e0 = e;
+                    p0 = p;
+                  } else {
+                    e1 = e;
+                    p1 = p;
+                  }
+                }
+                cube_positions[count] = p;
+                normals[count] = calculate_normal(
+                  grid_min_bounds + cell_size * (glm::vec3(x, y, z) + p),
+                  signed_distance_fn
+                );
+                count++;
+              }
+            }
+          }
+        }
+
+        if (count > 0) {
+          #if 1
+            glm::vec3 solution;
+            qef_solve_from_points_3d(
+              (float *) cube_positions,
+              (float *) normals,
+              count,
+              (float *) &solution
+            );
+
+            // solution = glm::clamp(solution, glm::vec3(0), glm::vec3(1));
+            // Do we really need to clamp `solution`? @Think
+          #else
+            auto solution = glm::vec3(0);
+            for (size_t i = 0; i < count; i++) {
+              solution += cube_positions[i];
+            }
+            solution /= count;
+          #endif
+
+          points_buffer[0
+            + x
+            + y * grid_size.x
+            + z * grid_size.x * grid_size.y
+          ] = grid_min_bounds + cell_size * (glm::vec3(x, y, z) + solution);
+        }
       }
     }
   }
@@ -47,9 +228,9 @@ lib::array_t<T06> *generate_dc_v1(
     0
   );
 
-  for (size_t z = 0; z < grid_size.z; z++) {
-    for (size_t y = 0; y < grid_size.y; y++) {
-      for (size_t x = 0; x < grid_size.x; x++) {
+  for (size_t z = 1; z < grid_size.z; z++) { // @Think: 1?
+    for (size_t y = 1; y < grid_size.y; y++) {
+      for (size_t x = 1; x < grid_size.x; x++) {
         auto i0 = (0
           + x * 1
           + y * (grid_size.x + 1)
@@ -60,82 +241,65 @@ lib::array_t<T06> *generate_dc_v1(
         float ey = evals_buffer[i0 + (grid_size.x + 1)];
         float ez = evals_buffer[i0 + (grid_size.x + 1) * (grid_size.y + 1)];
         if (e0 * ex <= 0) {
-          lib::array::ensure_space(&all_vertices, 4);
-          auto sign = e0 >= 0 ? 1 : -1;
+          auto sign = e0 <= 0 ? -1 : 1;
+          glm::vec3 positions[4];
           for (size_t i = 0; i < 2; i++) {
             for (size_t j = 0; j < 2; j++) {
-              auto position = grid_min_bounds + cell_size * glm::vec3(
-                x + 0.5,
-                y + sign * (i - 0.5),
-                z + (j - 0.5)
-              );
-              auto normal = glm::vec3(sign, 0, 0);
-              auto uv = texture_uv_fn(position, normal);
-              all_vertices->data[all_vertices->count++] = VertexT06 {
-                .position = position,
-                .normal = normal,
-                .uv = uv,
-              };
+              positions[j + 2 * i] = points_buffer[0
+                + x
+                + (y + (sign > 0 ? i - 1 : 0 - i)) * grid_size.x
+                + (z + j - 1) * grid_size.x * grid_size.y
+              ];
             }
           }
+          add_quad(positions, &all_vertices, signed_distance_fn, texture_uv_fn);
         }
         if (e0 * ey <= 0) {
-          lib::array::ensure_space(&all_vertices, 4);
-          auto sign = e0 >= 0 ? 1 : -1;
+          auto sign = e0 <= 0 ? -1 : 1;
+          glm::vec3 positions[4];
           for (size_t i = 0; i < 2; i++) {
             for (size_t j = 0; j < 2; j++) {
-              auto position = grid_min_bounds + cell_size * glm::vec3(
-                x + (j - 0.5),
-                y + 0.5,
-                z + sign * (i - 0.5)
-              );
-              auto normal = glm::vec3(0, sign, 0);
-              auto uv = texture_uv_fn(position, normal);
-              all_vertices->data[all_vertices->count++] = VertexT06 {
-                .position = position,
-                .normal = normal,
-                .uv = uv,
-              };
+              positions[j + 2 * i] = points_buffer[0
+                + (x + j - 1)
+                + y * grid_size.x
+                + (z + (sign > 0 ? i - 1 : 0 - i)) * grid_size.x * grid_size.y
+              ];
             }
           }
+          add_quad(positions, &all_vertices, signed_distance_fn, texture_uv_fn);
         }
         if (e0 * ez <= 0) {
-          lib::array::ensure_space(&all_vertices, 4);
-          auto sign = e0 >= 0 ? 1 : -1;
+          auto sign = e0 <= 0 ? -1 : 1;
+          glm::vec3 positions[4];
           for (size_t i = 0; i < 2; i++) {
             for (size_t j = 0; j < 2; j++) {
-              auto position = grid_min_bounds + cell_size * glm::vec3(
-                x + sign * (i - 0.5),
-                y + (j - 0.5),
-                z + 0.5
-              );
-              auto normal = glm::vec3(0, 0, sign);
-              auto uv = texture_uv_fn(position, normal);
-              all_vertices->data[all_vertices->count++] = VertexT06 {
-                .position = position,
-                .normal = normal,
-                .uv = uv,
-              };
+              positions[j + 2 * i] = points_buffer[0
+                + (x + (sign > 0 ? i - 1 : 0 - i))
+                + (y + j - 1) * grid_size.x
+                + z * grid_size.x * grid_size.y
+              ];
             }
           }
+          add_quad(positions, &all_vertices, signed_distance_fn, texture_uv_fn);
         }
       }
     }
   }
 
+  // 65532 is largest uint16 divisible by 6.
   auto result = lib::array::create<common::mesh::T06>(
     misc,
-    (all_vertices->count + 65536 - 1) / 65536
+    (all_vertices->count + 65532 - 1) / 65532
   );
 
   size_t vertices_processed = 0;
   while (vertices_processed < all_vertices->count) {
     uint32_t vertex_count = lib::min<size_t>(
-      65536,
+      65532,
       all_vertices->count - vertices_processed
     );
-    assert(vertex_count % 4 == 0); // quads
-    uint32_t quad_count = vertex_count / 4;
+    assert(vertex_count % 6 == 0); // quads
+    uint32_t quad_count = vertex_count / 6;
     uint32_t index_count = quad_count * 6;
 
     auto indices_size = index_count * sizeof(IndexT06);
@@ -153,12 +317,12 @@ lib::array_t<T06> *generate_dc_v1(
       vertices[i] = all_vertices->data[vertices_processed + i];
     }
     for (size_t i = 0; i < quad_count; i++) {
-      indices[6 * i + 0] = 4 * i + 0;
-      indices[6 * i + 1] = 4 * i + 1;
-      indices[6 * i + 2] = 4 * i + 2;
-      indices[6 * i + 3] = 4 * i + 2;
-      indices[6 * i + 4] = 4 * i + 1;
-      indices[6 * i + 5] = 4 * i + 3;
+      indices[6 * i + 0] = 6 * i + 0;
+      indices[6 * i + 1] = 6 * i + 1;
+      indices[6 * i + 2] = 6 * i + 2;
+      indices[6 * i + 3] = 6 * i + 3;
+      indices[6 * i + 4] = 6 * i + 4;
+      indices[6 * i + 5] = 6 * i + 5;
     }
 
     result->data[result->count++] = T06 {
@@ -174,6 +338,7 @@ lib::array_t<T06> *generate_dc_v1(
   lib::array::destroy(all_vertices);
 
   free(evals_buffer);
+  free(points_buffer);
 
   return result;
 }

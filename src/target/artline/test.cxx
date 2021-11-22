@@ -10,14 +10,25 @@ using namespace engine::system::artline;
 
 glm::mat4 id = glm::mat4(1.0f);
 
+float cube(glm::vec3 position, glm::vec3 center, float halfwidth) {
+  return (
+    lib::min(
+      lib::min(
+        halfwidth - abs(position.x - center.x),
+        halfwidth - abs(position.y - center.y)
+      ),
+      halfwidth - abs(position.z - center.z)
+    )
+  );
+}
 float sphere(glm::vec3 position, glm::vec3 center, float radius) {
   return radius - glm::length(position - center);
 }
 
 uint64_t model0_signature = 0x0001002;
 float model0_signed_distance(glm::vec3 position) {
-  return std::min(
-    std::min(
+  return lib::min(
+    lib::min(
       sphere(
         position,
         glm::vec3(0.0f),
@@ -26,7 +37,7 @@ float model0_signed_distance(glm::vec3 position) {
       -sphere(
         position,
         glm::vec3(0.0f),
-        0.8
+        0.5
       )
     ),
     position.z
@@ -73,7 +84,7 @@ DLL_EXPORT DECL_DESCRIBE_FN(describe) {
   desc->models->data[desc->models->count++] = Model {
     .transform = (
       translation(glm::vec3(15, 15, 15))
-        * scaling(100)
+        * scaling(10)
         * rotation(
           0.5,
           glm::vec3(0, 1, 0)
