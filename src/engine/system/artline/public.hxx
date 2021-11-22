@@ -78,10 +78,4 @@ struct Description {
 #define DECL_DESCRIBE_FN(name) void name(engine::system::artline::Description *desc)
 typedef DECL_DESCRIBE_FN(DescribeFn);
 
-lib::array_t<common::mesh::T06> *generate(
-  lib::allocator_t *misc,
-  SignedDistanceFn *signed_distance_fn,
-  TextureUvFn *texture_uv_fn
-);
-
 } // namespace

@@ -70,4 +70,16 @@ void _unload_assets(
   Ref<session::Data> session
 );
 
+lib::array_t<common::mesh::T06> *generate_mc_v0(
+  lib::allocator_t *misc,
+  SignedDistanceFn *signed_distance_fn,
+  TextureUvFn *texture_uv_fn
+);
+
+lib::array_t<common::mesh::T06> *generate_dc_v1(
+  lib::allocator_t *misc,
+  SignedDistanceFn *signed_distance_fn,
+  TextureUvFn *texture_uv_fn
+);
+
 } // namespace

@@ -388,11 +388,19 @@ void _generate_meshes(
       case ModelMesh::Type::Gen0: {
         auto it = &desc_model->mesh.gen0;
 
-        t06_meshes = generate(
-          load->misc,
-          it->signed_distance_fn,
-          it->texture_uv_fn
-        );
+        #if 0
+          t06_meshes = generate_mc_v0(
+            load->misc,
+            it->signed_distance_fn,
+            it->texture_uv_fn
+          );
+        #else
+          t06_meshes = generate_dc_v1(
+            load->misc,
+            it->signed_distance_fn,
+            it->texture_uv_fn
+          );
+        #endif
         break;
       }
       default: {

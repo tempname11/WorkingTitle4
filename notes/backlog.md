@@ -1,3 +1,6 @@
+# intermittent bugs
+- [21-11-22] "cannot free VkBuffer that is in use by a command buffer"
+
 # missing features
 - Need proper support for multiple lights. :ManyLights
 

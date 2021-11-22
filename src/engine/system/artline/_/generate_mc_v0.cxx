@@ -2,7 +2,7 @@
 #include <src/engine/common/mesh.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include <src/lib/gfx/marching_cubes.hxx>
-#include "public.hxx"
+#include "../public.hxx"
 
 namespace engine::system::artline {
 
@@ -48,7 +48,7 @@ uint8_t mc_edge_connects[12][2] = {
 };
 
 
-lib::array_t<T06> *generate(
+lib::array_t<T06> *generate_mc_v0(
   lib::allocator_t *misc,
   SignedDistanceFn *signed_distance_fn,
   TextureUvFn *texture_uv_fn

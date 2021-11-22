@@ -74,12 +74,10 @@ DLL_EXPORT DECL_DESCRIBE_FN(describe) {
     .transform = (
       translation(glm::vec3(15, 15, 15))
         * scaling(100)
-        /*
         * rotation(
-          0.25,
+          0.5,
           glm::vec3(0, 1, 0)
         )
-        */
     ),
     .mesh {
       .gen0 = {
