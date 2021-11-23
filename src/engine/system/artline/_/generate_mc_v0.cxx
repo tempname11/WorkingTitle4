@@ -108,7 +108,6 @@ lib::array_t<T06> *generate_mc_v0(
     }
   } 
 
-  //assert(vertex_count < 65536); // @Incomplete: many meshes
   auto result = lib::array::create<common::mesh::T06>(
     misc,
     1 + total_triangles * 3 / 65536

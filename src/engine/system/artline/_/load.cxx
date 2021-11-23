@@ -287,14 +287,15 @@ void _after_pending_meshes(
   Ref<session::Data> session
 ) {
   ZoneScoped;
-  lib::lifetime::deref(&model->complete, ctx->runner);
   {
     auto a = &session->artline;
     lib::mutex::lock(&a->mutex);
     auto hit = lib::u64_table::lookup(a->meshes_by_key, model->mesh_key);
     assert(hit != nullptr);
     model->mesh_ids = hit->mesh_ids;
+    lib::mutex::unlock(&a->mutex);
   }
+  lib::lifetime::deref(&model->complete, ctx->runner);
 }
 
 void _generate_meshes(
@@ -362,11 +363,19 @@ void _generate_meshes(
         model->mesh_ids = hit->mesh_ids;
         lib::lifetime::deref(&model->complete, ctx->runner);
       } else {
-        ctx->new_tasks.push_back(lib::task::create(
+        auto task = lib::task::create(
           _after_pending_meshes,
           model.ptr,
           session.ptr
-        ));
+        );
+
+        ctx->new_tasks.push_back(task);
+
+        ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
+          { hit->pending, task },
+        });
+
+        lib::task::inject_pending(ctx); // still under mutex
       }
     }
     lib::mutex::unlock(&a->mutex);
@@ -398,7 +407,8 @@ void _generate_meshes(
           t06_meshes = generate_dc_v1(
             load->misc,
             it->signed_distance_fn,
-            it->texture_uv_fn
+            it->texture_uv_fn,
+            &it->params
           );
         #endif
         break;
@@ -518,15 +528,15 @@ void _begin_model(
   });
 
   model->textures->data[0] = {
-    .file_path = desc_model->file_path_albedo,
+    .file_path = desc_model->material.file_path_albedo,
     .format = engine::common::texture::ALBEDO_TEXTURE_FORMAT,
   };
   model->textures->data[1] = {
-    .file_path = desc_model->file_path_normal,
+    .file_path = desc_model->material.file_path_normal,
     .format = engine::common::texture::NORMAL_TEXTURE_FORMAT,
   };
   model->textures->data[2] = {
-    .file_path = desc_model->file_path_romeao,
+    .file_path = desc_model->material.file_path_romeao,
     .format = engine::common::texture::ROMEAO_TEXTURE_FORMAT,
   };
 
@@ -587,7 +597,11 @@ void _load_dll(
         load->dll_file_path_copy.start,
         false
       );
-      assert(result != 0);
+
+      if (result == 0) {
+        auto error = GetLastError();
+        LOG("CopyFile error: {}", error);
+      }
     }
 
     HINSTANCE h_lib = LoadLibrary(load->dll_file_path_copy.start);

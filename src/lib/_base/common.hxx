@@ -18,4 +18,6 @@ namespace lib {
   T max(T a, T b) {
     return a > b ? a : b;
   }
+
+  const double PI = 3.14159265358979323846;
 }

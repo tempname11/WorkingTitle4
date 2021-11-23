@@ -149,3 +149,10 @@ add_library(
   "src/target/artline/test.cxx"
 )
 target_link_libraries(test.art PRIVATE engine_lib)
+
+add_library(
+  temple.art
+  SHARED
+  "src/target/artline/temple.cxx"
+)
+target_link_libraries(temple.art PRIVATE engine_lib)

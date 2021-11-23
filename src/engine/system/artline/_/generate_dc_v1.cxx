@@ -10,20 +10,16 @@ using common::mesh::T06;
 using common::mesh::IndexT06;
 using common::mesh::VertexT06;
 
-// @Incomplete: move to parameters
-const auto grid_size = glm::uvec3(64);
-const auto grid_min_bounds = glm::vec3(-1.0f);
-const auto grid_max_bounds = glm::vec3(1.0f);
-const auto normal_offset_mult = 0.1f;
-const auto normal_epsilon_mult = 0.01f;
-const auto cell_size = (grid_max_bounds - grid_min_bounds) / glm::vec3(grid_size);
-
 void add_quad(
   glm::vec3 *positions,
   lib::array_t<VertexT06> **p_all_vertices,
   SignedDistanceFn *signed_distance_fn,
-  TextureUvFn *texture_uv_fn
+  TextureUvFn *texture_uv_fn,
+  DualContouringParams *params
 ) {
+  const auto cell_size = (
+    params->grid_max_bounds - params->grid_min_bounds
+  ) / glm::vec3(params->grid_size);
   lib::array::ensure_space(p_all_vertices, 6);
   size_t indices[6] = { 0, 1, 2, 2, 1, 3 };
   size_t neighbors[6][2] = {
@@ -47,8 +43,8 @@ void add_quad(
         - positions[ix]
     );
     auto bitangent = glm::cross(normal, tangent);
-    auto e = normal_epsilon_mult;
-    auto offset = cell_size * tangent * normal_offset_mult;
+    auto e = params->normal_epsilon_mult;
+    auto offset = cell_size * tangent * params->normal_offset_mult;
     float d = signed_distance_fn(positions[ix] + offset);
     float dt = signed_distance_fn(positions[ix] + offset + cell_size * tangent * e);
     float db = signed_distance_fn(positions[ix] + offset + cell_size * bitangent * e);
@@ -72,37 +68,22 @@ void add_quad(
   }
 }
 
-glm::vec3 calculate_normal(
-  glm::vec3 p,
-  float d,
-  SignedDistanceFn *signed_distance_fn
-) {
-  auto e = normal_epsilon_mult;
-  float dx = signed_distance_fn(p + cell_size * glm::vec3(e, 0, 0));
-  float dy = signed_distance_fn(p + cell_size * glm::vec3(0, e, 0));
-  float dz = signed_distance_fn(p + cell_size * glm::vec3(0, 0, e));
-  return glm::normalize(glm::vec3(d - dx, d - dy, d - dz));
-}
-
-glm::vec3 calculate_normal(
-  glm::vec3 p,
-  SignedDistanceFn *signed_distance_fn
-) {
-  float d = signed_distance_fn(p);
-  return calculate_normal(p, d, signed_distance_fn);
-}
-
 lib::array_t<T06> *generate_dc_v1(
   lib::allocator_t *misc,
   SignedDistanceFn *signed_distance_fn,
-  TextureUvFn *texture_uv_fn
+  TextureUvFn *texture_uv_fn,
+  DualContouringParams *params
 ) {
+  const auto cell_size = (
+    params->grid_max_bounds - params->grid_min_bounds
+  ) / glm::vec3(params->grid_size);
+  const auto grid_size = params->grid_size;
+
   auto evals_buffer = (float *) malloc(sizeof(float)
     * (grid_size.x + 1)
     * (grid_size.y + 1)
     * (grid_size.z + 1)
   );
-
   auto points_buffer = (glm::vec3 *) malloc(sizeof(glm::vec3)
     * grid_size.x
     * grid_size.y
@@ -113,7 +94,7 @@ lib::array_t<T06> *generate_dc_v1(
     for (size_t y = 0; y < grid_size.y + 1; y++) {
       for (size_t x = 0; x < grid_size.x + 1; x++) {
         auto base_position = (
-          grid_min_bounds + cell_size * glm::vec3(x, y, z)
+          params->grid_min_bounds + cell_size * glm::vec3(x, y, z)
         );
         auto e = signed_distance_fn(base_position);
         if (e == 0) {
@@ -151,42 +132,47 @@ lib::array_t<T06> *generate_dc_v1(
                 float(j) * axes[(k + 2) % 3]
               );
               glm::vec3 p1 = p0 + axes[k];
-              auto e0 = evals_buffer[0
+              auto d0 = evals_buffer[0
                 + (x + int(p0.x))
                 + (y + int(p0.y)) * (grid_size.x + 1)
                 + (z + int(p0.z)) * (grid_size.x + 1) * (grid_size.y + 1)
               ];
-              auto e1 = evals_buffer[0
+              auto d1 = evals_buffer[0
                 + (x + int(p1.x))
                 + (y + int(p1.y)) * (grid_size.x + 1)
                 + (z + int(p1.z)) * (grid_size.x + 1) * (grid_size.y + 1)
               ];
-              if (e0 * e1 <= 0) {
-                glm::vec3 p;
+              if (d0 * d1 <= 0) {
+                glm::vec3 p; // on cube
+                float d;
+                glm::vec3 pos;
                 for (size_t r = 0; r < 4; r++) {
                   p = (
-                    abs(e1) * p0 +
-                    abs(e0) * p1
-                  ) / (abs(e0) + abs(e1));
-                  auto e = signed_distance_fn(
-                    grid_min_bounds +
+                    abs(d1) * p0 +
+                    abs(d0) * p1
+                  ) / (abs(d0) + abs(d1));
+                  pos = (
+                    params->grid_min_bounds +
                     cell_size * (glm::vec3(x, y, z) + p)
                   );
-                  if (e == 0) {
+                  d = signed_distance_fn(pos);
+                  if (d == 0) {
                     break;
-                  } else if (e0 * e > 0) {
-                    e0 = e;
+                  } else if (d0 * d > 0) {
+                    d0 = d;
                     p0 = p;
                   } else {
-                    e1 = e;
+                    d1 = d;
                     p1 = p;
                   }
                 }
+                auto e = params->normal_epsilon_mult;
+                float dx = signed_distance_fn(pos + cell_size * glm::vec3(e, 0, 0));
+                float dy = signed_distance_fn(pos + cell_size * glm::vec3(0, e, 0));
+                float dz = signed_distance_fn(pos + cell_size * glm::vec3(0, 0, e));
+
                 cube_positions[count] = p;
-                normals[count] = calculate_normal(
-                  grid_min_bounds + cell_size * (glm::vec3(x, y, z) + p),
-                  signed_distance_fn
-                );
+                normals[count] = glm::normalize(glm::vec3(d - dx, d - dy, d - dz));
                 count++;
               }
             }
@@ -194,30 +180,24 @@ lib::array_t<T06> *generate_dc_v1(
         }
 
         if (count > 0) {
-          #if 1
-            glm::vec3 solution;
-            qef_solve_from_points_3d(
-              (float *) cube_positions,
-              (float *) normals,
-              count,
-              (float *) &solution
-            );
-
-            // solution = glm::clamp(solution, glm::vec3(0), glm::vec3(1));
-            // Do we really need to clamp `solution`? @Think
-          #else
-            auto solution = glm::vec3(0);
-            for (size_t i = 0; i < count; i++) {
-              solution += cube_positions[i];
-            }
-            solution /= count;
-          #endif
-
+          glm::vec3 solution;
+          qef_solve_from_points_3d(
+            (float *) cube_positions,
+            (float *) normals,
+            count,
+            (float *) &solution
+          );
+          if (params->clamp_qef) {
+            solution = glm::clamp(solution, glm::vec3(0), glm::vec3(1));
+          }
           points_buffer[0
             + x
             + y * grid_size.x
             + z * grid_size.x * grid_size.y
-          ] = grid_min_bounds + cell_size * (glm::vec3(x, y, z) + solution);
+          ] = (
+            params->grid_min_bounds +
+            cell_size * (glm::vec3(x, y, z) + solution)
+          );
         }
       }
     }
@@ -228,11 +208,11 @@ lib::array_t<T06> *generate_dc_v1(
     0
   );
 
-  for (size_t z = 1; z < grid_size.z; z++) { // @Think: 1?
-    for (size_t y = 1; y < grid_size.y; y++) {
-      for (size_t x = 1; x < grid_size.x; x++) {
+  for (size_t z = 0; z < grid_size.z; z++) {
+    for (size_t y = 0; y < grid_size.y; y++) {
+      for (size_t x = 0; x < grid_size.x; x++) {
         auto i0 = (0
-          + x * 1
+          + x
           + y * (grid_size.x + 1)
           + z * (grid_size.x + 1) * (grid_size.y + 1)
         );
@@ -240,21 +220,26 @@ lib::array_t<T06> *generate_dc_v1(
         float ex = evals_buffer[i0 + 1];
         float ey = evals_buffer[i0 + (grid_size.x + 1)];
         float ez = evals_buffer[i0 + (grid_size.x + 1) * (grid_size.y + 1)];
-        if (e0 * ex <= 0) {
+        if (e0 * ex <= 0 && y > 0 && z > 0) {
           auto sign = e0 <= 0 ? -1 : 1;
           glm::vec3 positions[4];
           for (size_t i = 0; i < 2; i++) {
             for (size_t j = 0; j < 2; j++) {
               positions[j + 2 * i] = points_buffer[0
                 + x
-                + (y + (sign > 0 ? i - 1 : 0 - i)) * grid_size.x
+                + (y + (sign > 0 ? i : 1 - i) - 1) * grid_size.x
                 + (z + j - 1) * grid_size.x * grid_size.y
               ];
             }
           }
-          add_quad(positions, &all_vertices, signed_distance_fn, texture_uv_fn);
+          add_quad(
+            positions,
+            &all_vertices,
+            signed_distance_fn,
+            texture_uv_fn, params
+          );
         }
-        if (e0 * ey <= 0) {
+        if (e0 * ey <= 0 && z > 0 && x > 0) {
           auto sign = e0 <= 0 ? -1 : 1;
           glm::vec3 positions[4];
           for (size_t i = 0; i < 2; i++) {
@@ -262,25 +247,35 @@ lib::array_t<T06> *generate_dc_v1(
               positions[j + 2 * i] = points_buffer[0
                 + (x + j - 1)
                 + y * grid_size.x
-                + (z + (sign > 0 ? i - 1 : 0 - i)) * grid_size.x * grid_size.y
+                + (z + (sign > 0 ? i : 1 - i) - 1) * grid_size.x * grid_size.y
               ];
             }
           }
-          add_quad(positions, &all_vertices, signed_distance_fn, texture_uv_fn);
+          add_quad(
+            positions,
+            &all_vertices,
+            signed_distance_fn,
+            texture_uv_fn, params
+          );
         }
-        if (e0 * ez <= 0) {
+        if (e0 * ez <= 0 && x > 0 && y > 0) {
           auto sign = e0 <= 0 ? -1 : 1;
           glm::vec3 positions[4];
           for (size_t i = 0; i < 2; i++) {
             for (size_t j = 0; j < 2; j++) {
               positions[j + 2 * i] = points_buffer[0
-                + (x + (sign > 0 ? i - 1 : 0 - i))
+                + (x + (sign > 0 ? i : 1 - i) - 1)
                 + (y + j - 1) * grid_size.x
                 + z * grid_size.x * grid_size.y
               ];
             }
           }
-          add_quad(positions, &all_vertices, signed_distance_fn, texture_uv_fn);
+          add_quad(
+            positions,
+            &all_vertices,
+            signed_distance_fn,
+            texture_uv_fn, params
+          );
         }
       }
     }

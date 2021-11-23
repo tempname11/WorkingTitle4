@@ -1,32 +1,44 @@
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/constants.hpp>
-#include <src/global.hxx>
 #include <src/engine/system/artline/public.hxx>
-
-#define DLL_EXPORT extern "C" __declspec(dllexport)
+#include <src/engine/system/artline/helpers.hxx>
+#include <src/engine/system/artline/materials.hxx>
 
 using namespace engine::system::artline;
 
-glm::mat4 id = glm::mat4(1.0f);
+DualContouringParams default_params = {
+  .grid_size = glm::uvec3(1), // override this
+  .grid_min_bounds = glm::vec3(-1.0f),
+  .grid_max_bounds = glm::vec3(1.0f),
+  .normal_offset_mult = 0.1f,
+  .normal_epsilon_mult = 0.01f,
+};
 
-float cube(glm::vec3 position, glm::vec3 center, float halfwidth) {
-  return (
-    lib::min(
-      lib::min(
-        halfwidth - abs(position.x - center.x),
-        halfwidth - abs(position.y - center.y)
-      ),
-      halfwidth - abs(position.z - center.z)
-    )
+glm::vec3 cork(glm::vec3 position) {
+  auto f = 4.0f;
+  auto p = f * position.z;
+  return glm::vec3(
+    position.x * sin(p) + position.y * cos(p),
+    position.y * sin(p) - position.x * cos(p),
+    position.z
   );
 }
-float sphere(glm::vec3 position, glm::vec3 center, float radius) {
-  return radius - glm::length(position - center);
+
+float cube_sd(glm::vec3 position) {
+  return cube(
+    position,
+    glm::vec3(0.0f),
+    1.0f
+  );
 }
 
-uint64_t model0_signature = 0x0001002;
-float model0_signed_distance(glm::vec3 position) {
+float model1_sd(glm::vec3 position) {
+  return cube(
+    cork(position),
+    glm::vec3(0.0f),
+    0.5f
+  );
+}
+
+float model2_sd(glm::vec3 position) {
   return lib::min(
     lib::min(
       sphere(
@@ -37,80 +49,67 @@ float model0_signed_distance(glm::vec3 position) {
       -sphere(
         position,
         glm::vec3(0.0f),
-        0.5
+        0.8
       )
     ),
     position.z
   );
 }
 
-glm::vec2 model0_texture_uv(glm::vec3 position, glm::vec3 N) {
-  auto s = position;
-  auto r = glm::length(glm::vec2(s.x, s.y));
-  auto dir = glm::normalize(glm::vec2(s.x, s.y));
-  auto t = glm::atan(r, glm::abs(s.z)) / (0.5f * glm::pi<float>());
-
-  return glm::mix(
-    0.5f + 0.5f * (dir * t),
-    0.5f + 0.5f * (dir * r),
-    abs(N.z)
-  );
-}
-
-glm::mat4 rotation(float turns, glm::vec3 axis) {
-  return glm::rotate(id, glm::pi<float>() * 2.0f * turns, axis);
-}
-
-glm::mat4 translation(glm::vec3 t) {
-  return glm::mat4(
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    t.x, t.y, t.z, 1
-  );
-}
-
-glm::mat4 scaling(float m) {
-  return glm::mat4(
-    m, 0, 0, 0,
-    0, m, 0, 0,
-    0, 0, m, 0,
-    0, 0, 0, 1
-  );
-}
-
 DLL_EXPORT DECL_DESCRIBE_FN(describe) {
-  lib::array::ensure_space(&desc->models, 1);
-  desc->models->data[desc->models->count++] = Model {
-    .transform = (
-      translation(glm::vec3(15, 15, 15))
-        * scaling(10)
-        * rotation(
-          0.5,
-          glm::vec3(0, 1, 0)
-        )
-    ),
-    .mesh {
-      .gen0 = {
-        .type = ModelMesh::Type::Gen0,
-        .signed_distance_fn = model0_signed_distance,
-        .texture_uv_fn = model0_texture_uv,
-        .signature = model0_signature,
-      },
-    },
-    /*
-    .file_path_albedo = lib::cstr::from_static("assets/ambientcg/Marble020_4K-PNG/Marble020_4K_Color.png"),
-    .file_path_normal = lib::cstr::from_static("assets/ambientcg/Marble020_4K-PNG/Marble020_4K_NormalGL.png"),
-    .file_path_romeao = lib::cstr::from_static("assets/ambientcg/Marble020_4K-PNG/Marble020_4K_Roughness.png"),
+  if (1) {
+    auto params = default_params;
+    params.grid_size = glm::uvec3(64);
 
-    .file_path_albedo = lib::cstr::from_static("assets/ambientcg/Terrazzo009_8K-PNG/Terrazzo009_8K_Color.png"),
-    .file_path_normal = lib::cstr::from_static("assets/ambientcg/Terrazzo009_8K-PNG/Terrazzo009_8K_NormalGL.png"),
-    .file_path_romeao = lib::cstr::from_static("assets/ambientcg/Terrazzo009_8K-PNG/Terrazzo009_8K_Roughness.png"),
-    */
-    .file_path_albedo = lib::cstr::from_static("assets/ambientcg/Terrazzo009_8K-JPG/Terrazzo009_8K_Color.jpg"),
-    .file_path_normal = lib::cstr::from_static("assets/ambientcg/Terrazzo009_8K-JPG/Terrazzo009_8K_NormalGL.jpg"),
-    .file_path_romeao = lib::cstr::from_static("assets/ambientcg/Terrazzo009_8K-JPG/Terrazzo009_8K_Roughness.jpg"),
-  };
+    lib::array::ensure_space(&desc->models, 1);
+    desc->models->data[desc->models->count++] = Model {
+      .transform = (
+        translation(glm::vec3(15, 15, 15))
+          * scaling(10)
+          * rotation(
+            0.5,
+            glm::vec3(0, 1, 0)
+          )
+      ),
+      .mesh {
+        .gen0 = {
+          .type = ModelMesh::Type::Gen0,
+          .signed_distance_fn = model1_sd,
+          .texture_uv_fn = triplanar_texture_uv,
+          .params = params,
+          .signature = 0x1001003,
+        },
+      },
+      .material = materials::ambientcg::Terrazzo009,
+    };
+  }
+
+  if (1) {
+    auto params = default_params;
+    params.grid_size = glm::uvec3(64);
+
+    lib::array::ensure_space(&desc->models, 1);
+    desc->models->data[desc->models->count++] = Model {
+      .transform = (
+        translation(glm::vec3(15, 15, 15))
+          * scaling(100)
+          * rotation(
+            0.5,
+            glm::vec3(0, 1, 0)
+          )
+      ),
+      .mesh {
+        .gen0 = {
+          .type = ModelMesh::Type::Gen0,
+          .signed_distance_fn = model2_sd,
+          .texture_uv_fn = ad_hoc_sphere_texture_uv,
+          .params = params,
+          .signature = 0x1002004,
+        },
+      },
+      .material = materials::ambientcg::Marble020,
+    };
+  }
 
   if (1) {
     lib::array::ensure_space(&desc->models, 1);
@@ -122,9 +121,7 @@ DLL_EXPORT DECL_DESCRIBE_FN(describe) {
           .path = lib::cstr::from_static("assets/gi_test_0.t06"),
         },
       },
-      .file_path_albedo = lib::cstr::from_static("assets/texture-1px/albedo.png"),
-      .file_path_normal = lib::cstr::from_static("assets/texture-1px/normal.png"),
-      .file_path_romeao = lib::cstr::from_static("assets/texture-1px/romeao.png"),
+      .material = materials::placeholder,
     };
   }
 }

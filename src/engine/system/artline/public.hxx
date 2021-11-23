@@ -40,6 +40,15 @@ using TransformFn = glm::mat4 (double time);
 using SignedDistanceFn = float (glm::vec3 position);
 using TextureUvFn = glm::vec2 (glm::vec3 position, glm::vec3 N);
 
+struct DualContouringParams {
+  glm::uvec3 grid_size;
+  glm::vec3 grid_min_bounds;
+  glm::vec3 grid_max_bounds;
+  float normal_offset_mult;
+  float normal_epsilon_mult;
+  bool clamp_qef;
+};
+
 union ModelMesh {
   enum struct Type {
     File,
@@ -55,6 +64,7 @@ union ModelMesh {
     Type type;
     SignedDistanceFn *signed_distance_fn;
     TextureUvFn *texture_uv_fn;
+    DualContouringParams params;
     uint64_t signature;
   };
 
@@ -63,12 +73,16 @@ union ModelMesh {
   Gen0 gen0;
 };
 
-struct Model {
-  glm::mat4 transform;
-  ModelMesh mesh;
+struct ModelMaterial {
   lib::cstr_range_t file_path_albedo;
   lib::cstr_range_t file_path_normal;
   lib::cstr_range_t file_path_romeao;
+};
+
+struct Model {
+  glm::mat4 transform;
+  ModelMesh mesh;
+  ModelMaterial material;
 };
 
 struct Description {
