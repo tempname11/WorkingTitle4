@@ -589,6 +589,8 @@ void inject(Runner *r, std::vector<Task *> && tasks, Auxiliary && aux) {
 }
 
 void inject_pending(ContextBase *ctx) {
+  ZoneScoped;
+  std::unique_lock r_lock(ctx->runner->mutex);
   _internal_infer_dependencies(ctx->runner, ctx->new_tasks, nullptr);
   _internal_new_dependencies(ctx->runner, std::move(ctx->new_dependencies));
   for (auto t : ctx->new_tasks) {
