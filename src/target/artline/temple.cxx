@@ -67,6 +67,34 @@ void do_ground(Description *desc, glm::mat4 *transform) {
   };
 }
 
+void do_wall(Description *desc, glm::mat4 *transform) {
+  auto params = default_params;
+  params.grid_size = uvec3(2);
+
+  lib::array::ensure_space(&desc->models, 1);
+  desc->models->data[desc->models->count++] = Model {
+    .transform = *transform,
+    .mesh {
+      .gen0 = {
+        .type = ModelMesh::Type::Gen0,
+        .signed_distance_fn = [](vec3 p) {
+          return intersect(
+            1.0 - abs(p.x),
+            1.0 - abs(p.y),
+            1.0 - abs(p.z)
+          );
+        },
+        .texture_uv_fn = [](vec3 p, vec3 N) {
+          return triplanar_texture_uv(p * 2.5f, N);
+        },
+        .params = params,
+        .signature = 0x1009001,
+      },
+    },
+    .material = materials::ambientcg::Bricks059,
+  };
+}
+
 void do_steps(Description *desc, glm::mat4 *transform) {
   auto params = default_params;
   params.grid_size = uvec3(85);
@@ -254,12 +282,16 @@ void do_podium(Description *desc, glm::mat4 *transform) {
             p.z
           );
         },
-        .texture_uv_fn = triplanar_texture_uv,
+        .texture_uv_fn = [](vec3 p, vec3 N) {
+          // return triplanar_texture_uv(p, N);
+          return vec2(0.1);
+        },
         .params = params,
-        .signature = 0x1007001,
+        .signature = 0x1007004,
       },
     },
-    .material = materials::ambientcg::Metal035,
+    // .material = materials::ambientcg::Metal035, @Incomplete: no metallicness yet
+    .material = materials::ambientcg::Bricks059,
   };
 }
 
@@ -298,6 +330,11 @@ DLL_EXPORT DECL_DESCRIBE_FN(describe) {
   {
     auto transform = translation(vec3(0, 0, -1000)) * scaling(1000);
     do_ground(desc, &transform);
+  }
+
+  for (int8_t i = -1; i <= 1; i++) {
+    auto transform = translation(vec3(i * 60, 60, 20)) * scaling(30);
+    do_wall(desc, &transform);
   }
 
   {

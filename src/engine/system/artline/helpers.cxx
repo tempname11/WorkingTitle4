@@ -26,7 +26,7 @@ glm::vec2 triplanar_texture_uv(glm::vec3 position, glm::vec3 N) {
   auto s = position;
   return (
     N.x * glm::vec2(s.y, s.z) +
-    N.y * glm::vec2(s.z, s.x) +
+    N.y * glm::vec2(s.x, s.z) +
     N.z * glm::vec2(s.x, s.y)
   );
 }

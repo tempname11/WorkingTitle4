@@ -53,7 +53,7 @@ void _read_texture_file(
   int width, height, _channels = 4;
   auto loaded = stbi_load(texture->file_path.start, &width, &height, &_channels, 4);
   if (loaded == nullptr) {
-    return;
+    texture->data = {};
   };
   texture->data = engine::common::texture::Data<uint8_t> {
     .data = loaded,
