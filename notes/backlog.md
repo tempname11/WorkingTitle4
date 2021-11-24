@@ -1,7 +1,11 @@
 # intermittent bugs
 - [21-11-22] "cannot free VkBuffer that is in use by a command buffer"
 
+# bugs
+- GI corruption
+
 # missing features
+- AmbientCG textures lack metallic channel.
 - Need proper support for multiple lights. :ManyLights
 
 # need to check

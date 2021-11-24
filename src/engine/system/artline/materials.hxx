@@ -25,11 +25,12 @@ ModelMaterial placeholder = {
 
 namespace ambientcg {
 
-ModelMaterial Terrazzo009 = AMBIENTCG_JPG_TRIPLE("Terrazzo009_8K");
-ModelMaterial Marble020 = AMBIENTCG_JPG_TRIPLE("Marble020_8K");
 ModelMaterial Bricks059 = AMBIENTCG_JPG_TRIPLE("Bricks059_8K");
 ModelMaterial Concrete034 = AMBIENTCG_JPG_TRIPLE("Concrete034_8K");
+ModelMaterial Marble020 = AMBIENTCG_JPG_TRIPLE("Marble020_8K");
+ModelMaterial Metal035 = AMBIENTCG_JPG_TRIPLE("Metal035_8K");
 ModelMaterial PavingStones107 = AMBIENTCG_JPG_TRIPLE("PavingStones107_8K");
+ModelMaterial Terrazzo009 = AMBIENTCG_JPG_TRIPLE("Terrazzo009_8K");
 
 } // namespace
 
