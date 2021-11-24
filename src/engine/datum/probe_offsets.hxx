@@ -17,7 +17,13 @@ void deinit_sdata(
   Ref<engine::session::Vulkan::Core> core
 );
 
-void barrier_into_measure(
+void barrier_into_appoint(
+  SData *it,
+  Ref<display::Data::FrameInfo> frame_info,
+  VkCommandBuffer cmd
+);
+
+void barrier_from_appoint_into_measure(
   SData *it,
   Ref<display::Data::FrameInfo> frame_info,
   VkCommandBuffer cmd

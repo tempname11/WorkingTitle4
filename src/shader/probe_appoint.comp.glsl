@@ -12,6 +12,8 @@ layout(
 layout(binding = 0) uniform Frame { FrameData data; } frame;
 layout(binding = 1, r32ui) uniform readonly uimage2D probe_attention_prev; // :ProbeAttentionFormat
 layout(binding = 2, rgba16ui) uniform uimage2D probe_confidence; // :ProbeConfidenceFormat
+layout(binding = 3, rgba16f) uniform image2D probe_offsets; // :ProbeOffsetsFormat
+
 layout(set = 1, binding = 0) writeonly buffer ProbeWorkset {
   uvec4 data[];
 } probe_workset;
@@ -88,6 +90,13 @@ void main() {
         ivec2(combined_coord),
         uvec4(0)
       );
+
+      imageStore(
+        probe_offsets,
+        ivec2(combined_coord),
+        uvec4(0)
+      );
+
       should_appoint = true;
     }
   }

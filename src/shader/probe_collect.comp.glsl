@@ -85,13 +85,16 @@ void main() {
           )
         );
         vec3 ray_radiance = read.rgb;
-        if (read.a > 0.0) {
-          ray_radiance = vec3(0.0, 0.0, 0.0);
-        }
-
         float weight = max(0.0, dot(octomap_direction, ray_direction));
-        offset_adjust += vec4(-ray_direction * read.a, read.a);
-        value += vec4(ray_radiance * weight, weight);
+
+        if (read.a > 0.0) {
+          offset_adjust += vec4(
+            -ray_direction * (1.1 - read.a),
+            (1.1 - read.a)
+          );
+        } else {
+          value += vec4(ray_radiance * weight, weight);
+        }
       }
     }
     if (value.w > 0.0) {
@@ -151,16 +154,12 @@ void main() {
         ivec2(combined_coord)
       ).rgb;
 
-      if (accumulator == 0.0) {
-        offset = vec3(0.0);
-      }
-
       if (offset_adjust.w > 0.0) {
         offset_adjust /= offset_adjust.w;
       }
 
       offset = clamp(
-        offset + 0.1 * offset_adjust.xyz,
+        offset + 0.01 * offset_adjust.xyz,
         vec3(-0.5),
         vec3(0.5)
       );

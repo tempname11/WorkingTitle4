@@ -64,7 +64,7 @@ layout(push_constant) uniform Cascade {
 } cascade;
 
 const float RAY_T_MIN_SHADOW = 0.1;
-const float RAY_T_MIN_MULT = 0.1;
+const float RAY_T_MIN_MULT = 0.01;
 const float RAY_T_MAX = 10000.0;
 
 void main() {
@@ -130,7 +130,7 @@ void main() {
   float t_intersection = rayQueryGetIntersectionTEXT(ray_query, false);
   bool front_face = rayQueryGetIntersectionFrontFaceEXT(ray_query, false);
 
-  if (t_intersection < delta || !front_face) {
+  if (t_intersection < delta * 0.5 || !front_face) {
     vec4 result = vec4(0.0);
     if (t_intersection == 0.0) {
       // sky
@@ -146,7 +146,7 @@ void main() {
         );
       }
     } else if (!front_face) {
-      result.a = min(delta, t_intersection);
+      result.a = min(1.0, t_intersection / (delta * 0.5));
     }
     imageStore(
       probe_radiance,

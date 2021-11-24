@@ -13,6 +13,7 @@ void init_ddata(
   Own<display::Data::Helpers> helpers,
   Use<datum::probe_attention::DData> probe_attention,
   Use<datum::probe_confidence::SData> probe_confidence,
+  Use<datum::probe_offsets::SData> probe_offsets,
   Use<datum::probe_workset::SData> probe_workset,
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Ref<engine::session::Vulkan::Core> core
@@ -59,6 +60,10 @@ void init_ddata(
         .imageView = probe_confidence->view,
         .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
       };
+      VkDescriptorImageInfo probe_offsets_info = {
+        .imageView = probe_offsets->view,
+        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+      };
       VkWriteDescriptorSet writes[] = {
         {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -86,6 +91,15 @@ void init_ddata(
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
           .pImageInfo = &probe_confidence_info,
+        },
+        {
+          .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .dstSet = descriptor_sets_frame[i],
+          .dstBinding = 3,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+          .pImageInfo = &probe_offsets_info,
         },
       };
       vkUpdateDescriptorSets(

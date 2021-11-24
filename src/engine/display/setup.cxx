@@ -725,6 +725,7 @@ void setup(
     &display->helpers,
     &display->probe_attention,
     &session->vulkan.probe_confidence,
+    &session->vulkan.probe_offsets,
     &session->vulkan.probe_workset,
     &display->swapchain_description,
     &session->vulkan.core

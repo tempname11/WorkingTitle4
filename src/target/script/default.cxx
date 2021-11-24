@@ -16,7 +16,7 @@ void update_stuff(
 }
 
 void CtrlSession::run() {
-  {
+  if (1) {
     wait_for_signal(
       engine::system::artline::load(
         lib::cstr::from_static("out/build/x64-Debug/" "temple.art.dll"), // @Cleanup: path
@@ -24,9 +24,9 @@ void CtrlSession::run() {
       )
     );
   }
-  /*
-  {
-    std::string path = "assets/vox/medieval_city_2/index.grup";
+
+  if (0) {
+    std::string path = "assets/gi_test_0.grup";
     task(engine::system::grup::group::load(
       ctx,
       &path,
@@ -34,7 +34,6 @@ void CtrlSession::run() {
     ));
     task(update_stuff, &session->state);
   }
-  */
 }
 
 MAIN_MACRO(CtrlSession);

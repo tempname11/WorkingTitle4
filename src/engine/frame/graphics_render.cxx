@@ -1549,6 +1549,12 @@ void graphics_render(
     cmd
   );
 
+  datum::probe_offsets::barrier_into_appoint(
+    &session->vulkan.probe_offsets,
+    frame_info,
+    cmd
+  );
+
   { TracyVkZone(core->tracy_context, cmd, "probe_appoint");
     step::probe_appoint::record(
       &display->probe_appoint,
@@ -1584,7 +1590,7 @@ void graphics_render(
     cmd
   );
 
-  datum::probe_offsets::barrier_into_measure(
+  datum::probe_offsets::barrier_from_appoint_into_measure(
     &session->vulkan.probe_offsets,
     frame_info,
     cmd

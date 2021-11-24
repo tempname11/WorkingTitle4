@@ -1,4 +1,3 @@
-#pragma once
 #include <src/engine/display/data.hxx>
 #include "data.hxx"
 
@@ -15,7 +14,7 @@ void barrier_into_appoint(
     VkImageMemoryBarrier barriers[] = {
       {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+        .srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
         .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
         .oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         .newLayout = VK_IMAGE_LAYOUT_GENERAL,
