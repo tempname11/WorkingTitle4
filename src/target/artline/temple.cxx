@@ -39,7 +39,7 @@ DualContouringParams default_params = {
   .normal_epsilon_mult = 0.01f,
 };
 
-void do_plane(Description *desc, glm::mat4 *transform) {
+void do_ground(Description *desc, glm::mat4 *transform) {
   auto params = default_params;
   params.grid_size = uvec3(2);
 
@@ -50,13 +50,17 @@ void do_plane(Description *desc, glm::mat4 *transform) {
       .gen0 = {
         .type = ModelMesh::Type::Gen0,
         .signed_distance_fn = [](vec3 p) {
-          return -p.z;
+          return intersect(
+            1.0 - abs(p.x),
+            1.0 - abs(p.y),
+            1.0 - abs(p.z)
+          );
         },
         .texture_uv_fn = [](vec3 p, vec3 N) {
           return vec2(0.0);
         },
         .params = params,
-        .signature = 0x1001011,
+        .signature = 0x1001001,
       },
     },
     .material = materials::placeholder,
@@ -291,9 +295,9 @@ void do_artifact(Description *desc, glm::mat4 *transform) {
 DLL_EXPORT DECL_DESCRIBE_FN(describe) {
   float z = 0;
 
-  { // Plane.
-    auto transform = scaling(1000);
-    do_plane(desc, &transform);
+  {
+    auto transform = translation(vec3(0, 0, -1000)) * scaling(1000);
+    do_ground(desc, &transform);
   }
 
   {
