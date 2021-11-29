@@ -55,6 +55,8 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/submodule/tracy
   ${CMAKE_SOURCE_DIR}/submodule/tinygltf
   ${CMAKE_SOURCE_DIR}/submodule/fmt/include
+  ${CMAKE_SOURCE_DIR}/submodule/ode/include
+  ${CMAKE_SOURCE_DIR}/out/ode-build/include
   ${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/src/include
 )
 
@@ -108,11 +110,18 @@ target_compile_definitions(engine_lib PUBLIC -DWINDOWS)
 target_compile_definitions(engine_lib PUBLIC -DENGINE_DEVELOPER)
 
 target_link_directories (engine_lib INTERFACE $ENV{CUSTOM_LINK_PATH})
-target_link_directories (engine_lib INTERFACE "${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/build/lib/Release/x64")
+target_link_directories (
+  engine_lib
+  INTERFACE
+  "${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/build/lib/Release/x64" # @Cleanup: build dir
+)
+link_directories (
+  "${CMAKE_SOURCE_DIR}/out/ode-build/Debug" # @Cleanup: build dir
+)
 target_link_libraries (engine_lib PRIVATE glfw3)
 target_link_libraries (engine_lib PRIVATE vulkan-1)
 target_link_libraries (engine_lib PRIVATE nfd)
-target_link_libraries(engine_lib PRIVATE fmt::fmt-header-only)
+target_link_libraries (engine_lib PRIVATE fmt::fmt-header-only)
 target_link_libraries (engine_lib PUBLIC tracy_lib)
 
 # executables
@@ -137,6 +146,16 @@ add_executable (
   "src/target/exe/engine.cxx"
 )
 target_link_libraries(engine PRIVATE engine_lib)
+
+add_executable (
+  ode_test
+  WIN32
+  "src/impl/log.cxx"
+  "src/target/exe/ode_test.cxx"
+)
+target_link_libraries(ode_test PRIVATE ode_doubled)
+target_link_libraries (ode_test PRIVATE fmt::fmt-header-only)
+target_compile_definitions(ode_test PUBLIC -DWINDOWS)
 
 add_executable (
   embedfile

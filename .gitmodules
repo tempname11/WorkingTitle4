@@ -22,3 +22,6 @@
 [submodule "submodule/qef"]
 	path = submodule/qef
 	url = https://github.com/nickgildea/qef
+[submodule "submodule/ode"]
+	path = submodule/ode
+	url = https://bitbucket.org/odedevs/ode.git
