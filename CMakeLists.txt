@@ -158,6 +158,16 @@ target_link_libraries (ode_test PRIVATE fmt::fmt-header-only)
 target_compile_definitions(ode_test PUBLIC -DWINDOWS)
 
 add_executable (
+  time_test
+  WIN32
+  "src/impl/log.cxx"
+  "src/target/exe/time_test.cxx"
+)
+target_link_libraries (time_test PRIVATE fmt::fmt-header-only)
+target_compile_definitions(time_test PUBLIC -DWINDOWS)
+target_link_libraries(time_test PRIVATE engine_lib)
+
+add_executable (
   embedfile
   "src/target/exe/embedfile.cxx"
 )

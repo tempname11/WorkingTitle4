@@ -4,6 +4,7 @@
 #include "hash64.hxx"
 
 // Potential improvements:
+// * Rename to table64 (!)
 // * Make impl not templated (use `sizeof(T)` and `memcpy`), move into ".cxx".
 // * VS debugger visualization / NatVis.
 // * `_fill` could move all the data from lower tier bucket it accesses.

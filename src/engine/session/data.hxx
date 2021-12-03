@@ -113,8 +113,8 @@ struct Data : lib::task::ParentResource {
       lib::Task *signal_done;
 
       struct Directives {
-          bool should_capture_screenshot;
-          std::string screenshot_path;
+        bool should_capture_screenshot;
+        std::string screenshot_path;
       } directives;
     } frame_control;
   #endif
