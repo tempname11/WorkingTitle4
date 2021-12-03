@@ -1,4 +1,5 @@
 #include <src/lib/defer.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include "../blas_storage.hxx"
 #include "data.hxx"
 
@@ -45,7 +46,7 @@ void _build_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<BlasStorage> it,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Own<BuildSubmitData> data
 ) {
   ZoneScoped;
@@ -87,7 +88,7 @@ void _build_finish(
   BlasStorage *it,
   lib::Task *signal,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Use<VertexInfo> vertex_info,
   ID id
 ) {
@@ -290,7 +291,7 @@ void _build_finish(
   }
 
   lib::gpu_signal::associate(
-    &session->gpu_signal_support,
+    session->gpu_signal_support,
     signal,
     core->device,
     semaphore,
@@ -306,7 +307,7 @@ void _build_finish(
 
   auto task_build_submit = lib::task::create(
     _build_submit,
-    &session->vulkan.queue_work,
+    &session->vulkan->queue_work,
     data
   );
 
@@ -320,7 +321,7 @@ void _build_finish(
       _build_finish,
       it,
       session.ptr,
-      &session->vulkan.core,
+      &session->vulkan->core,
       data
     )
   );
@@ -359,7 +360,7 @@ ID create(
   lib::Task *signal,
   Use<VertexInfo> vertex_info,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 ) {
   ZoneScoped;
 

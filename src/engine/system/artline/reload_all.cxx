@@ -114,8 +114,8 @@ void _reload(
     _unload_assets,
     mesh_keys,
     texture_keys,
-    &session->vulkan.meshes,
-    &session->vulkan.textures,
+    &session->vulkan->meshes,
+    &session->vulkan->textures,
     session.ptr
   );
   auto task_unload_assets = lib::defer(

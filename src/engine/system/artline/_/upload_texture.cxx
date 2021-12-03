@@ -9,13 +9,13 @@ void _upload_texture(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<VkFormat> format,
   Ref<engine::common::texture::Data<uint8_t>> data,
-  Ref<engine::session::Vulkan::Textures::Item> texture_item,
+  Ref<engine::session::VulkanData::Textures::Item> texture_item,
   Ref<lib::Task> signal,
   Own<VkQueue> queue_work,
   Ref<engine::session::Data> session
 ) {
   ZoneScoped;
-  auto core = &session->vulkan.core;
+  auto core = &session->vulkan->core;
 
   VkImageCreateInfo create_info = {
     .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -44,7 +44,7 @@ void _upload_texture(
     .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
   };
   auto result = engine::uploader::prepare_image(
-    &session->vulkan.uploader,
+    session->vulkan->uploader,
     core->device,
     core->allocator,
     &core->properties.basic,
@@ -68,7 +68,7 @@ void _upload_texture(
   engine::uploader::upload_image(
     ctx,
     signal.ptr,
-    &session->vulkan.uploader,
+    session->vulkan->uploader,
     session.ptr,
     queue_work,
     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,

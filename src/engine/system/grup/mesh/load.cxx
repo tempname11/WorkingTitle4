@@ -19,7 +19,7 @@ void _load_read_file(
 void _load_init_buffer(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Own<VkQueue> queue_work,
   Ref<lib::Task> signal,
   Own<LoadData> data 
@@ -53,7 +53,7 @@ void _load_init_buffer(
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
   auto result = engine::uploader::prepare_buffer(
-    &session->vulkan.uploader,
+    session->vulkan->uploader,
     core->device,
     core->allocator,
     &core->properties.basic,
@@ -72,7 +72,7 @@ void _load_init_buffer(
   engine::uploader::upload_buffer(
     ctx,
     signal.ptr,
-    &session->vulkan.uploader,
+    session->vulkan->uploader,
     session.ptr,
     queue_work,
     result.id
@@ -82,7 +82,7 @@ void _load_init_buffer(
 void _load_init_blas(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Own<VkQueue> queue_work,
   Ref<lib::Task> signal,
   Own<LoadData> data 
@@ -90,7 +90,7 @@ void _load_init_blas(
   ZoneScoped;
 
   auto pair = engine::uploader::get_buffer(
-    &session->vulkan.uploader,
+    session->vulkan->uploader,
     data->mesh_item.id
   );
   auto buffer = pair.first;
@@ -105,7 +105,7 @@ void _load_init_blas(
 
   data->mesh_item.blas_id = engine::blas_storage::create(
     ctx,
-    &session->vulkan.blas_storage,
+    session->vulkan->blas_storage,
     signal.ptr,
     &vertex_info,
     session,
@@ -116,7 +116,7 @@ void _load_init_blas(
 void _load_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Own<engine::session::Vulkan::Meshes> meshes,
+  Own<engine::session::VulkanData::Meshes> meshes,
   Own<MetaMeshes> meta_meshes,
   Own<LoadData> data
 ) {
@@ -140,7 +140,6 @@ lib::Task* load(
   lib::task::ContextBase* ctx,
   Ref<engine::session::Data> session,
   Own<MetaMeshes> meta_meshes,
-  Use<engine::session::Data::GuidCounter> guid_counter,
   lib::GUID *out_mesh_id
 ) {
   ZoneScoped;
@@ -167,7 +166,7 @@ lib::Task* load(
 
   lib::lifetime::ref(&session->lifetime);
 
-  auto mesh_id = lib::guid::next(guid_counter.ptr);
+  auto mesh_id = lib::guid::next(session->guid_counter);
   *out_mesh_id = mesh_id;
   meta_meshes->by_path.insert({ path, mesh_id });
   
@@ -185,8 +184,8 @@ lib::Task* load(
     lib::task::create(
       _load_init_buffer,
       session.ptr,
-      &session->vulkan.core,
-      &session->vulkan.queue_work,
+      &session->vulkan->core,
+      &session->vulkan->queue_work,
       signal_init_buffer,
       data
     )
@@ -196,8 +195,8 @@ lib::Task* load(
     lib::task::create(
       _load_init_blas,
       session.ptr,
-      &session->vulkan.core,
-      &session->vulkan.queue_work,
+      &session->vulkan->core,
+      &session->vulkan->queue_work,
       signal_init_blas,
       data
     )
@@ -206,8 +205,8 @@ lib::Task* load(
     lib::task::create(
       _load_finish,
       session.ptr,
-      &session->vulkan.meshes,
-      &session->grup.meta_meshes,
+      &session->vulkan->meshes,
+      session->grup.meta_meshes,
       data
     )
   );

@@ -1,7 +1,8 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include <src/global.hxx>
-#include "session/data.hxx"
+#include <src/engine/session/data.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include "blas_storage/id.hxx"
 
 namespace engine {
@@ -12,13 +13,13 @@ namespace engine::blas_storage {
 
 void init(
   BlasStorage *it,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   size_t size_region
 );
 
 void deinit(
   BlasStorage *it,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 );
 
 struct VertexInfo {
@@ -35,12 +36,12 @@ ID create(
   lib::Task *signal,
   Use<VertexInfo> vertex_info,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 );
 
 void destroy(
   Ref<BlasStorage> it,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   ID id
 );
 

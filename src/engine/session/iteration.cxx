@@ -1,5 +1,6 @@
 #include <src/lib/defer.hxx>
 #include <src/engine/session/data.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include <src/engine/display/setup.hxx>
 #include "iteration.hxx"
 
@@ -14,8 +15,8 @@ void _try_rendering(
   VkSurfaceCapabilitiesKHR surface_capabilities;
   { // get capabilities
     auto result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-      session->vulkan.physical_device,
-      session->vulkan.window_surface,
+      session->vulkan->physical_device,
+      session->vulkan->window_surface,
       &surface_capabilities
     );
     assert(result == VK_SUCCESS);
@@ -44,7 +45,7 @@ void iteration(
   ZoneScoped;
   bool should_stop = glfwWindowShouldClose(session->glfw.window);
   if (should_stop) {
-    for (auto &item : session->grup.groups.items) {
+    for (auto &item : session->grup.groups->items) {
       auto final = lib::lifetime::deref(&item.second.lifetime, ctx->runner);
       // assert(final); @Think: was this actually necessary?
     }

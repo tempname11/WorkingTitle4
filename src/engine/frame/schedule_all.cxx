@@ -1,4 +1,5 @@
 #include <src/lib/defer.hxx>
+#include <src/lib/mutex.hxx>
 #include "acquire.hxx"
 #include "cleanup.hxx"
 #include "compose_render.hxx"
@@ -50,10 +51,10 @@ void _begin(
   }
   bool should_stop = glfwWindowShouldClose(glfw->window);
   if (should_stop || presentation_has_failed) {
-    std::scoped_lock lock(session->inflight_gpu.mutex);
+    std::scoped_lock lock(session->inflight_gpu->mutex);
     auto task_signal_display_end = lib::task::create(_signal_display_end, display_end_yarn.ptr);
     lib::task::Auxiliary aux;
-    for (auto signal : session->inflight_gpu.signals) {
+    for (auto signal : session->inflight_gpu->signals) {
       aux.new_dependencies.push_back({ signal, task_signal_display_end });
     }
     lib::task::inject(ctx->runner, { task_signal_display_end }, std::move(aux));
@@ -82,11 +83,14 @@ void _begin(
 
   #ifdef ENGINE_DEVELOPER
     {
-      auto fc = &session->frame_control;
-      auto lock = std::scoped_lock(fc->mutex);
+      auto fc = session->frame_control;
+      lib::mutex::lock(&fc->mutex);
+
       frame_info->directives.should_capture_screenshot = fc->directives.should_capture_screenshot;
       frame_info->directives.screenshot_path = fc->directives.screenshot_path;
       fc->directives = {};
+
+      lib::mutex::unlock(&fc->mutex);
     }
   #endif
 
@@ -115,14 +119,14 @@ void _begin(
     ),
     lib::task::create(
       reset_pools,
-      &session->vulkan.core,
+      &session->vulkan->core,
       &data->command_pools,
       &data->descriptor_pools,
       frame_info
     ),
     lib::task::create(
       acquire,
-      &session->vulkan.core,
+      &session->vulkan->core,
       &data->presentation,
       &data->presentation_failure_state,
       frame_info
@@ -131,8 +135,8 @@ void _begin(
       generate_render_list,
       session.ptr,
       &session->scene,
-      &session->vulkan.meshes,
-      &session->vulkan.textures,
+      &session->vulkan->meshes,
+      &session->vulkan->textures,
       &frame_data->render_list
     ),
     lib::task::create(
@@ -149,7 +153,7 @@ void _begin(
     ),
     lib::task::create(
       graphics_submit,
-      &session->vulkan.queue_work,
+      &session->vulkan->queue_work,
       &data->graphics_finished_semaphore,
       frame_info,
       &frame_data->graphics_data
@@ -166,13 +170,13 @@ void _begin(
       data.ptr,
       &session->imgui_context,
       &frame_data->imgui_reactions,
-      &session->grup.meta_meshes,
-      &session->grup.meta_textures,
+      session->grup.meta_meshes,
+      session->grup.meta_textures,
       &session->state
     ),
     lib::task::create(
       imgui_render,
-      &session->vulkan.core,
+      &session->vulkan->core,
       &session->imgui_context,
       &data->imgui_backend,
       &session->glfw,
@@ -183,7 +187,7 @@ void _begin(
     ),
     lib::task::create(
       imgui_submit,
-      &session->vulkan.queue_work,
+      &session->vulkan->queue_work,
       &data->graphics_finished_semaphore,
       &data->imgui_finished_semaphore,
       frame_info,
@@ -202,7 +206,7 @@ void _begin(
     ),
     lib::task::create(
       compose_submit,
-      &session->vulkan.queue_work,
+      &session->vulkan->queue_work,
       &data->presentation,
       &data->imgui_finished_semaphore,
       frame_info,
@@ -213,12 +217,12 @@ void _begin(
       &data->presentation,
       &data->presentation_failure_state,
       frame_info,
-      &session->vulkan.queue_present
+      &session->vulkan->queue_present
     ),
     lib::task::create(
       readback,
-      &session->vulkan.core,
-      &session->vulkan.queue_work,
+      &session->vulkan->core,
+      &session->vulkan->queue_work,
       &data->presentation,
       &data->frame_finished_semaphore,
       &data->lbuffer,
@@ -230,9 +234,8 @@ void _begin(
     lib::task::create(
       loading_dynamic,
       session.ptr,
-      &session->guid_counter,
-      &session->grup.meta_meshes,
-      &session->grup.meta_textures,
+      session->grup.meta_meshes,
+      session->grup.meta_textures,
       &frame_data->imgui_reactions
     ),
   });
@@ -249,8 +252,8 @@ void _begin(
   );
   auto task_many = lib::defer_many(frame_tasks);
   { // inject under inflight mutex
-    std::scoped_lock lock(session->inflight_gpu.mutex);
-    auto signal = session->inflight_gpu.signals[latest_frame->inflight_index];
+    std::scoped_lock lock(session->inflight_gpu->mutex);
+    auto signal = session->inflight_gpu->signals[latest_frame->inflight_index];
     lib::task::inject(ctx->runner, {
       task_setup_gpu_signal.first,
       task_many.first,
@@ -311,9 +314,10 @@ void schedule_all(
 
   #ifdef ENGINE_DEVELOPER
     lib::Task *signal = nullptr;
-    if (session->frame_control.enabled) {
-      auto fc = &session->frame_control;
-      auto lock = std::scoped_lock(fc->mutex);
+    if (session->frame_control->enabled) {
+      auto fc = session->frame_control;
+      lib::mutex::lock(&fc->mutex);
+
       if (fc->allowed_count > 0) {
         fc->allowed_count--;
       } else {
@@ -335,6 +339,8 @@ void schedule_all(
           { signal, deferred_frame.first },
         },
       });
+
+      lib::mutex::unlock(&fc->mutex);
     } else {
       ctx->new_tasks.insert(ctx->new_tasks.end(), {
         task_frame,

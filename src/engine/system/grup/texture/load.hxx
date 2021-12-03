@@ -12,7 +12,7 @@ struct LoadData {
   VkFormat format;
 
   engine::common::texture::Data<uint8_t> the_texture;
-  engine::session::Vulkan::Textures::Item texture_item;
+  engine::session::VulkanData::Textures::Item texture_item;
 };
 
 void _load_read_file(
@@ -23,7 +23,7 @@ void _load_read_file(
 void _load_init_image(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Own<VkQueue> queue_work,
   Ref<lib::Task> signal,
   Own<LoadData> data 

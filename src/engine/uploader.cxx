@@ -253,7 +253,7 @@ void _upload_buffer_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<Uploader> it,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Own<UploadData> data
 ) {
   ZoneScoped;
@@ -295,7 +295,7 @@ void _upload_image_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<Uploader> it,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Own<UploadData> data
 ) {
   ZoneScoped;
@@ -372,8 +372,7 @@ void upload_buffer(
   ID id
 ) {
   ZoneScoped;
-
-  auto core = &session->vulkan.core;
+  auto core = &session->vulkan->core;
 
   std::unique_lock lock(it->rw_mutex);
   auto buffer_data = &it->buffers.at(id);
@@ -446,7 +445,7 @@ void upload_buffer(
   }
 
   lib::gpu_signal::associate(
-    &session->gpu_signal_support,
+    session->gpu_signal_support,
     signal,
     core->device,
     semaphore,
@@ -461,7 +460,7 @@ void upload_buffer(
 
   auto task_submit = lib::task::create(
     _upload_submit,
-    &session->vulkan.queue_work,
+    &session->vulkan->queue_work,
     data
   );
 
@@ -475,7 +474,7 @@ void upload_buffer(
       _upload_buffer_finish,
       it.ptr,
       session.ptr,
-      &session->vulkan.core,
+      core,
       data
     )
   );
@@ -500,7 +499,7 @@ void upload_image(
 ) {
   ZoneScoped;
 
-  auto core = &session->vulkan.core;
+  auto core = &session->vulkan->core;
 
   std::unique_lock lock(it->rw_mutex);
   auto image_data = &it->images.at(id);
@@ -684,7 +683,7 @@ void upload_image(
   }
 
   lib::gpu_signal::associate(
-    &session->gpu_signal_support,
+    session->gpu_signal_support,
     signal,
     core->device,
     semaphore,
@@ -699,7 +698,7 @@ void upload_image(
 
   auto task_submit = lib::task::create(
     _upload_submit,
-    &session->vulkan.queue_work,
+    &session->vulkan->queue_work,
     data
   );
 
@@ -708,7 +707,7 @@ void upload_image(
       _upload_image_finish,
       it.ptr,
       session.ptr,
-      &session->vulkan.core,
+      core,
       data
     )
   );
@@ -726,7 +725,7 @@ void upload_image(
 
 void destroy_buffer(
   Ref<Uploader> it,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   ID id
 ) {
   ZoneScoped;
@@ -754,7 +753,7 @@ void destroy_buffer(
 
 void destroy_image(
   Ref<Uploader> it,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   ID id
 ) {
   ZoneScoped;

@@ -10,8 +10,8 @@ namespace engine::system::grup::texture {
 void _reload_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
-  Own<engine::session::Vulkan::Textures> textures,
+  Ref<engine::session::VulkanData::Core> core,
+  Own<engine::session::VulkanData::Textures> textures,
   Own<MetaTextures> meta_textures,
   Own<LoadData> data
 ) {
@@ -22,7 +22,7 @@ void _reload_finish(
   *item = data->texture_item; // replace the data
 
   engine::uploader::destroy_image(
-    &session->vulkan.uploader,
+    session->vulkan->uploader,
     core,
     old_item.id
   );
@@ -71,8 +71,8 @@ void reload(
     lib::task::create(
       _load_init_image,
       session.ptr,
-      &session->vulkan.core,
-      &session->vulkan.queue_work,
+      &session->vulkan->core,
+      &session->vulkan->queue_work,
       signal_init_image,
       data
     )
@@ -83,9 +83,9 @@ void reload(
     lib::task::create(
       _reload_finish,
       session.ptr,
-      &session->vulkan.core,
-      &session->vulkan.textures,
-      &session->grup.meta_textures,
+      &session->vulkan->core,
+      &session->vulkan->textures,
+      session->grup.meta_textures,
       data
     )
   );

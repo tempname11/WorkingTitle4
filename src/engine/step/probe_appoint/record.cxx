@@ -2,7 +2,7 @@
 #include <src/global.hxx>
 #include <src/engine/constants.hxx>
 #include <src/engine/misc.hxx>
-#include <src/engine/session/data.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include <src/engine/display/data.hxx>
 #include <src/engine/datum/probe_workset/data.hxx>
 #include "internal.hxx"
@@ -15,7 +15,7 @@ void record(
   Use<SData> sdata,
   Ref<engine::datum::probe_workset::SData> probe_workset,
   Ref<engine::display::Data::FrameInfo> frame_info,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   VkCommandBuffer cmd
 ) {
   ZoneScoped;

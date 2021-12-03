@@ -2,6 +2,7 @@
 #include <src/lib/task.hxx>
 #include <src/lib/guid.hxx>
 #include <src/lib/lifetime.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include "../mesh.hxx"
 #include "../texture.hxx"
 #include "../group.hxx"
@@ -16,7 +17,7 @@ struct DestroyData {
 void _remove_scene_items(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Own<engine::session::Data::Scene> scene,
   Use<MetaMeshes> meta_meshes,
   Use<MetaTextures> meta_textures,
@@ -73,22 +74,22 @@ void _destroy(
 ) {
   ZoneScoped;
 
-  std::unique_lock lock(session->grup.groups.rw_mutex);
-  session->grup.groups.items.erase(data->group_id);
+  std::unique_lock lock(session->grup.groups->rw_mutex);
+  session->grup.groups->items.erase(data->group_id);
 
   auto task_remove_scene_items = lib::task::create(
     _remove_scene_items,
     session.ptr,
-    &session->vulkan.core,
+    &session->vulkan->core,
     &session->scene,
-    &session->grup.meta_meshes,
-    &session->grup.meta_textures,
+    session->grup.meta_meshes,
+    session->grup.meta_textures,
     data.ptr
   );
   {
-    std::scoped_lock lock(session->inflight_gpu.mutex);
+    std::scoped_lock lock(session->inflight_gpu->mutex);
     std::vector<std::pair<lib::Task *, lib::Task *>> dependencies;
-    for (auto signal : session->inflight_gpu.signals) {
+    for (auto signal : session->inflight_gpu->signals) {
       dependencies.push_back({ signal, task_remove_scene_items });
     }
     lib::task::inject(ctx->runner, {
@@ -108,13 +109,16 @@ lib::GUID create(
 
   lib::lifetime::ref(&session->lifetime);
 
-  lib::GUID group_id = lib::guid::next(&session->guid_counter);
+  lib::GUID group_id = lib::guid::next(session->guid_counter);
   lib::Task *yarn = nullptr;
   {
-    std::unique_lock lock(session->grup.groups.rw_mutex);
-    auto result = session->grup.groups.items.insert({ group_id, engine::system::grup::Groups::Item {
-      .name = desc->name,
-    }});
+    std::unique_lock lock(session->grup.groups->rw_mutex);
+    auto result = session->grup.groups->items.insert({
+      group_id,
+      engine::system::grup::Groups::Item {
+        .name = desc->name,
+      }
+    });
     auto item = &(*result.first).second;
     lib::lifetime::init(&item->lifetime, 1);
     yarn = item->lifetime.yarn;

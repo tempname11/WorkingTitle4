@@ -1,6 +1,11 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include <TracyVulkan.hpp>
+#include <src/lib/guid.hxx>
+#include <src/lib/gfx/multi_alloc.hxx>
+#include <src/engine/uploader.data.hxx>
+#include <src/engine/blas_storage/data.hxx>
+#include <src/engine/blas_storage/id.hxx>
 #include <src/engine/step/probe_appoint/data.hxx>
 #include <src/engine/step/probe_measure/data.hxx>
 #include <src/engine/step/probe_collect/data.hxx>
@@ -11,7 +16,7 @@
 
 namespace engine::session {
 
-struct Vulkan : lib::task::ParentResource {
+struct VulkanData : lib::task::ParentResource {
   bool ready;
   VkInstance instance;
   VkDebugUtilsMessengerEXT debug_messenger;
@@ -53,11 +58,8 @@ struct Vulkan : lib::task::ParentResource {
   lib::gfx::Allocator allocator_host;
   lib::gfx::Allocator allocator_device;
 
-  using Uploader = engine::Uploader;
-  Uploader uploader;
-
-  using BlasStorage = engine::BlasStorage;
-  BlasStorage blas_storage;
+  Uploader *uploader;
+  BlasStorage *blas_storage;
 
   struct Meshes {
     struct Item {

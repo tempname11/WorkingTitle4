@@ -154,7 +154,8 @@ void waiting_thread(
   }
 }
 
-Support init_support(
+void init_support(
+  Support *out,
   lib::task::Runner *tr,
   VkDevice device,
   const VkAllocationCallbacks *allocator
@@ -175,7 +176,7 @@ Support init_support(
   }
   auto storage = new Storage {};
   auto thread = std::thread(waiting_thread, storage, device, new_entries_semaphore, tr);
-  return {
+  *out = {
     .storage = storage,
     .new_entries_semaphore = new_entries_semaphore,
     .thread = std::move(thread),

@@ -2,7 +2,7 @@
 #include <vulkan/vulkan.h>
 #include <src/lib/gfx/allocator.hxx>
 #include <src/engine/constants.hxx>
-#include <src/engine/session/data.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include "constants.hxx"
 #include "data.hxx"
 
@@ -10,7 +10,7 @@ namespace engine::datum::probe_workset {
 
 void init_sdata(
   SData *out,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Ref<lib::gfx::Allocator> allocator_device
 ) {
   ZoneScoped;

@@ -8,7 +8,6 @@ namespace engine::frame {
 void loading_dynamic(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Use<engine::session::Data::GuidCounter> guid_counter,
   Own<engine::system::grup::MetaMeshes> meta_meshes,
   Own<engine::system::grup::MetaTextures> meta_textures,
   Use<engine::misc::ImguiReactions> imgui_reactions

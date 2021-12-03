@@ -38,8 +38,8 @@ void _add_item_insert(
 
   lib::lifetime::deref(&session->lifetime, ctx->runner);
   {
-    std::shared_lock lock(session->grup.groups.rw_mutex);
-    auto item = &session->grup.groups.items.at(data->group_id);
+    std::shared_lock lock(session->grup.groups->rw_mutex);
+    auto item = &session->grup.groups->items.at(data->group_id);
     lib::lifetime::deref(&item->lifetime, ctx->runner);
   }
   delete data.ptr;
@@ -54,8 +54,8 @@ void add_item(
   ZoneScoped;
   lib::lifetime::ref(&session->lifetime);
   {
-    std::shared_lock lock(session->grup.groups.rw_mutex);
-    auto item = &session->grup.groups.items.at(group_id);
+    std::shared_lock lock(session->grup.groups->rw_mutex);
+    auto item = &session->grup.groups->items.at(group_id);
     lib::lifetime::ref(&item->lifetime);
   }
 
@@ -64,8 +64,7 @@ void add_item(
     desc->path_mesh,
     ctx,
     session,
-    &session->grup.meta_meshes,
-    &session->guid_counter,
+    session->grup.meta_meshes,
     &mesh_id
   );
 
@@ -77,8 +76,7 @@ void add_item(
     engine::common::texture::ALBEDO_TEXTURE_FORMAT,
     ctx,
     session,
-    &session->grup.meta_textures,
-    &session->guid_counter,
+    session->grup.meta_textures,
     &albedo_id
   );
   auto signal_normal_loaded = engine::system::grup::texture::load(
@@ -86,8 +84,7 @@ void add_item(
     engine::common::texture::NORMAL_TEXTURE_FORMAT,
     ctx,
     session,
-    &session->grup.meta_textures,
-    &session->guid_counter,
+    session->grup.meta_textures,
     &normal_id
   );
   auto signal_romeao_loaded = engine::system::grup::texture::load(
@@ -95,8 +92,7 @@ void add_item(
     engine::common::texture::ROMEAO_TEXTURE_FORMAT,
     ctx,
     session,
-    &session->grup.meta_textures,
-    &session->guid_counter,
+    session->grup.meta_textures,
     &romeao_id
   );
 

@@ -31,7 +31,8 @@ void associate(
   uint64_t value
 );
 
-Support init_support(
+void init_support(
+  Support *out,
   lib::task::Runner *tr,
   VkDevice device,
   const VkAllocationCallbacks *allocator

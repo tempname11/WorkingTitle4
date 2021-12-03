@@ -99,15 +99,15 @@ add_library (
 )
 
 # defines for external stuff
-target_compile_definitions(engine_lib PRIVATE -DVC_EXTRALEAN)
-target_compile_definitions(engine_lib PRIVATE -DGLFW_INCLUDE_VULKAN)
-target_compile_definitions(engine_lib PRIVATE -DGLM_FORCE_DEPTH_ZERO_TO_ONE)
-target_compile_definitions(engine_lib PRIVATE -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
-target_compile_definitions(engine_lib PRIVATE -DFMT_USE_NONTYPE_TEMPLATE_PARAMETERS=0)
+target_compile_definitions (engine_lib PRIVATE -DVC_EXTRALEAN)
+target_compile_definitions (engine_lib PRIVATE -DGLFW_INCLUDE_VULKAN)
+target_compile_definitions (engine_lib PRIVATE -DGLM_FORCE_DEPTH_ZERO_TO_ONE)
+target_compile_definitions (engine_lib PRIVATE -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
+target_compile_definitions (engine_lib PRIVATE -DFMT_USE_NONTYPE_TEMPLATE_PARAMETERS=0)
 
 # defines for our stuff
-target_compile_definitions(engine_lib PUBLIC -DWINDOWS)
-target_compile_definitions(engine_lib PUBLIC -DENGINE_DEVELOPER)
+target_compile_definitions (engine_lib PUBLIC -DWINDOWS)
+target_compile_definitions (engine_lib PUBLIC -DENGINE_DEVELOPER)
 
 target_link_directories (engine_lib INTERFACE $ENV{CUSTOM_LINK_PATH})
 target_link_directories (
@@ -123,6 +123,7 @@ target_link_libraries (engine_lib PRIVATE vulkan-1)
 target_link_libraries (engine_lib PRIVATE nfd)
 target_link_libraries (engine_lib PRIVATE fmt::fmt-header-only)
 target_link_libraries (engine_lib PUBLIC tracy_lib)
+target_link_libraries (engine_lib PRIVATE ode_doubled)
 
 # executables
 
@@ -137,7 +138,7 @@ foreach (FILE IN LISTS SRC_EXE_SCRIPTS)
     ${FILE}
   )
 
-  target_link_libraries(script_${EXE_NAME} PRIVATE engine_lib)
+  target_link_libraries (script_${EXE_NAME} PRIVATE engine_lib)
 endforeach()
 
 add_executable (
@@ -145,7 +146,7 @@ add_executable (
   WIN32
   "src/target/exe/engine.cxx"
 )
-target_link_libraries(engine PRIVATE engine_lib)
+target_link_libraries (engine PRIVATE engine_lib)
 
 add_executable (
   ode_test
@@ -153,9 +154,9 @@ add_executable (
   "src/impl/log.cxx"
   "src/target/exe/ode_test.cxx"
 )
-target_link_libraries(ode_test PRIVATE ode_doubled)
+target_link_libraries (ode_test PRIVATE ode_doubled)
 target_link_libraries (ode_test PRIVATE fmt::fmt-header-only)
-target_compile_definitions(ode_test PUBLIC -DWINDOWS)
+target_compile_definitions (ode_test PUBLIC -DWINDOWS)
 
 add_executable (
   time_test
@@ -164,8 +165,8 @@ add_executable (
   "src/target/exe/time_test.cxx"
 )
 target_link_libraries (time_test PRIVATE fmt::fmt-header-only)
-target_compile_definitions(time_test PUBLIC -DWINDOWS)
-target_link_libraries(time_test PRIVATE engine_lib)
+target_compile_definitions (time_test PUBLIC -DWINDOWS)
+target_link_libraries (time_test PRIVATE engine_lib)
 
 add_executable (
   embedfile
@@ -177,11 +178,11 @@ add_library(
   SHARED
   "src/target/artline/test.cxx"
 )
-target_link_libraries(test.art PRIVATE engine_lib)
+target_link_libraries (test.art PRIVATE engine_lib)
 
 add_library(
   temple.art
   SHARED
   "src/target/artline/temple.cxx"
 )
-target_link_libraries(temple.art PRIVATE engine_lib)
+target_link_libraries (temple.art PRIVATE engine_lib)

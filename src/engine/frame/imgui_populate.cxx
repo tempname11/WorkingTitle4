@@ -7,6 +7,7 @@
   #undef NOMINMAX
 #endif
 #include <misc/cpp/imgui_stdlib.h>
+#include <src/engine/session/data/vulkan.hxx>
 #include <src/engine/system/grup/group.hxx>
 #include <src/engine/system/artline/public.hxx>
 #include <src/engine/tools/cube_writer.hxx>
@@ -100,7 +101,7 @@ void imgui_allocator(
   Ref<lib::gfx::Allocator> it
 ) {
   ZoneScoped;
-  std::shared_lock lock(it->rw_mutex);
+  lib::mutex::lock(&it->mutex);
 
   if (
     ImGui::TreeNode(
@@ -140,6 +141,8 @@ void imgui_allocator(
     }
     ImGui::TreePop();
   }
+
+  lib::mutex::unlock(&it->mutex);
 }
 
 void imgui_populate(
@@ -172,13 +175,13 @@ void imgui_populate(
     }
 
     if (state->show_imgui_window_groups) {
-      std::shared_lock lock(session->grup.groups.rw_mutex);
+      std::shared_lock lock(session->grup.groups->rw_mutex);
       ImGui::Begin("Groups", &state->show_imgui_window_groups);
       ImGui::BeginTable("table_groups", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
       ImGui::TableSetupColumn("Name");
       ImGui::TableSetupColumn("Actions");
       ImGui::TableHeadersRow();
-      for (auto &pair : session->grup.groups.items) {
+      for (auto &pair : session->grup.groups->items) {
         auto group_id = pair.first;
         auto item = &pair.second;
         if (item->lifetime.ref_count == 0) {
@@ -459,7 +462,7 @@ void imgui_populate(
             }
             if (ImGui::Button("Unload") && !disabled) {
               lib::mutex::unlock(&it->mutex);
-              // @Bug
+              // @Bug: here in the meantime, anything can happen!
               system::artline::unload(
                 dll->id,
                 session.ptr,
@@ -485,19 +488,19 @@ void imgui_populate(
     if (state->show_imgui_window_gpu_memory) {
       ImGui::Begin("GPU memory", &state->show_imgui_window_gpu_memory);
       if (ImGui::TreeNode("UPLOADER.DEVICE")) {
-        imgui_allocator(&session->vulkan.uploader.allocator_device);
+        imgui_allocator(&session->vulkan->uploader->allocator_device);
         ImGui::TreePop();
       }
       if (ImGui::TreeNode("UPLOADER.HOST")) {
-        imgui_allocator(&session->vulkan.uploader.allocator_host);
+        imgui_allocator(&session->vulkan->uploader->allocator_host);
         ImGui::TreePop();
       }
       if (ImGui::TreeNode("BLAS.MAIN")) {
-        imgui_allocator(&session->vulkan.blas_storage.allocator_blas);
+        imgui_allocator(&session->vulkan->blas_storage->allocator_blas);
         ImGui::TreePop();
       }
       if (ImGui::TreeNode("BLAS.SCRATCH")) {
-        imgui_allocator(&session->vulkan.blas_storage.allocator_scratch);
+        imgui_allocator(&session->vulkan->blas_storage->allocator_scratch);
         ImGui::TreePop();
       }
       if (ImGui::TreeNode("DISPLAY.DEDICATED")) {

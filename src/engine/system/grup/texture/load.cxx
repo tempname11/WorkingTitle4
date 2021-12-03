@@ -30,7 +30,7 @@ struct LoadData {
   VkFormat format;
 
   engine::common::texture::Data<uint8_t> the_texture;
-  engine::session::Vulkan::Textures::Item texture_item;
+  engine::session::VulkanData::Textures::Item texture_item;
 };
 
 void _load_read_file(
@@ -44,7 +44,7 @@ void _load_read_file(
 void _load_init_image(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Own<VkQueue> queue_work,
   Ref<lib::Task> signal,
   Own<LoadData> data 
@@ -78,7 +78,7 @@ void _load_init_image(
     .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
   };
   auto result = engine::uploader::prepare_image(
-    &session->vulkan.uploader,
+    session->vulkan->uploader,
     core->device,
     core->allocator,
     &core->properties.basic,
@@ -102,7 +102,7 @@ void _load_init_image(
   engine::uploader::upload_image(
     ctx,
     signal.ptr,
-    &session->vulkan.uploader,
+    session->vulkan->uploader,
     session.ptr,
     queue_work,
     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -113,7 +113,7 @@ void _load_init_image(
 void _load_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Own<engine::session::Vulkan::Textures> textures,
+  Own<engine::session::VulkanData::Textures> textures,
   Own<MetaTextures> meta_textures,
   Own<LoadData> data
 ) {
@@ -138,7 +138,6 @@ lib::Task *load(
   lib::task::ContextBase* ctx,
   Ref<engine::session::Data> session,
   Own<MetaTextures> meta_textures,
-  Use<engine::session::Data::GuidCounter> guid_counter,
   lib::GUID *out_texture_id
 ) {
   ZoneScoped;
@@ -165,7 +164,7 @@ lib::Task *load(
 
   lib::lifetime::ref(&session->lifetime);
 
-  auto texture_id = lib::guid::next(guid_counter.ptr);
+  auto texture_id = lib::guid::next(session->guid_counter);
   *out_texture_id = texture_id;
   meta_textures->by_key.insert({ { path, format }, texture_id });
   
@@ -184,8 +183,8 @@ lib::Task *load(
     lib::task::create(
       _load_init_image,
       session.ptr,
-      &session->vulkan.core,
-      &session->vulkan.queue_work,
+      &session->vulkan->core,
+      &session->vulkan->queue_work,
       signal_init_image,
       data
     )
@@ -194,8 +193,8 @@ lib::Task *load(
     lib::task::create(
       _load_finish,
       session.ptr,
-      &session->vulkan.textures,
-      &session->grup.meta_textures,
+      &session->vulkan->textures,
+      session->grup.meta_textures,
       data
     )
   );

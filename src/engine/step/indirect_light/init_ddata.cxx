@@ -1,5 +1,5 @@
 #include <src/global.hxx>
-#include <src/engine/session/data.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include <src/engine/display/data.hxx>
 #include "data.hxx"
 
@@ -8,7 +8,7 @@ namespace engine::step::indirect_light {
 void init_ddata(
   DData *out,
   SData *sdata,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Own<display::Data::Helpers> helpers,
   Use<display::Data::GBuffer> gbuffer,
   Use<display::Data::ZBuffer> zbuffer,

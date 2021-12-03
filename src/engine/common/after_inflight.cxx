@@ -9,9 +9,9 @@ void after_inflight(
 ) {
   ZoneScoped;
 
-  std::scoped_lock lock(session->inflight_gpu.mutex);
+  std::scoped_lock lock(session->inflight_gpu->mutex);
   std::vector<std::pair<lib::Task *, lib::Task *>> dependencies;
-  for (auto signal : session->inflight_gpu.signals) {
+  for (auto signal : session->inflight_gpu->signals) {
     dependencies.push_back({ signal, task.ptr });
   }
 

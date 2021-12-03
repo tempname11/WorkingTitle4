@@ -5,8 +5,8 @@
 #include "lpass.hxx"
 
 void init_session_lpass(
-  engine::session::Vulkan::LPass *out,
-  engine::session::Vulkan::Core *core
+  engine::session::VulkanData::LPass *out,
+  engine::session::VulkanData::Core *core
 ) {
   ZoneScoped;
 
@@ -404,8 +404,8 @@ void init_session_lpass(
 }
 
 void deinit_session_lpass(
-  engine::session::Vulkan::LPass *it,
-  engine::session::Vulkan::Core *core
+  engine::session::VulkanData::LPass *it,
+  engine::session::VulkanData::Core *core
 ) {
   ZoneScoped;
   vkDestroyDescriptorSetLayout(
@@ -473,8 +473,8 @@ void init_rendering_lpass(
   engine::display::Data::ZBuffer *zbuffer,
   engine::display::Data::GBuffer *gbuffer,
   engine::display::Data::LBuffer *lbuffer,
-  engine::session::Vulkan::LPass *s_lpass,
-  engine::session::Vulkan::Core *core
+  engine::session::VulkanData::LPass *s_lpass,
+  engine::session::VulkanData::Core *core
 ) {
   ZoneScoped;
   std::vector<VkDescriptorSet> descriptor_sets_frame;
@@ -668,7 +668,7 @@ void init_rendering_lpass(
 
 void deinit_rendering_lpass(
   engine::display::Data::LPass *it,
-  engine::session::Vulkan::Core *core
+  engine::session::VulkanData::Core *core
 ) {
   ZoneScoped;
   for (auto framebuffer : it->framebuffers) {

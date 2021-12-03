@@ -1,6 +1,6 @@
 #include <src/global.hxx>
 #include <src/embedded.hxx>
-#include <src/engine/session/data.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include "internal.hxx"
 #include "data.hxx"
 
@@ -8,7 +8,7 @@ namespace engine::step::probe_appoint {
 
 void init_sdata(
   SData *out,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 ) {
   ZoneScoped;
 

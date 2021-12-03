@@ -8,6 +8,7 @@
 #include <src/lib/gfx/utilities.hxx>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/session/data.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include <src/engine/system/artline/public.hxx>
 #include <src/engine/system/grup/mesh/common.hxx>
 #include "private.hxx"
@@ -24,7 +25,7 @@ struct PerLoadImpl {
 };
 
 struct PerMesh {
-  session::Vulkan::Meshes::Item mesh_item;
+  session::VulkanData::Meshes::Item mesh_item;
 };
 
 struct PerTexture {
@@ -33,7 +34,7 @@ struct PerTexture {
 
   lib::GUID texture_id;
   engine::common::texture::Data<uint8_t> data;
-  session::Vulkan::Textures::Item texture_item;
+  session::VulkanData::Textures::Item texture_item;
   lib::hash64_t key;
 };
 
@@ -68,7 +69,7 @@ void _finish_texture(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<PerTexture> texture,
   Ref<PerModel> model,
-  Own<engine::session::Vulkan::Textures> textures,
+  Own<engine::session::VulkanData::Textures> textures,
   Ref<engine::session::Data> session
 ) {
   ZoneScoped;
@@ -96,11 +97,11 @@ void _finish_mesh(
   Ref<PerMesh> mesh,
   Ref<lib::GUID> p_mesh_id,
   Ref<PerModel> model,
-  Own<engine::session::Vulkan::Meshes> meshes,
+  Own<engine::session::VulkanData::Meshes> meshes,
   Ref<engine::session::Data> session
 ) {
   ZoneScoped;
-  *p_mesh_id = lib::guid::next(&session->guid_counter);
+  *p_mesh_id = lib::guid::next(session->guid_counter);
   meshes->items.insert({ *p_mesh_id, mesh->mesh_item });
   grup::mesh::deinit_t06(t06.ptr);
 }
@@ -197,7 +198,7 @@ void _generate_texture(
           &texture->data,
           &texture->texture_item,
           signal_init_image,
-          &session->vulkan.queue_work,
+          &session->vulkan->queue_work,
           session.ptr
         )
       );
@@ -207,7 +208,7 @@ void _generate_texture(
           _finish_texture,
           texture.ptr,
           model.ptr,
-          &session->vulkan.textures,
+          &session->vulkan->textures,
           session.ptr
         )
       );
@@ -223,7 +224,7 @@ void _generate_texture(
         { signal_init_image, task_finish_texture.first },
       });
 
-      texture->texture_id = lib::guid::next(&session->guid_counter);
+      texture->texture_id = lib::guid::next(session->guid_counter);
       texture->key = key;
 
       lib::u64_table::insert(&a->textures_by_key, key, CachedTexture {
@@ -438,7 +439,7 @@ void _generate_meshes(
           &t06_meshes->data[i],
           &model->meshes->data[i].mesh_item,
           signal_init_buffer,
-          &session->vulkan.queue_work,
+          &session->vulkan->queue_work,
           session.ptr
         )
       );
@@ -448,7 +449,7 @@ void _generate_meshes(
           _upload_mesh_init_blas,
           &model->meshes->data[i].mesh_item,
           signal_init_blas,
-          &session->vulkan.queue_work,
+          &session->vulkan->queue_work,
           session.ptr
         )
       );
@@ -460,7 +461,7 @@ void _generate_meshes(
           &model->meshes->data[i],
           &model->mesh_ids->data[i],
           model.ptr,
-          &session->vulkan.meshes,
+          &session->vulkan->meshes,
           session.ptr
         )
       );

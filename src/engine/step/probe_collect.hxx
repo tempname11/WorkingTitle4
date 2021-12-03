@@ -10,12 +10,12 @@ struct DData;
 
 void init_sdata(
   SData *out,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 );
 
 void deinit_sdata(
   SData *it,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 );
 
 void init_ddata(
@@ -28,12 +28,12 @@ void init_ddata(
   Use<datum::probe_offsets::SData> probe_offsets,
   Use<datum::probe_workset::SData> probe_workset,
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 );
 
 void deinit_ddata(
   DData *it,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 );
 
 void record(

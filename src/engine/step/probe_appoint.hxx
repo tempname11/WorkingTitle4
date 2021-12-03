@@ -1,6 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.h>
-#include <src/engine/session/data.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include <src/engine/display/data.hxx>
 
 namespace engine::step::probe_appoint {
@@ -10,12 +10,12 @@ struct DData;
 
 void init_sdata(
   SData *out,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 );
 
 void deinit_sdata(
   SData *it,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 );
 
 void init_ddata(
@@ -27,12 +27,12 @@ void init_ddata(
   Use<datum::probe_offsets::SData> probe_offsets,
   Use<datum::probe_workset::SData> probe_workset,
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 );
 
 void deinit_ddata(
   DData *it,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 );
 
 void record(
@@ -40,7 +40,7 @@ void record(
   Use<SData> sdata,
   Ref<engine::datum::probe_workset::SData> probe_workset,
   Ref<engine::display::Data::FrameInfo> frame_info,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   VkCommandBuffer cmd
 );
 

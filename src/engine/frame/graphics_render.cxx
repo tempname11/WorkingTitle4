@@ -21,9 +21,9 @@ namespace engine::frame {
 void record_geometry_draw_commands(
   VkCommandBuffer cmd,
   Use<engine::session::Data::State> session_state,
-  engine::session::Vulkan::Core *core,
+  engine::session::VulkanData::Core *core,
   engine::common::SharedDescriptorPool *descriptor_pool,
-  engine::session::Vulkan::GPass* s_gpass,
+  engine::session::VulkanData::GPass* s_gpass,
   engine::misc::RenderList *render_list
 ) {
   if (render_list->items.size() == 0) {
@@ -132,14 +132,14 @@ void record_geometry_draw_commands(
 void record_prepass(
   VkCommandBuffer cmd,
   Use<engine::session::Data::State> session_state,
-  engine::session::Vulkan::Core *core,
+  engine::session::VulkanData::Core *core,
   engine::common::SharedDescriptorPool *descriptor_pool,
   engine::display::Data::Prepass *prepass,
   engine::display::Data::GPass *gpass,
   engine::display::Data::SwapchainDescription *swapchain_description,
   engine::display::Data::FrameInfo *frame_info,
-  engine::session::Vulkan::Prepass *s_prepass,
-  engine::session::Vulkan::GPass *s_gpass,
+  engine::session::VulkanData::Prepass *s_prepass,
+  engine::session::VulkanData::GPass *s_gpass,
   engine::misc::RenderList *render_list
 ) {
   VkClearValue clear_values[] = {
@@ -192,12 +192,12 @@ void record_prepass(
 void record_gpass(
   VkCommandBuffer cmd,
   Use<engine::session::Data::State> session_state,
-  engine::session::Vulkan::Core *core,
+  engine::session::VulkanData::Core *core,
   engine::common::SharedDescriptorPool *descriptor_pool,
   engine::display::Data::GPass *gpass,
   engine::display::Data::SwapchainDescription *swapchain_description,
   engine::display::Data::FrameInfo *frame_info,
-  engine::session::Vulkan::GPass *s_gpass,
+  engine::session::VulkanData::GPass *s_gpass,
   engine::misc::RenderList *render_list
 ) {
   VkClearValue clear_values[] = {
@@ -251,12 +251,12 @@ void record_gpass(
 
 void record_lpass(
   VkCommandBuffer cmd,
-  engine::session::Vulkan::Core *core,
+  engine::session::VulkanData::Core *core,
   engine::display::Data::LPass *lpass,
   engine::display::Data::SwapchainDescription *swapchain_description,
   engine::display::Data::FrameInfo *frame_info,
-  engine::session::Vulkan::LPass *s_lpass,
-  engine::session::Vulkan::FullscreenQuad *fullscreen_quad,
+  engine::session::VulkanData::LPass *s_lpass,
+  engine::session::VulkanData::FullscreenQuad *fullscreen_quad,
   VkAccelerationStructureKHR accel
 ) {
   VkClearValue clear_value = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -341,7 +341,7 @@ void record_finalpass(
   engine::display::Data::FrameInfo *frame_info,
   engine::display::Data::LBuffer *lbuffer,
   engine::display::Data::FinalImage *final_image,
-  engine::session::Vulkan::Finalpass *s_finalpass
+  engine::session::VulkanData::Finalpass *s_finalpass
 ) {
   ZoneScoped;
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, s_finalpass->pipeline);
@@ -809,9 +809,9 @@ struct PerInstance {
 };
 
 void record_tlas(
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Use<engine::misc::RenderList> render_list,
-  Ref<engine::session::Vulkan::Uploader> uploader,
+  Ref<engine::Uploader> uploader,
   VkCommandBuffer cmd,
   TlasResult *tlas_result
 ) {
@@ -1175,46 +1175,45 @@ void _tlas_cleanup(
   Own<TlasResult> result
 ) {
   ZoneScoped;
-
-  auto core = &session->vulkan.core;
+  auto core = &session->vulkan->core;
 
   lib::gfx::allocator::destroy_buffer(
-    &session->vulkan.uploader.allocator_device,
+    &session->vulkan->uploader->allocator_device,
     core->device,
     core->allocator,
     result->buffer_accel
   );
 
   lib::gfx::allocator::destroy_buffer(
-    &session->vulkan.uploader.allocator_device,
+    &session->vulkan->uploader->allocator_device,
     core->device,
     core->allocator,
     result->buffer_scratch
   );
 
   lib::gfx::allocator::destroy_buffer(
-    &session->vulkan.uploader.allocator_device,
+    &session->vulkan->uploader->allocator_device,
     core->device,
     core->allocator,
     result->buffer_instances
   );
 
   lib::gfx::allocator::destroy_buffer(
-    &session->vulkan.uploader.allocator_host,
+    &session->vulkan->uploader->allocator_host,
     core->device,
     core->allocator,
     result->buffer_instances_staging
   );
 
   lib::gfx::allocator::destroy_buffer(
-    &session->vulkan.uploader.allocator_device,
+    &session->vulkan->uploader->allocator_device,
     core->device,
     core->allocator,
     result->buffer_geometry_refs
   );
 
   lib::gfx::allocator::destroy_buffer(
-    &session->vulkan.uploader.allocator_host,
+    &session->vulkan->uploader->allocator_host,
     core->device,
     core->allocator,
     result->buffer_geometry_refs_staging
@@ -1232,7 +1231,7 @@ void _tlas_cleanup(
 }
 
 void prepare_uniforms(
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
   Ref<engine::display::Data::FrameInfo> frame_info,
   Use<engine::session::Data::State> session_state,
@@ -1385,8 +1384,7 @@ void graphics_render(
   Own<engine::misc::GraphicsData> data
 ) {
   ZoneScoped;
-
-  auto core = &session->vulkan.core;
+  auto core = &session->vulkan->core;
   auto swapchain_description = &display->swapchain_description;
 
   auto pool2 = &(*command_pools)[frame_info->inflight_index];
@@ -1430,7 +1428,7 @@ void graphics_render(
   record_tlas(
     core,
     render_list,
-    &session->vulkan.uploader, // horrible!
+    session->vulkan->uploader, // horrible!
     cmd,
     tlas_result
   );
@@ -1450,7 +1448,7 @@ void graphics_render(
       task_tlas_cleanup.first,
     });
     ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-      { session->inflight_gpu.signals[frame_info->inflight_index], task_tlas_cleanup.first },
+      { session->inflight_gpu->signals[frame_info->inflight_index], task_tlas_cleanup.first },
     });
   }
 
@@ -1472,8 +1470,8 @@ void graphics_render(
       &display->gpass,
       swapchain_description,
       frame_info.ptr,
-      &session->vulkan.prepass,
-      &session->vulkan.gpass,
+      &session->vulkan->prepass,
+      &session->vulkan->gpass,
       render_list.ptr
     );
   }
@@ -1499,7 +1497,7 @@ void graphics_render(
       &display->gpass,
       swapchain_description,
       frame_info.ptr,
-      &session->vulkan.gpass,
+      &session->vulkan->gpass,
       render_list.ptr
     );
   }
@@ -1530,8 +1528,8 @@ void graphics_render(
       &display->lpass,
       swapchain_description,
       frame_info.ptr,
-      &session->vulkan.lpass,
-      &session->vulkan.fullscreen_quad,
+      &session->vulkan->lpass,
+      &session->vulkan->fullscreen_quad,
       tlas_result->accel
     );
   }
@@ -1544,13 +1542,13 @@ void graphics_render(
   );
 
   datum::probe_confidence::barrier_into_appoint(
-    &session->vulkan.probe_confidence,
+    &session->vulkan->probe_confidence,
     frame_info,
     cmd
   );
 
   datum::probe_offsets::barrier_into_appoint(
-    &session->vulkan.probe_offsets,
+    &session->vulkan->probe_offsets,
     frame_info,
     cmd
   );
@@ -1558,8 +1556,8 @@ void graphics_render(
   { TracyVkZone(core->tracy_context, cmd, "probe_appoint");
     step::probe_appoint::record(
       &display->probe_appoint,
-      &session->vulkan.probe_appoint,
-      &session->vulkan.probe_workset,
+      &session->vulkan->probe_appoint,
+      &session->vulkan->probe_workset,
       frame_info,
       core,
       cmd
@@ -1567,7 +1565,7 @@ void graphics_render(
   }
 
   datum::probe_workset::barrier_from_write_to_read(
-    &session->vulkan.probe_workset,
+    &session->vulkan->probe_workset,
     frame_info,
     cmd
   );
@@ -1585,13 +1583,13 @@ void graphics_render(
   );
 
   datum::probe_confidence::barrier_from_appoint_into_measure(
-    &session->vulkan.probe_confidence,
+    &session->vulkan->probe_confidence,
     frame_info,
     cmd
   );
 
   datum::probe_offsets::barrier_from_appoint_into_measure(
-    &session->vulkan.probe_offsets,
+    &session->vulkan->probe_offsets,
     frame_info,
     cmd
   );
@@ -1599,11 +1597,11 @@ void graphics_render(
   { TracyVkZone(core->tracy_context, cmd, "probe_measure");
     step::probe_measure::record(
       &display->probe_measure,
-      &session->vulkan.probe_measure,
+      &session->vulkan->probe_measure,
       frame_info,
       core,
       descriptor_pool,
-      &session->vulkan.probe_workset,
+      &session->vulkan->probe_workset,
       tlas_result->buffer_geometry_refs.buffer,
       render_list,
       tlas_result->accel,
@@ -1624,13 +1622,13 @@ void graphics_render(
   );
 
   datum::probe_confidence::barrier_from_measure_into_collect(
-    &session->vulkan.probe_confidence,
+    &session->vulkan->probe_confidence,
     frame_info,
     cmd
   );
 
   datum::probe_offsets::barrier_from_measure_into_collect(
-    &session->vulkan.probe_offsets,
+    &session->vulkan->probe_offsets,
     frame_info,
     cmd
   );
@@ -1638,21 +1636,21 @@ void graphics_render(
   { TracyVkZone(core->tracy_context, cmd, "probe_collect");
     step::probe_collect::record(
       &display->probe_collect,
-      &session->vulkan.probe_collect,
+      &session->vulkan->probe_collect,
       frame_info,
-      &session->vulkan.probe_workset,
+      &session->vulkan->probe_workset,
       cmd
     );
   }
 
   datum::probe_confidence::barrier_from_collect_into_indirect_light(
-    &session->vulkan.probe_confidence,
+    &session->vulkan->probe_confidence,
     frame_info,
     cmd
   );
 
   datum::probe_offsets::barrier_from_collect_into_indirect_light(
-    &session->vulkan.probe_offsets,
+    &session->vulkan->probe_offsets,
     frame_info,
     cmd
   );
@@ -1667,10 +1665,10 @@ void graphics_render(
     step::indirect_light::record(
       cmd,
       &display->indirect_light,
-      &session->vulkan.indirect_light,
+      &session->vulkan->indirect_light,
       frame_info,
       swapchain_description,
-      &session->vulkan.fullscreen_quad
+      &session->vulkan->fullscreen_quad
     );
   }
 
@@ -1696,7 +1694,7 @@ void graphics_render(
       frame_info.ptr,
       &display->lbuffer,
       &display->final_image,
-      &session->vulkan.finalpass
+      &session->vulkan->finalpass
     );
   }
 

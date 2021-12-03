@@ -1,3 +1,4 @@
+#include <src/engine/session/data/vulkan.hxx>
 #include "../blas_storage.hxx"
 #include "data.hxx"
 
@@ -5,7 +6,7 @@ namespace engine::blas_storage {
 
 void init(
   BlasStorage *it,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   size_t size_region
 ) {
   ZoneScoped;

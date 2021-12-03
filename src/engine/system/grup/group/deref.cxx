@@ -12,8 +12,8 @@ void deref(
   Ref<engine::session::Data> session
 ) {
   ZoneScoped;
-  std::shared_lock lock(session->grup.groups.rw_mutex);
-  auto item = &session->grup.groups.items.at(group_id);
+  std::shared_lock lock(session->grup.groups->rw_mutex);
+  auto item = &session->grup.groups->items.at(group_id);
   lib::lifetime::deref(&item->lifetime, ctx->runner);
 }
 

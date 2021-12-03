@@ -54,7 +54,7 @@ lib::Task *load(
   lib::task::ContextBase *ctx
 ) {
   auto misc = lib::easy_allocator::create(lib::allocator::GB);
-  auto dll_id = lib::guid::next(&session->guid_counter);
+  auto dll_id = lib::guid::next(session->guid_counter);
   auto copied_file_path = lib::cstr::crt_copy(dll_file_path);
 
   auto data = lib::allocator::make<PerLoad>(misc);

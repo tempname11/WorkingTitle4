@@ -1,6 +1,6 @@
 #pragma once
-#include <shared_mutex>
 #include <vulkan/vulkan.h>
+#include <src/lib/mutex.hxx>
 #include <src/global.hxx>
 
 namespace lib::gfx::allocator {
@@ -55,7 +55,7 @@ namespace lib::gfx {
       AllocationContent content;
     };
 
-    std::shared_mutex rw_mutex;
+    lib::mutex_t mutex;
     size_t total_suballocations;
     std::vector<Region> regions;
 

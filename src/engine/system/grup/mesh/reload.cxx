@@ -11,8 +11,8 @@ namespace engine::system::grup::mesh {
 void _reload_finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
-  Own<engine::session::Vulkan::Meshes> meshes,
+  Ref<engine::session::VulkanData::Core> core,
+  Own<engine::session::VulkanData::Meshes> meshes,
   Own<MetaMeshes> meta_meshes,
   Own<LoadData> data
 ) {
@@ -23,13 +23,13 @@ void _reload_finish(
   *item = data->mesh_item; // replace the data
 
   engine::uploader::destroy_buffer(
-    &session->vulkan.uploader,
+    session->vulkan->uploader,
     core,
     old_item.id
   );
 
   engine::blas_storage::destroy(
-    &session->vulkan.blas_storage,
+    session->vulkan->blas_storage,
     core,
     old_item.blas_id
   );
@@ -77,8 +77,8 @@ void reload(
     lib::task::create(
       _load_init_buffer,
       session.ptr,
-      &session->vulkan.core,
-      &session->vulkan.queue_work,
+      &session->vulkan->core,
+      &session->vulkan->queue_work,
       signal_init_buffer,
       data
     )
@@ -88,8 +88,8 @@ void reload(
     lib::task::create(
       _load_init_blas,
       session.ptr,
-      &session->vulkan.core,
-      &session->vulkan.queue_work,
+      &session->vulkan->core,
+      &session->vulkan->queue_work,
       signal_init_blas,
       data
     )
@@ -100,9 +100,9 @@ void reload(
     lib::task::create(
       _reload_finish,
       session.ptr,
-      &session->vulkan.core,
-      &session->vulkan.meshes,
-      &session->grup.meta_meshes,
+      &session->vulkan->core,
+      &session->vulkan->meshes,
+      session->grup.meta_meshes,
       data
     )
   );

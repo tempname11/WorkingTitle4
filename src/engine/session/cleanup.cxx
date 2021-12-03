@@ -1,5 +1,6 @@
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
+#include <src/lib/easy_allocator.hxx>
 #include <src/engine/uploader.hxx>
 #include <src/engine/blas_storage.hxx>
 #include <src/engine/rendering/prepass.hxx>
@@ -13,6 +14,7 @@
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
 #include <src/engine/step/indirect_light.hxx>
+#include "data/ode.hxx"
 #include "public.hxx"
 
 namespace engine::session {
@@ -23,18 +25,26 @@ void cleanup(
 ) {
   ZoneScoped;
 
+  lib::mutex::deinit(&session->frame_control->mutex);
+
+  {
+    dSpaceDestroy(session->ode->space);
+    dWorldDestroy(session->ode->world);
+    dCloseODE();
+  }
+
   { ZoneScopedN(".gpu_signal_support");
     lib::gpu_signal::deinit_support(
-      &session->gpu_signal_support,
-      session->vulkan.core.device,
-      session->vulkan.core.allocator
+      session->gpu_signal_support,
+      session->vulkan->core.device,
+      session->vulkan->core.allocator
     );
   }
 
   system::artline::deinit(&session->artline);
 
   { ZoneScopedN(".vulkan");
-    auto it = &session->vulkan;
+    auto it = session->vulkan;
     auto core = &it->core;
 
     deinit_session_prepass(&it->prepass, core);
@@ -102,7 +112,7 @@ void cleanup(
 
     { ZoneScopedN(".uploader");
       engine::uploader::deinit(
-        &it->uploader,
+        it->uploader,
         it->core.device,
         it->core.allocator
       );
@@ -110,7 +120,7 @@ void cleanup(
 
     { ZoneScopedN(".blas_storage");
       engine::blas_storage::deinit(
-        &it->blas_storage,
+        it->blas_storage,
         &it->core
       );
     }
@@ -153,11 +163,12 @@ void cleanup(
     glfwTerminate();
   }
 
-  delete session.ptr;
   ctx->changed_parents = {
     { .ptr = session.ptr, .children = {} },
-    { .ptr = &session->vulkan, .children = {} },
+    { .ptr = session->vulkan, .children = {} },
   };
+
+  lib::easy_allocator::destroy(session->init_allocator);
 }
 
 } // namespace

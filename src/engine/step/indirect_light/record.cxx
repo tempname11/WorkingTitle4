@@ -1,7 +1,7 @@
 #include <vulkan/vulkan.h>
 #include <src/global.hxx>
 #include <src/engine/display/data.hxx>
-#include <src/engine/session/data.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include "data.hxx"
 
 namespace engine::step::indirect_light {
@@ -12,7 +12,7 @@ void record(
   Use<SData> sdata,
   Ref<engine::display::Data::FrameInfo> frame_info,
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
-  Use<engine::session::Vulkan::FullscreenQuad> fullscreen_quad
+  Use<engine::session::VulkanData::FullscreenQuad> fullscreen_quad
 ) {
   ZoneScoped;
 

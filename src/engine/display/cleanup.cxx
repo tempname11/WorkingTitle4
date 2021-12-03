@@ -24,8 +24,7 @@ void cleanup(
   Own<engine::display::Data> data
 ) {
   ZoneScoped;
-  auto vulkan = &session->vulkan;
-  auto core = &vulkan->core;
+  auto core = &session->vulkan->core;
 
   for (auto image_view : data->gbuffer.channel0_views) {
     vkDestroyImageView(

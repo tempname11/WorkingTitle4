@@ -9,12 +9,12 @@ struct SData;
 void init_sdata(
   SData *out,
   Ref<lib::gfx::Allocator> allocator_device,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 );
 
 void deinit_sdata(
   SData *it,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 );
 
 void barrier_into_appoint(

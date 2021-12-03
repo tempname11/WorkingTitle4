@@ -8,8 +8,8 @@ void generate_render_list(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
   Use<engine::session::Data::Scene> scene,
-  Use<engine::session::Vulkan::Meshes> meshes,
-  Use<engine::session::Vulkan::Textures> textures,
+  Use<engine::session::VulkanData::Meshes> meshes,
+  Use<engine::session::VulkanData::Textures> textures,
   Own<engine::misc::RenderList> render_list
 ) {
   ZoneScoped;
@@ -23,29 +23,29 @@ void generate_render_list(
     // i.e. we'll take multiple mutexes for each item!
     // also, there is double indirection, where there should not be!
     auto pair = engine::uploader::get_buffer(
-      &session->vulkan.uploader,
+      session->vulkan->uploader,
       mesh.id
     );
     auto mesh_buffer = pair.first;
     auto mesh_buffer_address = pair.second;
 
     auto albedo_view = engine::uploader::get_image(
-      &session->vulkan.uploader,
+      session->vulkan->uploader,
       albedo_uploader_id
     ).second;
 
     auto normal_view = engine::uploader::get_image(
-      &session->vulkan.uploader,
+      session->vulkan->uploader,
       normal_uploader_id
     ).second;
 
     auto romeao_view = engine::uploader::get_image(
-      &session->vulkan.uploader,
+      session->vulkan->uploader,
       romeao_uploader_id
     ).second;
 
     auto blas_address = engine::blas_storage::get_address(
-      &session->vulkan.blas_storage,
+      session->vulkan->blas_storage,
       mesh.blas_id
     );
 

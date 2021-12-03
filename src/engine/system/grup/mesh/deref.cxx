@@ -14,8 +14,8 @@ struct DerefData {
 void _deref(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
-  Own<engine::session::Vulkan::Meshes> meshes,
+  Ref<engine::session::VulkanData::Core> core,
+  Own<engine::session::VulkanData::Meshes> meshes,
   Own<MetaMeshes> meta_meshes,
   Own<DerefData> data
 ) {
@@ -35,13 +35,13 @@ void _deref(
     auto mesh = &meshes->items.at(data->mesh_id);
 
     engine::uploader::destroy_buffer(
-      &session->vulkan.uploader,
+      session->vulkan->uploader,
       core,
       mesh->id
     );
 
     engine::blas_storage::destroy(
-      &session->vulkan.blas_storage,
+      session->vulkan->blas_storage,
       core,
       mesh->blas_id
     );
@@ -76,9 +76,9 @@ void deref(
     lib::task::create(
       _deref,
       session.ptr,
-      &session->vulkan.core,
-      &session->vulkan.meshes,
-      &session->grup.meta_meshes,
+      &session->vulkan->core,
+      &session->vulkan->meshes,
+      session->grup.meta_meshes,
       data
     )
   );

@@ -10,7 +10,7 @@ namespace engine::system::artline {
 void _deref_mesh(
   lib::hash64_t key,
   Data *it,
-  Own<session::Vulkan::Meshes> meshes,
+  Own<session::VulkanData::Meshes> meshes,
   Ref<session::Data> session
 ) {
   auto cached = lib::u64_table::lookup(it->meshes_by_key, key);
@@ -23,14 +23,14 @@ void _deref_mesh(
       auto mesh_item = &meshes->items[mesh_id];
 
       engine::uploader::destroy_buffer(
-        &session->vulkan.uploader,
-        &session->vulkan.core,
+        session->vulkan->uploader,
+        &session->vulkan->core,
         mesh_item->id
       );
 
       engine::blas_storage::destroy(
-        &session->vulkan.blas_storage,
-        &session->vulkan.core,
+        session->vulkan->blas_storage,
+        &session->vulkan->core,
         mesh_item->blas_id
       );
 
@@ -44,7 +44,7 @@ void _deref_mesh(
 void _deref_texture(
   lib::hash64_t key,
   Data *it,
-  Own<session::Vulkan::Textures> textures,
+  Own<session::VulkanData::Textures> textures,
   Ref<session::Data> session
 ) {
   auto cached = lib::u64_table::lookup(it->textures_by_key, key);
@@ -55,8 +55,8 @@ void _deref_texture(
     auto texture_item = &textures->items[cached->texture_id];
 
     engine::uploader::destroy_image(
-      &session->vulkan.uploader,
-      &session->vulkan.core,
+      session->vulkan->uploader,
+      &session->vulkan->core,
       texture_item->id
     );
 
@@ -69,8 +69,8 @@ void _unload_assets(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<lib::array_t<lib::hash64_t>> mesh_keys,
   Ref<lib::array_t<lib::hash64_t>> texture_keys,
-  Own<session::Vulkan::Meshes> meshes,
-  Own<session::Vulkan::Textures> textures,
+  Own<session::VulkanData::Meshes> meshes,
+  Own<session::VulkanData::Textures> textures,
   Ref<session::Data> session
 ) {
   ZoneScoped;

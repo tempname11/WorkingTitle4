@@ -11,18 +11,18 @@ struct DData;
 
 void init_sdata(
   SData *out,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 );
 
 void deinit_sdata(
   SData *it,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 );
 
 void init_ddata(
   DData *out,
   SData *sdata,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Own<engine::display::Data::Helpers> helpers,
   Use<display::Data::GBuffer> gbuffer,
   Use<display::Data::ZBuffer> zbuffer,
@@ -36,7 +36,7 @@ void init_ddata(
 
 void deinit_ddata(
   DData *it,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 );
 
 void record(
@@ -45,7 +45,7 @@ void record(
   Use<SData> sdata,
   Ref<display::Data::FrameInfo> frame_info,
   Ref<display::Data::SwapchainDescription> swapchain_description,
-  Use<engine::session::Vulkan::FullscreenQuad> fullscreen_quad
+  Use<engine::session::VulkanData::FullscreenQuad> fullscreen_quad
 );
 
 } // namespace

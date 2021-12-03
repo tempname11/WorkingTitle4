@@ -1,5 +1,6 @@
 #include <stb_image_write.h>
 #include <src/lib/gfx/utilities.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include "compose_render.hxx"
 
 namespace engine::frame {
@@ -20,8 +21,7 @@ namespace engine::frame {
     Own<WriteScreenshotData> data
   ) {
     ZoneScoped;
-
-    auto core = &session->vulkan.core;
+    auto core = &session->vulkan->core;
 
     assert(data->format == VK_FORMAT_B8G8R8A8_SRGB);
     for (size_t i = 0; i < data->w * data->h; i++) {
@@ -44,7 +44,7 @@ namespace engine::frame {
     assert(result != 0);
 
     lib::gfx::allocator::destroy_buffer(
-      &session->vulkan.uploader.allocator_host,
+      &session->vulkan->uploader->allocator_host,
       core->device,
       core->allocator,
       data->buffer
@@ -68,8 +68,7 @@ void compose_render(
   Own<engine::misc::ComposeData> data
 ) {
   ZoneScoped;
-
-  auto core = &session->vulkan.core;
+  auto core = &session->vulkan->core;
 
   {
     std::scoped_lock lock(presentation_failure_state->mutex);
@@ -196,14 +195,14 @@ void compose_render(
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
       };
       auto buffer = lib::gfx::allocator::create_buffer(
-        &session->vulkan.uploader.allocator_host, // @Cleanup
+        &session->vulkan->uploader->allocator_host, // @Cleanup
         core->device,
         core->allocator,
         &core->properties.basic,
         &info
       );
       auto mapping = lib::gfx::allocator::get_host_mapping(
-        &session->vulkan.uploader.allocator_host, // @Cleanup
+        &session->vulkan->uploader->allocator_host, // @Cleanup
         buffer.id
       );
       auto region = VkBufferImageCopy {
@@ -248,7 +247,7 @@ void compose_render(
         task_write_screenshot,
       });
 
-      auto signal = session->inflight_gpu.signals[frame_info->inflight_index];
+      auto signal = session->inflight_gpu->signals[frame_info->inflight_index];
       assert(signal != nullptr);
 
       ctx->new_dependencies.insert(ctx->new_dependencies.end(), {

@@ -38,7 +38,7 @@ void claim(
 void init(
   engine::display::Data::Helpers::Stakes stakes,
   engine::display::Data::Helpers *out,
-  engine::session::Vulkan::Core *core
+  engine::session::VulkanData::Core *core
 ) {
   VkDescriptorPool descriptor_pool;
   { ZoneScopedN("descriptor_pool");
@@ -82,7 +82,7 @@ void init(
 
 void deinit(
   engine::display::Data::Helpers *it,
-  engine::session::Vulkan::Core *core
+  engine::session::VulkanData::Core *core
 ) {
   vkDestroyDescriptorPool(
     core->device,

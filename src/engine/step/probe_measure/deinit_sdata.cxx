@@ -1,12 +1,12 @@
 #include <src/global.hxx>
-#include <src/engine/session/data.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include "data.hxx"
 
 namespace engine::step::probe_measure {
 
 void deinit_sdata(
   SData *it,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 ) {
   ZoneScoped;
 

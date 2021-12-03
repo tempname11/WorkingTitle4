@@ -1,11 +1,12 @@
 #include <src/lib/gfx/utilities.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include "readback.hxx"
 
 namespace engine::frame {
 
 void readback(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Own<VkQueue> queue_work,
   Own<engine::display::Data::Presentation> presentation,
   Ref<VkSemaphore> frame_finished_semaphore,

@@ -7,7 +7,7 @@ namespace engine::frame {
 
 void imgui_render(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Own<engine::session::Data::ImguiContext> imgui_context,
   Own<engine::display::Data::ImguiBackend> imgui_backend,
   Own<engine::session::Data::GLFW> glfw,

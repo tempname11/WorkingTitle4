@@ -5,6 +5,7 @@
 #include <src/lib/gfx/allocator.hxx>
 #include "uploader.data.hxx"
 #include "session/data.hxx"
+#include "session/data/vulkan.hxx"
 
 namespace engine::uploader {
 
@@ -66,13 +67,13 @@ void upload_image(
 
 void destroy_buffer(
   Ref<Uploader> it,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   ID id
 );
 
 void destroy_image(
   Ref<Uploader> it,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   ID id
 );
 

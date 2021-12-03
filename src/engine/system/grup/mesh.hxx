@@ -24,7 +24,6 @@ lib::Task *load(
   lib::task::ContextBase* ctx,
   Ref<engine::session::Data> session,
   Own<MetaMeshes> meta_meshes,
-  Use<engine::session::Data::GuidCounter> guid_counter,
   lib::GUID *out_mesh_id
 );
 

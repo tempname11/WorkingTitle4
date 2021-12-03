@@ -24,7 +24,7 @@ namespace engine::display {
 
 void _imgui_setup_cleanup(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Own<engine::display::Data::ImguiBackend> imgui_backend
 ) {
   ZoneScoped;
@@ -49,8 +49,9 @@ void setup(
   VkSurfaceCapabilitiesKHR *surface_capabilities
 ) {
   ZoneScoped;
+  auto vulkan = session->vulkan;
+  auto core = &vulkan->core;
 
-  auto vulkan = &session->vulkan;
   auto display = new engine::display::Data {};
   // how many images are in swapchain?
   uint32_t swapchain_image_count;
@@ -83,7 +84,7 @@ void setup(
     }
     {
       auto result = vkGetSwapchainImagesKHR(
-        session->vulkan.core.device,
+        core->device,
         display->presentation.swapchain,
         &swapchain_image_count,
         nullptr
@@ -93,7 +94,7 @@ void setup(
     display->presentation.swapchain_images.resize(swapchain_image_count);
     {
       auto result = vkGetSwapchainImagesKHR(
-        session->vulkan.core.device,
+        core->device,
         display->presentation.swapchain,
         &swapchain_image_count,
         display->presentation.swapchain_images.data()
@@ -106,18 +107,18 @@ void setup(
       VkSemaphoreCreateInfo info = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
       {
         auto result = vkCreateSemaphore(
-          session->vulkan.core.device,
+          core->device,
           &info,
-          session->vulkan.core.allocator,
+          core->allocator,
           &display->presentation.image_acquired[i]
         );
         assert(result == VK_SUCCESS);
       }
       {
         auto result = vkCreateSemaphore(
-          session->vulkan.core.device,
+          core->device,
           &info,
-          session->vulkan.core.allocator,
+          core->allocator,
           &display->presentation.image_rendered[i]
         );
         assert(result == VK_SUCCESS);
@@ -133,7 +134,7 @@ void setup(
   display->latest_frame.elapsed_ns = 0;
   display->latest_frame.number = uint64_t(-1);
   display->latest_frame.inflight_index = uint8_t(-1);
-  assert(engine::session::Data::InflightGPU::MAX_COUNT >= swapchain_image_count);
+  assert(engine::session::Inflight_GPU_Data::MAX_COUNT >= swapchain_image_count);
 
   { ZoneScopedN(".command_pools");
     display->command_pools = std::vector<CommandPool2>(swapchain_image_count);
@@ -144,12 +145,12 @@ void setup(
         {
           VkCommandPoolCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            .queueFamilyIndex = session->vulkan.core.queue_family_index,
+            .queueFamilyIndex = core->queue_family_index,
           };
           auto result = vkCreateCommandPool(
-            session->vulkan.core.device,
+            core->device,
             &create_info,
-            session->vulkan.core.allocator,
+            core->allocator,
             &pool
           );
           assert(result == VK_SUCCESS);
@@ -190,9 +191,9 @@ void setup(
         .pPoolSizes = sizes,
       };
       auto result = vkCreateDescriptorPool(
-        session->vulkan.core.device,
+        core->device,
         &create_info,
-        session->vulkan.core.allocator,
+        core->allocator,
         &pool.pool
       );
       assert(result == VK_SUCCESS);
@@ -209,9 +210,9 @@ void setup(
       .pNext = &timeline_info,
     };
     auto result = vkCreateSemaphore(
-      session->vulkan.core.device,
+      core->device,
       &create_info,
-      session->vulkan.core.allocator,
+      core->allocator,
       &display->frame_finished_semaphore
     );
     assert(result == VK_SUCCESS);
@@ -227,9 +228,9 @@ void setup(
       .pNext = &timeline_info,
     };
     auto result = vkCreateSemaphore(
-      session->vulkan.core.device,
+      core->device,
       &create_info,
-      session->vulkan.core.allocator,
+      core->allocator,
       &display->graphics_finished_semaphore
     );
     assert(result == VK_SUCCESS);
@@ -245,15 +246,13 @@ void setup(
       .pNext = &timeline_info,
     };
     auto result = vkCreateSemaphore(
-      session->vulkan.core.device,
+      core->device,
       &create_info,
-      session->vulkan.core.allocator,
+      core->allocator,
       &display->imgui_finished_semaphore
     );
     assert(result == VK_SUCCESS);
   }
-
-  auto core = &session->vulkan.core;
 
   lib::gfx::allocator::init(
     &display->allocator_dedicated,
@@ -513,10 +512,10 @@ void setup(
     lib::gfx::multi_alloc::init(
       &display->multi_alloc,
       std::move(claims),
-      session->vulkan.core.device,
-      session->vulkan.core.allocator,
-      &session->vulkan.core.properties.basic,
-      &session->vulkan.core.properties.memory
+      core->device,
+      core->allocator,
+      &core->properties.basic,
+      &core->properties.memory
     );
   }
 
@@ -704,7 +703,7 @@ void setup(
     &display->gbuffer,
     &display->swapchain_description,
     &vulkan->gpass,
-    &vulkan->core
+    core
   );
 
   init_rendering_lpass(
@@ -715,61 +714,61 @@ void setup(
     &display->zbuffer,
     &display->gbuffer,
     &display->lbuffer,
-    &session->vulkan.lpass,
-    &session->vulkan.core
+    &session->vulkan->lpass,
+    core
   );
 
   engine::step::probe_appoint::init_ddata(
     &display->probe_appoint,
-    &session->vulkan.probe_appoint,
+    &vulkan->probe_appoint,
     &display->helpers,
     &display->probe_attention,
-    &session->vulkan.probe_confidence,
-    &session->vulkan.probe_offsets,
-    &session->vulkan.probe_workset,
+    &vulkan->probe_confidence,
+    &vulkan->probe_offsets,
+    &vulkan->probe_workset,
     &display->swapchain_description,
-    &session->vulkan.core
+    core
   );
 
   engine::step::probe_measure::init_ddata(
     &display->probe_measure,
-    &session->vulkan.probe_measure,
+    &vulkan->probe_measure,
     &display->helpers,
     &display->lpass.stakes,
     &display->probe_radiance,
     &display->probe_irradiance,
-    &session->vulkan.probe_confidence,
-    &session->vulkan.probe_offsets,
+    &vulkan->probe_confidence,
+    &vulkan->probe_offsets,
     &display->probe_attention,
-    &session->vulkan.probe_workset,
+    &vulkan->probe_workset,
     &display->swapchain_description,
-    &session->vulkan.core
+    core
   );
 
   engine::step::probe_collect::init_ddata(
     &display->probe_collect,
-    &session->vulkan.probe_collect,
+    &vulkan->probe_collect,
     &display->helpers,
     &display->probe_radiance,
     &display->probe_irradiance,
-    &session->vulkan.probe_confidence,
-    &session->vulkan.probe_offsets,
-    &session->vulkan.probe_workset,
+    &vulkan->probe_confidence,
+    &vulkan->probe_offsets,
+    &vulkan->probe_workset,
     &display->swapchain_description,
-    &session->vulkan.core
+    core
   );
 
   engine::step::indirect_light::init_ddata(
     &display->indirect_light,
-    &session->vulkan.indirect_light,
-    &session->vulkan.core,
+    &vulkan->indirect_light,
+    core,
     &display->helpers,
     &display->gbuffer,
     &display->zbuffer,
     &display->lbuffer,
     &display->probe_irradiance,
-    &session->vulkan.probe_confidence,
-    &session->vulkan.probe_offsets,
+    &vulkan->probe_confidence,
+    &vulkan->probe_offsets,
     &display->probe_attention,
     &display->swapchain_description
   );
@@ -782,7 +781,7 @@ void setup(
     &display->lbuffer,
     &display->final_image,
     &vulkan->finalpass,
-    &vulkan->core
+    core
   );
 
   { // radiance readback
@@ -817,12 +816,12 @@ void setup(
     { ZoneScopedN(".setup_command_pool");
       VkCommandPoolCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .queueFamilyIndex = session->vulkan.core.queue_family_index,
+        .queueFamilyIndex = core->queue_family_index,
       };
       auto result = vkCreateCommandPool(
-        session->vulkan.core.device,
+        core->device,
         &create_info,
-        session->vulkan.core.allocator,
+        core->allocator,
         &display->imgui_backend.setup_command_pool
       );
       assert(result == VK_SUCCESS);
@@ -838,17 +837,17 @@ void setup(
         .pNext = &timeline_info,
       };
       auto result = vkCreateSemaphore(
-        session->vulkan.core.device,
+        core->device,
         &create_info,
-        session->vulkan.core.allocator,
+        core->allocator,
         &display->imgui_backend.setup_semaphore
       );
       assert(result == VK_SUCCESS);
     }
 
     signal_imgui_setup_finished = lib::gpu_signal::create(
-      &session->gpu_signal_support,
-      session->vulkan.core.device,
+      session->gpu_signal_support,
+      core->device,
       display->imgui_backend.setup_semaphore,
       1
     );
@@ -883,9 +882,9 @@ void setup(
       };
       {
         auto result = vkCreateRenderPass(
-          session->vulkan.core.device,
+          core->device,
           &create_info,
-          session->vulkan.core.allocator,
+          core->allocator,
           &display->imgui_backend.render_pass
         );
         assert(result == VK_SUCCESS);
@@ -909,9 +908,9 @@ void setup(
         };
         {
           auto result = vkCreateFramebuffer(
-            session->vulkan.core.device,
+            core->device,
             &create_info,
-            session->vulkan.core.allocator,
+            core->allocator,
             &framebuffer
           );
           assert(result == VK_SUCCESS);
@@ -922,17 +921,17 @@ void setup(
 
     { ZoneScopedN("init");
       ImGui_ImplVulkan_InitInfo info = {
-        .Instance = session->vulkan.instance,
-        .PhysicalDevice = session->vulkan.physical_device,
-        .Device = session->vulkan.core.device,
-        .QueueFamily = session->vulkan.core.queue_family_index,
-        .Queue = session->vulkan.queue_work,
+        .Instance = vulkan->instance,
+        .PhysicalDevice = vulkan->physical_device,
+        .Device = core->device,
+        .QueueFamily = core->queue_family_index,
+        .Queue = vulkan->queue_work,
         .DescriptorPool = display->helpers.descriptor_pool,
         .Subpass = 0,
         .MinImageCount = display->swapchain_description.image_count,
         .ImageCount = display->swapchain_description.image_count,
         .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
-        .Allocator = session->vulkan.core.allocator,
+        .Allocator = core->allocator,
       };
       ImGui_ImplVulkan_Init(&info, display->imgui_backend.render_pass);
     }
@@ -946,7 +945,7 @@ void setup(
       };
       {
         auto result = vkAllocateCommandBuffers(
-          session->vulkan.core.device,
+          vulkan->core.device,
           &alloc_info,
           &cmd_imgui_setup
         );
@@ -987,7 +986,7 @@ void setup(
   auto task_imgui_setup_cleanup = lib::defer(
     lib::task::create(
       _imgui_setup_cleanup,
-      &session->vulkan.core,
+      core,
       &display->imgui_backend
     )
   );
@@ -1047,7 +1046,7 @@ void setup(
       .pSignalSemaphores = &display->imgui_backend.setup_semaphore,
     };
     auto result = vkQueueSubmit(
-      session->vulkan.queue_work,
+      vulkan->queue_work,
       1, &submit_info,
       VK_NULL_HANDLE
     );

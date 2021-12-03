@@ -1,7 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include "../display/data.hxx"
-#include "../session/data.hxx"
+#include "../session/data/vulkan.hxx"
 
 namespace engine::rendering::gpass {
   struct VertexPushConstants {
@@ -10,15 +10,15 @@ namespace engine::rendering::gpass {
 }
 
 void init_session_gpass(
-  engine::session::Vulkan::GPass *out,
-  engine::session::Vulkan::Core *core,
+  engine::session::VulkanData::GPass *out,
+  engine::session::VulkanData::Core *core,
   VkShaderModule module_vert,
   VkShaderModule module_frag
 );
 
 void deinit_session_gpass(
-  engine::session::Vulkan::GPass *it,
-  engine::session::Vulkan::Core *core
+  engine::session::VulkanData::GPass *it,
+  engine::session::VulkanData::Core *core
 );
 
 void claim_rendering_gpass(
@@ -34,11 +34,11 @@ void init_rendering_gpass(
   engine::display::Data::ZBuffer *zbuffer,
   engine::display::Data::GBuffer *gbuffer,
   engine::display::Data::SwapchainDescription *swapchain_description,
-  engine::session::Vulkan::GPass *s_gpass,
-  engine::session::Vulkan::Core *core
+  engine::session::VulkanData::GPass *s_gpass,
+  engine::session::VulkanData::Core *core
 );
 
 void deinit_rendering_gpass(
   engine::display::Data::GPass *it,
-  engine::session::Vulkan::Core *core
+  engine::session::VulkanData::Core *core
 );

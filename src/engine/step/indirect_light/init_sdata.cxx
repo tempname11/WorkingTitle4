@@ -1,6 +1,7 @@
+#include <glm/glm.hpp>
 #include <src/global.hxx>
 #include <src/embedded.hxx>
-#include <src/engine/session/data.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include <src/engine/image_formats.hxx>
 #include "data.hxx"
 
@@ -8,7 +9,7 @@ namespace engine::step::indirect_light {
 
 void init_sdata(
   SData *out,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 ) {
   ZoneScoped;
 

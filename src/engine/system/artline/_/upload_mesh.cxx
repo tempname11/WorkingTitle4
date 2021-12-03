@@ -9,13 +9,13 @@ namespace engine::system::artline {
 void _upload_mesh_init_buffer(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::common::mesh::T06> t06,
-  Ref<engine::session::Vulkan::Meshes::Item> mesh_item,
+  Ref<engine::session::VulkanData::Meshes::Item> mesh_item,
   Ref<lib::Task> signal,
   Own<VkQueue> queue_work,
   Ref<engine::session::Data> session
 ) {
   ZoneScoped;
-  auto core = &session->vulkan.core;
+  auto core = &session->vulkan->core;
 
   auto aligned_size = lib::gfx::utilities::aligned_size(
     t06->index_count * sizeof(engine::common::mesh::IndexT06),
@@ -44,7 +44,7 @@ void _upload_mesh_init_buffer(
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
   auto result = engine::uploader::prepare_buffer(
-    &session->vulkan.uploader,
+    session->vulkan->uploader,
     core->device,
     core->allocator,
     &core->properties.basic,
@@ -63,7 +63,7 @@ void _upload_mesh_init_buffer(
   engine::uploader::upload_buffer(
     ctx,
     signal.ptr,
-    &session->vulkan.uploader,
+    session->vulkan->uploader,
     session.ptr,
     queue_work,
     result.id
@@ -72,7 +72,7 @@ void _upload_mesh_init_buffer(
 
 void _upload_mesh_init_blas(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<engine::session::Vulkan::Meshes::Item> mesh_item,
+  Ref<engine::session::VulkanData::Meshes::Item> mesh_item,
   Ref<lib::Task> signal,
   Own<VkQueue> queue_work,
   Ref<engine::session::Data> session
@@ -80,7 +80,7 @@ void _upload_mesh_init_blas(
   ZoneScoped;
 
   auto pair = engine::uploader::get_buffer(
-    &session->vulkan.uploader,
+    session->vulkan->uploader,
     mesh_item->id
   );
   auto buffer = pair.first;
@@ -95,11 +95,11 @@ void _upload_mesh_init_blas(
 
   mesh_item->blas_id = engine::blas_storage::create(
     ctx,
-    &session->vulkan.blas_storage,
+    session->vulkan->blas_storage,
     signal.ptr,
     &vertex_info,
     session,
-    &session->vulkan.core
+    &session->vulkan->core
   );
 }
 

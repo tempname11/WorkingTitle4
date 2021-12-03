@@ -12,8 +12,8 @@ struct DerefData {
 void _deref(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<engine::session::Data> session,
-  Ref<engine::session::Vulkan::Core> core,
-  Own<engine::session::Vulkan::Textures> textures,
+  Ref<engine::session::VulkanData::Core> core,
+  Own<engine::session::VulkanData::Textures> textures,
   Own<MetaTextures> meta_textures,
   Own<DerefData> data
 ) {
@@ -32,7 +32,7 @@ void _deref(
   if (meta->ref_count == 0) {
     auto texture = &textures->items.at(data->texture_id);
     engine::uploader::destroy_image(
-      &session->vulkan.uploader,
+      session->vulkan->uploader,
       core.ptr,
       texture->id
     );
@@ -67,9 +67,9 @@ void deref(
     lib::task::create(
       _deref,
       session.ptr,
-      &session->vulkan.core,
-      &session->vulkan.textures,
-      &session->grup.meta_textures,
+      &session->vulkan->core,
+      &session->vulkan->textures,
+      session->grup.meta_textures,
       data
     )
   );

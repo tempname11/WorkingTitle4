@@ -9,21 +9,23 @@
 #include <src/lib/lifetime.hxx>
 #include <src/lib/guid.hxx>
 #include <src/lib/gpu_signal.hxx>
-#include <src/lib/gfx/multi_alloc.hxx>
 #include <src/lib/debug_camera.hxx>
 #include <src/engine/system/grup/data.hxx>
 #include <src/engine/system/artline/data.hxx>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/common/ubo.hxx>
-#include <src/engine/uploader.data.hxx>
-#include <src/engine/blas_storage/data.hxx>
-#include <src/engine/blas_storage/id.hxx>
-#include "vulkan.data.hxx"
+#include "data/inflight_gpu.hxx"
 
 namespace engine::session {
 
+struct VulkanData;
+struct ODE_Data;
+struct Inflight_GPU_Data;
+
 struct Data : lib::task::ParentResource {
+  lib::allocator_t *init_allocator; // only used for init
+
   struct GLFW {
     bool ready;
     GLFWwindow *window;
@@ -32,14 +34,8 @@ struct Data : lib::task::ParentResource {
     glm::vec2 last_known_mouse_cursor_position;
   } glfw;
 
-  struct InflightGPU {
-    static const size_t MAX_COUNT = 4;
-    std::mutex mutex;
-    lib::task::Task *signals[MAX_COUNT];
-  } inflight_gpu;
-
-  using GuidCounter = lib::guid::Counter;
-  GuidCounter guid_counter;
+  Inflight_GPU_Data *inflight_gpu;
+  lib::guid::Counter *guid_counter;
 
   lib::Lifetime lifetime;
 
@@ -57,14 +53,14 @@ struct Data : lib::task::ParentResource {
   } scene;
 
   struct Grup {
-    system::grup::Groups groups;
-    system::grup::MetaMeshes meta_meshes;
-    system::grup::MetaTextures meta_textures;
+    system::grup::Groups *groups;
+    system::grup::MetaMeshes *meta_meshes;
+    system::grup::MetaTextures *meta_textures;
   } grup;
 
   system::artline::Data artline;
 
-  Vulkan vulkan;
+  VulkanData *vulkan;
 
   struct ImguiContext {
     bool ready;
@@ -73,8 +69,7 @@ struct Data : lib::task::ParentResource {
     // but if they took a parameter, we'd store that here.
   } imgui_context;
 
-  using GPU_SignalSupport = lib::gpu_signal::Support;
-  GPU_SignalSupport gpu_signal_support;
+  lib::gpu_signal::Support *gpu_signal_support;
 
   struct Info {
     size_t worker_count;
@@ -104,10 +99,12 @@ struct Data : lib::task::ParentResource {
     engine::common::ubo::Flags ubo_flags;
   } state;
 
+  ODE_Data *ode;
+
   #ifdef ENGINE_DEVELOPER
     struct FrameControl {
       bool enabled;
-      std::mutex mutex;
+      lib::mutex_t mutex;
       size_t allowed_count;
       lib::Task *signal_allowed;
       lib::Task *signal_done;
@@ -116,7 +113,7 @@ struct Data : lib::task::ParentResource {
         bool should_capture_screenshot;
         std::string screenshot_path;
       } directives;
-    } frame_control;
+    } *frame_control;
   #endif
 };
 

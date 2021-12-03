@@ -5,6 +5,7 @@
 #include <src/embedded.hxx>
 #include <src/lib/gfx/utilities.hxx>
 #include <src/lib/defer.hxx>
+#include <src/lib/easy_allocator.hxx>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/uploader.hxx>
 #include <src/engine/blas_storage.hxx>
@@ -26,6 +27,8 @@
 #include <src/engine/misc.hxx>
 #include "setup_cleanup.hxx"
 #include "iteration.hxx"
+#include "data/vulkan.hxx"
+#include "data/ode.hxx"
 #include "public.hxx"
 
 namespace engine::session {
@@ -56,11 +59,14 @@ glm::vec2 fullscreen_quad_data[] = { // not a quad now!
 };
 
 void init_vulkan(
-  engine::session::Vulkan *it,
-  engine::session::Data::GLFW *glfw
+  engine::session::VulkanData *out,
+  engine::session::Data::GLFW *glfw,
+  lib::allocator_t *init_allocator
 ) {
   ZoneScoped;
-  auto core = &it->core;
+
+  memset(out, 0, sizeof(*out)); // *out = {};
+  new (out) engine::session::VulkanData(); // @Hack for unordered_map
 
   /*
   SessionSetupData *session_setup_data;
@@ -100,7 +106,7 @@ void init_vulkan(
       .ppEnabledExtensionNames = extensions.data(),
     };
     {
-      auto result = vkCreateInstance(&instance_create_info, allocator, &it->instance);
+      auto result = vkCreateInstance(&instance_create_info, allocator, &out->instance);
       assert(result == VK_SUCCESS);
     }
   }
@@ -108,7 +114,7 @@ void init_vulkan(
   { ZoneScopedN(".debug_messenger");
     auto _vkCreateDebugUtilsMessengerEXT = 
       (PFN_vkCreateDebugUtilsMessengerEXT)
-        vkGetInstanceProcAddr(it->instance, "vkCreateDebugUtilsMessengerEXT");
+        vkGetInstanceProcAddr(out->instance, "vkCreateDebugUtilsMessengerEXT");
     VkDebugUtilsMessengerCreateInfoEXT create_info = {
       .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
       .messageSeverity = (0
@@ -125,20 +131,20 @@ void init_vulkan(
       .pfnUserCallback = vulkan_debug_callback,
     };
     auto result = _vkCreateDebugUtilsMessengerEXT(
-      it->instance,
+      out->instance,
       &create_info,
       allocator,
-      &it->debug_messenger
+      &out->debug_messenger
     );
     assert(result == VK_SUCCESS);
   }
 
   { ZoneScopedN(".window_surface");
     auto result = glfwCreateWindowSurface(
-      it->instance,
+      out->instance,
       glfw->window,
       allocator,
-      &it->window_surface
+      &out->window_surface
     );
     assert(result == VK_SUCCESS);
   }
@@ -149,9 +155,9 @@ void init_vulkan(
     {
       VkPhysicalDevice physical_device = nullptr;
       uint32_t device_count = 0;
-      vkEnumeratePhysicalDevices(it->instance, &device_count, nullptr);
+      vkEnumeratePhysicalDevices(out->instance, &device_count, nullptr);
       std::vector<VkPhysicalDevice> devices(device_count);
-      vkEnumeratePhysicalDevices(it->instance, &device_count, devices.data());
+      vkEnumeratePhysicalDevices(out->instance, &device_count, devices.data());
       for (const auto& device : devices) {
         VkPhysicalDeviceProperties properties;
         vkGetPhysicalDeviceProperties(device, &properties);
@@ -161,7 +167,7 @@ void init_vulkan(
         }
       }
       assert(physical_device != VK_NULL_HANDLE);
-      it->physical_device = physical_device;
+      out->physical_device = physical_device;
     }
   }
 
@@ -172,13 +178,13 @@ void init_vulkan(
   { ZoneScopedN("family_indices");
     uint32_t queue_family_count = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(
-      it->physical_device,
+      out->physical_device,
       &queue_family_count,
       nullptr
     );
     std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
     vkGetPhysicalDeviceQueueFamilyProperties(
-      it->physical_device,
+      out->physical_device,
       &queue_family_count,
       queue_families.data()
     );
@@ -187,9 +193,9 @@ void init_vulkan(
       for (const auto& queue_family : queue_families) {
         VkBool32 has_present_support = false;
         vkGetPhysicalDeviceSurfaceSupportKHR(
-          it->physical_device,
+          out->physical_device,
           i,
-          it->window_surface,
+          out->window_surface,
           &has_present_support
         );
         if (has_present_support
@@ -272,67 +278,67 @@ void init_vulkan(
     };
     {
       auto result = vkCreateDevice(
-        it->physical_device,
+        out->physical_device,
         &device_create_info,
         allocator,
-        &it->core.device
+        &out->core.device
       );
       assert(result == VK_SUCCESS);
     }
-    it->core.allocator = allocator;
+    out->core.allocator = allocator;
   }
 
   { ZoneScopedN("queues");
-    vkGetDeviceQueue(it->core.device, queue_family_index, 0, &it->queue_present);
-    vkGetDeviceQueue(it->core.device, queue_family_index, 1, &it->queue_work);
-    it->core.queue_family_index = queue_family_index;
-    assert(it->queue_present != VK_NULL_HANDLE);
-    assert(it->queue_work != VK_NULL_HANDLE);
+    vkGetDeviceQueue(out->core.device, queue_family_index, 0, &out->queue_present);
+    vkGetDeviceQueue(out->core.device, queue_family_index, 1, &out->queue_work);
+    out->core.queue_family_index = queue_family_index;
+    assert(out->queue_present != VK_NULL_HANDLE);
+    assert(out->queue_work != VK_NULL_HANDLE);
   }
 
   { ZoneScopedN(".core.properties");
     VkPhysicalDeviceProperties properties;
-    vkGetPhysicalDeviceProperties(it->physical_device, &it->core.properties.basic);
+    vkGetPhysicalDeviceProperties(out->physical_device, &out->core.properties.basic);
 
     VkPhysicalDeviceMemoryProperties memory_properties;
-    vkGetPhysicalDeviceMemoryProperties(it->physical_device, &it->core.properties.memory);
+    vkGetPhysicalDeviceMemoryProperties(out->physical_device, &out->core.properties.memory);
 
-    it->core.properties.ray_tracing = {
+    out->core.properties.ray_tracing = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR,
     };
     {
       VkPhysicalDeviceProperties2 properties2 = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
-        .pNext = &it->core.properties.ray_tracing,
+        .pNext = &out->core.properties.ray_tracing,
       };
-      vkGetPhysicalDeviceProperties2(it->physical_device, &properties2);
+      vkGetPhysicalDeviceProperties2(out->physical_device, &properties2);
     }
   }
 
   { ZoneScopedN(".core.extension_pointers");
-    it->core.extension_pointers.vkCreateAccelerationStructureKHR = (
+    out->core.extension_pointers.vkCreateAccelerationStructureKHR = (
       (PFN_vkCreateAccelerationStructureKHR)
-      vkGetInstanceProcAddr(it->instance, "vkCreateAccelerationStructureKHR")
+      vkGetInstanceProcAddr(out->instance, "vkCreateAccelerationStructureKHR")
     );
 
-    it->core.extension_pointers.vkDestroyAccelerationStructureKHR = (
+    out->core.extension_pointers.vkDestroyAccelerationStructureKHR = (
       (PFN_vkDestroyAccelerationStructureKHR)
-      vkGetInstanceProcAddr(it->instance, "vkDestroyAccelerationStructureKHR")
+      vkGetInstanceProcAddr(out->instance, "vkDestroyAccelerationStructureKHR")
     );
 
-    it->core.extension_pointers.vkGetAccelerationStructureBuildSizesKHR = (
+    out->core.extension_pointers.vkGetAccelerationStructureBuildSizesKHR = (
       (PFN_vkGetAccelerationStructureBuildSizesKHR)
-      vkGetInstanceProcAddr(it->instance, "vkGetAccelerationStructureBuildSizesKHR")
+      vkGetInstanceProcAddr(out->instance, "vkGetAccelerationStructureBuildSizesKHR")
     );
 
-    it->core.extension_pointers.vkCmdBuildAccelerationStructuresKHR = (
+    out->core.extension_pointers.vkCmdBuildAccelerationStructuresKHR = (
       (PFN_vkCmdBuildAccelerationStructuresKHR)
-      vkGetInstanceProcAddr(it->instance, "vkCmdBuildAccelerationStructuresKHR")
+      vkGetInstanceProcAddr(out->instance, "vkCmdBuildAccelerationStructuresKHR")
     );
 
-    it->core.extension_pointers.vkGetAccelerationStructureDeviceAddressKHR = (
+    out->core.extension_pointers.vkGetAccelerationStructureDeviceAddressKHR = (
       (PFN_vkGetAccelerationStructureDeviceAddressKHR)
-      vkGetInstanceProcAddr(it->instance, "vkGetAccelerationStructureDeviceAddressKHR")
+      vkGetInstanceProcAddr(out->instance, "vkGetAccelerationStructureDeviceAddressKHR")
     );
   }
 
@@ -340,13 +346,13 @@ void init_vulkan(
     VkCommandPoolCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
       .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-      .queueFamilyIndex = it->core.queue_family_index,
+      .queueFamilyIndex = out->core.queue_family_index,
     };
     auto result = vkCreateCommandPool(
-      it->core.device,
+      out->core.device,
       &create_info,
-      it->core.allocator,
-      &it->tracy_setup_command_pool
+      out->core.allocator,
+      &out->tracy_setup_command_pool
     );
     assert(result == VK_SUCCESS);
   }
@@ -367,23 +373,23 @@ void init_vulkan(
         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
         | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
       ),
-      .p_stake_buffer = &it->fullscreen_quad.vertex_stake,
+      .p_stake_buffer = &out->fullscreen_quad.vertex_stake,
     });
 
     lib::gfx::multi_alloc::init(
-      &it->multi_alloc,
+      &out->multi_alloc,
       std::move(claims),
-      it->core.device,
-      it->core.allocator,
-      &it->core.properties.basic,
-      &it->core.properties.memory
+      out->core.device,
+      out->core.allocator,
+      &out->core.properties.basic,
+      &out->core.properties.memory
     );
   }
 
   { ZoneScopedN(".allocator_host");
     lib::gfx::allocator::init(
-      &it->allocator_host,
-      &it->core.properties.memory,
+      &out->allocator_host,
+      &out->core.properties.memory,
       VkMemoryPropertyFlagBits(0
         | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
@@ -395,8 +401,8 @@ void init_vulkan(
 
   { ZoneScopedN(".allocator_device");
     lib::gfx::allocator::init(
-      &it->allocator_device,
-      &it->core.properties.memory,
+      &out->allocator_device,
+      &out->core.properties.memory,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
       ALLOCATOR_GPU_LOCAL_REGION_SIZE,
       "session.allocator_device"
@@ -404,20 +410,26 @@ void init_vulkan(
   }
 
   { ZoneScopedN(".uploader");
+    out->uploader = lib::allocator::make<engine::Uploader>(init_allocator);
+    new (out->uploader) engine::Uploader(); // @Hack for unordered_map
+    // memset(out->uploader, 0, sizeof(*out->uploader)); // *out->uploader = {};
     engine::uploader::init(
-      &it->uploader,
-      it->core.device,
-      it->core.allocator,
-      &it->core.properties.memory,
-      it->core.queue_family_index,
+      out->uploader,
+      out->core.device,
+      out->core.allocator,
+      &out->core.properties.memory,
+      out->core.queue_family_index,
       ALLOCATOR_GPU_LOCAL_REGION_SIZE
     );
   }
 
   { ZoneScopedN(".blas_storage");
+    out->blas_storage = lib::allocator::make<engine::BlasStorage>(init_allocator);
+    new (out->blas_storage) engine::BlasStorage(); // @Hack for unordered_map
+    // memset(out->blas_storage, 0, sizeof(*out->blas_storage)); // *out->blas_storage = {};
     engine::blas_storage::init(
-      &it->blas_storage,
-      &it->core,
+      out->blas_storage,
+      &out->core,
       ALLOCATOR_GPU_LOCAL_REGION_SIZE
     );
   }
@@ -433,9 +445,9 @@ void init_vulkan(
       .pCode = (const uint32_t*) embedded_gpass_vert,
     };
     auto result = vkCreateShaderModule(
-      it->core.device,
+      out->core.device,
       &info,
-      it->core.allocator,
+      out->core.allocator,
       &module_vert
     );
     assert(result == VK_SUCCESS);
@@ -448,106 +460,106 @@ void init_vulkan(
       .pCode = (const uint32_t*) embedded_gpass_frag,
     };
     auto result = vkCreateShaderModule(
-      it->core.device,
+      out->core.device,
       &info,
-      it->core.allocator,
+      out->core.allocator,
       &module_frag
     );
     assert(result == VK_SUCCESS);
   }
 
   init_session_gpass(
-    &it->gpass,
-    &it->core,
+    &out->gpass,
+    &out->core,
     module_vert,
     module_frag
   );
 
   init_session_prepass(
-    &it->prepass,
-    &it->gpass,
-    &it->core,
+    &out->prepass,
+    &out->gpass,
+    &out->core,
     module_vert
   );
 
   init_session_lpass(
-    &it->lpass,
-    &it->core
+    &out->lpass,
+    &out->core
   );
 
   datum::probe_workset::init_sdata(
-    &it->probe_workset,
-    &it->core,
-    &it->allocator_device
+    &out->probe_workset,
+    &out->core,
+    &out->allocator_device
   );
 
   datum::probe_confidence::init_sdata(
-    &it->probe_confidence,
-    &it->allocator_device,
-    &it->core
+    &out->probe_confidence,
+    &out->allocator_device,
+    &out->core
   );
 
   datum::probe_offsets::init_sdata(
-    &it->probe_offsets,
-    &it->allocator_device,
-    &it->core
+    &out->probe_offsets,
+    &out->allocator_device,
+    &out->core
   );
 
   step::probe_appoint::init_sdata(
-    &it->probe_appoint,
-    &it->core
+    &out->probe_appoint,
+    &out->core
   );
 
   step::probe_measure::init_sdata(
-    &it->probe_measure,
-    &it->core
+    &out->probe_measure,
+    &out->core
   );
 
   step::probe_collect::init_sdata(
-    &it->probe_collect,
-    &it->core
+    &out->probe_collect,
+    &out->core
   );
 
   step::indirect_light::init_sdata(
-    &it->indirect_light,
-    &it->core
+    &out->indirect_light,
+    &out->core
   );
 
   init_session_finalpass(
-    &it->finalpass,
-    &it->core
+    &out->finalpass,
+    &out->core
   );
 
   vkDestroyShaderModule(
-    it->core.device,
+    out->core.device,
     module_frag,
-    it->core.allocator
+    out->core.allocator
   );
   vkDestroyShaderModule(
-    it->core.device,
+    out->core.device,
     module_vert,
-    it->core.allocator
+    out->core.allocator
   );
 
   { ZoneScopedN(".fullscreen_quad");
-    it->fullscreen_quad.triangle_count = sizeof(fullscreen_quad_data) / sizeof(glm::vec2);
+    out->fullscreen_quad.triangle_count = sizeof(fullscreen_quad_data) / sizeof(glm::vec2);
     void * data;
     {
       auto result = vkMapMemory(
-        it->core.device,
-        it->fullscreen_quad.vertex_stake.memory,
-        it->fullscreen_quad.vertex_stake.offset,
-        it->fullscreen_quad.vertex_stake.size,
+        out->core.device,
+        out->fullscreen_quad.vertex_stake.memory,
+        out->fullscreen_quad.vertex_stake.offset,
+        out->fullscreen_quad.vertex_stake.size,
         0,
         &data
       );
       assert(result == VK_SUCCESS);
     }
-    assert(it->fullscreen_quad.vertex_stake.size == sizeof(fullscreen_quad_data));
+    assert(out->fullscreen_quad.vertex_stake.size == sizeof(fullscreen_quad_data));
     memcpy(data, fullscreen_quad_data, sizeof(fullscreen_quad_data));
     vkUnmapMemory(
-      it->core.device,
-      it->fullscreen_quad.vertex_stake.memory
+      out->core.device,
+      out->fullscreen_quad.vertex_stake.memory
     );
   }
 
@@ -557,11 +569,11 @@ void init_vulkan(
       {
         auto info = VkCommandBufferAllocateInfo {
           .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-          .commandPool = it->tracy_setup_command_pool,
+          .commandPool = out->tracy_setup_command_pool,
           .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
           .commandBufferCount = 1,
         };
-        auto result = vkAllocateCommandBuffers(it->core.device, &info, &cmd);
+        auto result = vkAllocateCommandBuffers(out->core.device, &info, &cmd);
         assert(result == VK_SUCCESS);
         ZoneValue(uint64_t(cmd));
       }
@@ -576,28 +588,28 @@ void init_vulkan(
         assert(gpdctd != nullptr);
         assert(gct != nullptr);
 
-        it->core.tracy_context = TracyVkContextCalibrated(
-          it->physical_device,
-          it->core.device,
-          it->queue_work,
+        out->core.tracy_context = TracyVkContextCalibrated(
+          out->physical_device,
+          out->core.device,
+          out->queue_work,
           cmd,
           gpdctd,
           gct
         );
       } else {
-        it->core.tracy_context = TracyVkContext(
-          it->physical_device,
-          it->core.device,
-          it->queue_work,
+        out->core.tracy_context = TracyVkContext(
+          out->physical_device,
+          out->core.device,
+          out->queue_work,
           cmd
         );
       }
     }
   # else
-    it->core.tracy_context = nullptr;
+    out->core.tracy_context = nullptr;
   #endif
 
-  it->ready = true;
+  out->ready = true;
 
   /*
   VkSemaphore semaphore_setup_finished;
@@ -644,13 +656,16 @@ void init_vulkan(
   */
 }
 
-
 void setup(
   lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   Own<engine::session::Data *> out
 ) {
   ZoneScoped;
-  auto session = new engine::session::Data {};
+  auto init_allocator = lib::easy_allocator::create(lib::allocator::MB);
+  auto session = lib::allocator::make<engine::session::Data>(init_allocator);
+  *session = {
+    .init_allocator = init_allocator,
+  };
   lib::lifetime::init(&session->lifetime, 1);
 
   { ZoneScopedN(".glfw");
@@ -816,6 +831,13 @@ void setup(
   }
   auto glfw = &session->glfw;
 
+  session->inflight_gpu = lib::allocator::make<Inflight_GPU_Data>(init_allocator);
+  new (session->inflight_gpu) Inflight_GPU_Data(); // @Hack for std::mutex
+
+  session->guid_counter = lib::allocator::make<lib::guid::Counter>(init_allocator);
+  memset(session->guid_counter, 0, sizeof(*session->guid_counter)); // because of atomics
+  // *session->guid_counter = {};
+
   { ZoneScopedN(".imgui_context");
     auto it = &session->imgui_context;
     ImGui::CreateContext();
@@ -823,14 +845,28 @@ void setup(
     it->ready = true;
   }
 
-  auto vulkan = &session->vulkan;
-  init_vulkan(vulkan, glfw);
+  { // grup
+    session->grup.groups = lib::allocator::make<system::grup::Groups>(init_allocator);
+    new (session->grup.groups) system::grup::Groups(); // @Hack
+
+    session->grup.meta_meshes = lib::allocator::make<system::grup::MetaMeshes>(init_allocator);
+    new (session->grup.meta_meshes) system::grup::MetaMeshes(); // @Hack
+
+    session->grup.meta_textures = lib::allocator::make<system::grup::MetaTextures>(init_allocator);
+    new (session->grup.meta_textures) system::grup::MetaTextures(); // @Hack
+  }
+  session->vulkan = lib::allocator::make<VulkanData>(init_allocator);
+  auto vulkan = session->vulkan;
+  init_vulkan(vulkan, glfw, init_allocator);
 
   system::artline::init(&session->artline);
 
   { ZoneScopedN(".gpu_signal_support");
-    auto it = &session->gpu_signal_support;
-    *it = lib::gpu_signal::init_support(
+    session->gpu_signal_support = lib::allocator::make<
+      lib::gpu_signal::Support
+    >(init_allocator);
+    lib::gpu_signal::init_support(
+      session->gpu_signal_support,
       ctx->runner,
       vulkan->core.device,
       vulkan->core.allocator
@@ -862,8 +898,33 @@ void setup(
     .taa_distance = 1.0f,
   };
 
+  { // ODE
+    {
+      auto result = dInitODE2(0);
+      assert(result != 0);
+    }
+
+    auto world = dWorldCreate();
+    dWorldSetGravity(world, 0, 0, -10);
+    auto space = dSimpleSpaceCreate(0);
+
+    session->ode = lib::allocator::make<ODE_Data>(init_allocator);
+    *session->ode = {
+      .world = world,
+      .space = space,
+    };
+  }
+
   #ifdef ENGINE_DEVELOPER
-    session->frame_control.enabled = (out.ptr != nullptr);
+    {
+      session->frame_control = lib::allocator::make<
+        engine::session::Data::FrameControl
+      >(init_allocator);
+      *session->frame_control = {
+        .enabled = (out.ptr != nullptr),
+      };
+      lib::mutex::init(&session->frame_control->mutex);
+    }
   #endif
 
   /*
@@ -879,12 +940,12 @@ void setup(
   // remove this when subresources are removed.
   #ifndef NDEBUG
   {
-    const auto size = sizeof(engine::session::Data) - sizeof(engine::session::Vulkan);
-    static_assert(size == 1208);
+    const auto size = sizeof(engine::session::Data);
+    static_assert(size == 416);
   }
   {
-    const auto size = sizeof(engine::session::Vulkan);
-    static_assert(size == 3256);
+    const auto size = sizeof(engine::session::VulkanData);
+    static_assert(size == 2504);
   }
   #endif
 
@@ -913,13 +974,10 @@ void setup(
       .ptr = session,
       .children = {
         &session->glfw,
-        &session->guid_counter,
-        &session->inflight_gpu,
-        &session->lifetime,
+        session->vulkan,
         &session->scene,
-        &session->grup.meta_meshes,
-        &session->grup.meta_textures,
-        &session->vulkan,
+        session->grup.meta_meshes,
+        session->grup.meta_textures,
         &session->imgui_context,
         &session->gpu_signal_support,
         &session->info,
@@ -930,25 +988,25 @@ void setup(
       },
     },
     {
-      .ptr = &session->vulkan,
+      .ptr = session->vulkan,
       .children = {
-        &session->vulkan.instance,
-        &session->vulkan.debug_messenger,
-        &session->vulkan.window_surface,
-        &session->vulkan.physical_device,
-        &session->vulkan.core,
-        &session->vulkan.queue_present,
-        &session->vulkan.queue_work,
-        &session->vulkan.core.queue_family_index,
-        &session->vulkan.tracy_setup_command_pool,
-        &session->vulkan.multi_alloc,
-        &session->vulkan.uploader,
-        &session->vulkan.fullscreen_quad,
-        &session->vulkan.gpass,
-        &session->vulkan.lpass,
-        &session->vulkan.finalpass,
-        &session->vulkan.meshes,
-        &session->vulkan.textures,
+        &session->vulkan->instance,
+        &session->vulkan->debug_messenger,
+        &session->vulkan->window_surface,
+        &session->vulkan->physical_device,
+        &session->vulkan->core,
+        &session->vulkan->queue_present,
+        &session->vulkan->queue_work,
+        &session->vulkan->core.queue_family_index,
+        &session->vulkan->tracy_setup_command_pool,
+        &session->vulkan->multi_alloc,
+        session->vulkan->uploader,
+        &session->vulkan->fullscreen_quad,
+        &session->vulkan->gpass,
+        &session->vulkan->lpass,
+        &session->vulkan->finalpass,
+        &session->vulkan->meshes,
+        &session->vulkan->textures,
       },
     },
   });

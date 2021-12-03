@@ -25,12 +25,14 @@ void init(
   }
   assert(memory_type_index != (uint32_t) -1);
 
-  // @Note: we'd like to do `*out = {...}` here, but the mutex won't let us :(
-  out->memory_type_index = memory_type_index;
-  out->memory_property_flags = memory_property_flags;
-  out->size_region = size_region;
-  out->min_size_dedicated = size_region * MIN_SIZE_DEDICATED_FRACTION;
-  out->debug_name = debug_name;
+  *out = {
+    .memory_type_index = memory_type_index,
+    .memory_property_flags = memory_property_flags,
+    .size_region = size_region,
+    .min_size_dedicated = size_t(size_region * MIN_SIZE_DEDICATED_FRACTION),
+    .debug_name = debug_name,
+  };
+  lib::mutex::init(&out->mutex);
 }
 
 void deinit(
@@ -48,6 +50,7 @@ void deinit(
       vkDestroyImage(device, item.content.image, allocator);
     }
   }
+
   for (auto &item : it->regions) {
     vkFreeMemory(device, item.memory, allocator);
     TracyFreeN((void *) item.memory, it->debug_name);
@@ -60,6 +63,8 @@ void deinit(
       }
     }
   }
+
+  lib::mutex::deinit(&it->mutex);
 }
 
 struct _Allocation {
@@ -81,7 +86,7 @@ _Allocation _allocate(
   assert(requirements->memoryTypeBits & (1 << it->memory_type_index) != 0);
 
   _Allocation alloc = {};
-  std::unique_lock lock(it->rw_mutex);
+  lib::mutex::lock(&it->mutex);
 
   if (requirements->size >= it->min_size_dedicated) {
     assert(it->total_suballocations < INT64_MAX);
@@ -227,6 +232,7 @@ _Allocation _allocate(
     });
   }
 
+  lib::mutex::unlock(&it->mutex);
   return alloc;
 }
 
@@ -349,13 +355,14 @@ HostMapping get_host_mapping(
   ID id
 ) {
   ZoneScoped;
-
   assert(id != 0);
-  std::shared_lock lock(it->rw_mutex);
+  lib::mutex::lock(&it->mutex);
+
   if (id < 0) {
     // @Performance: could do binary search here.
     for (auto &item : it->dedicated_allocations) {
       if (item.id == id) {
+        lib::mutex::unlock(&it->mutex);
         return {
           .mem = item.mem,
           .size = item.size,
@@ -375,6 +382,7 @@ HostMapping get_host_mapping(
     // @Performance: could do binary search here.
     for (auto &item : region->suballocations) {
       if (item.id == id) {
+        lib::mutex::unlock(&it->mutex);
         return {
           .mem = (uint8_t *) region->mem + item.offset,
           .size = item.size,
@@ -392,20 +400,24 @@ void _deallocate(
   ID id
 ) {
   ZoneScoped;
-
   assert(id != 0);
-  std::unique_lock lock(it->rw_mutex);
+  lib::mutex::lock(&it->mutex);
+
   if (id < 0) {
+    bool did_erase = false;
     // @Performance: could do binary search here.
     for (size_t i = 0; i < it->dedicated_allocations.size(); i++) {
       if (it->dedicated_allocations[i].id == id) {
         vkFreeMemory(device, it->dedicated_allocations[i].memory, allocator);
         TracyFreeN((void *) it->dedicated_allocations[i].memory, it->debug_name);
         it->dedicated_allocations.erase(it->dedicated_allocations.begin() + i);
-        return;
+        did_erase = true;
+        break;
       }
     }
-    assert("ID not found" && false);
+    if (!did_erase) {
+      assert("ID not found" && false);
+    }
   } else {
     Allocator::Region *region = nullptr;
     size_t region_index = 0;
@@ -425,7 +437,11 @@ void _deallocate(
         did_erase = true;
       }
     }
-    assert(did_erase);
+
+    if (!did_erase) {
+      assert("ID not found" && false);
+    }
+
     region->total_active_suballocations--;
     if (region->total_active_suballocations == 0) {
       vkFreeMemory(device, region->memory, allocator);
@@ -433,6 +449,8 @@ void _deallocate(
       it->regions.erase(it->regions.begin() + region_index);
     }
   }
+
+  lib::mutex::unlock(&it->mutex);
 }
 
 void destroy_buffer(

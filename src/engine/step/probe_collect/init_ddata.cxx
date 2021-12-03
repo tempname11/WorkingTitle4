@@ -1,7 +1,7 @@
 #include <src/global.hxx>
 #include <src/embedded.hxx>
 #include <src/engine/constants.hxx>
-#include <src/engine/session/data.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include <src/engine/display/data.hxx>
 #include "data.hxx"
 
@@ -17,7 +17,7 @@ void init_ddata(
   Use<datum::probe_offsets::SData> probe_offsets,
   Use<datum::probe_workset::SData> probe_workset,
   Ref<engine::display::Data::SwapchainDescription> swapchain_description,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 ) {
   ZoneScoped;
 

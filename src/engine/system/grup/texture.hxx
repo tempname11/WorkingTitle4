@@ -26,7 +26,6 @@ lib::Task *load(
   lib::task::ContextBase* ctx,
   Ref<engine::session::Data> session,
   Own<engine::system::grup::MetaTextures> meta_textures,
-  Use<engine::session::Data::GuidCounter> guid_counter,
   lib::GUID *out_texture_id
 );
 

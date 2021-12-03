@@ -1,12 +1,13 @@
 #include <imgui.h>
 #include <backends/imgui_impl_vulkan.h>
+#include <src/engine/session/data/vulkan.hxx>
 #include "imgui_render.hxx"
 
 namespace engine::frame {
 
 void imgui_render(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  Ref<engine::session::Vulkan::Core> core,
+  Ref<engine::session::VulkanData::Core> core,
   Own<engine::session::Data::ImguiContext> imgui_context,
   Own<engine::display::Data::ImguiBackend> imgui_backend,
   Own<engine::session::Data::GLFW> glfw, /* hacky way to prevent KeyMods bug. */

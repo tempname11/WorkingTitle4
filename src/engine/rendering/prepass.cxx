@@ -4,9 +4,9 @@
 #include "prepass.hxx"
 
 void init_session_prepass(
-  engine::session::Vulkan::Prepass *out,
-  engine::session::Vulkan::GPass *gpass,
-  engine::session::Vulkan::Core *core,
+  engine::session::VulkanData::Prepass *out,
+  engine::session::VulkanData::GPass *gpass,
+  engine::session::VulkanData::Core *core,
   VkShaderModule module_vert
 ) {
   ZoneScoped;
@@ -201,8 +201,8 @@ void init_session_prepass(
 }
 
 void deinit_session_prepass(
-  engine::session::Vulkan::Prepass *it,
-  engine::session::Vulkan::Core *core
+  engine::session::VulkanData::Prepass *it,
+  engine::session::VulkanData::Core *core
 ) {
   ZoneScoped;
   vkDestroyRenderPass(
@@ -221,8 +221,8 @@ void init_rendering_prepass(
   engine::display::Data::Prepass *out,
   engine::display::Data::ZBuffer *zbuffer,
   engine::display::Data::SwapchainDescription *swapchain_description,
-  engine::session::Vulkan::Prepass *s_prepass,
-  engine::session::Vulkan::Core *core
+  engine::session::VulkanData::Prepass *s_prepass,
+  engine::session::VulkanData::Core *core
 ) {
   ZoneScoped;
   std::vector<VkFramebuffer> framebuffers;
@@ -261,7 +261,7 @@ void init_rendering_prepass(
 
 void deinit_rendering_prepass(
   engine::display::Data::Prepass *it,
-  engine::session::Vulkan::Core *core
+  engine::session::VulkanData::Core *core
 ) {
   ZoneScoped;
   for (auto framebuffer : it->framebuffers) {

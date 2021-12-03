@@ -1,7 +1,7 @@
 #pragma once
 #include <src/global.hxx>
 #include <src/lib/gfx/allocator.hxx>
-#include <src/engine/session/data.hxx>
+#include <src/engine/session/data/vulkan.hxx>
 #include "constants.hxx"
 #include "data.hxx"
 
@@ -10,7 +10,7 @@ namespace engine::datum::probe_confidence {
 void init_sdata(
   SData *out,
   Ref<lib::gfx::Allocator> allocator_device,
-  Ref<engine::session::Vulkan::Core> core
+  Ref<engine::session::VulkanData::Core> core
 ) {
   ZoneScoped;
 
