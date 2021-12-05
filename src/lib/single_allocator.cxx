@@ -1,23 +1,15 @@
 #include <cstddef>
-#include <cstring>
 #include <Tracy.hpp>
 #include "base.hxx"
-#include "mutex.hxx"
 #include "virtual_memory.hxx"
 
-namespace lib::easy_allocator {
+namespace lib::single_allocator {
 
 struct implementation_t {
   allocator_t parent;
-  mutex_t mutex;
   size_t reserved_pages;
   size_t committed_pages;
-  size_t free_range_start_offset;
-};
-
-// Reserved before every allocation.
-struct reserved_t {
-  size_t size;
+  void *allocated;
 };
 
 implementation_t *cast(allocator_t *parent) {
@@ -26,22 +18,16 @@ implementation_t *cast(allocator_t *parent) {
   );
 }
 
-void *alloc_fn(
+void *adjust(
   allocator_t *parent,
   size_t size,
   size_t alignment
 ) {
   auto it = cast(parent);
   auto page_size = virtual_memory::get_page_size();
-  lib::mutex::lock(&it->mutex);
-  
-  // Reserve memory for a `reserved_t`.
-  // The final location will always be just behind `ptr`.
-  auto reserved_intermediate_offset = alignof(reserved_t) * (
-    (it->free_range_start_offset + alignof(reserved_t) - 1) / alignof(reserved_t)
-  );
+
   auto aligned_start_offset = alignment * (
-    ((reserved_intermediate_offset + sizeof(reserved_t)) + alignment - 1) / alignment
+    (sizeof(implementation_t) + alignment - 1) / alignment
   );
   auto end_offset = aligned_start_offset + size;
   auto free_range_end_offset = it->committed_pages * page_size;
@@ -66,19 +52,21 @@ void *alloc_fn(
     }
   }
 
-  it->free_range_start_offset = end_offset;
-  lib::mutex::unlock(&it->mutex);
+  // @Incomplete: we could also free pages if new `size` is small.
 
   auto ptr = (uint8_t *) it + aligned_start_offset;
-
-  // Don't use `reserved_intermediate_offset` here. `reserved` will still be
-  // properly aligned, regardless of the `alignment`.
-  auto reserved = (reserved_t *) (ptr - sizeof(size_t));
-  *reserved = {
-    .size = size,
-  };
-
+  it->allocated = (void *) ptr;
   return (void *) ptr;
+}
+
+void *alloc_fn(
+  allocator_t *parent,
+  size_t size,
+  size_t alignment
+) {
+  auto it = cast(parent);
+  assert(it->allocated == nullptr);
+  return adjust(parent, size, alignment);
 }
 
 void *realloc_fn(
@@ -87,14 +75,21 @@ void *realloc_fn(
   size_t size,
   size_t alignment
 ) {
-  auto reserved = (reserved_t *) ((uint8_t *) ptr - sizeof(size_t));
-  void *new_ptr = alloc_fn(parent, size, alignment);
-  memcpy(new_ptr, ptr, reserved->size);
-  return new_ptr;
+  auto it = cast(parent);
+  assert(it->allocated == ptr);
+  return adjust(parent, size, alignment);
 }
 
 void dealloc_fn(allocator_t *parent, void *ptr) {
-  assert("Not supported" && false);
+  auto it = cast(parent);
+  assert(it->allocated == ptr);
+  for (size_t i = 0; i < it->committed_pages; i++) {
+    TracyFreeN(
+      it->mem + page_size * i,
+      virtual_memory->tracy_pool_name
+    );
+  }
+  virtual_memory::free((void *) it);
 }
 
 allocator_t* create(size_t conceivable_size) {
@@ -116,23 +111,9 @@ allocator_t* create(size_t conceivable_size) {
     },
     .reserved_pages = reserved_pages,
     .committed_pages = committed_pages,
-    .free_range_start_offset = sizeof(implementation_t),
   };
-  lib::mutex::init(&it->mutex);
 
   return &it->parent;
-}
-
-void destroy(lib::allocator_t *parent) {
-  auto it = cast(parent);
-  lib::mutex::deinit(&it->mutex);
-  for (size_t i = 0; i < it->committed_pages; i++) {
-    TracyFreeN(
-      it->mem + page_size * i,
-      virtual_memory->tracy_pool_name
-    );
-  }
-  virtual_memory::free((void *) it);
 }
 
 } // namespace

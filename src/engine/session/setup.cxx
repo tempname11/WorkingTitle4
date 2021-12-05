@@ -6,6 +6,7 @@
 #include <src/lib/gfx/utilities.hxx>
 #include <src/lib/defer.hxx>
 #include <src/lib/easy_allocator.hxx>
+#include <src/lib/single_allocator.hxx>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/uploader.hxx>
 #include <src/engine/blas_storage.hxx>
@@ -51,6 +52,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_callback(
 
 const int DEFAULT_WINDOW_WIDTH = 1920;
 const int DEFAULT_WINDOW_HEIGHT = 1080;
+
+const size_t MAX_BODY_COMPONENTS = 1024 * 1024;
 
 glm::vec2 fullscreen_quad_data[] = { // not a quad now!
   { -1.0f, -1.0f },
@@ -909,15 +912,18 @@ void setup(
     auto space = dSimpleSpaceCreate(0);
     auto collision_joints = dJointGroupCreate(0);
 
-    // auto body_components_allocator = lib::easy_allocator::create(lib::allocator::MB);
-    // @Bug @Hack
 
     session->ode = lib::allocator::make<ODE_Data>(init_allocator);
     *session->ode = {
       .world = world,
       .space = space,
       .collision_joints = collision_joints,
-      .body_components = lib::array::create<BodyComponent>(lib::allocator::crt, 500),
+      .body_components = lib::array::create<BodyComponent>(
+        lib::single_allocator::create(
+          sizeof(BodyComponent) * MAX_BODY_COMPONENTS
+        ),
+        0
+      ),
     };
   }
 

@@ -1,6 +1,4 @@
 #pragma once
-#include <atomic>
-#include <src/global.hxx>
 
 namespace lib {
   struct mutex_t {
