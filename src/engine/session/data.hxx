@@ -96,6 +96,7 @@ struct Data : lib::task::ParentResource {
     float sun_irradiance;
     float luminance_moving_average;
     float taa_distance;
+    double residual_elapsed_physics_sec;
     engine::common::ubo::Flags ubo_flags;
   } state;
 

@@ -3,6 +3,9 @@
  
 namespace engine::frame {
 
+const double PHYSICS_TIME_STEP = 0.01;
+const size_t PHYSICS_MAX_FRAME_STEPS = 5;
+
 float halton(int i, int b) {
   float f = 1.0;
   float r = 0.0;
@@ -83,11 +86,20 @@ void update(
     );
   }
 
-  { // ODE
-    dSpaceCollide(session->ode->space, session->ode, handle_collisions);
-    const double time_step = 0.01;
-    dWorldQuickStep(session->ode->world, time_step);
-    dJointGroupEmpty(session->ode->collision_joints);
+  { ZoneScopedN("ODE");
+    // It's important this executed on the main thread, both for ODE thread safety,
+    // and because of lack of synchronization for `session->ode`
+    session_state->residual_elapsed_physics_sec += elapsed_sec;
+    for (size_t i = 0; i < PHYSICS_MAX_FRAME_STEPS; i++) {
+      if (session_state->residual_elapsed_physics_sec > PHYSICS_TIME_STEP) {
+        session_state->residual_elapsed_physics_sec -= PHYSICS_TIME_STEP;
+        dSpaceCollide(session->ode->space, session->ode, handle_collisions);
+        dWorldQuickStep(session->ode->world, PHYSICS_TIME_STEP);
+        dJointGroupEmpty(session->ode->collision_joints);
+      } else {
+        break;
+      }
+    }
   }
 
   {
