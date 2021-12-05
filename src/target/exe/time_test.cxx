@@ -30,7 +30,7 @@ void waiting_thread(
   Storage *storage
 ) {
   ZoneScoped;
-  bool stop;
+  bool stop = false;
   while (!stop) {
     lib::mutex::lock(&storage->mutex);
     stop = storage->stop;

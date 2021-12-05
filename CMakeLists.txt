@@ -70,9 +70,9 @@ add_library (
   "${CMAKE_SOURCE_DIR}/submodule/tracy/TracyClient.cpp"
 )
 
-target_compile_definitions(tracy_lib PRIVATE -DTRACY_ENABLE=1)
-target_compile_definitions(tracy_lib PRIVATE -DTRACY_ON_DEMAND=1)
-# target_compile_definitions(tracy_lib PRIVATE -DTRACY_NO_EXIT=1)
+target_compile_definitions(tracy_lib PRIVATE -DTRACY_ENABLE)
+target_compile_definitions(tracy_lib PRIVATE -DTRACY_ON_DEMAND)
+target_compile_definitions(tracy_lib PRIVATE -DTRACY_NO_EXIT)
 target_compile_definitions(tracy_lib INTERFACE -DTRACY_IMPORTS)
 
 add_library (
