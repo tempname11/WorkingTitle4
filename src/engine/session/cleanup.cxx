@@ -28,8 +28,10 @@ void cleanup(
   lib::mutex::deinit(&session->frame_control->mutex);
 
   {
-    dSpaceDestroy(session->ode->space);
-    dWorldDestroy(session->ode->world);
+    auto it = session->ode;
+    lib::array::destroy(it->body_components);
+    dSpaceDestroy(it->space);
+    dWorldDestroy(it->world);
     dCloseODE();
   }
 

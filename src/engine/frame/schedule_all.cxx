@@ -115,7 +115,9 @@ void _begin(
       &frame_data->update_data,
       frame_info,
       &data->readback,
-      &session->state
+      &session->state,
+      &session->scene,
+      session.ptr
     ),
     lib::task::create(
       reset_pools,

@@ -6,11 +6,13 @@
 namespace engine::frame {
 
 void update(
-  lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  Use<engine::misc::UpdateData> update,
-  Ref<engine::display::Data::FrameInfo> frame_info,
-  Use<engine::display::Data::Readback> readback_data,
-  Own<engine::session::Data::State> session_state
+  lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
+  Use<misc::UpdateData> update,
+  Ref<display::Data::FrameInfo> frame_info,
+  Use<display::Data::Readback> readback_data,
+  Own<session::Data::State> session_state,
+  Own<session::Data::Scene> scene,
+  Ref<session::Data> session
 );
 
 } // namespace

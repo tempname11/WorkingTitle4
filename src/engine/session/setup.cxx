@@ -907,11 +907,17 @@ void setup(
     auto world = dWorldCreate();
     dWorldSetGravity(world, 0, 0, -10);
     auto space = dSimpleSpaceCreate(0);
+    auto collision_joints = dJointGroupCreate(0);
+
+    // auto body_components_allocator = lib::easy_allocator::create(lib::allocator::MB);
+    // @Bug @Hack
 
     session->ode = lib::allocator::make<ODE_Data>(init_allocator);
     *session->ode = {
       .world = world,
       .space = space,
+      .collision_joints = collision_joints,
+      .body_components = lib::array::create<BodyComponent>(lib::allocator::crt, 500),
     };
   }
 

@@ -22,25 +22,24 @@ float cube_sd(glm::vec3 position) {
 }
 
 DLL_EXPORT DECL_DESCRIBE_FN(describe) {
-  for (size_t i = 0; i < 500; i++) { // cube
-    auto params = default_params;
-    params.grid_size = uvec3(2);
+  auto params = default_params;
+  params.grid_size = glm::uvec3(2);
 
-    lib::array::ensure_space(&desc->models, 1);
-    desc->models->data[desc->models->count++] = Model {
-      .transform = (
-        translation(vec3(0, 0, 1))
-      ),
-      .mesh {
-        .gen0 = {
-          .type = ModelMesh::Type::Gen0,
-          .signed_distance_fn = cube_sd,
-          .texture_uv_fn = triplanar_texture_uv,
-          .params = params,
-          .signature = 0x1001001,
-        },
+  lib::array::ensure_space(&desc->models, 1);
+  desc->models->data[desc->models->count++] = Model {
+    .transform = (
+      translation(vec3(0, 0, -1000))
+        * scaling(1000)
+    ),
+    .mesh {
+      .gen0 = {
+        .type = ModelMesh::Type::Gen0,
+        .signed_distance_fn = cube_sd,
+        .texture_uv_fn = triplanar_texture_uv,
+        .params = params,
+        .signature = 0x1001001,
       },
-      .material = materials::placeholder,
-    };
-  }
+    },
+    .material = materials::placeholder,
+  };
 }

@@ -5,32 +5,6 @@
 using namespace engine::system::artline;
 using namespace glm;
 
-float unite(float a) {
-  return a;
-}
-
-float unite(float a, float b) {
-  return lib::max(a, b);
-}
-
-template<typename... Args>
-float unite(float a, float b, Args... xs) {
-  return lib::max(lib::max(a, b), unite(xs...));
-}
-
-float intersect(float a) {
-  return a;
-}
-
-float intersect(float a, float b) {
-  return lib::min(a, b);
-}
-
-template<typename... Args>
-float intersect(float a, float b, Args... xs) {
-  return lib::min(lib::min(a, b), intersect(xs...));
-}
-
 DualContouringParams default_params = {
   .grid_size = uvec3(1), // override this
   .grid_min_bounds = vec3(-1.0f),

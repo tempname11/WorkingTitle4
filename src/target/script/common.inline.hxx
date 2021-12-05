@@ -1,6 +1,7 @@
 #pragma once
 #include <semaphore>
 #include <src/lib/task.hxx>
+#include <src/engine/startup.hxx>
 
 struct Waitable {
   bool should_delete;

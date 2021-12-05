@@ -181,6 +181,13 @@ add_library(
 target_link_libraries (test.art PRIVATE engine_lib)
 
 add_library(
+  ground.art
+  SHARED
+  "src/target/artline/ground.cxx"
+)
+target_link_libraries (ground.art PRIVATE engine_lib)
+
+add_library(
   temple.art
   SHARED
   "src/target/artline/temple.cxx"

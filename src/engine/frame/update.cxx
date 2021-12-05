@@ -1,3 +1,4 @@
+#include <src/engine/session/data/ode.hxx>
 #include "update.hxx"
  
 namespace engine::frame {
@@ -13,12 +14,30 @@ float halton(int i, int b) {
   return r;
 }
 
+void handle_collisions(void* ptr, dGeomID ga, dGeomID gb) {
+  auto data = (session::ODE_Data *) ptr;
+  dContact contacts[16];
+  auto n = dCollide(ga, gb, 16, &contacts[0].geom, sizeof(dContact));
+
+  auto ba = dGeomGetBody(ga);
+  auto bb = dGeomGetBody(gb);
+  for (size_t i = 0; i < n; i++) {
+    contacts[i].surface.mode = dContactApprox1;
+    contacts[i].surface.mu = 0.5;
+
+    auto joint = dJointCreateContact(data->world, data->collision_joints, &contacts[i]);
+    dJointAttach(joint, ba, bb);
+  }
+}
+
 void update(
-  lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  Use<engine::misc::UpdateData> update,
-  Ref<engine::display::Data::FrameInfo> frame_info,
-  Use<engine::display::Data::Readback> readback_data,
-  Own<engine::session::Data::State> session_state
+  lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx, // main thread for ODE
+  Use<misc::UpdateData> update,
+  Ref<display::Data::FrameInfo> frame_info,
+  Use<display::Data::Readback> readback_data,
+  Own<session::Data::State> session_state,
+  Own<session::Data::Scene> scene,
+  Ref<session::Data> session
 ) {
   ZoneScoped;
 
@@ -62,6 +81,40 @@ void update(
         + /*****/ w * std::pow(r * 0.21 + g * 0.72 + b * 0.07, 1.0 / p)
       ), p)
     );
+  }
+
+  { // ODE
+    dSpaceCollide(session->ode->space, session->ode, handle_collisions);
+    const double time_step = 0.01;
+    dWorldQuickStep(session->ode->world, time_step);
+    dJointGroupEmpty(session->ode->collision_joints);
+  }
+
+  {
+    auto cs = session->ode->body_components;
+    for (size_t i = 0; i < cs->count; i++) {
+      cs->data[i].updated_this_frame = false;
+      if (scene->items.size() > i) { // @Hack ultra hack
+        auto r = dBodyGetRotation(cs->data[i].body);
+        auto p = dBodyGetPosition(cs->data[i].body);
+        scene->items[i].transform = {
+          r[0], r[4], r[8], 0,
+          r[1], r[5], r[9], 0,
+          r[2], r[6], r[10], 0,
+          /*
+          r[0], r[1], r[2], 0,
+          r[3], r[4], r[5], 0,
+          r[6], r[7], r[8], 0,
+          */
+          /*
+          1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          */
+          p[0], p[1], p[2], 1,
+        };
+      }
+    }
   }
 }
 
