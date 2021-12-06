@@ -49,7 +49,7 @@ struct DualContouringParams {
   bool clamp_qef;
 };
 
-union ModelMesh {
+union PieceMesh {
   enum struct Type {
     File,
     Gen0,
@@ -73,20 +73,20 @@ union ModelMesh {
   Gen0 gen0;
 };
 
-struct ModelMaterial {
+struct PieceMaterial {
   lib::cstr_range_t file_path_albedo;
   lib::cstr_range_t file_path_normal;
   lib::cstr_range_t file_path_romeao;
 };
 
-struct Model {
+struct Piece {
   glm::mat4 transform;
-  ModelMesh mesh;
-  ModelMaterial material;
+  PieceMesh mesh;
+  PieceMaterial material;
 };
 
 struct Description {
-  lib::array_t<Model> *models;
+  lib::array_t<Piece> *pieces;
 };
 
 #define DECL_DESCRIBE_FN(name) void name(engine::system::artline::Description *desc)

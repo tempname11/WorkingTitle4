@@ -1,4 +1,5 @@
 #include <src/lib/single_allocator.hxx>
+#include <src/engine/component.hxx>
 #include "impl.hxx"
 
 namespace engine::system::ode {

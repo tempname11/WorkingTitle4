@@ -27,14 +27,14 @@ DLL_EXPORT DECL_DESCRIBE_FN(describe) {
     auto params = default_params;
     params.grid_size = uvec3(2);
 
-    lib::array::ensure_space(&desc->models, 1);
-    desc->models->data[desc->models->count++] = Model {
+    lib::array::ensure_space(&desc->pieces, 1);
+    desc->pieces->data[desc->pieces->count++] = Piece {
       .transform = (
         translation(vec3(0, 0, 1))
       ),
       .mesh {
         .gen0 = {
-          .type = ModelMesh::Type::Gen0,
+          .type = PieceMesh::Type::Gen0,
           .signed_distance_fn = cube_sd,
           .texture_uv_fn = triplanar_texture_uv,
           .params = params,

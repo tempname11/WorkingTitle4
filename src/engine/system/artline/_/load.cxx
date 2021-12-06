@@ -19,7 +19,7 @@ namespace engine::system::artline {
 constexpr size_t NUM_TEXTURE_TYPES = 3; // albedo, normal, romeao
 
 struct PerLoadImpl {
-  lib::Lifetime models_complete;
+  lib::Lifetime pieces_complete;
   HINSTANCE h_lib;
   Description desc;
 };
@@ -38,7 +38,7 @@ struct PerTexture {
   lib::hash64_t key;
 };
 
-struct PerModel {
+struct PerPiece {
   lib::Lifetime complete;
   lib::array_t<lib::GUID> *mesh_ids;
   lib::array_t<PerMesh> *meshes;
@@ -68,7 +68,7 @@ void _read_texture_file(
 void _finish_texture(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<PerTexture> texture,
-  Ref<PerModel> model,
+  Ref<PerPiece> piece,
   Own<engine::session::VulkanData::Textures> textures,
   Ref<engine::session::Data> session
 ) {
@@ -87,7 +87,7 @@ void _finish_texture(
     lib::mutex::unlock(&a->mutex);
   }
 
-  lib::lifetime::deref(&model->complete, ctx->runner);
+  lib::lifetime::deref(&piece->complete, ctx->runner);
   stbi_image_free(texture->data.data);
 }
 
@@ -96,7 +96,7 @@ void _finish_mesh(
   Ref<common::mesh::T06> t06,
   Ref<PerMesh> mesh,
   Ref<lib::GUID> p_mesh_id,
-  Ref<PerModel> model,
+  Ref<PerPiece> piece,
   Own<engine::session::VulkanData::Meshes> meshes,
   Ref<engine::session::Data> session
 ) {
@@ -106,10 +106,10 @@ void _finish_mesh(
   grup::mesh::deinit_t06(t06.ptr);
 }
 
-void _model_end(
+void _piece_end(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<Model> desc_model,
-  Ref<PerModel> model,
+  Ref<Piece> desc_piece,
+  Ref<PerPiece> piece,
   Ref<PerLoad> load,
   Ref<session::Data> session
 ) {
@@ -118,18 +118,18 @@ void _model_end(
   {
     lib::mutex::lock(&load->ready.mutex);
 
-    auto count = model->mesh_ids->count;
+    auto count = piece->mesh_ids->count;
     lib::array::ensure_space(&load->ready.scene_items, count);
     for (size_t i = 0; i < count; i++) {
       load->ready.scene_items->data[
         load->ready.scene_items->count++
       ] = session::Data::Scene::Item {
         .owner_id = load->dll_id,
-        .transform = desc_model->transform,
-        .mesh_id = model->mesh_ids->data[i],
-        .texture_albedo_id = model->textures->data[0].texture_id,
-        .texture_normal_id = model->textures->data[1].texture_id,
-        .texture_romeao_id = model->textures->data[2].texture_id,
+        .transform = desc_piece->transform,
+        .mesh_id = piece->mesh_ids->data[i],
+        .texture_albedo_id = piece->textures->data[0].texture_id,
+        .texture_normal_id = piece->textures->data[1].texture_id,
+        .texture_romeao_id = piece->textures->data[2].texture_id,
       };
     }
 
@@ -142,28 +142,28 @@ void _model_end(
 
     auto cached = lib::u64_table::lookup(
       a->meshes_by_key,
-      model->mesh_key
+      piece->mesh_key
     );
     assert(cached != nullptr);
-    cached->mesh_ids = model->mesh_ids;
+    cached->mesh_ids = piece->mesh_ids;
     lib::mutex::unlock(&a->mutex);
   }
 
-  lib::lifetime::deref(&load->impl->models_complete, ctx->runner);
+  lib::lifetime::deref(&load->impl->pieces_complete, ctx->runner);
 }
 
 void _after_pending_texture(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<PerModel> model
+  Ref<PerPiece> piece
 ) {
   ZoneScoped;
-  lib::lifetime::deref(&model->complete, ctx->runner);
+  lib::lifetime::deref(&piece->complete, ctx->runner);
 }
 
 void _generate_texture(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<PerTexture> texture,
-  Ref<PerModel> model,
+  Ref<PerPiece> piece,
   Ref<PerLoad> load,
   Ref<session::Data> session
 ) {
@@ -207,7 +207,7 @@ void _generate_texture(
         lib::task::create(
           _finish_texture,
           texture.ptr,
-          model.ptr,
+          piece.ptr,
           &session->vulkan->textures,
           session.ptr
         )
@@ -237,11 +237,11 @@ void _generate_texture(
       texture->texture_id = hit->texture_id;
 
       if (hit->pending == nullptr) {
-        lib::lifetime::deref(&model->complete, ctx->runner);
+        lib::lifetime::deref(&piece->complete, ctx->runner);
       } else {
         auto task = lib::task::create(
           _after_pending_texture,
-          model.ptr
+          piece.ptr
         );
 
         ctx->new_tasks.insert(ctx->new_tasks.end(), {
@@ -261,7 +261,7 @@ void _generate_texture(
 
 void _finish_meshes(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<PerModel> model,
+  Ref<PerPiece> piece,
   Ref<session::Data> session
 ) {
   ZoneScoped;
@@ -271,38 +271,38 @@ void _finish_meshes(
     lib::mutex::lock(&a->mutex);
     auto cached = lib::u64_table::lookup(
       a->meshes_by_key,
-      model->mesh_key
+      piece->mesh_key
     );
     assert(cached != nullptr);
     cached->pending = nullptr;
-    cached->mesh_ids = model->mesh_ids;
+    cached->mesh_ids = piece->mesh_ids;
     lib::mutex::unlock(&a->mutex);
   }
 
-  lib::lifetime::deref(&model->complete, ctx->runner);
+  lib::lifetime::deref(&piece->complete, ctx->runner);
 }
 
 void _after_pending_meshes(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<PerModel> model,
+  Ref<PerPiece> piece,
   Ref<session::Data> session
 ) {
   ZoneScoped;
   {
     auto a = &session->artline;
     lib::mutex::lock(&a->mutex);
-    auto hit = lib::u64_table::lookup(a->meshes_by_key, model->mesh_key);
+    auto hit = lib::u64_table::lookup(a->meshes_by_key, piece->mesh_key);
     assert(hit != nullptr);
-    model->mesh_ids = hit->mesh_ids;
+    piece->mesh_ids = hit->mesh_ids;
     lib::mutex::unlock(&a->mutex);
   }
-  lib::lifetime::deref(&model->complete, ctx->runner);
+  lib::lifetime::deref(&piece->complete, ctx->runner);
 }
 
 void _generate_meshes(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<Model> desc_model,
-  Ref<PerModel> model,
+  Ref<Piece> desc_model,
+  Ref<PerPiece> model,
   Ref<PerLoad> load,
   Ref<session::Data> session
 ) {
@@ -311,12 +311,12 @@ void _generate_meshes(
   auto a = &session->artline;
   lib::hash64_t key = {};
   switch (desc_model->mesh.type) {
-    case ModelMesh::Type::File: {
+    case PieceMesh::Type::File: {
       auto it = &desc_model->mesh.file;
       key = lib::hash64::from_cstr(it->path);
       break;
     }
-    case ModelMesh::Type::Gen0: {
+    case PieceMesh::Type::Gen0: {
       auto it = &desc_model->mesh.gen0;
       auto h = lib::hash64::begin();
       lib::hash64::add_value(&h, it->signature);
@@ -386,7 +386,7 @@ void _generate_meshes(
     lib::array_t<common::mesh::T06> *t06_meshes = nullptr;
 
     switch (desc_model->mesh.type) {
-      case ModelMesh::Type::File: {
+      case PieceMesh::Type::File: {
         auto it = &desc_model->mesh.file;
 
         t06_meshes = lib::array::create<common::mesh::T06>(load->misc, 1);
@@ -395,7 +395,7 @@ void _generate_meshes(
         );
         break;
       }
-      case ModelMesh::Type::Gen0: {
+      case PieceMesh::Type::Gen0: {
         auto it = &desc_model->mesh.gen0;
 
         #if 0
@@ -482,13 +482,13 @@ void _generate_meshes(
 
 void _begin_model(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<Model> desc_model,
+  Ref<Piece> desc_model,
   Ref<PerLoad> load,
   Ref<session::Data> session
 ) {
   ZoneScoped;
 
-  auto model = lib::allocator::make<PerModel>(load->misc);
+  auto model = lib::allocator::make<PerPiece>(load->misc);
   *model = {
     .meshes = lib::array::create<PerMesh>(
       load->misc,
@@ -512,7 +512,7 @@ void _begin_model(
   );
 
   auto task_model_end = lib::task::create(
-    _model_end,
+    _piece_end,
     desc_model.ptr,
     model,
     load.ptr,
@@ -583,8 +583,8 @@ void _load_dll(
 
   auto impl = lib::allocator::make<PerLoadImpl>(load->misc);
   *impl = {};
-  lib::lifetime::init(&impl->models_complete, 0);
-  impl->desc.models = lib::array::create<Model>(load->misc, 0);
+  lib::lifetime::init(&impl->pieces_complete, 0);
+  impl->desc.pieces = lib::array::create<Piece>(load->misc, 0);
   
   load->impl = impl;
 
@@ -615,9 +615,9 @@ void _load_dll(
     impl->h_lib = h_lib;
   }
 
-  for (size_t i = 0; i < impl->desc.models->count; i++) {
-    lib::lifetime::ref(&impl->models_complete);
-    auto model = &impl->desc.models->data[i];
+  for (size_t i = 0; i < impl->desc.pieces->count; i++) {
+    lib::lifetime::ref(&impl->pieces_complete);
+    auto model = &impl->desc.pieces->data[i];
 
     auto task_begin = lib::task::create(
       _begin_model,
@@ -645,7 +645,7 @@ void _load_dll(
   });
 
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-    { impl->models_complete.yarn, task_finish.first },
+    { impl->pieces_complete.yarn, task_finish.first },
   });
 }
 
