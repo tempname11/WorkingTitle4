@@ -10,17 +10,18 @@
 #include <src/lib/guid.hxx>
 #include <src/lib/gpu_signal.hxx>
 #include <src/lib/debug_camera.hxx>
-#include <src/engine/system/grup/data.hxx>
+#include <src/engine/system/grup/decl.hxx>
 #include <src/engine/system/artline/data.hxx>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/common/ubo.hxx>
 #include "data/inflight_gpu.hxx"
 
+namespace engine::system::ode { struct Impl; }
+
 namespace engine::session {
 
 struct VulkanData;
-struct ODE_Data;
 struct Inflight_GPU_Data;
 
 struct Data : lib::task::ParentResource {
@@ -96,11 +97,10 @@ struct Data : lib::task::ParentResource {
     float sun_irradiance;
     float luminance_moving_average;
     float taa_distance;
-    double residual_elapsed_physics_sec;
     engine::common::ubo::Flags ubo_flags;
   } state;
 
-  ODE_Data *ode;
+  system::ode::Impl *ode;
 
   #ifdef ENGINE_DEVELOPER
     struct FrameControl {

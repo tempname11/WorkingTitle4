@@ -2,6 +2,7 @@
 #include <src/engine/session/data.hxx>
 #include <src/engine/session/data/vulkan.hxx>
 #include <src/engine/display/setup.hxx>
+#include <src/engine/system/grup/data.hxx>
 #include "iteration.hxx"
 
 namespace engine::session {

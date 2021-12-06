@@ -5,6 +5,7 @@
 #include <src/engine/session/data.hxx>
 #include <src/engine/uploader.hxx>
 #include <src/engine/common/texture.hxx>
+#include "../data.hxx"
 #include "../texture.hxx"
 
 namespace engine::system::grup::texture {

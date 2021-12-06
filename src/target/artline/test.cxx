@@ -22,6 +22,7 @@ float cube_sd(glm::vec3 position) {
 }
 
 DLL_EXPORT DECL_DESCRIBE_FN(describe) {
+  //!!
   for (size_t i = 0; i < 500; i++) { // cube
     auto params = default_params;
     params.grid_size = uvec3(2);

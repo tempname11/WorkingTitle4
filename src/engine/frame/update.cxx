@@ -1,10 +1,8 @@
-#include <src/engine/session/data/ode.hxx>
+#include <src/engine/system/ode/public.hxx>
+#include <src/engine/system/ode/impl.hxx>
 #include "update.hxx"
  
 namespace engine::frame {
-
-const double PHYSICS_TIME_STEP = 0.01;
-const size_t PHYSICS_MAX_FRAME_STEPS = 5;
 
 float halton(int i, int b) {
   float f = 1.0;
@@ -15,22 +13,6 @@ float halton(int i, int b) {
     i = i / b;
   }
   return r;
-}
-
-void handle_collisions(void* ptr, dGeomID ga, dGeomID gb) {
-  auto data = (session::ODE_Data *) ptr;
-  dContact contacts[16];
-  auto n = dCollide(ga, gb, 16, &contacts[0].geom, sizeof(dContact));
-
-  auto ba = dGeomGetBody(ga);
-  auto bb = dGeomGetBody(gb);
-  for (size_t i = 0; i < n; i++) {
-    contacts[i].surface.mode = dContactApprox1;
-    contacts[i].surface.mu = 0.5;
-
-    auto joint = dJointCreateContact(data->world, data->collision_joints, &contacts[i]);
-    dJointAttach(joint, ba, bb);
-  }
 }
 
 void update(
@@ -86,43 +68,22 @@ void update(
     );
   }
 
-  { ZoneScopedN("ODE");
-    // It's important this executed on the main thread, both for ODE thread safety,
-    // and because of lack of synchronization for `session->ode`
-    session_state->residual_elapsed_physics_sec += elapsed_sec;
-    for (size_t i = 0; i < PHYSICS_MAX_FRAME_STEPS; i++) {
-      if (session_state->residual_elapsed_physics_sec > PHYSICS_TIME_STEP) {
-        session_state->residual_elapsed_physics_sec -= PHYSICS_TIME_STEP;
-        dSpaceCollide(session->ode->space, session->ode, handle_collisions);
-        dWorldQuickStep(session->ode->world, PHYSICS_TIME_STEP);
-        dJointGroupEmpty(session->ode->collision_joints);
-      } else {
-        break;
-      }
-    }
+  { ZoneScopedN("ode");
+    system::ode::update(session->ode, elapsed_sec);
   }
 
+  //!!
   {
-    auto cs = session->ode->body_components;
-    for (size_t i = 0; i < cs->count; i++) {
-      cs->data[i].updated_this_frame = false;
+    auto bodies = session->ode->bodies;
+    for (size_t i = 0; i < bodies->count; i++) {
+      bodies->data[i].updated_this_frame = false;
       if (scene->items.size() > i) { // @Hack ultra hack
-        auto r = dBodyGetRotation(cs->data[i].body);
-        auto p = dBodyGetPosition(cs->data[i].body);
+        auto r = dBodyGetRotation(bodies->data[i].body);
+        auto p = dBodyGetPosition(bodies->data[i].body);
         scene->items[i].transform = {
           r[0], r[4], r[8], 0,
           r[1], r[5], r[9], 0,
           r[2], r[6], r[10], 0,
-          /*
-          r[0], r[1], r[2], 0,
-          r[3], r[4], r[5], 0,
-          r[6], r[7], r[8], 0,
-          */
-          /*
-          1, 0, 0, 0,
-          0, 1, 0, 0,
-          0, 0, 1, 0,
-          */
           p[0], p[1], p[2], 1,
         };
       }

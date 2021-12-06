@@ -2,6 +2,7 @@
 #include <src/engine/common/after_inflight.hxx>
 #include <src/engine/uploader.hxx>
 #include <src/engine/blas_storage.hxx>
+#include "../data.hxx"
 #include "../mesh.hxx"
 #include "common.hxx"
 #include "load.hxx"

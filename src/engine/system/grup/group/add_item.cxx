@@ -3,6 +3,7 @@
 #include <src/lib/guid.hxx>
 #include <src/lib/defer.hxx>
 #include <src/engine/common/texture.hxx>
+#include "../data.hxx"
 #include "../mesh.hxx"
 #include "../texture.hxx"
 #include "../group.hxx"

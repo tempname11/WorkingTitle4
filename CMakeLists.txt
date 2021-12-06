@@ -173,23 +173,20 @@ add_executable (
   "src/target/exe/embedfile.cxx"
 )
 
-add_library(
-  test.art
-  SHARED
-  "src/target/artline/test.cxx"
-)
-target_link_libraries (test.art PRIVATE engine_lib)
+file (GLOB SRC_TARGET_ARTLINE CONFIGURE_DEPENDS "src/target/artline/*.cxx")
 
-add_library(
-  ground.art
-  SHARED
-  "src/target/artline/ground.cxx"
-)
-target_link_libraries (ground.art PRIVATE engine_lib)
+foreach (SOURCE_FILE IN LISTS SRC_TARGET_ARTLINE)
+  string (REPLACE "${CMAKE_SOURCE_DIR}/src/target/artline/" "" NAME_FILE ${SOURCE_FILE})
+  string (REPLACE ".cxx" "" NAME_LIB ${NAME_FILE})
 
-add_library(
-  temple.art
-  SHARED
-  "src/target/artline/temple.cxx"
-)
-target_link_libraries (temple.art PRIVATE engine_lib)
+  add_library(
+    "${NAME_LIB}.art"
+    SHARED
+    "${SOURCE_FILE}"
+  )
+  target_link_libraries ("${NAME_LIB}.art" PRIVATE engine_lib)
+  set_target_properties(
+    "${NAME_LIB}.art" PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/binaries/artline"
+  )
+endforeach()

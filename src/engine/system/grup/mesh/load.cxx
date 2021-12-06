@@ -2,6 +2,7 @@
 #include <src/engine/uploader.hxx>
 #include <src/engine/blas_storage.hxx>
 #include <src/lib/gfx/utilities.hxx>
+#include "../data.hxx"
 #include "../mesh.hxx"
 #include "common.hxx"
 #include "load.hxx"

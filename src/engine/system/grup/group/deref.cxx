@@ -1,7 +1,6 @@
 #include <src/global.hxx>
-#include <src/lib/task.hxx>
-#include <src/lib/guid.hxx>
 #include <src/lib/lifetime.hxx>
+#include "../data.hxx"
 #include "../group.hxx"
 
 namespace engine::system::grup::group {

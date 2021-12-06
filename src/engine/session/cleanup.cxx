@@ -14,7 +14,7 @@
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
 #include <src/engine/step/indirect_light.hxx>
-#include "data/ode.hxx"
+#include <src/engine/system/ode/public.hxx>
 #include "public.hxx"
 
 namespace engine::session {
@@ -25,15 +25,11 @@ void cleanup(
 ) {
   ZoneScoped;
 
-  lib::mutex::deinit(&session->frame_control->mutex);
+  // @Cleanup: do deinit in the same order as init, for better clarity.
+  // Exceptions should be only whenever this messes things up.
 
-  {
-    auto it = session->ode;
-    lib::array::destroy(it->body_components);
-    dSpaceDestroy(it->space);
-    dWorldDestroy(it->world);
-    dCloseODE();
-  }
+  lib::mutex::deinit(&session->frame_control->mutex);
+  system::ode::deinit(session->ode);
 
   { ZoneScopedN(".gpu_signal_support");
     lib::gpu_signal::deinit_support(

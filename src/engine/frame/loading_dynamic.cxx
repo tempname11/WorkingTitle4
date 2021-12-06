@@ -1,3 +1,4 @@
+#include <src/engine/system/grup/data.hxx>
 #include <src/engine/system/grup/texture.hxx>
 #include <src/engine/system/grup/mesh.hxx>
 #include <src/engine/system/grup/group.hxx>

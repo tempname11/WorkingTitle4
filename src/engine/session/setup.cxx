@@ -6,7 +6,6 @@
 #include <src/lib/gfx/utilities.hxx>
 #include <src/lib/defer.hxx>
 #include <src/lib/easy_allocator.hxx>
-#include <src/lib/single_allocator.hxx>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/uploader.hxx>
 #include <src/engine/blas_storage.hxx>
@@ -23,13 +22,15 @@
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
 #include <src/engine/step/indirect_light.hxx>
+#include <src/engine/system/grup/data.hxx>
 #include <src/engine/system/grup/group.hxx>
+#include <src/engine/system/ode/public.hxx>
+#include <src/engine/system/ode/impl.hxx>
 #include <src/engine/constants.hxx>
 #include <src/engine/misc.hxx>
 #include "setup_cleanup.hxx"
 #include "iteration.hxx"
 #include "data/vulkan.hxx"
-#include "data/ode.hxx"
 #include "public.hxx"
 
 namespace engine::session {
@@ -52,8 +53,6 @@ VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_callback(
 
 const int DEFAULT_WINDOW_WIDTH = 1920;
 const int DEFAULT_WINDOW_HEIGHT = 1080;
-
-const size_t MAX_BODY_COMPONENTS = 1024 * 1024;
 
 glm::vec2 fullscreen_quad_data[] = { // not a quad now!
   { -1.0f, -1.0f },
@@ -902,29 +901,8 @@ void setup(
   };
 
   { // ODE
-    {
-      auto result = dInitODE2(0);
-      assert(result != 0);
-    }
-
-    auto world = dWorldCreate();
-    dWorldSetGravity(world, 0, 0, -10);
-    auto space = dSimpleSpaceCreate(0);
-    auto collision_joints = dJointGroupCreate(0);
-
-
-    session->ode = lib::allocator::make<ODE_Data>(init_allocator);
-    *session->ode = {
-      .world = world,
-      .space = space,
-      .collision_joints = collision_joints,
-      .body_components = lib::array::create<BodyComponent>(
-        lib::single_allocator::create(
-          sizeof(BodyComponent) * MAX_BODY_COMPONENTS
-        ),
-        0
-      ),
-    };
+    session->ode = lib::allocator::make<system::ode::Impl>(init_allocator);
+    system::ode::init(session->ode);
   }
 
   #ifdef ENGINE_DEVELOPER
@@ -953,7 +931,7 @@ void setup(
   #ifndef NDEBUG
   {
     const auto size = sizeof(engine::session::Data);
-    static_assert(size == 424);
+    static_assert(size == 416);
   }
   {
     const auto size = sizeof(engine::session::VulkanData);
