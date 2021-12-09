@@ -9,9 +9,9 @@ namespace engine::frame {
 void update_physics_transforms(
   lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx,
   Use<system::entities::Impl> entities,
-  Use<component::ode_body::storage_t> cmp_ode_body,
-  Use<component::base_transform::storage_t> cmp_base_transform,
-  Ref<session::Data> session
+  Own<component::ode_body::storage_t> cmp_ode_body,
+  Own<component::base_transform::storage_t> cmp_base_transform,
+  Use<system::ode::Impl> ode
 ) {
   ZoneScoped;
 
@@ -40,14 +40,18 @@ void update_physics_transforms(
         ]
       ];
 
-      auto r = dBodyGetRotation(ode_body->body);
-      auto p = dBodyGetPosition(ode_body->body);
-      base_transform->matrix = {
-        r[0], r[4], r[8], 0,
-        r[1], r[5], r[9], 0,
-        r[2], r[6], r[10], 0,
-        p[0], p[1], p[2], 1,
-      };
+      if (ode_body->updated_this_frame) {
+        ode_body->updated_this_frame = false;
+
+        auto r = dBodyGetRotation(ode_body->body);
+        auto p = dBodyGetPosition(ode_body->body);
+        base_transform->matrix = {
+          r[0], r[4], r[8], 0,
+          r[1], r[5], r[9], 0,
+          r[2], r[6], r[10], 0,
+          p[0], p[1], p[2], 1,
+        };
+      }
     }
   }
 }

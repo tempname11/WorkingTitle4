@@ -589,10 +589,10 @@ void init_vulkan(
 
       if (!getenv("ENGINE_ENV_TRACY_VK_UNCALIBRATED")) {
         auto gpdctd = (PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT)
-          vkGetInstanceProcAddr(it->instance, "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT");
+          vkGetInstanceProcAddr(out->instance, "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT");
 
         auto gct = (PFN_vkGetCalibratedTimestampsEXT)
-          vkGetInstanceProcAddr(it->instance, "vkGetCalibratedTimestampsEXT");
+          vkGetInstanceProcAddr(out->instance, "vkGetCalibratedTimestampsEXT");
 
         assert(gpdctd != nullptr);
         assert(gct != nullptr);

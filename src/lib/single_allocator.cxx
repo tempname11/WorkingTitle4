@@ -45,9 +45,9 @@ void *adjust(
     // and counts for `TracyFreeN`. :TrackPagesForTracy
     for (auto i = 0; i < added_pages; i++) {
       TracyAllocN(
-        it->mem + page_size * (old_committed_pages + i),
+        (uint8_t *)(it) + page_size * (old_committed_pages + i),
         page_size,
-        virtual_memory->tracy_pool_name
+        virtual_memory::tracy_pool_name
       );
     }
   }
@@ -82,11 +82,12 @@ void *realloc_fn(
 
 void dealloc_fn(allocator_t *parent, void *ptr) {
   auto it = cast(parent);
+  auto page_size = virtual_memory::get_page_size();
   assert(it->allocated == ptr);
   for (size_t i = 0; i < it->committed_pages; i++) {
     TracyFreeN(
-      it->mem + page_size * i,
-      virtual_memory->tracy_pool_name
+      (uint8_t *)(it) + page_size * i,
+      virtual_memory::tracy_pool_name
     );
   }
   virtual_memory::free((void *) it);
@@ -101,6 +102,12 @@ allocator_t* create(size_t conceivable_size) {
   size_t committed_pages = 1;
   auto mem = virtual_memory::reserve(reserved_pages);
   virtual_memory::commit(mem, committed_pages);
+
+  TracyAllocN(
+    mem,
+    page_size,
+    virtual_memory::tracy_pool_name
+  );
 
   auto it = (implementation_t *) mem;
   *it = implementation_t {

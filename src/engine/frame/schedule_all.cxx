@@ -119,14 +119,14 @@ void _begin(
       frame_info,
       &data->readback,
       &session->state,
-      session.ptr
+      session->ode
     ),
     lib::task::create(
       update_physics_transforms,
       session->entities,
       &session->components.ode_body,
       &session->components.base_transform,
-      session.ptr
+      session->ode
     ),
     lib::task::create(
       reset_pools,

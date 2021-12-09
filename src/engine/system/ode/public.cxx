@@ -39,14 +39,15 @@ component::index_t register_body(
   component::ode_body::storage_t *cmp,
   dBodyID body
 ) {
+  auto ix = lib::flat32::add(cmp);
   dBodySetData(
     body,
-    &cmp->values->data[cmp->values->count]
+    &cmp->values->data[ix]
   );
   dBodySetMovedCallback(body, _ode_moved_callback);
-  auto ix = lib::flat32::add(cmp);
   cmp->values->data[ix] = {
     .body = body,
+    .updated_this_frame = true, // Always sync first position.
   };
   return ix;
 }

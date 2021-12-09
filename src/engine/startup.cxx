@@ -62,9 +62,9 @@ void startup(StartupFn fn) {
   );
   lib::task::discard_runner(runner);
 
-  #ifdef TRACY_NO_EXIT
-    LOG("Waiting for profiler...");
-  #endif
+  auto &p = tracy::GetProfiler();
+  p.RequestShutdown();
+  while (p.IsConnected() && !p.HasShutdownFinished()) {}
 }
 
 } // namespace

@@ -11,7 +11,7 @@ void update(
   Ref<display::Data::FrameInfo> frame_info,
   Use<display::Data::Readback> readback_data,
   Own<session::Data::State> session_state,
-  Ref<session::Data> session
+  Own<system::ode::Impl> ode
 );
 
 } // namespace

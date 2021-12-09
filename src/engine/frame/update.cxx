@@ -21,7 +21,7 @@ void update(
   Ref<display::Data::FrameInfo> frame_info,
   Use<display::Data::Readback> readback_data,
   Own<session::Data::State> session_state,
-  Ref<session::Data> session
+  Own<system::ode::Impl> ode
 ) {
   ZoneScoped;
 
@@ -68,7 +68,7 @@ void update(
   }
 
   { ZoneScopedN("ode");
-    system::ode::update(session->ode, elapsed_sec);
+    system::ode::update(ode.ptr, elapsed_sec);
   }
 }
 

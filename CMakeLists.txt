@@ -70,9 +70,7 @@ add_library (
   "${CMAKE_SOURCE_DIR}/submodule/tracy/TracyClient.cpp"
 )
 
-target_compile_definitions(tracy_lib PRIVATE -DTRACY_ENABLE)
-target_compile_definitions(tracy_lib PRIVATE -DTRACY_ON_DEMAND)
-target_compile_definitions(tracy_lib PRIVATE -DTRACY_NO_EXIT)
+target_compile_definitions(tracy_lib PUBLIC -DTRACY_ENABLE)
 target_compile_definitions(tracy_lib INTERFACE -DTRACY_IMPORTS)
 
 add_library (
@@ -99,6 +97,7 @@ add_library (
 )
 
 # defines for external stuff
+target_compile_definitions (engine_lib PRIVATE -DNOMINMAX)
 target_compile_definitions (engine_lib PRIVATE -DVC_EXTRALEAN)
 target_compile_definitions (engine_lib PRIVATE -DGLFW_INCLUDE_VULKAN)
 target_compile_definitions (engine_lib PRIVATE -DGLM_FORCE_DEPTH_ZERO_TO_ONE)
@@ -156,7 +155,7 @@ add_executable (
 )
 target_link_libraries (ode_test PRIVATE ode_doubled)
 target_link_libraries (ode_test PRIVATE fmt::fmt-header-only)
-target_compile_definitions (ode_test PUBLIC -DWINDOWS)
+target_compile_definitions (ode_test PRIVATE -DWINDOWS)
 
 add_executable (
   time_test
@@ -165,7 +164,8 @@ add_executable (
   "src/target/exe/time_test.cxx"
 )
 target_link_libraries (time_test PRIVATE fmt::fmt-header-only)
-target_compile_definitions (time_test PUBLIC -DWINDOWS)
+target_compile_definitions (time_test PRIVATE -DWINDOWS)
+target_compile_definitions (time_test PRIVATE -DNOMINMAX)
 target_link_libraries (time_test PRIVATE engine_lib)
 
 add_executable (

@@ -48,6 +48,7 @@ void add(Impl *it, added_component_t *components, uint8_t count) {
   }
 
   if (type_index == size_t(-1)) {
+    lib::array::ensure_space(&it->types, 1);
     type_index = it->types->count++;
     it->types->data[type_index] = by_type_t {
       .component_bit_mask = mask,
@@ -65,6 +66,7 @@ void add(Impl *it, added_component_t *components, uint8_t count) {
       ] = i; // we have sorted them.
     }
   }
+
 
   auto ty = &it->types->data[type_index];
 

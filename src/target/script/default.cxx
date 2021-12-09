@@ -7,6 +7,7 @@
 #include <src/engine/system/ode/public.hxx>
 #include <src/engine/system/ode/impl.hxx>
 #include <src/engine/system/entities/public.hxx>
+#include <src/engine/system/artline/helpers.hxx>
 #include <src/engine/session/data.hxx>
 #include "session.inline.hxx"
 
@@ -29,10 +30,33 @@ void update_stuff(
     }
   );
 
-  auto ground_geom = dCreatePlane(space, 0, 0, 1, 0);
+  { // ground
+    auto ground_geom = dCreatePlane(space, 0, 0, 1, 0);
 
-  for (size_t i = 0; i < 20; i++) {
-    for (size_t j = 0; j < 25; j++) {
+    auto transform_ix = lib::flat32::add(cmp_base_transform.ptr);
+
+    using namespace engine::system::artline;
+    cmp_base_transform->values->data[transform_ix] = {
+      .matrix = (
+        translation(glm::vec3(0, 0, -1000))
+          * scaling(1000)
+      )
+    };
+
+    engine::system::entities::added_component_t components[] = {
+      { engine::component::type_t::base_transform, transform_ix },
+      { engine::component::type_t::artline_model, model_ix },
+    };
+
+    engine::system::entities::add(
+      entities.ptr,
+      components,
+      sizeof(components) / sizeof(*components)
+    );
+  }
+
+  for (size_t i = 0; i < 10; i++) {
+    for (size_t j = 0; j < 3; j++) {
       auto body = dBodyCreate(world);
       dBodySetPosition(
         body,
@@ -95,14 +119,6 @@ void CtrlSession::run() {
       result.model,
       session
     );
-  }
-
-  if (1) {
-    auto result = engine::system::artline::load(
-      lib::cstr::from_static("binaries/artline/ground.art.dll"),
-      session, ctx
-    );
-    wait_for_signal(result.completed);
   }
 }
 
