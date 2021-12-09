@@ -1,7 +1,6 @@
 #include <ode/ode.h>
 #include <src/global.hxx>
 #include <src/engine/system/artline/public.hxx>
-#include <src/engine/system/grup/group.hxx>
 #include <src/engine/system/ode/public.hxx>
 #include <src/engine/system/ode/impl.hxx>
 #include <src/engine/session/data.hxx>
@@ -9,8 +8,7 @@
 
 void update_stuff(
   lib::task::Context<QUEUE_INDEX_MAIN_THREAD_ONLY> *ctx, // main thread for ODE
-  Ref<engine::session::Data> session,
-  Own<engine::session::Data::Scene> scene 
+  Ref<engine::session::Data> session
 ) {
   auto world = session->ode->world;
   auto space = session->ode->space;
@@ -19,7 +17,8 @@ void update_stuff(
   for (size_t i = 0; i < 20; i++) {
     for (size_t j = 0; j < 25; j++) {
       auto body = dBodyCreate(world);
-      engine::system::ode::register_body(session->ode, body);
+      auto ix = engine::system::ode::register_body(session->ode, body);
+
       dBodySetPosition(
         body,
         (int(i) - 5) * 0.4,
@@ -41,40 +40,28 @@ void update_stuff(
 
 void CtrlSession::run() {
   if (0) {
-    wait_for_signal(
-      engine::system::artline::load(
-        lib::cstr::from_static("binaries/artline/temple.art.dll"),
-        session, ctx
-      )
+    auto result = engine::system::artline::load(
+      lib::cstr::from_static("binaries/artline/temple.art.dll"),
+      session, ctx
     );
+    wait_for_signal(result.completed);
   }
 
   if (1) {
-    wait_for_signal(
-      engine::system::artline::load(
-        lib::cstr::from_static("binaries/artline/test.art.dll"),
-        session, ctx
-      )
+    auto result = engine::system::artline::load(
+      lib::cstr::from_static("binaries/artline/test.art.dll"),
+      session, ctx
     );
-    task(update_stuff, session, &session->scene);
+    wait_for_signal(result.completed);
+    task(update_stuff, session);
   }
 
   if (1) {
-    wait_for_signal(
-      engine::system::artline::load(
-        lib::cstr::from_static("binaries/artline/ground.art.dll"),
-        session, ctx
-      )
+    auto result = engine::system::artline::load(
+      lib::cstr::from_static("binaries/artline/ground.art.dll"),
+      session, ctx
     );
-  }
-
-  if (0) {
-    std::string path = "assets/gi_test_0.grup";
-    task(engine::system::grup::group::load(
-      ctx,
-      &path,
-      session
-    ));
+    wait_for_signal(result.completed);
   }
 }
 

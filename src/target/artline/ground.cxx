@@ -31,9 +31,9 @@ DLL_EXPORT DECL_DESCRIBE_FN(describe) {
       translation(vec3(0, 0, -1000))
         * scaling(1000)
     ),
-    .mesh {
+    .geometry {
       .gen0 = {
-        .type = PieceMesh::Type::Gen0,
+        .type = PieceGeometry::Type::Gen0,
         .signed_distance_fn = cube_sd,
         .texture_uv_fn = triplanar_texture_uv,
         .params = params,

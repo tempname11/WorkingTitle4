@@ -27,6 +27,7 @@ struct Data {
     lib::cstr_range_t file_path;
     lib::array_t<lib::hash64_t> *mesh_keys;
     lib::array_t<lib::hash64_t> *texture_keys;
+    Model *model;
   };
 
   lib::mutex_t mutex;

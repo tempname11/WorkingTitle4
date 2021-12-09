@@ -22,19 +22,16 @@ float cube_sd(glm::vec3 position) {
 }
 
 DLL_EXPORT DECL_DESCRIBE_FN(describe) {
-  //!!
-  for (size_t i = 0; i < 500; i++) { // cube
+  { // cube
     auto params = default_params;
     params.grid_size = uvec3(2);
 
     lib::array::ensure_space(&desc->pieces, 1);
     desc->pieces->data[desc->pieces->count++] = Piece {
-      .transform = (
-        translation(vec3(0, 0, 1))
-      ),
-      .mesh {
+      .transform = id,
+      .geometry {
         .gen0 = {
-          .type = PieceMesh::Type::Gen0,
+          .type = PieceGeometry::Type::Gen0,
           .signed_distance_fn = cube_sd,
           .texture_uv_fn = triplanar_texture_uv,
           .params = params,

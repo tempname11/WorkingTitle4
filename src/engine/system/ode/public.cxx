@@ -33,16 +33,18 @@ void _handle_collisions(void* ptr, dGeomID ga, dGeomID gb) {
   }
 }
 
-void register_body(Impl* it, dBodyID body) {
+component::index_t register_body(Impl* it, dBodyID body) {
   dBodySetData(
     body,
     &it->bodies->data[it->bodies->count]
   );
   dBodySetMovedCallback(body, _ode_moved_callback);
   lib::array::ensure_space(&it->bodies, 1);
-  it->bodies->data[it->bodies->count++] = {
+  it->bodies->data[it->bodies->count] = {
     .body = body,
   };
+  assert(it->bodies->count <= component::MAX_INDEX);
+  return it->bodies->count++;
 }
 
 void init(Impl* out) {

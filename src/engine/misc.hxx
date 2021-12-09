@@ -5,7 +5,10 @@
 #include <src/lib/guid.hxx>
 #include <src/lib/task.hxx>
 #include <src/lib/debug_camera.hxx>
+#include <src/engine/session/data.hxx>
+/* :DeprecateGrup
 #include "system/grup/group.hxx"
+*/
 
 namespace engine::misc {
 
@@ -49,12 +52,14 @@ struct RenderList {
 };
 
 struct ImguiReactions {
+  /* :DeprecateGrup
   lib::GUID reloaded_mesh_id;
   lib::GUID reloaded_texture_id;
   engine::system::grup::group::GroupDescription *created_group_description;
   lib::GUID added_item_to_group_id;
   engine::system::grup::group::ItemDescription *added_item_to_group_description;
   lib::GUID removed_group_id;
+  */
 };
 
 struct FrameData : lib::task::ParentResource {

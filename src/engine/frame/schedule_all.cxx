@@ -12,7 +12,9 @@
 #include "imgui_populate.hxx"
 #include "imgui_render.hxx"
 #include "imgui_submit.hxx"
+/* :DeprecateGrup
 #include "loading_dynamic.hxx"
+*/
 #include "present.hxx"
 #include "readback.hxx"
 #include "reset_pools.hxx"
@@ -116,7 +118,6 @@ void _begin(
       frame_info,
       &data->readback,
       &session->state,
-      &session->scene,
       session.ptr
     ),
     lib::task::create(
@@ -136,9 +137,11 @@ void _begin(
     lib::task::create(
       generate_render_list,
       session.ptr,
-      &session->scene,
       &session->vulkan->meshes,
       &session->vulkan->textures,
+      session->entities,
+      &session->components.artline_model,
+      &session->components.base_transform,
       &frame_data->render_list
     ),
     lib::task::create(
@@ -172,8 +175,10 @@ void _begin(
       data.ptr,
       &session->imgui_context,
       &frame_data->imgui_reactions,
+      /* :DeprecateGrup
       session->grup.meta_meshes,
       session->grup.meta_textures,
+      */
       &session->state
     ),
     lib::task::create(
@@ -233,6 +238,7 @@ void _begin(
       &data->swapchain_description,
       frame_info
     ),
+    /* :DeprecateGrup
     lib::task::create(
       loading_dynamic,
       session.ptr,
@@ -240,6 +246,7 @@ void _begin(
       session->grup.meta_textures,
       &frame_data->imgui_reactions
     ),
+    */
   });
   auto task_cleanup = lib::task::create(
     cleanup,

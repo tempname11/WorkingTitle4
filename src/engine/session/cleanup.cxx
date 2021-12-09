@@ -14,7 +14,10 @@
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
 #include <src/engine/step/indirect_light.hxx>
+#include <src/engine/system/entities/public.hxx>
 #include <src/engine/system/ode/public.hxx>
+#include <src/engine/component/artline_model.hxx>
+#include <src/engine/component/base_transform.hxx>
 #include "public.hxx"
 
 namespace engine::session {
@@ -29,7 +32,12 @@ void cleanup(
   // Exceptions should be only whenever this messes things up.
 
   lib::mutex::deinit(&session->frame_control->mutex);
+
+  system::entities::deinit(session->entities);
   system::ode::deinit(session->ode);
+  
+  lib::flat32::destroy(&session->components.artline_model);
+  lib::flat32::destroy(&session->components.base_transform);
 
   { ZoneScopedN(".gpu_signal_support");
     lib::gpu_signal::deinit_support(

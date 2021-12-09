@@ -1,7 +1,9 @@
 #pragma once
 #include <src/engine/session/data.hxx>
 #include <src/engine/display/data.hxx>
+/* :DeprecateGrup
 #include <src/engine/system/grup/decl.hxx>
+*/
 #include <src/engine/misc.hxx>
 
 namespace engine::frame {
@@ -12,8 +14,10 @@ void imgui_populate(
   Ref<engine::display::Data> display,
   Own<engine::session::Data::ImguiContext> imgui,
   Own<engine::misc::ImguiReactions> imgui_reactions,
+  /* :DeprecateGrup
   Use<engine::system::grup::MetaMeshes> meta_meshes,
   Use<engine::system::grup::MetaTextures> meta_textures,
+  */
   Own<engine::session::Data::State> state
 );
 

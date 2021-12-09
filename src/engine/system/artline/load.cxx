@@ -5,20 +5,9 @@
 #include <src/lib/guid.hxx>
 #include <src/engine/session/data.hxx>
 #include "_/private.hxx"
+#include "public.hxx"
 
 namespace engine::system::artline {
-
-void _update_scene(
-  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Own<session::Data::Scene> scene,
-  Ref<PerLoad> load
-) {
-  ZoneScoped;
-
-  for (size_t i = 0; i < load->ready.scene_items->count; i++) {
-    scene->items.push_back(load->ready.scene_items->data[i]);
-  }
-}
 
 void _finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
@@ -38,8 +27,16 @@ void _finish(
     assert(p_index != nullptr);
     auto dll = &it->dlls->data[*p_index];
     dll->status = Status::Ready;
+    // `load->ready.mutex` is not used, because we are the only task with access.
     dll->mesh_keys = load->ready.mesh_keys;
     dll->texture_keys = load->ready.texture_keys;
+    dll->model = load->model;
+
+    {
+      lib::mutex::lock(&dll->model->mutex);
+      dll->model->parts = load->ready.model_parts;
+      lib::mutex::unlock(&dll->model->mutex);
+    }
       
     lib::mutex::unlock(&it->mutex);
   }
@@ -48,7 +45,7 @@ void _finish(
   lib::easy_allocator::destroy(load->misc);
 }
 
-lib::Task *load(
+LoadResult load(
   lib::cstr_range_t dll_file_path,
   Ref<session::Data> session,
   lib::task::ContextBase *ctx
@@ -57,14 +54,19 @@ lib::Task *load(
   auto dll_id = lib::guid::next(session->guid_counter);
   auto copied_file_path = lib::cstr::crt_copy(dll_file_path);
 
+  auto model = lib::allocator::make<Model>(lib::allocator::crt);
+  *model = {};
+  lib::mutex::init(&model->mutex);
+
   auto data = lib::allocator::make<PerLoad>(misc);
   *data = {
     .dll_file_path = copied_file_path,
     .dll_id = dll_id,
     .yarn_done = lib::task::create_yarn_signal(),
     .misc = misc,
+    .model = model,
     .ready = {
-      .scene_items = lib::array::create<session::Data::Scene::Item>(misc, 0),
+      .model_parts = lib::array::create<ModelPart>(lib::allocator::crt, 0),
       .mesh_keys = lib::array::create<lib::hash64_t>(lib::allocator::crt, 0),
       .texture_keys = lib::array::create<lib::hash64_t>(lib::allocator::crt, 0),
     },
@@ -77,14 +79,6 @@ lib::Task *load(
     session.ptr
   );
 
-  auto task_update_scene = lib::defer(
-    lib::task::create(
-      _update_scene,
-      &session->scene,
-      data
-    )
-  );
-
   auto task_finish = lib::task::create(
     _finish,
     data,
@@ -93,13 +87,11 @@ lib::Task *load(
 
   ctx->new_tasks.insert(ctx->new_tasks.end(), {
     task_load_dll,
-    task_update_scene.first,
     task_finish,
   });
 
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-    { data->yarn_done, task_update_scene.first },
-    { task_update_scene.second, task_finish },
+    { data->yarn_done, task_finish },
   });
 
   {
@@ -123,7 +115,10 @@ lib::Task *load(
   }
 
   lib::lifetime::ref(&session->lifetime);
-  return task_finish;
+  return LoadResult {
+    .completed = task_finish,
+    .model = model,
+  };
 }
 
 } // namespace

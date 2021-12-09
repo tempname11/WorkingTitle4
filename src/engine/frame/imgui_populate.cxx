@@ -8,7 +8,9 @@
 #endif
 #include <misc/cpp/imgui_stdlib.h>
 #include <src/engine/session/data/vulkan.hxx>
+/* :DeprecateGrup
 #include <src/engine/system/grup/data.hxx>
+*/
 #include <src/engine/system/artline/public.hxx>
 #include <src/engine/tools/cube_writer.hxx>
 #include <src/engine/tools/gltf_converter.hxx>
@@ -17,9 +19,18 @@
 
 namespace engine::frame {
 
+/* :DeprecateGrup
 engine::system::grup::group::GroupDescription default_group = {
   .name = "New group",
 };
+
+engine::system::grup::group::ItemDescription default_group_item = {
+  .path_mesh = "assets/mesh.t06",
+  .path_albedo = "assets/texture-1px/albedo.png",
+  .path_normal = "assets/texture-1px/normal.png",
+  .path_romeao = "assets/texture-1px/romeao.png",
+};
+*/
 
 namespace ImGuiX {
   void Checkbox32(char const* label, uint32_t *v) {
@@ -90,13 +101,6 @@ namespace ImGuiX {
   }
 }
 
-engine::system::grup::group::ItemDescription default_group_item = {
-  .path_mesh = "assets/mesh.t06",
-  .path_albedo = "assets/texture-1px/albedo.png",
-  .path_normal = "assets/texture-1px/normal.png",
-  .path_romeao = "assets/texture-1px/romeao.png",
-};
-
 void imgui_allocator(
   Ref<lib::gfx::Allocator> it
 ) {
@@ -151,8 +155,10 @@ void imgui_populate(
   Ref<engine::display::Data> display,
   Own<engine::session::Data::ImguiContext> imgui,
   Own<engine::misc::ImguiReactions> imgui_reactions,
+  /* :DeprecateGrup
   Use<engine::system::grup::MetaMeshes> meta_meshes,
   Use<engine::system::grup::MetaTextures> meta_textures,
+  */
   Own<engine::session::Data::State> state
 ) {
   if (state->show_imgui) {
@@ -174,6 +180,7 @@ void imgui_populate(
       ImGui::ShowDemoWindow(&state->show_imgui_window_demo);
     }
 
+    /* :DeprecateGrup
     if (state->show_imgui_window_groups) {
       std::shared_lock lock(session->grup.groups->rw_mutex);
       ImGui::Begin("Groups", &state->show_imgui_window_groups);
@@ -431,6 +438,7 @@ void imgui_populate(
       ImGui::EndTable();
       ImGui::End();
     }
+    */
 
     if (state->show_imgui_window_artline) {
       auto it = &session->artline;

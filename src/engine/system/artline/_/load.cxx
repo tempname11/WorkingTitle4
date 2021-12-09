@@ -6,11 +6,11 @@
 #include <src/lib/lifetime.hxx>
 #include <src/lib/defer.hxx>
 #include <src/lib/gfx/utilities.hxx>
+#include <src/engine/common/t06.hxx>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/session/data.hxx>
 #include <src/engine/session/data/vulkan.hxx>
 #include <src/engine/system/artline/public.hxx>
-#include <src/engine/system/grup/mesh/common.hxx>
 #include "private.hxx"
 #include "../public.hxx"
 
@@ -103,7 +103,7 @@ void _finish_mesh(
   ZoneScoped;
   *p_mesh_id = lib::guid::next(session->guid_counter);
   meshes->items.insert({ *p_mesh_id, mesh->mesh_item });
-  grup::mesh::deinit_t06(t06.ptr);
+  common::t06::destroy(t06.ptr);
 }
 
 void _piece_end(
@@ -119,12 +119,11 @@ void _piece_end(
     lib::mutex::lock(&load->ready.mutex);
 
     auto count = piece->mesh_ids->count;
-    lib::array::ensure_space(&load->ready.scene_items, count);
+    lib::array::ensure_space(&load->ready.model_parts, count);
     for (size_t i = 0; i < count; i++) {
-      load->ready.scene_items->data[
-        load->ready.scene_items->count++
-      ] = session::Data::Scene::Item {
-        .owner_id = load->dll_id,
+      load->ready.model_parts->data[
+        load->ready.model_parts->count++
+      ] = ModelPart {
         .transform = desc_piece->transform,
         .mesh_id = piece->mesh_ids->data[i],
         .texture_albedo_id = piece->textures->data[0].texture_id,
@@ -310,14 +309,14 @@ void _generate_meshes(
 
   auto a = &session->artline;
   lib::hash64_t key = {};
-  switch (desc_model->mesh.type) {
-    case PieceMesh::Type::File: {
-      auto it = &desc_model->mesh.file;
+  switch (desc_model->geometry.type) {
+    case PieceGeometry::Type::File: {
+      auto it = &desc_model->geometry.file;
       key = lib::hash64::from_cstr(it->path);
       break;
     }
-    case PieceMesh::Type::Gen0: {
-      auto it = &desc_model->mesh.gen0;
+    case PieceGeometry::Type::Gen0: {
+      auto it = &desc_model->geometry.gen0;
       auto h = lib::hash64::begin();
       lib::hash64::add_value(&h, it->signature);
       lib::hash64::add_value(&h, load->dll_id);
@@ -385,18 +384,18 @@ void _generate_meshes(
   if (task_our_pending != nullptr) {
     lib::array_t<common::mesh::T06> *t06_meshes = nullptr;
 
-    switch (desc_model->mesh.type) {
-      case PieceMesh::Type::File: {
-        auto it = &desc_model->mesh.file;
+    switch (desc_model->geometry.type) {
+      case PieceGeometry::Type::File: {
+        auto it = &desc_model->geometry.file;
 
         t06_meshes = lib::array::create<common::mesh::T06>(load->misc, 1);
         t06_meshes->data[t06_meshes->count++] = (
-          grup::mesh::read_t06_file(it->path.start)
+          common::t06::read_file(it->path.start)
         );
         break;
       }
-      case PieceMesh::Type::Gen0: {
-        auto it = &desc_model->mesh.gen0;
+      case PieceGeometry::Type::Gen0: {
+        auto it = &desc_model->geometry.gen0;
 
         #if 0
           t06_meshes = generate_mc_v0(
@@ -559,7 +558,6 @@ void _begin_model(
 void _finish_dll(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<PerLoad> load,
-  Own<session::Data::Scene> scene,
   Ref<session::Data> session
 ) {
   ZoneScoped;
@@ -635,7 +633,6 @@ void _load_dll(
     lib::task::create(
       _finish_dll,
       load.ptr,
-      &session->scene,
       session.ptr
     )
   );

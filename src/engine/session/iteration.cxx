@@ -2,7 +2,9 @@
 #include <src/engine/session/data.hxx>
 #include <src/engine/session/data/vulkan.hxx>
 #include <src/engine/display/setup.hxx>
+/* :DeprecateGrup
 #include <src/engine/system/grup/data.hxx>
+*/
 #include "iteration.hxx"
 
 namespace engine::session {
@@ -46,10 +48,12 @@ void iteration(
   ZoneScoped;
   bool should_stop = glfwWindowShouldClose(session->glfw.window);
   if (should_stop) {
+    /* :DeprecateGrup
     for (auto &item : session->grup.groups->items) {
       auto final = lib::lifetime::deref(&item.second.lifetime, ctx->runner);
       // assert(final); @Think: was this actually necessary?
     }
+    */
     lib::lifetime::deref(&session->lifetime, ctx->runner);
     return;
   } else {

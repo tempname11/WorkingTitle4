@@ -15,10 +15,11 @@ struct PerLoad {
   lib::allocator_t *misc;
 
   PerLoadImpl *impl;
+  Model *model;
 
   struct Ready {
     lib::mutex_t mutex;
-    lib::array_t<session::Data::Scene::Item> *scene_items;
+    lib::array_t<ModelPart> *model_parts;
     lib::array_t<lib::hash64_t> *mesh_keys;
     lib::array_t<lib::hash64_t> *texture_keys;
   } ready;

@@ -20,9 +20,9 @@ void do_ground(Description *desc, glm::mat4 *transform) {
   lib::array::ensure_space(&desc->pieces, 1);
   desc->pieces->data[desc->pieces->count++] = Piece {
     .transform = *transform,
-    .mesh {
+    .geometry {
       .gen0 = {
-        .type = PieceMesh::Type::Gen0,
+        .type = PieceGeometry::Type::Gen0,
         .signed_distance_fn = [](vec3 p) {
           return intersect(
             1.0 - abs(p.x),
@@ -48,9 +48,9 @@ void do_wall(Description *desc, glm::mat4 *transform) {
   lib::array::ensure_space(&desc->pieces, 1);
   desc->pieces->data[desc->pieces->count++] = Piece {
     .transform = *transform,
-    .mesh {
+    .geometry {
       .gen0 = {
-        .type = PieceMesh::Type::Gen0,
+        .type = PieceGeometry::Type::Gen0,
         .signed_distance_fn = [](vec3 p) {
           return intersect(
             1.0 - abs(p.x),
@@ -78,9 +78,9 @@ void do_steps(Description *desc, glm::mat4 *transform) {
   lib::array::ensure_space(&desc->pieces, 1);
   desc->pieces->data[desc->pieces->count++] = Piece {
     .transform = *transform,
-    .mesh {
+    .geometry {
       .gen0 = {
-        .type = PieceMesh::Type::Gen0,
+        .type = PieceGeometry::Type::Gen0,
         .signed_distance_fn = [](vec3 p) {
           auto r = -1e9f;
           const size_t N = 5;
@@ -117,9 +117,9 @@ void do_column_base(Description *desc, glm::mat4 *transform) {
   lib::array::ensure_space(&desc->pieces, 1);
   desc->pieces->data[desc->pieces->count++] = Piece {
     .transform = *transform,
-    .mesh {
+    .geometry {
       .gen0 = {
-        .type = PieceMesh::Type::Gen0,
+        .type = PieceGeometry::Type::Gen0,
         .signed_distance_fn = [](vec3 p) {
           return intersect(
             1.0f - glm::length(vec2(p.x, p.y)),
@@ -150,9 +150,9 @@ void do_column(Description *desc, glm::mat4 *transform) {
   lib::array::ensure_space(&desc->pieces, 1);
   desc->pieces->data[desc->pieces->count++] = Piece {
     .transform = *transform,
-    .mesh {
+    .geometry {
       .gen0 = {
-        .type = PieceMesh::Type::Gen0,
+        .type = PieceGeometry::Type::Gen0,
         .signed_distance_fn = [](vec3 p) {
           auto t = lib::min(0.0f, sin(atan2(p.y, p.x) * 20.0f) * 0.07f);
           return intersect(
@@ -184,9 +184,9 @@ void do_dome_ring(Description *desc, glm::mat4 *transform) {
   lib::array::ensure_space(&desc->pieces, 1);
   desc->pieces->data[desc->pieces->count++] = Piece {
     .transform = *transform,
-    .mesh {
+    .geometry {
       .gen0 = {
-        .type = PieceMesh::Type::Gen0,
+        .type = PieceGeometry::Type::Gen0,
         .signed_distance_fn = [](vec3 p) {
           return intersect(
             1.0f - length(vec2(p.x, p.y)),
@@ -211,9 +211,9 @@ void do_dome(Description *desc, glm::mat4 *transform) {
   lib::array::ensure_space(&desc->pieces, 1);
   desc->pieces->data[desc->pieces->count++] = Piece {
     .transform = *transform,
-    .mesh {
+    .geometry {
       .gen0 = {
-        .type = PieceMesh::Type::Gen0,
+        .type = PieceGeometry::Type::Gen0,
         .signed_distance_fn = [](vec3 p) {
           return intersect(
             sphere(
@@ -246,9 +246,9 @@ void do_podium(Description *desc, glm::mat4 *transform) {
   lib::array::ensure_space(&desc->pieces, 1);
   desc->pieces->data[desc->pieces->count++] = Piece {
     .transform = *transform,
-    .mesh {
+    .geometry {
       .gen0 = {
-        .type = PieceMesh::Type::Gen0,
+        .type = PieceGeometry::Type::Gen0,
         .signed_distance_fn = [](vec3 p) {
           return intersect(
             1.0f - p.z,
@@ -276,9 +276,9 @@ void do_artifact(Description *desc, glm::mat4 *transform) {
   lib::array::ensure_space(&desc->pieces, 1);
   desc->pieces->data[desc->pieces->count++] = Piece {
     .transform = *transform,
-    .mesh {
+    .geometry {
       .gen0 = {
-        .type = PieceMesh::Type::Gen0,
+        .type = PieceGeometry::Type::Gen0,
         .signed_distance_fn = [](vec3 p) {
           const float k = 6.0;
           float c = cos(k * p.z);

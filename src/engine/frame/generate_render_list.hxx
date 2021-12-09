@@ -6,11 +6,13 @@ namespace engine::frame {
 
 void generate_render_list(
   lib::task::Context<QUEUE_INDEX_NORMAL_PRIORITY> *ctx,
-  Ref<engine::session::Data> session,
-  Use<engine::session::Data::Scene> scene,
-  Use<engine::session::VulkanData::Meshes> meshes,
-  Use<engine::session::VulkanData::Textures> textures,
-  Own<engine::misc::RenderList> render_list
+  Ref<session::Data> session,
+  Use<session::VulkanData::Meshes> meshes,
+  Use<session::VulkanData::Textures> textures,
+  Use<system::entities::Impl> entities,
+  Use<component::artline_model::storage_t> cmp_artline_model,
+  Use<component::base_transform::storage_t> cmp_base_transform,
+  Own<misc::RenderList> render_list
 );
 
 } // namespace

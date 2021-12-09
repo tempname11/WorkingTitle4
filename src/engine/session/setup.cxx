@@ -22,10 +22,16 @@
 #include <src/engine/step/probe_measure.hxx>
 #include <src/engine/step/probe_collect.hxx>
 #include <src/engine/step/indirect_light.hxx>
+/* :DeprecateGrup
 #include <src/engine/system/grup/data.hxx>
 #include <src/engine/system/grup/group.hxx>
+*/
+#include <src/engine/system/entities/public.hxx>
+#include <src/engine/system/entities/impl.hxx>
 #include <src/engine/system/ode/public.hxx>
 #include <src/engine/system/ode/impl.hxx>
+#include <src/engine/component/artline_model.hxx>
+#include <src/engine/component/base_transform.hxx>
 #include <src/engine/constants.hxx>
 #include <src/engine/misc.hxx>
 #include "setup_cleanup.hxx"
@@ -847,6 +853,7 @@ void setup(
     it->ready = true;
   }
 
+  /* :DeprecateGrup
   { // grup
     session->grup.groups = lib::allocator::make<system::grup::Groups>(init_allocator);
     new (session->grup.groups) system::grup::Groups(); // @Hack
@@ -857,6 +864,8 @@ void setup(
     session->grup.meta_textures = lib::allocator::make<system::grup::MetaTextures>(init_allocator);
     new (session->grup.meta_textures) system::grup::MetaTextures(); // @Hack
   }
+  */
+
   session->vulkan = lib::allocator::make<VulkanData>(init_allocator);
   auto vulkan = session->vulkan;
   init_vulkan(vulkan, glfw, init_allocator);
@@ -900,9 +909,21 @@ void setup(
     .taa_distance = 1.0f,
   };
 
+  { // Entities
+    session->entities = lib::allocator::make<system::entities::Impl>(init_allocator);
+    system::entities::init(session->entities);
+  }
+
   { // ODE
     session->ode = lib::allocator::make<system::ode::Impl>(init_allocator);
     system::ode::init(session->ode);
+  }
+
+  { // Components
+    session->components = {
+      .artline_model = lib::flat32::create<component::artline_model::item_t>(),
+      .base_transform = lib::flat32::create<component::base_transform::item_t>(),
+    };
   }
 
   #ifdef ENGINE_DEVELOPER
@@ -931,7 +952,7 @@ void setup(
   #ifndef NDEBUG
   {
     const auto size = sizeof(engine::session::Data);
-    static_assert(size == 416);
+    static_assert(size == 400);
   }
   {
     const auto size = sizeof(engine::session::VulkanData);
@@ -965,9 +986,10 @@ void setup(
       .children = {
         &session->glfw,
         session->vulkan,
-        &session->scene,
+        /* :DeprecateGrup
         session->grup.meta_meshes,
         session->grup.meta_textures,
+        */
         &session->imgui_context,
         &session->gpu_signal_support,
         &session->info,

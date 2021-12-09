@@ -6,15 +6,21 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <src/lib/task.hxx>
+#include <src/lib/flat32.hxx>
 #include <src/lib/lifetime.hxx>
 #include <src/lib/guid.hxx>
 #include <src/lib/gpu_signal.hxx>
 #include <src/lib/debug_camera.hxx>
+/* :DeprecateGrup
 #include <src/engine/system/grup/decl.hxx>
+*/
 #include <src/engine/system/artline/data.hxx>
+#include <src/engine/system/entities/decl.hxx>
+#include <src/engine/component.hxx>
 #include <src/engine/common/texture.hxx>
 #include <src/engine/common/mesh.hxx>
 #include <src/engine/common/ubo.hxx>
+#include <src/engine/component.hxx>
 #include "data/inflight_gpu.hxx"
 
 namespace engine::system::ode { struct Impl; }
@@ -40,24 +46,13 @@ struct Data : lib::task::ParentResource {
 
   lib::Lifetime lifetime;
 
-  struct Scene {
-    struct Item {
-      lib::GUID owner_id;
-      glm::mat4 transform;
-      lib::GUID mesh_id;
-      lib::GUID texture_albedo_id;
-      lib::GUID texture_normal_id;
-      lib::GUID texture_romeao_id;
-    };
-
-    std::vector<Item> items;
-  } scene;
-
+  /* :DeprecateGrup
   struct Grup {
     system::grup::Groups *groups;
     system::grup::MetaMeshes *meta_meshes;
     system::grup::MetaTextures *meta_textures;
   } grup;
+  */
 
   system::artline::Data artline;
 
@@ -100,7 +95,13 @@ struct Data : lib::task::ParentResource {
     engine::common::ubo::Flags ubo_flags;
   } state;
 
+  system::entities::Impl *entities;
   system::ode::Impl *ode;
+
+  struct Components {
+    component::artline_model::storage_t artline_model;
+    component::base_transform::storage_t base_transform;
+  } components;
 
   #ifdef ENGINE_DEVELOPER
     struct FrameControl {

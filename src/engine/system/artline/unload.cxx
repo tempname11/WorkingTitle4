@@ -9,24 +9,6 @@
 
 namespace engine::system::artline {
 
-void _update_scene(
-  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<PerUnload> unload,
-  Own<session::Data::Scene> scene,
-  Ref<session::Data> session
-) {
-  ZoneScoped;
-
-  for (size_t i = 0; i < scene->items.size(); i++) {
-    auto scene_item = &scene->items[i];
-    if (scene_item->owner_id == unload->dll_id) {
-      scene->items[i] = scene->items[scene->items.size() - 1];
-      scene->items.pop_back();
-      i--;
-    }
-  }
-}
-
 void _finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<PerUnload> unload,
@@ -84,15 +66,6 @@ void unload(
     .dll_id = dll_id,
   };
 
-  auto task_update_scene = lib::defer(
-    lib::task::create(
-      _update_scene,
-      data,
-      &session->scene,
-      session.ptr
-    )
-  );
-
   auto task_unload_assets_third = lib::task::create(
     _unload_assets,
     mesh_keys,
@@ -116,13 +89,11 @@ void unload(
   );
 
   ctx->new_tasks.insert(ctx->new_tasks.end(), {
-    task_update_scene.first,
     task_unload_assets.first,
     task_finish,
   });
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-    { task_update_scene.second, task_unload_assets.first },
-    { task_unload_assets_third, task_finish },
+    { task_unload_assets.second, task_finish },
   });
 
   lib::lifetime::ref(&session->lifetime);

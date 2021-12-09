@@ -21,7 +21,6 @@ void update(
   Ref<display::Data::FrameInfo> frame_info,
   Use<display::Data::Readback> readback_data,
   Own<session::Data::State> session_state,
-  Own<session::Data::Scene> scene,
   Ref<session::Data> session
 ) {
   ZoneScoped;
@@ -73,6 +72,7 @@ void update(
   }
 
   //!!
+  /*
   {
     auto bodies = session->ode->bodies;
     for (size_t i = 0; i < bodies->count; i++) {
@@ -89,6 +89,7 @@ void update(
       }
     }
   }
+  */
 }
 
 } // namespace

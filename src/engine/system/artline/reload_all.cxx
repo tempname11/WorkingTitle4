@@ -12,28 +12,6 @@ struct PerReload {
   PerUnload unload;
 };
 
-void _update_scene(
-  lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
-  Ref<PerReload> reload,
-  Own<session::Data::Scene> scene,
-  Ref<session::Data> session
-) {
-  ZoneScoped;
-
-  for (size_t i = 0; i < scene->items.size(); i++) {
-    auto scene_item = &scene->items[i];
-    if (scene_item->owner_id == reload->unload.dll_id) {
-      scene->items[i] = scene->items[scene->items.size() - 1];
-      scene->items.pop_back();
-      i--;
-    }
-  }
-
-  for (size_t i = 0; i < reload->load.ready.scene_items->count; i++) {
-    scene->items.push_back(reload->load.ready.scene_items->data[i]);
-  }
-}
-
 void _finish(
   lib::task::Context<QUEUE_INDEX_LOW_PRIORITY> *ctx,
   Ref<PerReload> reload,
@@ -54,6 +32,13 @@ void _finish(
     dll->status = Status::Ready;
     dll->mesh_keys = reload->load.ready.mesh_keys;
     dll->texture_keys = reload->load.ready.texture_keys;
+
+    {
+      lib::mutex::lock(&dll->model->mutex);
+      lib::array::destroy(dll->model->parts);
+      dll->model->parts = reload->load.ready.model_parts;
+      lib::mutex::unlock(&dll->model->mutex);
+    }
       
     lib::mutex::unlock(&it->mutex);
   }
@@ -83,7 +68,7 @@ void _reload(
       .yarn_done = lib::task::create_yarn_signal(),
       .misc = misc,
       .ready = {
-        .scene_items = lib::array::create<session::Data::Scene::Item>(misc, 0),
+        .model_parts = lib::array::create<ModelPart>(lib::allocator::crt, 0),
         .mesh_keys = lib::array::create<lib::hash64_t>(lib::allocator::crt, 0),
         .texture_keys = lib::array::create<lib::hash64_t>(lib::allocator::crt, 0),
       },
@@ -99,15 +84,6 @@ void _reload(
     _load_dll,
     &data->load,
     session.ptr
-  );
-
-  auto task_update_scene = lib::defer(
-    lib::task::create(
-      _update_scene,
-      data,
-      &session->scene,
-      session.ptr
-    )
   );
 
   auto task_unload_assets_third = lib::task::create(
@@ -134,13 +110,11 @@ void _reload(
 
   ctx->new_tasks.insert(ctx->new_tasks.end(), {
     task_load_dll,
-    task_update_scene.first,
     task_unload_assets.first,
     task_finish,
   });
   ctx->new_dependencies.insert(ctx->new_dependencies.end(), {
-    { data->load.yarn_done, task_update_scene.first },
-    { task_update_scene.second, task_unload_assets.first },
+    { data->load.yarn_done, task_unload_assets.first },
     { task_unload_assets_third, task_finish },
   });
 

@@ -19,7 +19,25 @@ enum struct Status {
 void init(Data *out);
 void deinit(Data *it);
 
-lib::Task *load(
+struct ModelPart {
+  glm::mat4 transform;
+  lib::GUID mesh_id;
+  lib::GUID texture_albedo_id;
+  lib::GUID texture_normal_id;
+  lib::GUID texture_romeao_id;
+};
+
+struct Model {
+  lib::mutex_t mutex;
+  lib::array_t<ModelPart> *parts;
+};
+
+struct LoadResult {
+  lib::Task *completed;
+  Model *model;
+};
+
+LoadResult load(
   lib::cstr_range_t dll_filename,
   Ref<engine::session::Data> session,
   lib::task::ContextBase *ctx
@@ -49,7 +67,7 @@ struct DualContouringParams {
   bool clamp_qef;
 };
 
-union PieceMesh {
+union PieceGeometry {
   enum struct Type {
     File,
     Gen0,
@@ -81,7 +99,7 @@ struct PieceMaterial {
 
 struct Piece {
   glm::mat4 transform;
-  PieceMesh mesh;
+  PieceGeometry geometry;
   PieceMaterial material;
 };
 
