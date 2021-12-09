@@ -41,7 +41,7 @@ uint32_t add(flat32_t<T> *it) {
     return it->free_indices->data[--it->free_indices->count];
   }   
 
-  lib::array::ensure_space(it->values, 1);
+  lib::array::ensure_space(&it->values, 1);
   assert(it->values->count <= MAX_INDEX);
   return uint32_t(it->values->count++);
 }
@@ -51,7 +51,7 @@ void remove(flat32_t<T> *it, uint32_t ix) {
   if (ix == it->values->count - 1) {
     it->values->count--;
   } else {
-    lib::array::ensure_space(it->free_indices, 1);
+    lib::array::ensure_space(&it->free_indices, 1);
     it->free_indices->data[it->free_indices->count++] = ix;
   }
 }

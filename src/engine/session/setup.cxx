@@ -32,6 +32,7 @@
 #include <src/engine/system/ode/impl.hxx>
 #include <src/engine/component/artline_model.hxx>
 #include <src/engine/component/base_transform.hxx>
+#include <src/engine/component/ode_body.hxx>
 #include <src/engine/constants.hxx>
 #include <src/engine/misc.hxx>
 #include "setup_cleanup.hxx"
@@ -923,6 +924,7 @@ void setup(
     session->components = {
       .artline_model = lib::flat32::create<component::artline_model::item_t>(),
       .base_transform = lib::flat32::create<component::base_transform::item_t>(),
+      .ode_body = lib::flat32::create<component::ode_body::item_t>(),
     };
   }
 
@@ -952,7 +954,7 @@ void setup(
   #ifndef NDEBUG
   {
     const auto size = sizeof(engine::session::Data);
-    static_assert(size == 400);
+    static_assert(size == 416);
   }
   {
     const auto size = sizeof(engine::session::VulkanData);

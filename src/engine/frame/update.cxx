@@ -70,26 +70,6 @@ void update(
   { ZoneScopedN("ode");
     system::ode::update(session->ode, elapsed_sec);
   }
-
-  //!!
-  /*
-  {
-    auto bodies = session->ode->bodies;
-    for (size_t i = 0; i < bodies->count; i++) {
-      bodies->data[i].updated_this_frame = false;
-      if (scene->items.size() > i) { // @Hack ultra hack
-        auto r = dBodyGetRotation(bodies->data[i].body);
-        auto p = dBodyGetPosition(bodies->data[i].body);
-        scene->items[i].transform = {
-          r[0], r[4], r[8], 0,
-          r[1], r[5], r[9], 0,
-          r[2], r[6], r[10], 0,
-          p[0], p[1], p[2], 1,
-        };
-      }
-    }
-  }
-  */
 }
 
 } // namespace

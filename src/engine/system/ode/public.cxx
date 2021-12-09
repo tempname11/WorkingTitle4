@@ -1,5 +1,7 @@
+#include <ode/ode.h>
 #include <src/lib/single_allocator.hxx>
 #include <src/engine/component.hxx>
+#include <src/engine/component/ode_body.hxx>
 #include "impl.hxx"
 
 namespace engine::system::ode {
@@ -7,11 +9,10 @@ namespace engine::system::ode {
 const double TIME_STEP_SEC = 0.01;
 const size_t MAX_FRAME_STEPS = 5;
 
-const size_t MAX_BODY_COMPONENTS = 1024 * 1024;
 const size_t CONTACT_POINTS = 16;
 
 void _ode_moved_callback(dBodyID body) {
-  auto data = (ComponentBody *) dBodyGetData(body);
+  auto data = (component::ode_body::item_t *) dBodyGetData(body);
   if (data != nullptr) {
     data->updated_this_frame = true;
   }
@@ -33,18 +34,21 @@ void _handle_collisions(void* ptr, dGeomID ga, dGeomID gb) {
   }
 }
 
-component::index_t register_body(Impl* it, dBodyID body) {
+component::index_t register_body(
+  Impl* it,
+  component::ode_body::storage_t *cmp,
+  dBodyID body
+) {
   dBodySetData(
     body,
-    &it->bodies->data[it->bodies->count]
+    &cmp->values->data[cmp->values->count]
   );
   dBodySetMovedCallback(body, _ode_moved_callback);
-  lib::array::ensure_space(&it->bodies, 1);
-  it->bodies->data[it->bodies->count] = {
+  auto ix = lib::flat32::add(cmp);
+  cmp->values->data[ix] = {
     .body = body,
   };
-  assert(it->bodies->count <= component::MAX_INDEX);
-  return it->bodies->count++;
+  return ix;
 }
 
 void init(Impl* out) {
@@ -62,17 +66,10 @@ void init(Impl* out) {
     .world = world,
     .space = space,
     .collision_joints = collision_joints,
-    .bodies = lib::array::create<system::ode::ComponentBody>(
-      lib::single_allocator::create(
-        sizeof(system::ode::ComponentBody) * MAX_BODY_COMPONENTS
-      ),
-      0
-    ),
   };
 }
 
 void deinit(Impl* it) {
-  lib::array::destroy(it->bodies);
   dSpaceDestroy(it->space);
   dWorldDestroy(it->world);
   dCloseODE();

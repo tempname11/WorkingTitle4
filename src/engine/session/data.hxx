@@ -101,6 +101,7 @@ struct Data : lib::task::ParentResource {
   struct Components {
     component::artline_model::storage_t artline_model;
     component::base_transform::storage_t base_transform;
+    component::ode_body::storage_t ode_body;
   } components;
 
   #ifdef ENGINE_DEVELOPER

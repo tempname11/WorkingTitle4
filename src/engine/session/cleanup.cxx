@@ -18,6 +18,7 @@
 #include <src/engine/system/ode/public.hxx>
 #include <src/engine/component/artline_model.hxx>
 #include <src/engine/component/base_transform.hxx>
+#include <src/engine/component/ode_body.hxx>
 #include "public.hxx"
 
 namespace engine::session {
@@ -38,6 +39,7 @@ void cleanup(
   
   lib::flat32::destroy(&session->components.artline_model);
   lib::flat32::destroy(&session->components.base_transform);
+  lib::flat32::destroy(&session->components.ode_body);
 
   { ZoneScopedN(".gpu_signal_support");
     lib::gpu_signal::deinit_support(

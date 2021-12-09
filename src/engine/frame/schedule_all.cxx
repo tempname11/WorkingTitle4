@@ -20,6 +20,7 @@
 #include "reset_pools.hxx"
 #include "setup_gpu_signal.hxx"
 #include "update.hxx"
+#include "update_physics_transforms.hxx"
 #include "schedule_all.hxx"
 
 #define TRACY_ARTIFICIAL_DELAY 1ms
@@ -118,6 +119,13 @@ void _begin(
       frame_info,
       &data->readback,
       &session->state,
+      session.ptr
+    ),
+    lib::task::create(
+      update_physics_transforms,
+      session->entities,
+      &session->components.ode_body,
+      &session->components.base_transform,
       session.ptr
     ),
     lib::task::create(
