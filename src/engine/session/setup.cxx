@@ -105,13 +105,13 @@ void init_vulkan(
   }
 
   { ZoneScopedN(".debug_messenger");
-    auto _vkCreateDebugUtilsMessengerEXT = 
+    auto _vkCreateDebugUtilsMessengerEXT =
       (PFN_vkCreateDebugUtilsMessengerEXT)
         vkGetInstanceProcAddr(it->instance, "vkCreateDebugUtilsMessengerEXT");
     VkDebugUtilsMessengerCreateInfoEXT create_info = {
       .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
       .messageSeverity = (0
-        | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT 
+        | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
         | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
         | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
         | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
@@ -677,7 +677,7 @@ void setup(
       if (ptr == nullptr) {
         return;
       }
-      
+
       if (!ptr->state->show_imgui) {
         if (y > 0.0) {
           ptr->state->movement_speed *= 2;

@@ -2,9 +2,6 @@ cmake_minimum_required (VERSION 3.18)
 set (CMAKE_CXX_STANDARD 20)
 project ("WorkingTitle4")
 
-message(CUSTOM_LINK_PATH = $ENV{CUSTOM_LINK_PATH})
-message(CUSTOM_INCLUDE_PATH = $ENV{CUSTOM_INCLUDE_PATH})
-
 file (GLOB SRC_SHADER_COMMON CONFIGURE_DEPENDS "src/shader/common/*.glsl") # hacky glob, instead of include analysis
 file (GLOB SRC_SHADER_PROG CONFIGURE_DEPENDS "src/shader/*.*.glsl")
 
@@ -39,16 +36,18 @@ file (GLOB_RECURSE SRC_LIB CONFIGURE_DEPENDS "src/lib/*.cxx")
 file (GLOB_RECURSE SRC_ENGINE CONFIGURE_DEPENDS "src/engine/*.cxx")
 
 add_subdirectory(submodule/fmt)
+add_subdirectory(submodule/glfw)
 
 include_directories(
   SYSTEM
-  $ENV{CUSTOM_INCLUDE_PATH}
+  $ENV{VULKAN_SDK}/Include
   ${CMAKE_SOURCE_DIR}/submodule/imgui
   ${CMAKE_SOURCE_DIR}/submodule/glm
   ${CMAKE_SOURCE_DIR}/submodule/tracy
   ${CMAKE_SOURCE_DIR}/submodule/tinygltf
   ${CMAKE_SOURCE_DIR}/submodule/fmt/include
   ${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/src/include
+  ${CMAKE_SOURCE_DIR}/submodule/glfw/include
 )
 
 include_directories (
@@ -67,6 +66,8 @@ add_library (
   ${SRC_ENGINE}
   ${SRC_TOOLS}
   ${ALL_EMBEDDED_GLSL}
+  "${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/src/nfd_win.cpp"
+  "${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/src/nfd_common.c"
   "${CMAKE_SOURCE_DIR}/submodule/tracy/TracyClient.cpp"
   "${CMAKE_SOURCE_DIR}/submodule/imgui/imgui.cpp"
   "${CMAKE_SOURCE_DIR}/submodule/imgui/imgui_draw.cpp"
@@ -89,11 +90,10 @@ target_compile_definitions(engine_lib PUBLIC TRACY_ENABLE=1)
 # target_compile_definitions(engine_lib PUBLIC TRACY_ON_DEMAND=1)
 # target_compile_definitions(engine_lib PUBLIC TRACY_NO_EXIT=1)
 
-target_link_directories (engine_lib PUBLIC $ENV{CUSTOM_LINK_PATH})
+target_link_directories (engine_lib PUBLIC $ENV{VULKAN_SDK}/Lib)
 target_link_directories (engine_lib PUBLIC "${CMAKE_SOURCE_DIR}/submodule/nativefiledialog/build/lib/Release/x64")
-target_link_libraries (engine_lib glfw3)
+target_link_libraries (engine_lib glfw)
 target_link_libraries (engine_lib vulkan-1)
-target_link_libraries (engine_lib nfd)
 target_link_libraries(engine_lib fmt::fmt-header-only)
 
 

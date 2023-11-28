@@ -1,9 +1,9 @@
-/build
+/.build
 /assets
 /tmp
 /vk_layer_settings.txt
 /imgui.ini
-/.vscode/settings.json
+/.vscode
 /.vs
 /out
 /CMakeSettings.json
